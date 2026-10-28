@@ -1,7 +1,14 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
+from sqlalchemy.exc import IntegrityError
+from src.core.exceptions import BusinessLogicError
 from src.database.connection import get_auth_session, get_session
+from src.utils.auth import verify_auth
+
+import logging
+
+logger = logging.getLogger(__name__)
 from src.services.servicio_service import (
     ServicioService,
     SolicitudServicioService,
@@ -13,6 +20,11 @@ from src.services.servicio_service import (
     PersonaLiquidacionService,
     certificacion_service,
     OfertaServicioService,
+)
+from src.repository.servicio_repo import (
+    factura_servicio_repo,
+    persona_liquidacion_repo,
+    servicio_repo,
 )
 from src.dto.servicio_dto import (
     ServicioCreate,
@@ -66,8 +78,12 @@ servicios_router = APIRouter(
 
 @servicios_router.get("", response_model=List[ServicioRead])
 async def get_servicios(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(await servicio_repo.count(db))
     return await ServicioService.get_all(db, skip, limit)
 
 
@@ -100,9 +116,29 @@ async def update_servicio(
 
 
 @servicios_router.delete("/{id}", status_code=204)
-async def delete_servicio(id: int, db: AsyncSession = Depends(get_session)):
-    if not await ServicioService.delete(db, id):
-        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+async def delete_servicio(
+    id: int,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+):
+    try:
+        await verify_auth(authorization, db)
+        if not await ServicioService.delete(db, id):
+            raise HTTPException(status_code=404, detail="Servicio no encontrado")
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: el servicio está en uso por tareas u otros registros",
+        )
+    except Exception:
+        await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # ==========================================
@@ -117,9 +153,21 @@ solicitudes_router = APIRouter(
 
 @solicitudes_router.get("", response_model=List[SolicitudServicioRead])
 async def get_solicitudes(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    estado: Optional[str] = Query(default=None),
+    search: Optional[str] = Query(default=None),
+    db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
-    return await SolicitudServicioService.get_all(db, skip, limit)
+    # Total con el mismo WHERE que la lista, para el contador de la página de
+    # Proyectos. Va en header para no cambiar el shape del body (lista pelada).
+    response.headers["X-Total-Count"] = str(
+        await SolicitudServicioService.count_all(db, estado=estado, search=search)
+    )
+    return await SolicitudServicioService.get_all(
+        db, skip, limit, estado=estado, search=search
+    )
 
 
 @solicitudes_router.get("/{id}", response_model=SolicitudServicioRead)
@@ -176,9 +224,29 @@ async def update_solicitud(
 
 
 @solicitudes_router.delete("/{id}", status_code=204)
-async def delete_solicitud(id: int, db: AsyncSession = Depends(get_session)):
-    if not await SolicitudServicioService.delete(db, id):
-        raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+async def delete_solicitud(
+    id: int,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+):
+    try:
+        await verify_auth(authorization, db)
+        if not await SolicitudServicioService.delete(db, id):
+            raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la solicitud tiene etapas, ofertas o facturas asociadas",
+        )
+    except Exception:
+        await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # ==========================================
@@ -227,9 +295,29 @@ async def update_etapa(
 
 
 @etapas_router.delete("/{id}", status_code=204)
-async def delete_etapa(id: int, db: AsyncSession = Depends(get_session)):
-    if not await EtapaService.delete(db, id):
-        raise HTTPException(status_code=404, detail="Etapa no encontrada")
+async def delete_etapa(
+    id: int,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+):
+    try:
+        await verify_auth(authorization, db)
+        if not await EtapaService.delete(db, id):
+            raise HTTPException(status_code=404, detail="Etapa no encontrada")
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la etapa tiene facturas, ofertas o liquidaciones asociadas",
+        )
+    except Exception:
+        await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # ==========================================
@@ -263,9 +351,29 @@ async def update_tarea_etapa(
 
 
 @tareas_etapa_router.delete("/{id}", status_code=204)
-async def delete_tarea_etapa(id: int, db: AsyncSession = Depends(get_session)):
-    if not await TareaEtapaService.delete(db, id):
-        raise HTTPException(status_code=404, detail="Tarea no encontrada")
+async def delete_tarea_etapa(
+    id: int,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+):
+    try:
+        await verify_auth(authorization, db)
+        if not await TareaEtapaService.delete(db, id):
+            raise HTTPException(status_code=404, detail="Tarea no encontrada")
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la tarea está en usada por facturas u ofertas",
+        )
+    except Exception:
+        await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # ==========================================
@@ -290,10 +398,29 @@ async def create_persona_etapa(
 
 @persona_etapa_router.delete("/{etapa_id}/{persona_id}", status_code=204)
 async def delete_persona_etapa(
-    etapa_id: int, persona_id: int, db: AsyncSession = Depends(get_session)
+    etapa_id: int,
+    persona_id: int,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
 ):
-    if not await PersonaEtapaService.delete(db, etapa_id, persona_id):
-        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    try:
+        await verify_auth(authorization, db)
+        if not await PersonaEtapaService.delete(db, etapa_id, persona_id):
+            raise HTTPException(status_code=404, detail="Registro no encontrado")
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la realización tiene liquidaciones de persona asociadas",
+        )
+    except Exception:
+        await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # ==========================================
@@ -306,8 +433,12 @@ facturas_servicio_router = APIRouter(
 
 @facturas_servicio_router.get("", response_model=List[FacturaServicioRead])
 async def get_facturas_servicio(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(await factura_servicio_repo.count(db))
     return await FacturaServicioService.get_all(db, skip, limit)
 
 
@@ -409,7 +540,11 @@ async def get_ofertas(
     limit: int = 100,
     estado: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(
+        await OfertaServicioService.count_all(db, estado=estado)
+    )
     return await OfertaServicioService.get_all(db, skip, limit, estado=estado)
 
 
@@ -520,9 +655,29 @@ async def create_pago_factura(
 
 
 @pagos_factura_servicio_router.delete("/{id}", status_code=204)
-async def delete_pago_factura(id: int, db: AsyncSession = Depends(get_session)):
-    if not await PagoFacturaServicioService.delete(db, id):
-        raise HTTPException(status_code=404, detail="Pago no encontrado")
+async def delete_pago_factura(
+    id: int,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+):
+    try:
+        await verify_auth(authorization, db)
+        if not await PagoFacturaServicioService.delete(db, id):
+            raise HTTPException(status_code=404, detail="Pago no encontrado")
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: el pago tiene liquidaciones de persona asociadas",
+        )
+    except Exception:
+        await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # ==========================================
@@ -535,8 +690,12 @@ persona_liquidacion_router = APIRouter(
 
 @persona_liquidacion_router.get("", response_model=List[PersonaLiquidacionRead])
 async def get_liquidaciones(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(await persona_liquidacion_repo.count(db))
     return await PersonaLiquidacionService.get_all(db, skip, limit)
 
 
@@ -557,12 +716,13 @@ async def get_pagos_disponibles_etapa(
 async def get_disponible_liquidar(
     id_etapa: int = Query(...),
     id_persona: int = Query(...),
+    id_moneda: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
     """Obtiene el monto disponible para liquidar a una persona en una etapa."""
 
     disponible = await PersonaLiquidacionService.get_disponible_liquidar(
-        db, id_etapa, id_persona
+        db, id_etapa, id_persona, id_moneda
     )
     return {"disponible": float(disponible)}
 
@@ -571,10 +731,15 @@ async def get_disponible_liquidar(
     "/validar/{id_etapa}/{id_persona}", response_model=PersonaLiquidacionValidacion
 )
 async def validar_liquidar_persona(
-    id_etapa: int, id_persona: int, db: AsyncSession = Depends(get_session)
+    id_etapa: int,
+    id_persona: int,
+    id_moneda: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_session),
 ):
     """Valida si se puede liquidar a una persona en una etapa (verifica que la factura esté pagada)."""
-    return await PersonaLiquidacionService.validar_liquidar(db, id_etapa, id_persona)
+    return await PersonaLiquidacionService.validar_liquidar(
+        db, id_etapa, id_persona, id_moneda
+    )
 
 
 @persona_liquidacion_router.get(
@@ -654,9 +819,31 @@ async def confirmar_liquidacion(
 
 
 @persona_liquidacion_router.delete("/{id}", status_code=204)
-async def delete_liquidacion(id: int, db: AsyncSession = Depends(get_session)):
-    if not await PersonaLiquidacionService.delete(db, id):
-        raise HTTPException(status_code=404, detail="Liquidación no encontrada")
+async def delete_liquidacion(
+    id: int,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+):
+    try:
+        await verify_auth(authorization, db)
+        if not await PersonaLiquidacionService.delete(db, id):
+            raise HTTPException(
+                status_code=404, detail="Liquidación no encontrada"
+            )
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la liquidación tiene registros asociados",
+        )
+    except Exception:
+        await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # ==========================================
@@ -669,8 +856,12 @@ certificaciones_router = APIRouter(
 
 @certificaciones_router.get("", response_model=List[CertificacionRead])
 async def get_certificaciones(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(await certificacion_service.count_all(db))
     return await certificacion_service.get_all(db)
 
 
@@ -707,6 +898,28 @@ async def update_certificacion(
 
 
 @certificaciones_router.delete("/{id}", status_code=204)
-async def delete_certificacion(id: int, db: AsyncSession = Depends(get_session)):
-    if not await certificacion_service.delete(db, id):
-        raise HTTPException(status_code=404, detail="Certificación no encontrada")
+async def delete_certificacion(
+    id: int,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+):
+    try:
+        await verify_auth(authorization, db)
+        if not await certificacion_service.delete(db, id):
+            raise HTTPException(
+                status_code=404, detail="Certificación no encontrada"
+            )
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la certificación está en una factura u oferta",
+        )
+    except Exception:
+        await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

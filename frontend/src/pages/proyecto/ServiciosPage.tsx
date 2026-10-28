@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
 import { serviciosProyectoService, monedaService } from '../../services/api';
 import type { Servicio, ServicioCreate, ServicioUpdate } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Wrench, DollarSign, Tag, X, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit, ArrowLeft, Search, Wrench, DollarSign, Tag, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 
 type View = 'list' | 'form';
+
+const SERVICIO_FORM_ID = 'servicio-form';
 
 export function ServiciosPage() {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ export function ServiciosPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Servicio | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
@@ -41,14 +43,15 @@ export function ServiciosPage() {
 
   const {
     items: servicios,
-    isLoading,
     isFetchingMore,
     refresh,
     hasMore,
     loadMore,
+    total: totalServicios,
   } = useInfiniteList<Servicio>({
     queryKeyBase: 'servicios-proyecto',
-    queryFn: (skip, limit) => serviciosProyectoService.getServicios(skip, limit),
+    queryFn: (skip, limit, _search, onTotal) =>
+      serviciosProyectoService.getServicios(skip, limit, onTotal),
   });
 
   useEffect(() => {
@@ -75,6 +78,7 @@ export function ServiciosPage() {
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       if (editingId) {
         const data: ServicioUpdate = {
@@ -100,6 +104,7 @@ export function ServiciosPage() {
       resetForm();
       refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
+    finally { setIsSaving(false); }
   };
 
   const handleDelete = async (id: number, concepto: string) => {
@@ -168,8 +173,8 @@ export function ServiciosPage() {
             <h1 className="text-2xl font-bold text-gray-900">Servicios</h1>
             <p className="text-gray-500 mt-1">
               {filteredServicios.length === servicios.length
-                ? `Gestión de servicios (${servicios.length} items)`
-                : `Mostrando ${filteredServicios.length} de ${servicios.length} servicios`
+                ? `Gestión de servicios (${totalServicios ?? servicios.length} items)`
+                : `Mostrando ${filteredServicios.length} de ${servicios.length} servicios (total en BD: ${totalServicios ?? servicios.length})`
               }
               {isFetchingMore && <Loader2 className="h-4 w-4 animate-spin inline ml-2" />}
             </p>
@@ -289,32 +294,12 @@ export function ServiciosPage() {
   );
 
   const renderForm = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <Wrench className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Servicio' : 'Nuevo Servicio'}</h2>
-            <p className="text-gray-500 mt-1">Complete los datos del servicio</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Wrench className="h-5 w-5 text-teal-600" />
-            Información del Servicio
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form
+      id={SERVICIO_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <Label className="text-sm font-medium">Concepto</Label>
               <Input value={formData.concepto || ''} onChange={(e: any) => setFormData({...formData, concepto: e.target.value})} className="mt-1" placeholder="Concepto del servicio" />
@@ -339,22 +324,44 @@ export function ServiciosPage() {
               <Input value={formData.observaciones || ''} onChange={(e: any) => setFormData({...formData, observaciones: e.target.value})} className="mt-1" placeholder="Observaciones adicionales" />
             </div>
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-              <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      </form>
   );
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Servicio' : 'Nuevo Servicio'}
+        subtitle="Complete los datos del servicio"
+        icon={<Wrench className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={SERVICIO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -365,8 +372,11 @@ export function ServiciosPage() {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay
+          isOpen={true}
+          onClose={() => setDetailModal({ isOpen: false, item: null })}
+        >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -416,8 +426,7 @@ export function ServiciosPage() {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </div>
   );

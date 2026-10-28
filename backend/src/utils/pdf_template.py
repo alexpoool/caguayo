@@ -87,9 +87,15 @@ class PDFTemplate:
     report-generation functions in ``pdf_generator.py``.
     """
 
-    def __init__(self, title: str, landscape_mode: bool = True) -> None:
+    def __init__(
+        self,
+        title: str,
+        landscape_mode: bool = True,
+        title_centered: bool = False,
+    ) -> None:
         self.title = title
         self.landscape_mode = landscape_mode
+        self.title_centered = title_centered
         self.page_size = landscape(letter) if landscape_mode else letter
 
         self.buffer = BytesIO()
@@ -130,6 +136,17 @@ class PDFTemplate:
                 fontSize=16,
                 leading=20,
                 alignment=TA_LEFT,
+                spaceAfter=2,
+                textColor=TITLE_COLOR,
+            )
+        )
+        styles.add(
+            ParagraphStyle(
+                "ReportTitleCentered",
+                fontName="Helvetica-Bold",
+                fontSize=16,
+                leading=20,
+                alignment=TA_CENTER,
                 spaceAfter=2,
                 textColor=TITLE_COLOR,
             )
@@ -197,6 +214,16 @@ class PDFTemplate:
                 alignment=TA_LEFT,
                 spaceAfter=2,
                 leading=9,
+            )
+        )
+        styles.add(
+            ParagraphStyle(
+                "InfoText",
+                fontName="Helvetica",
+                fontSize=8,
+                alignment=TA_LEFT,
+                leading=11,
+                textColor=black,
             )
         )
         styles.add(
@@ -479,6 +506,56 @@ class PDFTemplate:
         self.elements.append(note_table)
         self.elements.append(Spacer(1, 4))
 
+    def add_info_grid(
+        self, rows: List[List[tuple[str, str]]]
+    ) -> None:
+        """Append a borderless info grid of label/value pairs.
+
+        Each row is a list of ``(label, value)`` tuples, normalmente dos
+        columnas. Se usa para los datos básicos de un documento.
+        """
+        if not rows:
+            return
+        self._has_content = True
+        data = [
+            [
+                Paragraph(
+                    f"<b>{self._escape(label)}:</b> {self._escape(value)}",
+                    self.styles["InfoText"],
+                )
+                for label, value in row
+            ]
+            for row in rows
+        ]
+        available_width = self.page_size[0] - 40
+        columnas = max(len(row) for row in rows)
+        ancho = available_width / columnas
+        table = Table(data, colWidths=[ancho] * columnas)
+        table.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 1),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+                ]
+            )
+        )
+        self.elements.append(table)
+        self.elements.append(Spacer(1, 4))
+
+    def add_summary_line(self, label: str, value: str) -> None:
+        """Append a right-aligned bold summary line (e.g. total of a report)."""
+        self._has_content = True
+        self.elements.append(Spacer(1, 4))
+        self.elements.append(
+            Paragraph(
+                f"<b>{self._escape(label)}:</b> {self._escape(value)}",
+                self.styles["TotalsRow"],
+            )
+        )
+
     def add_signature_section(
         self,
         created_by: str,
@@ -583,10 +660,35 @@ class PDFTemplate:
 
         # ── Logo (left) + Title (right) row ──────────────────────────
         full_width = self.page_size[0] - 40  # 20+20 margins
+        title_style = self.styles[
+            "ReportTitleCentered" if self.title_centered else "ReportTitle"
+        ]
         title_text = Paragraph(
-            f"<b>{self._escape(self.title)}</b>", self.styles["ReportTitle"]
+            f"<b>{self._escape(self.title)}</b>", title_style
         )
-        if logo:
+        if logo and self.title_centered:
+            # Logo a la izquierda y título centrado en la página: los laterales
+            # miden lo mismo para que el centro del texto coincida con el de la
+            # hoja.
+            side_col = LOGO_WIDTH + 10
+            title_col = full_width - 2 * side_col
+            header_table = Table(
+                [[logo, title_text, ""]],
+                colWidths=[side_col, title_col, side_col],
+            )
+            header_table.setStyle(
+                TableStyle([
+                    ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                    ("ALIGN", (1, 0), (1, 0), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ])
+            )
+            header_parts.append(header_table)
+        elif logo:
             logo_col = LOGO_WIDTH + 10
             title_col = full_width - logo_col
             header_table = Table(

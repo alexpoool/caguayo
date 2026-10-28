@@ -44,6 +44,22 @@ from .item_venta_efectivo import ItemVentaEfectivo
 from .cuenta_dependencia import CuentaDependencia
 from .log import LogEntry
 from .pago import Pago
+from .rrhh_catalogos import (
+    RrhhTipoContrato,
+    RrhhTipoDeduccion,
+    RrhhTipoBonificacion,
+    RrhhTipoEvaluacion,
+    RrhhPeriodoEvaluacion,
+    RrhhCalificacion,
+    RrhhTipoPago,
+)
+from .rrhh_empleado import RrhhEmpleado, RrhhDepartamento, RrhhPuesto
+from .rrhh_deducciones import RrhhDeduccion, RrhhBonificacion
+from .rrhh_asistencia import RrhhAsistencia
+from .rrhh_evaluacion import RrhhEvaluacion, RrhhObjetivo, RrhhEvaluacionObjetivo
+from .rrhh_solicitud import RrhhSolicitud
+from .rrhh_nomina import RrhhNomina, RrhhNominaEmpleado
+from .rrhh_pago_resultado import RrhhPagoResultado, RrhhPagoResultadoEmpleado
 from .servicio import (
     Servicio,
     SolicitudServicio,
@@ -143,4 +159,22 @@ __all__ = [
     "DeclaracionJurada",
     "DeclaracionActividad",
     "DeclaracionTributo",
+    "RrhhTipoContrato",
+    "RrhhTipoDeduccion",
+    "RrhhTipoBonificacion",
+    "RrhhTipoEvaluacion",
+    "RrhhCalificacion",
+    "RrhhTipoPago",
+    "RrhhEmpleado",
+    "RrhhDepartamento",
+    "RrhhPuesto",
+    "RrhhDeduccion",
+    "RrhhBonificacion",
+    "RrhhAsistencia",
+    "RrhhEvaluacion",
+    "RrhhObjetivo",
+    "RrhhEvaluacionObjetivo",
+    "RrhhSolicitud",
+    "RrhhNomina",
+    "RrhhNominaEmpleado",
 ]

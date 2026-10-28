@@ -1,44 +1,35 @@
 # -*- coding: utf-8 -*-
-"""Fase I: catálogos de tipo_contrato y tipo_convenio.
+"""Fase I: catálogo de tipo_contrato.
 
-Ni `tipo_contrato` ni `tipo_convenio` se habían migrado. En PostgreSQL había
-cinco tipos de contrato y dos de convenio, sembrados a mano y sin relación con
-el legacy: no coincidía ni uno solo con los del dump viejo.
+No se había migrado. En PostgreSQL había cinco tipos de contrato, sembrados a
+mano y sin relación con el legacy: no coincidía ni uno solo con los del dump.
 
-El problema de partida es que los catálogos no están en una base sino en dos:
-
-    caguayo_comercial   tipo_contrato  7 valores   tipo_convenio  0 valores
-    caguayo             tipo_contrato  4 valores   tipo_convenio  4 valores
-
-Y lo peligroso es que los ids de una y otra se solapan CON SIGNIFICADO
-DISTINTO. `tipo_contrato` id=7 es "CONTRATO DE OBRA POR ENCARGO." en la
-oficina comercial y "Prestación de Servicios - Impresión" en la base
-principal. Migrar por id dejaría mal clasificados 201 de los 214 contratos
-legacy, que usan casi todos el tipo 3.
-
-Por eso los catálogos se unen por NOMBRE normalizado y el id lo asigna
-PostgreSQL. El id del legacy no se transporta.
+El legacy los guarda por id, pero el id no se transporta: el catálogo se une por
+NOMBRE normalizado y el id lo asigna PostgreSQL. Así "Compra-Venta" y "compra
+venta" se reconocen como el mismo tipo y no aparece un duplicado por el guion.
 
 Lo que ya existe en PostgreSQL no se toca ni se renombra: se añade lo que
 falta. `tipo_contrato` no lo usa ningún contrato todavía (la tabla `contrato`
-está vacía), y de `tipo_convenio` sólo está en uso `COMPRA VENTA`, con un
-convenio apuntando.
+está vacía).
+
+`tipo_convenio` no entra aquí: `caguayo_comercial` no tiene esa tabla. En
+PostgreSQL quedan los dos valores de la semilla, y sólo `COMPRA VENTA` está en
+uso, con un convenio apuntando. Si algún día hace falta otro tipo, se añade a
+mano; ver config.CATALOGOS.
 """
 import unicodedata
-from pathlib import Path
 
 import db
 from config import (
     CATALOGOS,
     TAMANO_LOTE,
     TABLA_TIPO_CONTRATO,
-    TABLA_TIPO_CONVENIO,
 )
 from fuente import leer_catalogo
 from limpieza import texto
 from log import Registro
 
-ORIGEN = "catalogo (tipo_contrato / tipo_convenio)"
+ORIGEN = "catalogo (tipo_contrato)"
 
 LARGO_NOMBRE = 100
 
@@ -47,7 +38,6 @@ LARGO_NOMBRE = 100
 # "compra venta" se reconozcan como el mismo tipo.
 _TABLAS = {
     "tipo_contrato": TABLA_TIPO_CONTRATO,
-    "tipo_convenio": TABLA_TIPO_CONVENIO,
 }
 
 
@@ -72,7 +62,7 @@ def _nombre_limpio(nombre):
     return (limpio[:LARGO_NOMBRE]).strip()
 
 
-def preparar(registro: Registro, existentes, esquema):
+def preparar(existentes, esquema):
     """Arma las filas a insertar. No escribe nada.
 
     `existentes` mapea cada tabla a su conjunto de claves ya presentes en
@@ -82,14 +72,19 @@ def preparar(registro: Registro, existentes, esquema):
 
     for tabla, rutas in CATALOGOS:
         destino = _TABLAS[tabla]
+
+        # Aquí no se perdona un dump que falte. Es el único origen, y si no está
+        # la Fase I no tiene nada que migrar: que reviente con el nombre del
+        # fichero, no que se salte en silencio.
+        #
         # La clave se calcula con la MISMA función para lo que ya está en
         # PostgreSQL y para lo que viene del legacy. Si cada lado se
         # normalizara por su cuenta, un "Compra-Venta" ya cargado y el mismo
         # nombre del legacy caerían en claves distintas por el guion.
         ya = {_clave(n) for n in existentes.get(destino, set())}
         filas = leer_catalogo(rutas, tabla)
-        # Sólo se rellenan las columnas que la tabla tenga de verdad. Ni
-        # tipo_contrato ni tipo_convenio tienen `activo` (sólo lo tiene
+        # Sólo se rellenan las columnas que la tabla tenga de verdad.
+        # `tipo_contrato` no tiene `activo` (sólo lo tiene
         # especialidades_artisticas), y agregar una columna nueva a un catálogo
         # que ya está en uso queda fuera de esta fase.
         columnas = [c for c in ("nombre", "descripcion", "activo")
@@ -130,7 +125,7 @@ def preparar(registro: Registro, existentes, esquema):
     return a_insertar
 
 
-def ejecutar(conn, registro: Registro, a_insertar):
+def ejecutar(conn, a_insertar):
     """Inserta lo que falte. Devuelve {tabla: filas_insertadas}."""
     from psycopg2.extras import execute_values
 
@@ -160,17 +155,14 @@ def cargar_catalogo(registro=None, dry_run=True):
     with db.conexion() as conn:
         existentes = {
             TABLA_TIPO_CONTRATO: db.nombres_catalogo(conn, TABLA_TIPO_CONTRATO),
-            TABLA_TIPO_CONVENIO: db.nombres_catalogo(conn, TABLA_TIPO_CONVENIO),
         }
         esquema = {
             TABLA_TIPO_CONTRATO: db.columnas(conn, TABLA_TIPO_CONTRATO),
-            TABLA_TIPO_CONVENIO: db.columnas(conn, TABLA_TIPO_CONVENIO),
         }
-    print("  Ya en PostgreSQL -> tipo_contrato: %d | tipo_convenio: %d"
-          % (len(existentes[TABLA_TIPO_CONTRATO]),
-             len(existentes[TABLA_TIPO_CONVENIO])))
+    print("  Ya en PostgreSQL -> tipo_contrato: %d"
+          % len(existentes[TABLA_TIPO_CONTRATO]))
 
-    a_insertar = preparar(registro, existentes, esquema)
+    a_insertar = preparar(existentes, esquema)
     total_nuevas = sum(len(b["filas"]) for b in a_insertar.values())
 
     with db.conexion() as conn:
@@ -189,7 +181,7 @@ def cargar_catalogo(registro=None, dry_run=True):
 
     with db.conexion() as conn:
         db.crear_log(conn)
-        insertadas = ejecutar(conn, registro, a_insertar)
+        insertadas = ejecutar(conn, a_insertar)
         for destino, cuantas in insertadas.items():
             with db.conexion() as c2, c2.cursor() as cur:
                 cur.execute("SELECT count(*) FROM {t}".format(t=destino))

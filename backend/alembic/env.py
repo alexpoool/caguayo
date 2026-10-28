@@ -93,6 +93,10 @@ def _seed_generic_data(connection):
     MONEDAS = [
         ("Dólar Americano", "Dólar Estadounidense", "USD"),
         ("Euro", "Euro de la Unión Europea", "EUR"),
+        # La Fase K del ETL migra liquidaciones y la L contratos, y el legacy sólo
+        # tenía CUC y CUP. Sin CUP aquí, una base recién creada no tiene contra qué
+        # resolver id_moneda y ninguna de las dos fases inserta fila.
+        ("Peso Cubano", "Peso Cubano", "CUP"),
     ]
     TIPOS_CONTRATO = [
         ("SERVICIO", "Contrato de servicios"),

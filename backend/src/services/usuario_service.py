@@ -132,36 +132,13 @@ class GrupoService:
 
 class UsuarioService:
     @staticmethod
-    def _generar_alias(nombre: str, primer_apellido: str) -> str:
-        return f"{nombre.lower()}.{primer_apellido.lower()}"
-
-    @staticmethod
-    def _generar_contrasenia() -> tuple[str, str]:
-        import random
-        import string
-
-        password_temporal = "".join(
-            random.choices(string.ascii_lowercase + string.digits, k=8)
-        )
-        contrasenia_hasheada = bcrypt.hashpw(
-            password_temporal.encode("utf-8"), bcrypt.gensalt()
-        ).decode("utf-8")
-        return contrasenia_hasheada, password_temporal
-
-    @staticmethod
     async def create(db: AsyncSession, data: UsuarioCreate) -> UsuarioRead:
-        # Generar alias y contraseña si no vienen en los datos
-        alias = data.alias or UsuarioService._generar_alias(
-            data.nombre, data.primer_apellido
-        )
+        alias = data.alias
 
-        if data.contrasenia:
-            contrasenia = bcrypt.hashpw(
-                data.contrasenia.encode("utf-8"), bcrypt.gensalt()
-            ).decode("utf-8")
-            password_temporal = data.contrasenia
-        else:
-            contrasenia, password_temporal = UsuarioService._generar_contrasenia()
+        contrasenia = bcrypt.hashpw(
+            data.contrasenia.encode("utf-8"), bcrypt.gensalt()
+        ).decode("utf-8")
+        password_temporal = data.contrasenia
 
         # Crear objeto con todos los datos
         usuario_data = {

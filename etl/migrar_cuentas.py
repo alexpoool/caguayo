@@ -102,8 +102,12 @@ def _payloads_de(registro, ficha, id_cliente, campos, etiqueta, origen):
     return payloads
 
 
-def preparar(registro: Registro, mapa_codigo, pares_existentes=()):
-    """Construye todos los payloads de `cuenta`. No escribe nada."""
+def preparar(registro: Registro, mapa_codigo, pares_existentes=(), dry_run=True):
+    """Construye todos los payloads de `cuenta`. No escribe nada.
+
+    `dry_run` sólo cambia cómo se reporta lo que no se pudo resolver, no lo que
+    se migra. Ver la nota de `sin_cliente` más abajo.
+    """
     ya_cargadas = set(pares_existentes)
     payloads = []
     sin_cliente = []
@@ -169,7 +173,20 @@ def preparar(registro: Registro, mapa_codigo, pares_existentes=()):
                 payloads.append(_cuenta_payload(mant, destino, numero, campo))
                 heredadas += 1
 
+    # Lo que sigue sólo cuenta como ERROR si de verdad se está escribiendo.
+    #
+    # El mapa de códigos viene de la base, y en simulación las Fases A, B y D no
+    # han insertado nada: el mapa está casi vacío y cada ficha parece no tener
+    # cliente. Es un artefacto del modo en seco, no un problema de los datos, así
+    # que registrarlos como ERROR inunda el log de miles de entradas falsas y
+    # `verificar()` falla por algo que en el commit real no ocurre.
+    #
+    # En `--commit` A y B ya escribieron sus clientes cuando E llega aquí, y sólo
+    # quedan sin resolver las fichas cuyo cliente se descartó de verdad, que sí
+    # es un error que haya que ver.
     for id_origen in sin_cliente:
+        if dry_run:
+            continue
         registro.error("cuenta", id_origen, None, "cliente no encontrado",
                        "no se pudo resolver el id_cliente por el código")
 
@@ -191,6 +208,9 @@ def preparar(registro: Registro, mapa_codigo, pares_existentes=()):
     print("  Total a insertar:     %d" % len(finales))
     if sin_cliente:
         print("  fichas sin id_cliente resuelto: %d" % len(sin_cliente))
+        if dry_run:
+            print("    (simulación: A, B y D no han escrito nada todavía, así que "
+                  "el mapa de códigos sale vacío; no se registran como ERROR)")
     return finales
 
 
@@ -219,7 +239,7 @@ def cargar_cuentas(registro=None, dry_run=True):
         existentes = db.pares_existentes_cuenta(conn)
     print("  clientes en destino: %d | cuentas ya cargadas: %d" % (len(mapa), len(existentes)))
 
-    payloads = preparar(registro, mapa, existentes)
+    payloads = preparar(registro, mapa, existentes, dry_run)
 
     filas = [{k: v for k, v in p.items() if not k.startswith("_")} for p in payloads]
 

@@ -1,14 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useInfiniteList } from "../../../hooks/useInfiniteList";
 import {
   clientesService,
   tiposEntidadService,
-  clienteNaturalService,
-  clienteJuridicaService,
-  clienteTCPService,
-  cuentasService,
   monedaService,
 } from "../../../services/api";
 import { dependenciasService } from "../../../services/administracion";
@@ -30,10 +26,14 @@ const DEFAULT_LIMIT = 100;
 export function useClientesLogic() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [view, setView] = useState<"list" | "form" | "detail">("list");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+
+  const openForm = () => setIsFormOpen(true);
+  const closeForm = () => setIsFormOpen(false);
 
   const isProveedorView =
     location.pathname.includes("/compra/clientes") ||
+    location.pathname.includes("/compra/proveedores") ||
     location.search.includes("tipo=proveedor");
 
   const defaultTipoRelacion = isProveedorView ? "PROVEEDOR" : "CLIENTE";
@@ -65,16 +65,24 @@ export function useClientesLogic() {
 
   const {
     items: clientes,
+    isLoading,
     isFetchingMore,
     hasMore,
     loadMore,
     searchTerm,
     setSearch,
     refresh,
+    total: totalClientesDB,
   } = useInfiniteList<Cliente>({
     queryKeyBase: "clientes",
-    queryFn: (skip, limit, _search) =>
-      clientesService.getClientes(skip, limit, tipoRelacionFilter),
+    queryFn: (skip, limit, search, onTotal) =>
+      clientesService.getClientes(
+        skip,
+        limit,
+        tipoRelacionFilter,
+        search,
+        onTotal
+      ),
     limit: DEFAULT_LIMIT,
     extraQueryKeyParams: [isProveedorView],
   });
@@ -103,7 +111,7 @@ export function useClientesLogic() {
     onSuccess: () => {
       refresh();
       toast.success("Cliente creado correctamente");
-      setView("list");
+      setIsFormOpen(false);
     },
     onError: (error) => {
       toast.error(
@@ -118,7 +126,7 @@ export function useClientesLogic() {
     onSuccess: () => {
       refresh();
       toast.success("Cliente actualizado correctamente");
-      setView("list");
+      setIsFormOpen(false);
       setEditingCliente(null);
     },
     onError: (error) => {
@@ -145,41 +153,24 @@ export function useClientesLogic() {
     setEditingCliente(cliente);
     setTipoPersona(cliente.tipo_persona || "NATURAL");
     setCuentasCliente(cliente.cuentas || []);
-    setView("form");
+    setIsFormOpen(true);
   };
 
   const handleDelete = (cliente: Cliente) => {
+    const nombreTipo = isProveedorView ? "proveedor" : "cliente";
     setConfirmModal({
       isOpen: true,
-      title: "¿Eliminar cliente?",
-      message: `¿Está seguro de eliminar al cliente "${cliente.nombre}"?`,
+      title: `¿Eliminar ${nombreTipo}?`,
+      message: `¿Está seguro de eliminar al ${nombreTipo} "${cliente.nombre}"? Esta acción no se puede deshacer. Si tiene ventas, compras, contratos o convenios asociados, también se eliminarán.`,
       onConfirm: () => deleteMutation.mutate(cliente.id_cliente),
       type: "danger",
     });
   };
 
-  const filteredClientes = useMemo(() => {
-    let result = clientes;
-
-    if (isProveedorView) {
-      result = result.filter(
-        (c) => c.tipo_relacion === "PROVEEDOR" || c.tipo_relacion === "AMBAS"
-      );
-    }
-
-    if (!searchTerm) return result;
-    return result.filter(
-      (c) =>
-        c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.nit?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.telefono?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [clientes, searchTerm, isProveedorView]);
-
   return {
-    view,
-    setView,
+    isFormOpen,
+    openForm,
+    closeForm,
     isProveedorView,
     defaultTipoRelacion,
     editingCliente,
@@ -207,10 +198,11 @@ export function useClientesLogic() {
     deleteMutation,
     handleEdit,
     handleDelete,
-    filteredClientes,
     hasMore,
     loadMore,
+    isLoading,
     isFetchingMore,
+    totalClientesDB,
     navigate,
   };
 }

@@ -1,7 +1,7 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Type, TypeVar, Generic, Any
-from sqlalchemy import text
+from sqlalchemy import func, text
 
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType")
@@ -37,6 +37,13 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         statement = statement.offset(skip).limit(limit)
         results = await db.exec(statement)
         return list(results.all())
+
+    async def count(self, db: AsyncSession) -> int:
+        """Total de filas de la tabla del repo (sin filtros ni paginación).
+        Lo consume el header X-Total-Count de los GET de lista."""
+        statement = select(func.count()).select_from(self.model)
+        result = await db.exec(statement)
+        return result.one()
 
     async def create(
         self, db: AsyncSession, *, obj_in: CreateSchemaType, commit: bool = True

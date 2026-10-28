@@ -22,18 +22,15 @@ import {
   Trash2,
   Search,
   Save,
-  ArrowLeft,
   Package,
   X,
   Loader2,
   DollarSign,
-  ChevronDown,
   Sparkles,
   HeartHandshake,
   Hash,
   Percent,
   Calendar,
-  MoreHorizontal,
   RotateCcw,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -98,8 +95,11 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  FormModal,
 } from "../components/ui";
 import { formatFecha } from "../utils/fecha";
+
+const ANEXO_FORM_ID = "anexo-form";
 
 export function AnexosPage() {
   const [view, setView] = useState<"list" | "form">("list");
@@ -163,10 +163,17 @@ export function AnexosPage() {
     searchTerm,
     setSearch,
     refresh,
+    total: totalAnexos,
   } = useInfiniteList<Anexo>({
     queryKeyBase: "anexos",
-    queryFn: (skip, limit, search) =>
-      anexosService.getAnexos(filtroConvenio ?? undefined, search || undefined, skip, limit),
+    queryFn: (skip, limit, search, onTotal) =>
+      anexosService.getAnexos(
+        filtroConvenio ?? undefined,
+        search || undefined,
+        skip,
+        limit,
+        onTotal,
+      ),
     limit: 100,
     extraQueryKeyParams: [filtroConvenio],
   });
@@ -461,29 +468,41 @@ export function AnexosPage() {
     createMutation.mutate(payload);
   };
 
-  if (view === "form") {
-    return (
-      <div className="p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setView("list")}
-            className="h-9 w-9"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
-              <Package className="h-5 w-5 text-white" />
-            </div>
-            <h1 className="text-xl font-bold text-gray-900">
-              {editingAnexo ? "Editar" : "Nuevo"} Anexo
-            </h1>
-          </div>
-        </div>
+  const isSavingAnexo = operacionesMutation.isPending || createMutation.isPending;
 
-        <form onSubmit={handleSubmit}>
+  const formModal = (
+    <FormModal
+      isOpen={view === "form"}
+      onClose={() => setView("list")}
+      title={`${editingAnexo ? "Editar" : "Nuevo"} Anexo`}
+      subtitle={editingAnexo
+        ? "Agregue productos nuevos o registre devoluciones"
+        : "Complete los datos del anexo"}
+      icon={<Package className="h-6 w-6" />}
+      size="lg"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setView("list")}
+            disabled={isSavingAnexo}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form={ANEXO_FORM_ID}
+            disabled={isSavingAnexo}
+            isLoading={isSavingAnexo}
+            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            {editingAnexo ? "Aplicar operaciones" : "Crear"}
+          </Button>
+        </>
+      }
+    >
+      <form id={ANEXO_FORM_ID} onSubmit={handleSubmit}>
           {/* Encabezado: mismo formulario para crear y editar. Al editar los campos
               quedan deshabilitados porque el endpoint no los modifica. */}
           <Card className="shadow-md border-gray-200 border-l-4 border-l-teal-500">
@@ -1059,23 +1078,6 @@ export function AnexosPage() {
             </Card>
           )}
 
-          <div className="flex gap-3 pt-2 pb-8">
-            <Button
-              type="submit"
-              disabled={operacionesMutation.isPending || createMutation.isPending}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-            >
-              <Save className="h-4 w-4" />
-              {editingAnexo ? "Aplicar operaciones" : "Crear"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setView("list")}
-            >
-              Cancelar
-            </Button>
-          </div>
         </form>
 
         {/* ── Modal Nuevo Producto ── */}
@@ -1306,9 +1308,8 @@ export function AnexosPage() {
             </div>,
             document.body,
           )}
-      </div>
-    );
-  }
+    </FormModal>
+  );
 
   return (
     <div className="space-y-4">
@@ -1320,7 +1321,7 @@ export function AnexosPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Anexos</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Gestión de anexos ({anexos.length} registrados)
+              Gestión de anexos ({totalAnexos ?? anexos.length} registrados)
             </p>
           </div>
         </div>
@@ -1561,6 +1562,8 @@ export function AnexosPage() {
         </div>,
         document.body,
       )}
+
+      {formModal}
     </div>
   );
 }

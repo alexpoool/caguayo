@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Save, ArrowLeft, Receipt, Search } from 'lucide-react';
-import { Button, Label, Input, DateInput, Card, CardHeader, CardTitle, CardContent } from '../../../../components/ui';
+import { Search } from 'lucide-react';
+import { Label, Input, DateInput } from '../../../../components/ui';
 import { ProductSelector } from './ProductSelector';
 import type { SelectedProduct } from '../hooks/useProductSelection';
 import type { Productos } from '../../../../types';
@@ -8,7 +8,7 @@ import type { ContratoWithDetails } from '../../../../types/contrato';
 import type { Cliente } from '../../../../types/ventas';
 
 interface FacturaFormProps {
-  editingId: number | null;
+  formId: string;
   formData: Record<string, any>;
   selectedProducts: SelectedProduct[];
   productSearch: string;
@@ -28,11 +28,10 @@ interface FacturaFormProps {
   onRemoveProduct: (id: number) => void;
   onSelectedContratoChange: (id: number | null) => void;
   onSave: () => void;
-  onCancel: () => void;
 }
 
 export function FacturaForm({
-  editingId,
+  formId,
   formData,
   selectedProducts,
   productSearch,
@@ -52,7 +51,6 @@ export function FacturaForm({
   onRemoveProduct,
   onSelectedContratoChange,
   onSave,
-  onCancel,
 }: FacturaFormProps) {
   const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
   const [clienteSearch, setClienteSearch] = useState('');
@@ -103,36 +101,13 @@ export function FacturaForm({
   }, []);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <Receipt className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {editingId ? 'Editar Factura' : 'Nueva Factura'}
-            </h2>
-            <p className="text-gray-500 mt-1">Complete los datos de la factura</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={onCancel} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      {/* Formulario */}
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Receipt className="h-5 w-5 text-violet-600" />
-            Información de la Factura
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form
+      id={formId}
+      onSubmit={(e) => { e.preventDefault(); onSave(); }}
+      className="p-4 md:p-6"
+    >
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Cliente (buscador) */}
             <div ref={clienteRef} className="relative">
               <Label className="text-sm font-medium">Cliente</Label>
@@ -309,26 +284,7 @@ export function FacturaForm({
               placeholder="Observaciones adicionales"
             />
           </div>
-
-          {/* Botones de acción */}
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button
-              onClick={onSave}
-              className="gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-            >
-              <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={onCancel}
-              className="transition-colors hover:bg-gray-100"
-            >
-              Cancelar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      </div>
+    </form>
   );
 }

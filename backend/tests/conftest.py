@@ -89,3 +89,132 @@ def client():
             loop.run_until_complete(engine.dispose())
     except Exception:
         pass
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Borra los residuos de pruebas (fechas 2098 y empleados de prueba).
+
+    Varios tests crean datos en 2098 y limpian el empleado con `DELETE`, que
+    puede acabar en baja lógica. La FK en cascada no se dispara en ese caso,
+    así que estos registros quedarían en la BD real.
+    """
+    from sqlalchemy.engine import make_url
+    import psycopg2
+
+    try:
+        url = make_url(DATABASE_URL)
+        conn = psycopg2.connect(
+            host=url.host,
+            port=url.port or 5432,
+            user=url.username,
+            password=url.password,
+            dbname=url.database,
+        )
+        try:
+            with conn, conn.cursor() as cur:
+                # Los tests nombran sus empleados `Nombre<hash>` y Apellido<hash>.
+                # El supervisor apunta con NO ACTION: hay que soltarlo antes.
+                cur.execute(
+                    "UPDATE empleados SET supervisor = NULL "
+                    "WHERE supervisor IN ("
+                    "SELECT id FROM empleados "
+                    "WHERE nombre LIKE 'Nombre%' "
+                    "AND apellido LIKE 'Apellido%'"
+                    ")"
+                )
+                cur.execute(
+                    "DELETE FROM evaluaciones "
+                    "WHERE periodo LIKE '2098%' "
+                    "OR inicio_periodo >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM pago_x_resultado "
+                    "WHERE periodo_evaluacion_id IN ("
+                    "SELECT id_periodo_evaluacion FROM periodo_evaluaciones "
+                    "WHERE nombre LIKE '2098%'"
+                    ")"
+                )
+                cur.execute(
+                    "DELETE FROM periodo_evaluaciones WHERE nombre LIKE '2098%'"
+                )
+                cur.execute(
+                    "DELETE FROM objetivos "
+                    "WHERE periodo_inicio >= DATE '2098-01-01' "
+                    "OR periodo_fin >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM deducciones "
+                    "WHERE inicio_periodo >= DATE '2098-01-01' "
+                    "OR fin_periodo >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM bonificaciones "
+                    "WHERE inicio_periodo >= DATE '2098-01-01' "
+                    "OR fin_periodo >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM asistencia WHERE fecha >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM solicitudes "
+                    "WHERE fecha_inicio >= DATE '2098-01-01' "
+                    "OR fecha_fin >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM empleados "
+                    "WHERE nombre LIKE 'Nombre%' "
+                    "AND apellido LIKE 'Apellido%'"
+                )
+        finally:
+            conn.close()
+    except Exception:
+        # La limpieza no debe hacer fallar la sesión de tests.
+        pass
+
+
+@pytest.fixture
+def auth_headers(client):
+    """Headers Authorization con token de admin para endpoints con verify_auth.
+
+    Reutiliza sesiones vigentes de `sesion` para evitar el UNIQUE del token
+    cuando dos logins del admin caen en el mismo segundo (mismo patrón que
+    test_eliminaciones_compra_venta_proyectos._login).
+    """
+    candidatos = [
+        r[0]
+        for r in _sql_sesion(
+            "SELECT token FROM sesion WHERE fecha_expiracion > now()"
+            " ORDER BY id_sesion DESC LIMIT 3"
+        )
+    ]
+    for token in candidatos:
+        probe = client.delete(
+            "/api/v1/etapas/999999999", headers={"Authorization": f"Bearer {token}"}
+        )
+        if probe.status_code != 401:
+            return {"Authorization": f"Bearer {token}"}
+
+    conexiones = client.get("/api/v1/conexiones").json()
+    nombre_db = conexiones[0]["nombre_database"]
+    r = client.post(
+        "/api/v1/auth/login",
+        json={"alias": "admin", "contrasenia": "admin123", "base_datos": nombre_db},
+    )
+    assert r.status_code == 200, r.text
+    return {"Authorization": f"Bearer {r.json()['token']}"}
+
+
+def _sql_sesion(sql: str) -> list:
+    """SELECT simple contra la BD de auth, fuera del loop del TestClient."""
+    import asyncio
+
+    from sqlalchemy import text
+
+    async def _go() -> list:
+        engine = create_async_engine(DATABASE_URL, poolclass=NullPool)
+        async with engine.connect() as conn:
+            rows = (await conn.execute(text(sql))).fetchall()
+        await engine.dispose()
+        return rows
+
+    return asyncio.run(_go())

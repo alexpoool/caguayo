@@ -1,4 +1,4 @@
-from sqlmodel import select
+from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
@@ -111,6 +111,20 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
 
         results = await db.exec(statement)
         return results.all()
+
+    async def count_multi(
+        self, db: AsyncSession, *, search: Optional[str] = None
+    ) -> int:
+        """Total con el mismo WHERE que get_multi (header X-Total-Count)."""
+        statement = select(func.count()).select_from(self.model)
+        if search:
+            search_term = f"%{search}%"
+            statement = statement.where(
+                (self.model.nombre.ilike(search_term))
+                | (self.model.descripcion.ilike(search_term))
+            )
+        result = await db.exec(statement)
+        return result.one()
 
     async def get_by_nombre(self, db: AsyncSession, nombre: str) -> List[Productos]:
         statement = (

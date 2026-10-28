@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import {
   ArrowLeftRight,
+  Banknote,
   Boxes,
   Clock,
   Home,
@@ -22,6 +23,7 @@ import {
   DollarSign,
   Wrench,
   ClipboardList,
+  ClipboardCheck,
   Layers,
   Users,
   Calculator,
@@ -30,13 +32,10 @@ import {
   Building,
   Wallet,
   Lock,
-  Key,
-  CreditCard,
-  Database,
-  MapPin,
   ChevronDown,
   ChevronUp,
   ScrollText,
+  Library,
   DatabaseBackup
 } from 'lucide-react';
 
@@ -53,7 +52,6 @@ import { PerfilClientePage } from './pages/PerfilCliente';
 import { MovimientosPage } from './pages/Movimientos';
 import { MovimientosPendientesPage } from './pages/MovimientosPendientes';
 import { RecepcionesPage } from './pages/RecepcionesPage';
-import { MovimientoAjusteForm } from './pages/movimientos/MovimientoAjusteForm';
 import { ConfiguracionPage } from './pages/Configuracion';
 import { MonedasPage } from './pages/Monedas';
 import { UsuariosPage } from './pages/Usuarios';
@@ -67,6 +65,7 @@ import { CuentasClientePage } from './pages/CuentasCliente';
 import { InventarioHome } from './pages/home/InventarioHome';
 import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
+import { TercerosHome } from './pages/home/TercerosHome';
 import { ReportesHome } from './pages/home/ReportesHome';
 import { ProyectosHome } from './pages/home/ProyectosHome';
 import { AdministracionHome } from './pages/home/AdministracionHome';
@@ -85,7 +84,6 @@ import { ConveniosPage as CompraConveniosPage } from './pages/Convenios';
 import { AnexosPage as CompraAnexosPage } from './pages/Anexos';
 import { ProductosEnLiquidacionPage } from './pages/compra/ProductosEnLiquidacionPage';
 import { LiquidacionesPage } from './pages/compra/LiquidacionesPage';
-import { CrearLiquidacionPage } from './pages/compra/CrearLiquidacionPage';
 import { ContratosPage } from './pages/ventas/ContratosPage';
 import { SuplementosPage } from './pages/ventas/SuplementosPage';
 import { FacturasPage } from './pages/ventas/facturas/FacturasPage';
@@ -103,8 +101,25 @@ import { PagosFacturaServicioPage } from './pages/proyecto/PagosFacturaServicioP
 import { LiquidacionesPage as ProyectoLiquidacionesPage } from './pages/proyecto/LiquidacionesPage';
 import { CertificacionesPage } from './pages/proyecto/CertificacionesPage';
 import { DJ08Page } from './pages/dj08/DJ08Page';
+import { RrhhHome } from './pages/home/RrhhHome';
+import { CatalogosPage } from './pages/rrhh/CatalogosPage';
+import { EmpleadosPage } from './pages/rrhh/EmpleadosPage';
+import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
+import { MovimientosPage as RrhhMovimientosPage } from './pages/rrhh/MovimientosPage';
+import { NominaPage } from './pages/rrhh/NominaPage';
+import { NominaDetallePage } from './pages/rrhh/NominaDetallePage';
+import { NominaPagosPage } from './pages/rrhh/NominaPagosPage';
+import { PagosResultadoPage } from './pages/rrhh/PagosResultadoPage';
+import { PagoResultadoNuevoPage } from './pages/rrhh/PagoResultadoNuevoPage';
+import { PagoResultadoDetallePage } from './pages/rrhh/PagoResultadoDetallePage';
+import { SolicitudesPage as RrhhSolicitudesPage } from './pages/rrhh/SolicitudesPage';
+import { EvaluacionesPage } from './pages/rrhh/EvaluacionesPage';
+import { EvaluacionDetallePage } from './pages/rrhh/EvaluacionDetallePage';
+import { ObjetivosPage } from './pages/rrhh/ObjetivosPage';
+import { ReportesPage } from './pages/rrhh/ReportesPage';
+import { AuditoriaPage } from './pages/rrhh/AuditoriaPage';
 
-type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08';
+type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh' | 'terceros';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,12 +134,14 @@ const queryClient = new QueryClient({
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
   administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/respaldos', '/perfil'],
+  terceros: ['/terceros', '/clientes', '/ventas/contratos', '/ventas/suplementos', '/compra/clientes', '/compra/convenios', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/perfil'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/perfil'],
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
   home: ['/', '/perfil'],
   dj08: ['/dj08', '/perfil'],
+  rrhh: ['/rrhh', '/rrhh/catalogos', '/rrhh/departamentos', '/rrhh/puestos', '/rrhh/empleados', '/rrhh/asistencia', '/rrhh/deducciones', '/rrhh/bonificaciones', '/rrhh/nomina', '/rrhh/solicitudes', '/rrhh/evaluaciones', '/rrhh/objetivos', '/rrhh/reportes', '/rrhh/auditoria', '/perfil'],
 };
 
 // Componente para proteger rutas según el módulo
@@ -154,6 +171,37 @@ function ProtectedRoute({
   }
 
   return <>{children}</>;
+}
+
+/**
+ * Alias del plural `/rrhh/pagos-resultados` hacia la ruta canónica
+ * `/rrhh/pagos-resultado`. Sin esto, el plural no coincide con ninguna ruta y
+ * React Router deja el área principal vacía.
+ */
+function RedirectPagoResultadoDetalle() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/rrhh/pagos-resultado/${id ?? ''}`} replace />;
+}
+
+/**
+ * Catálogos de RRHH abiertos desde Administración: se mantiene la URL
+ * `/configuracion/rrhh/<página>` para no cambiar de módulo.
+ */
+function CatalogoRrhhConfiguracion() {
+  const { catalogo = '' } = useParams<{ catalogo: string }>();
+  const navigate = useNavigate();
+  const tabId =
+    catalogo === 'periodos' ? 'periodos-evaluacion' : catalogo;
+  return (
+    <CatalogosPage
+      tabInicial={tabId}
+      onCambiarTab={(id) =>
+        navigate(
+          `/configuracion/rrhh/${id === 'periodos-evaluacion' ? 'periodos' : id}`,
+        )
+      }
+    />
+  );
 }
 
 // Componente estable de enlace del sidebar: navega SIEMPRE al destino al hacer
@@ -266,13 +314,15 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 // Map each module to the funcionalidades it requires
 const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   inventario: ['movimientos', 'pendientes', 'productos'],
-  compra: ['proveedores', 'convenios', 'anexos', 'liquidaciones', 'productos_liquidacion'],
-  venta: ['clientes', 'contratos', 'suplementos', 'facturas', 'venta_efectivo'],
+  terceros: ['clientes', 'contratos', 'proveedores', 'convenios'],
+  compra: ['proveedores', 'anexos', 'liquidaciones', 'productos_liquidacion'],
+  venta: ['clientes', 'facturas', 'venta_efectivo'],
   proyecto: ['servicios', 'solicitudes', 'proyectos', 'facturas_servicio', 'ofertas', 'pre_facturas', 'liquidaciones_servicio'],
   reportes: ['reporte_existencias', 'reporte_movimientos_dependencia', 'reporte_movimientos_producto', 'reporte_proveedores', 'reporte_clientes', 'reporte_proyectos', 'reporte_creadores', 'reporte_desempeno', 'reporte_liquidaciones', 'reporte_onat', 'reporte_mincult'],
   administracion: ['configuracion', 'monedas', 'usuarios', 'grupos', 'dependencias', 'cuentas'],
   home: [],
   dj08: [],
+  rrhh: ['rrhh_empleados', 'rrhh_departamentos', 'rrhh_puestos', 'rrhh_asistencia', 'rrhh_solicitudes', 'rrhh_deducciones', 'rrhh_bonificaciones', 'rrhh_nomina', 'rrhh_pagos', 'rrhh_evaluaciones', 'rrhh_catalogos', 'rrhh_reportes', 'rrhh_auditoria'],
 };
 
 interface AdminSeccionItem {
@@ -335,7 +385,7 @@ const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[
 ];
 
 function App() {
-  const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, baseDatos } = useAuth();
+  const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, funcionalidades, baseDatos } = useAuth();
 
   // Check if user has access to an entire module (at least one funcionalidad)
   const hasModuloAccess = (moduloId: Modulo): boolean => {
@@ -343,6 +393,7 @@ function App() {
     return funcs.some(f => hasFuncionalidad(f));
   };
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
+  const [adminSeccionesAbiertas, setAdminSeccionesAbiertas] = useState<Record<string, boolean>>({});
   const [slimSidebar, setSlimSidebar] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -408,23 +459,32 @@ function App() {
   // Sidebar and header are always visible
 
   const modulos: { id: Modulo; label: string; icon: React.ElementType }[] = [
+    { id: 'terceros', label: 'Terceros', icon: UserCircle },
     { id: 'compra', label: 'Compra', icon: UserCircle },
     { id: 'venta', label: 'Tienda', icon: Briefcase },
     { id: 'proyecto', label: 'Proyectos', icon: Wrench },
     { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
-    { id: 'administracion', label: 'Administración', icon: Settings },
-    { id: 'dj08', label: 'DJ-08', icon: ScrollText },
   ];
 
   function handleToggleSlim(): void {
     setSlimSidebar(prev => !prev);
   }
+
+  // RRHH está oculto del menú: sólo se entra escribiendo la URL, y siempre que
+  // el grupo del usuario tenga al menos una funcionalidad de RRHH asignada.
+  const esRutaRrhh =
+    location.pathname === '/rrhh' || location.pathname.startsWith('/rrhh/');
+  const esCatalogoRrhh = location.pathname.startsWith('/configuracion/rrhh');
+  const tieneAccesoRrhh = funcionalidades.some(f => f.nombre.startsWith('rrhh_'));
+  const sinAccesoRrhh = esRutaRrhh && !tieneAccesoRrhh;
+  const sinAccesoCatalogoRrhh =
+    esCatalogoRrhh && !hasFuncionalidad('rrhh_catalogos');
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-surface w-full`}>
+      <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-[4.5rem_minmax(0,1fr)]' : 'grid-cols-[16rem_minmax(0,1fr)]'} grid-rows-[auto_minmax(0,1fr)] h-screen overflow-hidden bg-surface w-full`}>
         {!hideSidebar && (
-        <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-gradient-to-b from-panel-900 to-panel-800 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
+        <aside className={`row-span-2 col-start-1 col-end-2 h-full overflow-hidden bg-gradient-to-b from-panel-900 to-panel-800 text-white flex flex-col shadow-xl transition-all duration-300 ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
           <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-panel-800`}>
             {!slimSidebar && (
               <div className="flex items-center gap-2">
@@ -441,7 +501,7 @@ function App() {
             </button>
           </div>
           {location.pathname !== '/' && (
-            <nav className={`flex-1 overflow-y-auto py-4 ${slimSidebar ? 'px-1' : ''}`}>
+            <nav className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-4 ${slimSidebar ? 'px-1' : ''}`}>
               <>
               {moduloActivo === 'inventario' && (
                 <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
@@ -475,42 +535,72 @@ function App() {
                   </li>
                 </ul>
               )}
-              {moduloActivo === 'administracion' && (
+              {moduloActivo === 'rrhh' && (
                 <ul className="space-y-1 px-3">
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/configuracion" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                      <Settings className="w-6 h-6" />
-                      Configuración
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/asistencia"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_asistencia')}
+                    >
+                      <Clock className="w-6 h-6" />
+                      Asistencia
                     </SidebarLink>
                   </li>
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/monedas" onClick={handleLinkClick} disabled={!hasFuncionalidad('monedas')}>
-                      <Coins className="w-6 h-6" />
-                      Monedas
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/nomina"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_nomina')}
+                    >
+                      <Banknote className="w-6 h-6" />
+                      Nómina
                     </SidebarLink>
                   </li>
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/usuarios" onClick={handleLinkClick} disabled={!hasFuncionalidad('usuarios')}>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/evaluaciones"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_evaluaciones')}
+                    >
+                      <ClipboardCheck className="w-6 h-6" />
+                      Evaluaciones
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/solicitudes"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_solicitudes')}
+                    >
+                      <ClipboardList className="w-6 h-6" />
+                      Solicitudes
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/empleados"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_empleados')}
+                    >
                       <Users className="w-6 h-6" />
-                      Usuarios
+                      Empleados
                     </SidebarLink>
                   </li>
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/grupos" onClick={handleLinkClick} disabled={!hasFuncionalidad('grupos')}>
-                      <Shield className="w-6 h-6" />
-                      Grupos
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/dependencias" onClick={handleLinkClick} disabled={!hasFuncionalidad('dependencias')}>
-                      <Building className="w-6 h-6" />
-                      Dependencias
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/cuentas" onClick={handleLinkClick} disabled={!hasFuncionalidad('cuentas')}>
-                      <Wallet className="w-6 h-6" />
-                      Cuentas
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/catalogos"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_catalogos')}
+                    >
+                      <Library className="w-6 h-6" />
+                      Catálogos
                     </SidebarLink>
                   </li>
                   <li>
@@ -521,11 +611,23 @@ function App() {
                   </li>
                 </ul>
               )}
-              {moduloActivo === 'compra' && (
+              {moduloActivo === 'terceros' && (
                 <ul className="space-y-1 px-3">
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/compra/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('proveedores')}>
+                    <SidebarLink slim={slimSidebar} to="/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('clientes')}>
                       <UserCircle className="w-6 h-6" />
+                      Clientes
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/ventas/contratos" onClick={handleLinkClick} disabled={!hasFuncionalidad('contratos')}>
+                      <FilePlus className="w-6 h-6" />
+                      Contratos
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/compra/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('proveedores')}>
+                      <Briefcase className="w-6 h-6" />
                       Proveedores
                     </SidebarLink>
                   </li>
@@ -533,6 +635,67 @@ function App() {
                     <SidebarLink slim={slimSidebar} to="/compra/convenios" onClick={handleLinkClick} disabled={!hasFuncionalidad('convenios')}>
                       <FileText className="w-6 h-6" />
                       Convenios
+                    </SidebarLink>
+                  </li>
+                </ul>
+              )}
+              {moduloActivo === 'administracion' && (
+                <div className={`${slimSidebar ? 'px-0' : 'px-3'} space-y-1`}>
+                  {ADMIN_SECCIONES.map((seccion) => {
+                    const contieneRutaActual = seccion.items.some(
+                      (item) =>
+                        location.pathname === item.to ||
+                        location.pathname.startsWith(`${item.to}/`),
+                    );
+                    const abierta =
+                      slimSidebar ||
+                      (adminSeccionesAbiertas[seccion.id] ?? contieneRutaActual);
+                    return (
+                      <div key={seccion.id}>
+                        {!slimSidebar && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAdminSeccionesAbiertas((prev) => ({
+                                ...prev,
+                                [seccion.id]: !abierta,
+                              }))
+                            }
+                            className="flex w-full items-center justify-between gap-2 rounded px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-300"
+                            aria-expanded={abierta}
+                          >
+                            <span>{seccion.label}</span>
+                            <ChevronDown
+                              className={`h-3.5 w-3.5 transition-transform ${abierta ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                        )}
+                        {abierta &&
+                          seccion.items.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <SidebarLink
+                                key={item.to}
+                                slim={slimSidebar}
+                                to={item.to}
+                                onClick={handleLinkClick}
+                                disabled={!hasFuncionalidad(item.func)}
+                              >
+                                <Icon className="w-4 h-4" /> {item.label}
+                              </SidebarLink>
+                            );
+                          })}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {moduloActivo === 'compra' && (
+                <ul className="space-y-1 px-3">
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/compra/proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('proveedores')}>
+                      <Briefcase className="w-6 h-6" />
+                      Proveedores
                     </SidebarLink>
                   </li>
                   <li>
@@ -558,21 +721,9 @@ function App() {
               {moduloActivo === 'venta' && (
                 <ul className="space-y-1 px-3">
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('clientes')}>
+                    <SidebarLink slim={slimSidebar} to="/venta/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('clientes')}>
                       <UserCircle className="w-6 h-6" />
                       Clientes
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/ventas/contratos" onClick={handleLinkClick} disabled={!hasFuncionalidad('contratos')}>
-                      <FilePlus className="w-6 h-6" />
-                      Contrato
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/ventas/suplementos" onClick={handleLinkClick} disabled={!hasFuncionalidad('suplementos')}>
-                      <FileText className="w-6 h-6" />
-                      Suplemento
                     </SidebarLink>
                   </li>
                   <li>
@@ -701,7 +852,7 @@ function App() {
         )}
 
         {location.pathname === '/' && (
-          <div className={`flex-1 overflow-y-auto ${slimSidebar ? 'px-2 py-3 flex justify-center' : 'px-5 py-5 space-y-5'}`}>
+          <div className={`min-h-0 flex-1 overflow-y-auto ${slimSidebar ? 'px-2 py-3 flex justify-center' : 'px-5 py-5 space-y-5'}`}>
             {!slimSidebar && (
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between min-w-0">
@@ -744,7 +895,7 @@ function App() {
         )}
         </aside>
         )}
-        <header className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-6 py-4 h-16 flex items-center justify-between`}>
+        <header className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 min-w-0 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-6 py-4 h-16 flex items-center justify-between`}>
           <div className="flex items-center gap-2">
             <Link
               to="/"
@@ -754,6 +905,27 @@ function App() {
             >
               <Home className="w-6 h-6 text-slate-200 group-hover:text-white transition-colors" />
             </Link>
+            <button
+              onClick={() =>
+                hasModuloAccess('administracion') &&
+                handleModuloClick('administracion')
+              }
+              disabled={!hasModuloAccess('administracion')}
+              title={
+                hasModuloAccess('administracion')
+                  ? 'Administración'
+                  : 'No tienes acceso a este módulo'
+              }
+              className={`p-2 rounded-lg transition-all duration-300 ease-out hover:scale-110 active:scale-95 group
+                ${!hasModuloAccess('administracion')
+                  ? 'text-slate-500 cursor-not-allowed hover:scale-100'
+                  : moduloActivo === 'administracion'
+                    ? 'bg-white/10 text-brand-400'
+                    : 'text-slate-200 hover:text-white hover:bg-gray-100'
+                }`}
+            >
+              <Settings className="w-6 h-6 transition-colors" />
+            </button>
           </div>
 
           <div className="flex items-center gap-6">
@@ -790,15 +962,6 @@ function App() {
               className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Perfil"
             >
-              <div className="w-9 h-9 rounded-full bg-brand-500/90 flex items-center justify-center overflow-hidden">
-                {user ? (
-                  <span className="text-sm font-medium text-white">
-                    {user.nombre[0]}{user.primer_apellido[0]}
-                  </span>
-                ) : (
-                  <UserCircle className="w-5 h-5 text-white" />
-                )}
-              </div>
               <div className="text-left leading-tight hidden sm:block">
                 <span className="block text-sm font-medium text-slate-200 group-hover:text-white">
                   {user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}
@@ -813,8 +976,14 @@ function App() {
           </div>
         </header>
         <div className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col w-full`}>
-          <main className={`flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} ${hideSidebar ? 'p-6' : 'p-8'} w-full`}>
+          <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} ${hideSidebar ? 'p-6' : 'p-8'} w-full`}>
             <div className="animate-fade-in-up animation-fill-both">
+              {sinAccesoRrhh || sinAccesoCatalogoRrhh ? (
+                <Navigate
+                  to={esCatalogoRrhh ? '/configuracion' : '/'}
+                  replace
+                />
+              ) : (
               <Routes>
                 <Route
                   path="/"
@@ -829,9 +998,25 @@ function App() {
                   }
                 />
                 <Route
+                  path="/terceros"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros">
+                      <TercerosHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/compra/clientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/clientes">
+                      <ClientesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/compra/proveedores"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/proveedores">
                       <ClientesPage />
                     </ProtectedRoute>
                   }
@@ -878,14 +1063,6 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/movimientos/ajuste"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
-                      <MovimientoAjusteForm />
-                    </ProtectedRoute>
-                  }
-                />
                 {/* Rutas de Ventas - protegidas */}
                 <Route
                   path="/venta"
@@ -899,6 +1076,14 @@ function App() {
                   path="/clientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
+                      <ClientesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/venta/clientes"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/venta/clientes">
                       <ClientesPage />
                     </ProtectedRoute>
                   }
@@ -1108,10 +1293,18 @@ function App() {
                   }
                 />
                 <Route
-                  path="/configuracion"
+                  path="/configuracion/:pagina?"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion">
                       <ConfiguracionPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/configuracion/rrhh/:catalogo"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion/rrhh">
+                      <CatalogoRrhhConfiguracion />
                     </ProtectedRoute>
                   }
                 />
@@ -1120,6 +1313,172 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dj08">
                       <DJ08Page />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh">
+                      <RrhhHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/departamentos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/departamentos">
+                      {/* Unificación: la sección vive como pestaña de Catálogos. */}
+                      <Navigate to="/rrhh/catalogos?tab=departamentos" replace />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/puestos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/puestos">
+                      <Navigate to="/rrhh/catalogos?tab=puestos" replace />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/catalogos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/catalogos">
+                      <CatalogosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/empleados"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/empleados">
+                      <EmpleadosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/asistencia"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/asistencia">
+                      <AsistenciaPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/movimientos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/movimientos">
+                      <RrhhMovimientosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/nomina"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <NominaPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/nomina/:id"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <NominaDetallePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/nomina/:id/pagos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <NominaPagosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                {/* Alias del plural para no dejar la página en blanco. */}
+                <Route
+                  path="/rrhh/pagos-resultados"
+                  element={<Navigate to="/rrhh/pagos-resultado" replace />}
+                />
+                <Route
+                  path="/rrhh/pagos-resultados/nuevo"
+                  element={<Navigate to="/rrhh/pagos-resultado/nuevo" replace />}
+                />
+                <Route
+                  path="/rrhh/pagos-resultados/:id"
+                  element={<RedirectPagoResultadoDetalle />}
+                />
+                <Route
+                  path="/rrhh/pagos-resultado"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <PagosResultadoPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/pagos-resultado/nuevo"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <PagoResultadoNuevoPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/pagos-resultado/:id"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <PagoResultadoDetallePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/solicitudes"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/solicitudes">
+                      <RrhhSolicitudesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/evaluaciones"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/evaluaciones">
+                      <EvaluacionesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/evaluaciones/:id"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/evaluaciones">
+                      <EvaluacionDetallePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/objetivos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/objetivos">
+                      <ObjetivosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/reportes"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/reportes">
+                      <ReportesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/auditoria"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/auditoria">
+                      <AuditoriaPage />
                     </ProtectedRoute>
                   }
                 />
@@ -1233,14 +1592,6 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/liquidaciones">
                       <LiquidacionesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/compra/liquidaciones/crear"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/liquidaciones">
-                      <CrearLiquidacionPage />
                     </ProtectedRoute>
                   }
                 />
@@ -1394,6 +1745,7 @@ function App() {
                   }
                 />
               </Routes>
+              )}
             </div>
           </main>
         </div>

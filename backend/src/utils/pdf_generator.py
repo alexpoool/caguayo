@@ -556,8 +556,23 @@ def generar_pdf_desempeno(
         numeric_columns=[4, 5, 6],
     )
 
-    if notas:
-        template.add_notes_section(notas)
+    # La columna VALOR ETAPA se repite por cada realizador de la etapa, así que
+    # en los contratos con más de una persona el total vale más que el
+    # contrato. En los migrados del legacy eso es lo normal, porque todos sus
+    # artistas se pusieron en la primera etapa (el legacy no guardaba de qué era
+    # cada uno). Va como nota al pie porque este PDF es donde el número se va
+    # del sistema: si sólo se avisara en la pantalla, el documento saldría sin
+    # explicación.
+    notas = list(notas or [])
+    notas.append(
+        "La columna VALOR ETAPA y los subtotales por persona suman el valor de "
+        "la etapa una vez por cada realizador que tenga. En los contratos "
+        "migrados del legacy, donde los artistas se pusieron en la primera "
+        "etapa porque la base antigua no guardaba de qué etapa era cada uno, "
+        "ese total queda multiplicado por el número de realizadores. El COBRO "
+        "y el POR COBRAR sí son correctos."
+    )
+    template.add_notes_section(notas)
 
     template.add_signature_section(
         created_by=usuario_actual,

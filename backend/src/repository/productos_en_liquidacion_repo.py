@@ -37,6 +37,19 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         result = await db.exec(statement)
         return result.all()
 
+    async def count_multi_with_relations(
+        self, db: AsyncSession, cliente_id: Optional[int] = None,
+        liquidada: Optional[bool] = None
+    ) -> int:
+        """Total con el mismo WHERE que get_multi/get_pendientes/get_liquidadas (header X-Total-Count)."""
+        statement = select(func.count()).select_from(ProductosEnLiquidacion)
+        if cliente_id is not None:
+            statement = statement.where(ProductosEnLiquidacion.id_cliente == cliente_id)
+        if liquidada is not None:
+            statement = statement.where(ProductosEnLiquidacion.liquidada == liquidada)
+        result = await db.exec(statement)
+        return result.one()
+
     async def get_pendientes(
         self, db: AsyncSession, skip: int = 0, limit: int = 100,
         cliente_id: Optional[int] = None

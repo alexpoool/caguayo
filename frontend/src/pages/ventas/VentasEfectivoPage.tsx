@@ -5,9 +5,6 @@ import {
   Input,
   Label,
   Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Table,
   TableHeader,
   TableBody,
@@ -15,11 +12,11 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
+  FormModal,
 } from "../../components/ui";
 import {
   ventasEfectivoService,
   productosService,
-  dependenciasService,
   monedaService,
   existenciaService,
 } from "../../services/api";
@@ -27,16 +24,13 @@ import { useDependenciasFiltradas } from "../../hooks/useDependenciasFiltradas";
 import { useStock } from "../../hooks/useStock";
 import { useInfiniteList } from "../../hooks/useInfiniteList";
 import { authHelpers } from "../../lib/api";
-import type { Productos, ProductoConCantidad } from "../../types";
-import type { Dependencia } from "../../types/dependencia";
+import type { ProductoConCantidad } from "../../types";
 import type { VentaEfectivoWithDetails } from "../../types/contrato";
 import {
   Plus,
-  Save,
   Trash2,
   Edit,
   X,
-  ArrowLeft,
   Search,
   Wallet,
   DollarSign,
@@ -56,6 +50,8 @@ import { DateInput } from "../../components/ui";
 
 type View = "list" | "form";
 
+const VENTA_EFECTIVO_FORM_ID = "venta-efectivo-form";
+
 export function VentasEfectivoPage() {
   const [view, setView] = useState<View>("list");
 
@@ -63,16 +59,17 @@ export function VentasEfectivoPage() {
 
   const {
     items,
-    isLoading,
     isFetchingMore,
     hasMore,
     loadMore,
     searchTerm,
     setSearch,
     refresh,
+    total: totalVentas,
   } = useInfiniteList<VentaEfectivoWithDetails>({
     queryKeyBase: 'ventas-efectivo',
-    queryFn: (skip, limit) => ventasEfectivoService.getVentasEfectivo(skip, limit),
+    queryFn: (skip, limit, _search, onTotal) =>
+      ventasEfectivoService.getVentasEfectivo(skip, limit, onTotal),
     limit: 100,
   });
 
@@ -117,6 +114,7 @@ export function VentasEfectivoPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<
     { id_producto: number; cantidad: number; precio_venta: number; id_moneda?: number; id_item_anexo?: number; precios?: { id_moneda: number; precio_venta: number }[] }[]
   >([]);
@@ -172,6 +170,7 @@ const loadInitialData = async () => {
       toast.error(fieldErrors.join('\n• '));
       return;
     }
+    setIsSaving(true);
     try {
       const stockErrors = selectedProducts.filter((p) => {
         const stock = stockMap.get(p.id_producto) ?? 0;
@@ -219,18 +218,19 @@ const loadInitialData = async () => {
           precios: p.precios?.filter(pr => pr.id_moneda !== (formData.id_moneda ? Number(formData.id_moneda) : monedas[0]?.id_moneda)),
         })),
       };
-      editingId
-        ? await ventasEfectivoService.updateVentaEfectivo(
-            editingId,
-            data as any,
-          )
-        : await ventasEfectivoService.createVentaEfectivo(data as any);
+      if (editingId) {
+        await ventasEfectivoService.updateVentaEfectivo(editingId, data as any);
+      } else {
+        await ventasEfectivoService.createVentaEfectivo(data as any);
+      }
       toast.success(editingId ? "Actualizado" : "Creado");
       setView("list");
       resetForm();
       refresh();
     } catch (error: any) {
       toast.error(error.message || "Error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -374,8 +374,8 @@ const loadInitialData = async () => {
             </h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               {filteredVentas.length === items.length
-                ? `Gestión de ventas (${items.length} items)`
-                : `Mostrando ${filteredVentas.length} de ${items.length} ventas`}
+                ? `Gestión de ventas (${totalVentas ?? items.length} items)`
+                : `Mostrando ${filteredVentas.length} de ${items.length} ventas (total en BD: ${totalVentas ?? items.length})`}
             </p>
           </div>
         </div>
@@ -523,42 +523,11 @@ const loadInitialData = async () => {
   );
 
   const renderForm = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
-            <Wallet className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {editingId ? "Editar Venta" : "Nueva Venta en Efectivo"}
-            </h2>
-            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Complete los datos de la venta
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            setView("list");
-            resetForm();
-          }}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Wallet className="h-5 w-5 text-teal-600" />
-            Información de la Venta
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
+    <form
+      id={VENTA_EFECTIVO_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Slip *</Label>
@@ -644,33 +613,43 @@ const loadInitialData = async () => {
               monedas={monedas}
             />
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button
-              onClick={handleSave}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-            >
-              <Save className="h-4 w-4" />
-              {editingId ? "Actualizar" : "Guardar"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setView("list");
-                resetForm();
-              }}
-            >
-              Cancelar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    </form>
   );
 
   return (
     <div className="p-6">
-      {view === "list" && renderList()}
-      {view === "form" && renderForm()}
+      {renderList()}
+      <FormModal
+        isOpen={view === "form"}
+        onClose={() => { setView("list"); resetForm(); }}
+        title={editingId ? "Editar Venta" : "Nueva Venta en Efectivo"}
+        subtitle="Complete los datos de la venta"
+        icon={<Wallet className="h-6 w-6" />}
+        size="xl"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView("list"); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={VENTA_EFECTIVO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingId ? "Actualizar" : "Guardar"}
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

@@ -50,7 +50,16 @@ class Cliente(SQLModel, table=True):
     # Marcaje de datos que necesitaron un arreglo para migrarse: `valido` es
     # False cuando el registro entró con algún campo corregido, y `campo`/`razon`
     # indican cuál y por qué, para que se corrija a mano.
-    valido: bool = Field(default=True)
+    #
+    # El `server_default` no sobra: `default=True` sólo lo aplica Python cuando
+    # el INSERT pasa por SQLModel. Un INSERT en crudo —el ETL lo hace así— se
+    # lleva un NOT NULL sin valor. Además `alembic/env.py` crea las tablas de una
+    # base nueva desde esta metadata y luego salta las migraciones, así que el
+    # `ALTER COLUMN ... SET DEFAULT` de add_validacion_migracion.py nunca llega a
+    # correr y la columna salía sin default en toda instalación nueva.
+    valido: bool = Field(
+        default=True, sa_column_kwargs={"server_default": "TRUE"}
+    )
     campo: Optional[str] = Field(default=None, max_length=50)
     razon: Optional[str] = Field(default=None)
 

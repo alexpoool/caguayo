@@ -1,10 +1,10 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from sqlalchemy.exc import IntegrityError
 from src.database.connection import get_session
-from src.services.cliente_service import ClienteService
+from src.services.cliente_service import ClienteService, ClienteConReferenciasError
 from src.dto import ClienteCreate, ClienteRead, ClienteUpdate
 from src.models.cliente_natural import ClienteNatural
 from src.models.cliente import Cliente
@@ -19,11 +19,20 @@ async def listar_clientes(
     tipo_relacion: Optional[str] = Query(
         None, description="Filtrar por tipo_relacion (CLIENTE, PROVEEDOR, AMBAS)"
     ),
+    search: Optional[str] = Query(
+        None, description="Buscar por código, nombre, NIT, teléfono o email"
+    ),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar todos los clientes con paginación y opcionalmente filtrar por tipo_relacion."""
+    response.headers["X-Total-Count"] = str(
+        await ClienteService.count_clientes(
+            db, tipo_relacion=tipo_relacion, search=search
+        )
+    )
     return await ClienteService.get_clientes(
-        db, skip=skip, limit=limit, tipo_relacion=tipo_relacion
+        db, skip=skip, limit=limit, tipo_relacion=tipo_relacion, search=search
     )
 
 
@@ -34,7 +43,6 @@ async def crear_cliente(
 ):
     """Crear un nuevo cliente."""
     try:
-        print(f"DEBUG ROUTE: Received cliente = {cliente.model_dump()}")
         return await ClienteService.create_cliente(db, cliente)
     except IntegrityError as e:
         error_msg = str(e.orig)
@@ -126,7 +134,18 @@ async def actualizar_cliente(
         if not cliente:
             raise HTTPException(status_code=404, detail="Cliente no encontrado")
         return cliente
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se pudo actualizar: el código, NIT o carnet ya está registrado",
+        )
     except Exception as e:
+        await db.rollback()
         raise HTTPException(
             status_code=500, detail=f"Error al actualizar cliente: {str(e)}"
         )
@@ -140,9 +159,18 @@ async def eliminar_cliente(
     """Eliminar un cliente."""
     try:
         success = await ClienteService.delete_cliente(db, cliente_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    except ClienteConReferenciasError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: el registro tiene datos asociados",
+        )
     except Exception as e:
+        await db.rollback()
         raise HTTPException(
             status_code=500, detail=f"Error al eliminar cliente: {str(e)}"
         )
+    if not success:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")

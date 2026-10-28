@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, func
 from sqlalchemy import text
 from sqlalchemy.orm import selectinload
 from src.repository.base import CRUDBase
@@ -33,6 +33,7 @@ from src.models import (
     ItemAnexo,
     Convenio,
     ItemVentaEfectivo,
+    SolicitudServicio,
 )
 from src.dto import (
     TipoContratoCreate,
@@ -243,9 +244,10 @@ class ContratoService:
         skip: int = 0,
         limit: int = 10000,
         id_cliente: Optional[int] = None,
+        search: Optional[str] = None,
     ) -> List[ContratoReadWithDetails]:
         contratos = await contrato_repo.get_all_with_details(
-            db, skip, limit, id_cliente
+            db, skip, limit, id_cliente, search
         )
         result = []
         for contrato in contratos:
@@ -263,26 +265,57 @@ class ContratoService:
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
+        """Eliminar un contrato.
+
+        Si tiene facturas, solicitudes de servicio, movimientos o suplementos
+        con solicitudes asociadas, se anula (borrado lógico) dejando la
+        trazabilidad. Si está limpio, se borra físicamente junto con sus
+        suplementos.
+        """
         contrato = await contrato_repo.get(db, id)
         if not contrato:
             return False
 
-        # Verificar que no tenga facturas asociadas
-        stmt_facturas = select(Factura).where(Factura.id_contrato == id)
-        facturas = (await db.exec(stmt_facturas)).all()
-        if facturas:
-            raise BusinessLogicError(
-                f"No se puede eliminar el contrato: tiene {len(facturas)} factura(s) asociada(s)."
+        facturas = (await db.exec(
+            select(func.count()).select_from(Factura).where(Factura.id_contrato == id)
+        )).one() or 0
+        solicitudes = (await db.exec(
+            select(func.count()).select_from(SolicitudServicio).where(
+                SolicitudServicio.id_contrato == id
             )
-
-        # Verificar que no tenga ventas en efectivo asociadas
-        stmt_ventas = select(VentaEfectivo).where(VentaEfectivo.id_contrato == id)
-        ventas = (await db.exec(stmt_ventas)).all()
-        if ventas:
-            raise BusinessLogicError(
-                f"No se puede eliminar el contrato: tiene {len(ventas)} venta(s) en efectivo asociada(s)."
+        )).one() or 0
+        movimientos = (await db.exec(
+            select(func.count()).select_from(Movimiento).where(
+                Movimiento.id_contrato == id
             )
+        )).one() or 0
+        suplementos = (await db.exec(
+            select(func.count()).select_from(Suplemento).where(
+                Suplemento.id_contrato == id
+            )
+        )).one() or 0
 
+        if facturas or solicitudes or movimientos:
+            contrato_anulado = (
+                await db.exec(
+                    select(EstadoContrato).where(
+                        EstadoContrato.nombre == "ANULADO"
+                    )
+                )
+            ).first()
+            if not contrato_anulado:
+                raise BusinessLogicError(
+                    "No se puede eliminar el contrato: tiene registros asociados"
+                )
+            contrato.id_estado = contrato_anulado.id_estado_contrato
+            db.add(contrato)
+            await db.commit()
+            return True
+
+        # sin datos asociados: borrado físico con cascada manual de suplementos
+        stmt = select(Suplemento).where(Suplemento.id_contrato == id)
+        for suplemento in (await db.exec(stmt)).all():
+            await db.delete(suplemento)
         await contrato_repo.remove(db, id=id)
         return True
 
@@ -476,12 +509,19 @@ class SuplementoService:
         if not suplemento:
             return False
 
-        # Verificar que no tenga facturas asociadas a través del contrato
-        stmt_facturas = select(Factura).where(Factura.id_contrato == suplemento.id_contrato)
-        facturas = (await db.exec(stmt_facturas)).all()
-        if facturas:
+        # Sólo bloquea si ESTE suplemento está referenciado; el guard anterior
+        # miraba todas las facturas del contrato y bloqueaba de más. Las
+        # facturas van al contrato, no al suplemento, así que no bloquean aquí.
+        solicitudes = (await db.exec(
+            select(func.count()).select_from(SolicitudServicio).where(
+                SolicitudServicio.id_suplemento == id
+            )
+        )).one() or 0
+        if solicitudes:
             raise BusinessLogicError(
-                f"No se puede eliminar el suplemento: el contrato tiene {len(facturas)} factura(s) asociada(s)."
+                f"No se puede eliminar el suplemento: tiene "
+                f"{solicitudes} solicitud(es) de servicio asociada(s). "
+                "Elimine primero esas solicitudes."
             )
 
         await suplemento_repo.remove(db, id=id)
@@ -527,6 +567,7 @@ async def map_factura_to_read(
         fecha=factura.fecha,
         monto=factura.monto,
         pago_actual=factura.pago_actual,
+        estado=getattr(factura, "estado", None) or "ACTIVA",
         items=items_con_producto,
     )
 
@@ -696,10 +737,16 @@ class FacturaService:
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
+        """Anular una factura (borrado lógico).
+
+        Se mantiene la trazabilidad: la factura queda en estado ANULADA con
+        sus items y pagos. Los efectos sobre stock/anexos/movimientos sí se
+        revierten (igual que el borrado físico anterior) para que no queden
+        vendidos productos de una factura eliminada.
+        """
         factura = await factura_repo.get(db, id)
         if not factura:
             return False
-        from sqlmodel import select
         from src.models import ProductosEnLiquidacion
         from src.models.item_anexo import ItemAnexo
 
@@ -737,12 +784,10 @@ class FacturaService:
         for id_producto, id_dep in pares_saldo:
             await SaldoService.recalcular_cadena(db, id_producto, id_dep)
 
-        # 4) Eliminar items de la factura antes de borrarla
-        for item in items:
-            await db.delete(item)
-
-        # 5) Eliminar la factura
-        await factura_repo.remove(db, id=id)
+        # 4) Anular la factura: quedan items y pagos como historial.
+        factura.estado = "ANULADA"
+        db.add(factura)
+        await db.commit()
         return True
 
 

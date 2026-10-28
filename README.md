@@ -69,28 +69,28 @@ Para crear el esquema y datos iniciales:
 
 ```bash
 # 1. Crear la base de datos (si no existe)
-psql -U postgres -h localhost -c "CREATE DATABASE caguayosa;"
+psql -U postgres -h localhost -c "CREATE DATABASE caguayo_sa;"
 
 # 2. Ejecutar migraciones de Alembic (crea tablas + seeds genéricos)
 cd backend
 uv run alembic upgrade head
 
 # 3. Inicializar datos de oficina principal (admin, convenio base)
-uv run python -m scripts.init_office caguayosa
+uv run python -m scripts.init_office caguayo_sa
 ```
 
 **Notas:**
 
-- El nombre de la base de datos (`caguayosa`) debe coincidir con el de `backend/.env` (variable `DATABASE_URL`).
+- El nombre de la base de datos (`caguayo_sa`) debe coincidir con el de `backend/.env` (variable `DATABASE_URL`).
 - Las migraciones de Alembic crean todas las tablas e insertan los seeds genéricos (monedas, provincias, municipios, tipos, etc).
 - `init_office.py` crea los datos específicos de la oficina principal (dependencia matriz, usuario admin, convenio base).
 - Para re-inicializar desde cero:
 
   ```bash
-  psql -U postgres -h localhost -d caguayosa -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+  psql -U postgres -h localhost -d caguayo_sa -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
   cd backend
   uv run alembic upgrade head
-  uv run python -m scripts.init_office caguayosa
+  uv run python -m scripts.init_office caguayo_sa
   ```
 
 ## Setup en nueva PC
@@ -130,15 +130,15 @@ cp .env.example .env
 
 # 2. Crear bases de datos
 psql -U postgres -c "CREATE DATABASE caguayo;"
-psql -U postgres -c "CREATE DATABASE caguayosa;"
+psql -U postgres -c "CREATE DATABASE caguayo_sa;"
 
 # 3. Aplicar migraciones
 cd backend
-DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/caguayosa" uv run alembic upgrade head
+DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/caguayo_sa" uv run alembic upgrade head
 DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/caguayo" uv run alembic upgrade head
 
 # 4. Inicializar datos de oficina
-uv run python -m scripts.init_office caguayosa
+uv run python -m scripts.init_office caguayo_sa
 uv run python -m scripts.init_office caguayo
 
 # 5. Iniciar el sistema
@@ -151,7 +151,7 @@ cd ..
 | Variable | Descripción | Ejemplo |
 |----------|-------------|---------|
 | `AUTH_DATABASE` | BD principal de autenticación | `caguayo` |
-| `CENTRAL_DATABASE` | BD central para replicar esquema a tenants | `caguayosa` |
+| `CENTRAL_DATABASE` | BD central para replicar esquema a tenants | `caguayo_sa` |
 | `SECRET_KEY` | Clave secreta para JWT | `(generada por setup.sh)` |
 | `POSTGRES_PASSWORD` | Contraseña de PostgreSQL | `(generada por setup.sh)` |
 
@@ -187,7 +187,7 @@ Al inicializar la base de datos con `init_office.py`, se crea automáticamente u
 | Campo | Valor |
 |-------|-------|
 | **Alias** | admin |
-| **Contraseña** | Admin123@ |
+| **Contraseña** | admin123 |
 | **Grupo** | ADMINISTRADOR (acceso total) |
 | **Dependencia** | Caguayo Matriz |
 
@@ -291,7 +291,7 @@ Usa el script interactivo `scripts/dev.sh` — menú con Start / Stop / Restart 
 
 4. Initialize office data (admin user, main dependency):
    ```bash
-   uv run python -m scripts.init_office caguayosa
+   uv run python -m scripts.init_office caguayo_sa
    ```
 
 5. Run the backend:

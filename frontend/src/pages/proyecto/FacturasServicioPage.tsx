@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
 import { SignToggle } from '../../components/ui/SignToggle';
 import { facturasServicioService, etapasProyectoService, monedaService, solicitudesService, tareasEtapaService, dependenciasService, cuentasService, clientesService, certificacionesService, contratosService } from '../../services/api';
-import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, SolicitudServicio, ItemFacturaServicio, Certificacion } from '../../types/servicio';
-import type { Cliente, Cuenta } from '../../types/ventas';
+import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, ItemFacturaServicio, Certificacion } from '../../types/servicio';
+import type { Cuenta } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Tag, FileText, Check, ChevronDown, Printer, ListChecks, List, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, FileText, ChevronDown, Printer, ListChecks, List, Loader2 } from 'lucide-react';
 import { getFacturaServicioDocument, getCertificacionFacturaDocument } from './facturaDocumento';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -18,6 +17,8 @@ import { useMonedaContratoDeEtapa } from '../../hooks/useMonedaContrato';
 import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
+
+const FACTURA_SERVICIO_FORM_ID = 'factura-servicio-form';
 
 function SearchSelect({
   label,
@@ -143,6 +144,7 @@ export function FacturasServicioPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   // Moneda del contrato de la etapa seleccionada: fija, no se puede cambiar
   const { data: monedaContrato } = useMonedaContratoDeEtapa(selectedEtapaId);
@@ -151,7 +153,7 @@ export function FacturasServicioPage() {
   }, [monedaContrato]);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [filtroEtapa, setFiltroEtapa] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
+  const [filtroEtapa] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: FacturaServicio | null }>({ isOpen: false, item: null });
 
   useEffect(() => {
@@ -160,9 +162,9 @@ export function FacturasServicioPage() {
       setEditingId(null);
       navigate(location.pathname, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
   const [itemsModal, setItemsModal] = useState<{ isOpen: boolean; factura: FacturaServicio | null; items: ItemFacturaServicio[] }>({ isOpen: false, factura: null, items: [] });
-  const [loadingItems, setLoadingItems] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -210,6 +212,7 @@ export function FacturasServicioPage() {
     queryFn: () => clientesService.getClientes(0, 10000)
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadInitialData(); }, []);
 
   useEffect(() => {
@@ -291,6 +294,7 @@ export function FacturasServicioPage() {
   }, [view, solicitudParam]);
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       const etapa = selectedEtapaId ? etapas.find(e => e.id_etapa === selectedEtapaId) : null;
       const esCertificaciones = etapa?.tipo_etapa === 'CERTIFICACIONES';
@@ -371,6 +375,7 @@ export function FacturasServicioPage() {
       resetForm();
       refreshAll();
     } catch (error: any) { toast.error(error.message || 'Error'); }
+    finally { setIsSaving(false); }
   };
 
   const handleDelete = async (item: FacturaServicio) => {
@@ -506,12 +511,6 @@ export function FacturasServicioPage() {
     if (!id) return 'N/A';
     const e = etapas.find(et => et.id_etapa === id);
     return e?.nombre_etapa || `Etapa #${e?.numero_etapa || 'N/A'}`;
-  };
-
-  const isEtapaCertificaciones = (id?: number) => {
-    if (!id) return false;
-    const e = etapas.find(et => et.id_etapa === id);
-    return e?.tipo_etapa === 'CERTIFICACIONES';
   };
 
   const getFormTitle = () => {
@@ -868,31 +867,12 @@ export function FacturasServicioPage() {
   );
 
   const renderForm = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <Receipt className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{getFormTitle()}</h2>
-            <p className="text-gray-500 mt-1">Complete los datos del documento de servicio</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Receipt className="h-5 w-5 text-teal-600" />
-            Información de la Factura
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
+    <form
+      id={FACTURA_SERVICIO_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+      <div className="space-y-6">
           {!etapaParam && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <SearchSelect
@@ -1248,22 +1228,46 @@ export function FacturasServicioPage() {
               <Input value={formData.observaciones || ''} onChange={(e: any) => setFormData({ ...formData, observaciones: e.target.value })} className="mt-1" placeholder="Observaciones" />
             </div>
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-              <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="mt-8 pt-6 border-t" />
+      </div>
+      </form>
   );
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={getFormTitle()}
+        subtitle="Complete los datos del documento de servicio"
+        icon={<Receipt className="h-6 w-6" />}
+        size="xl"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={FACTURA_SERVICIO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -1274,9 +1278,11 @@ export function FacturasServicioPage() {
         onConfirm={() => confirmModal.onConfirm()}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
-
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay
+          isOpen={true}
+          onClose={() => setDetailModal({ isOpen: false, item: null })}
+        >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1355,12 +1361,15 @@ export function FacturasServicioPage() {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
 
-      {itemsModal.isOpen && itemsModal.factura && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      {itemsModal.isOpen && itemsModal.factura && (
+        <ModalOverlay
+          isOpen={true}
+          onClose={() => setItemsModal({ isOpen: false, factura: null, items: [] })}
+          ariaLabel="Items de Factura"
+        >
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1446,8 +1455,7 @@ export function FacturasServicioPage() {
               </div>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
 
     </div>

@@ -14,17 +14,15 @@ import {
   User,
   Building2,
   Briefcase,
-  Globe,
-  MapPin,
-  Save,
-  ArrowLeft,
   Pencil,
   Trash2,
   Check,
   AlertTriangle,
+  ArrowLeft,
+  Save,
 } from "lucide-react";
 
-import { TipoPersona, TipoRelacion, EstadoCliente } from "./types";
+import { TipoPersona } from "./types";
 import { NaturalForm } from "./forms-especificos/NaturalForm";
 import { JuridicaForm } from "./forms-especificos/JuridicaForm";
 import { TCPForm } from "./forms-especificos/TCPForm";
@@ -37,19 +35,26 @@ import { dependenciasService } from "../../../../services/administracion";
 import { tipoEntidadService } from "../../../../services/api";
 
 export interface ClienteFormProps {
+  formId?: string;
   editingCliente: any | null;
   isProveedorView: boolean;
-  onCancel: () => void;
+  onCancel?: () => void;
   onSubmit: (data: any) => Promise<void>;
+  onValidityChange?: (valid: boolean) => void;
+  /** Renderiza el header y el footer propios. `false` para embeberlo (p. ej. dentro de un modal). */
+  selfContained?: boolean;
   provincias?: any[];
   tiposEntidad?: any[];
 }
 
 export const ClienteForm: React.FC<ClienteFormProps> = ({
+  formId = "cliente-form",
   editingCliente,
   isProveedorView,
   onCancel,
   onSubmit,
+  onValidityChange,
+  selfContained = true,
   provincias = [],
   tiposEntidad = [],
 }) => {
@@ -293,11 +298,8 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     setFormData((prev: any) => ({ ...prev, tipo_persona: null }));
   };
 
-  const baseRelacion = ["CLIENTE", "PROVEEDOR"].includes(formData.tipo_relacion)
-    ? formData.tipo_relacion
-    : (isProveedorView ? "PROVEEDOR" : "CLIENTE");
-
-  const esRelacionAmbas = formData.tipo_relacion === "AMBAS";
+  const relacionActual =
+    formData.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE");
 
   const personaCompleta =
     tipoPersona === "NATURAL"
@@ -311,6 +313,10 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               datosTCP?.nombre?.trim() && datosTCP.primer_apellido?.trim(),
             )
           : false;
+
+  useEffect(() => {
+    onValidityChange?.(Boolean(tipoPersona) && personaCompleta);
+  }, [tipoPersona, personaCompleta, onValidityChange]);
 
   const resumenTipoPersona =
     tipoPersona === "NATURAL" && datosNatural
@@ -343,7 +349,8 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
       toast.error("Complete los datos de la persona seleccionada");
       return;
     }
-    const { fecha_registro, ...formDataSinFecha } = formData;
+    const formDataSinFecha = { ...formData };
+    delete formDataSinFecha.fecha_registro;
     const payload = {
       ...formDataSinFecha,
       cliente_natural: tipoPersona === "NATURAL" ? datosNatural : undefined,
@@ -360,7 +367,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   return (
     <>
       {editingCliente?.valido === false && (
-        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">
+        <div className={`rounded-lg border border-amber-300 bg-amber-50 p-4 ${selfContained ? "mb-6" : "m-4 mb-0 md:mx-6 md:mt-6"}`}>
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
@@ -381,50 +388,68 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
           </div>
         </div>
       )}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 relative z-10">
-        <div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold text-gray-800">
-              {editingCliente
-                ? isProveedorView
-                  ? "Editar Proveedor"
-                  : "Editar Cliente"
-                : isProveedorView
-                  ? "Nuevo Proveedor"
-                  : "Nuevo Cliente"}
-            </h2>
-            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Complete los datos del registro
-            </p>
+      {selfContained && (
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 relative z-10">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-gray-800">
+                {editingCliente
+                  ? isProveedorView
+                    ? "Editar Proveedor"
+                    : "Editar Cliente"
+                  : isProveedorView
+                    ? "Nuevo Proveedor"
+                    : "Nuevo Cliente"}
+              </h2>
+              <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+                Complete los datos del registro
+              </p>
+            </div>
           </div>
+          <Button variant="outline" onClick={onCancel} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Volver
+          </Button>
         </div>
-        <Button variant="outline" onClick={onCancel} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
+      )}
 
-      <form onSubmit={handleSubmit}>
+      <form id={formId} onSubmit={handleSubmit} className={selfContained ? "" : "p-4 md:p-6"}>
         {/* Tipo de Relación */}
-        <div className="flex flex-wrap items-center gap-4 mb-6">
+        <div className="mb-6">
           <span className="text-sm font-medium text-gray-700">Tipo de Relación:</span>
-          <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${baseRelacion === "PROVEEDOR" ? "bg-amber-100 text-amber-800" : "bg-teal-100 text-teal-800"}`}>
-            {baseRelacion === "PROVEEDOR" ? "Proveedor" : "Cliente"}
-          </span>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={esRelacionAmbas}
-              onChange={(e) =>
-                setFormData((prev: any) => ({
-                  ...prev,
-                  tipo_relacion: e.target.checked ? "AMBAS" : baseRelacion,
-                }))
-              }
-              className="w-4 h-4"
-            />
-            y {isProveedorView ? "cliente" : "proveedor"}
-          </label>
+          <div className="mt-2 flex flex-wrap gap-4">
+            {(
+              [
+                { valor: "CLIENTE", etiqueta: "Cliente" },
+                { valor: "PROVEEDOR", etiqueta: "Proveedor" },
+                { valor: "AMBAS", etiqueta: "Cliente y proveedor" },
+              ] as const
+            ).map((opcion) => (
+              <label
+                key={opcion.valor}
+                className={`flex items-center gap-2 cursor-pointer rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                  relacionActual === opcion.valor
+                    ? "border-teal-500 bg-teal-50 text-teal-800"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="tipo_relacion"
+                  value={opcion.valor}
+                  checked={relacionActual === opcion.valor}
+                  onChange={() =>
+                    setFormData((prev: any) => ({
+                      ...prev,
+                      tipo_relacion: opcion.valor,
+                    }))
+                  }
+                  className="w-4 h-4"
+                />
+                {opcion.etiqueta}
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* Datos Base del Cliente */}
@@ -785,19 +810,21 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
           </div>
         </Modal>
 
-        <div className="flex gap-3 mt-8 pt-6 border-t">
-          <Button
-            type="submit"
-            disabled={!tipoPersona || !personaCompleta}
-            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-          >
-            <Save className="h-4 w-4" />
-            {editingCliente ? "Actualizar" : "Crear"}
-          </Button>
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancelar
-          </Button>
-        </div>
+        {selfContained && (
+          <div className="flex gap-3 mt-8 pt-6 border-t">
+            <Button
+              type="submit"
+              disabled={!tipoPersona || !personaCompleta}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+            >
+              <Save className="h-4 w-4" />
+              {editingCliente ? "Actualizar" : "Crear"}
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+          </div>
+        )}
       </form>
     </>
   );

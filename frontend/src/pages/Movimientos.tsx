@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { movimientosService } from '../services/api';
 import type { TipoMovimiento } from '../types/index';
 import { useMovimientos } from '../hooks/useMovimientos';
 import { MovimientoRecepcionForm, PrecioExtraForm } from './movimientos/MovimientoForm';
+import { MovimientoAjusteForm } from './movimientos/MovimientoAjusteForm';
 import {
   Truck,
   AlertCircle,
@@ -37,13 +37,16 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  FormModal,
 } from '../components/ui';
 import { formatFecha, formatFechaHora } from "../utils/fecha";
 
 type TipoFiltro = 'todos';
 
+const MOVIMIENTO_FORM_ID = 'movimiento-form';
+const AJUSTE_FORM_ID = 'movimiento-ajuste-form';
+
 export function MovimientosPage() {
-  const navigate = useNavigate();
   const [selectedTipoForm, setSelectedTipoForm] = useState<TipoMovimiento | null>(null);
   const [view, setView] = useState<'list' | 'form'>('list');
   const [tipoFiltro] = useState<TipoFiltro>('todos');
@@ -65,7 +68,8 @@ export function MovimientosPage() {
     type: 'danger',
   });
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const [preciosExtraForm, setPreciosExtraForm] = useState<PrecioExtraForm[]>([]);
+  const [, setPreciosExtraForm] = useState<PrecioExtraForm[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { data: tiposMovimiento = [], isLoading: isLoadingTipos } = useQuery({
     queryKey: ['tipos-movimiento'],
@@ -108,7 +112,12 @@ export function MovimientosPage() {
 
   const handleTipoSelect = (tipo: string) => {
     if (tipo === 'AJUSTE') {
-      navigate('/movimientos/ajuste');
+      setSelectedTipoForm({
+        id_tipo_movimiento: 0,
+        tipo: 'AJUSTE',
+        factor: 0,
+      } as any);
+      setView('form');
       return;
     }
     // Buscar el tipo en la lista, si no existe crear uno con la estructura mínima
@@ -272,17 +281,8 @@ export function MovimientosPage() {
     );
   }
 
-  if (view === 'form' && selectedTipoForm) {
-    return (
-      <MovimientoRecepcionForm
-        key={selectedTipoForm.id_tipo_movimiento}
-        tipoMovimiento={selectedTipoForm.tipo as 'RECEPCION' | 'MERMA' | 'DONACION' | 'DEVOLUCION'}
-        onSubmit={handleFormSubmit}
-        onCancel={handleFormCancel}
-        onPreciosChange={setPreciosExtraForm}
-      />
-    );
-  }
+  const formConfig = getTipoConfig(selectedTipoForm?.tipo || 'RECEPCION');
+  const FormIcon = formConfig.icon;
 
   const content = (
     <div className="space-y-4">
@@ -815,6 +815,84 @@ export function MovimientosPage() {
   return (
     <>
       {content}
+
+      <FormModal
+        isOpen={view === 'form' && !!selectedTipoForm}
+        onClose={handleFormCancel}
+        title={selectedTipoForm?.tipo?.toUpperCase() || 'MOVIMIENTO'}
+        subtitle="Complete los datos del movimiento"
+        icon={<FormIcon className="h-6 w-6" />}
+        size="xl"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleFormCancel}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={MOVIMIENTO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {selectedTipoForm && (
+          <MovimientoRecepcionForm
+            key={selectedTipoForm.id_tipo_movimiento}
+            tipoMovimiento={selectedTipoForm.tipo as 'RECEPCION' | 'MERMA' | 'DONACION' | 'DEVOLUCION'}
+            formId={MOVIMIENTO_FORM_ID}
+            onSubmit={handleFormSubmit}
+            onPreciosChange={setPreciosExtraForm}
+            onPendingChange={setIsSaving}
+          />
+        )}
+      </FormModal>
+
+      <FormModal
+        isOpen={view === 'form' && selectedTipoForm?.tipo === 'AJUSTE'}
+        onClose={handleFormCancel}
+        title="AJUSTE"
+        subtitle="Transferencia de productos entre dependencias"
+        icon={<ArrowRightLeft className="h-6 w-6" />}
+        size="xl"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleFormCancel}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={AJUSTE_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        <MovimientoAjusteForm
+          formId={AJUSTE_FORM_ID}
+          onExit={handleFormSubmit}
+          onPendingChange={setIsSaving}
+        />
+      </FormModal>
+
       <ModalConfirmacion />
       <ModalDetalle />
     </>

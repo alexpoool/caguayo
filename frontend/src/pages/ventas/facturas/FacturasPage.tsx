@@ -1,28 +1,25 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { createPortal } from "react-dom";
+/* eslint-disable react-refresh/only-export-components */
 import { useSearchParams } from "react-router-dom";
 import {
   contratosService,
   productosService,
   monedaService,
   dependenciasService,
-  pagosService,
-  facturasService,
   clientesService,
   cuentasService,
 } from "../../../services/api";
 import type { Cliente } from "../../../types/ventas";
 import type {
   ContratoWithDetails,
-  FacturaWithDetails as FacturaType,
-  ItemFactura,
 } from "../../../types/contrato";
 import type { Productos } from "../../../types";
 import type { Dependencia } from "../../../types/dependencia";
-import type { Cuenta } from "../../../types/cuenta";
 import type { Pago } from "../../../types/pago";
 import toast from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
+import { Button, FormModal } from "../../../components/ui";
+import { Receipt } from "lucide-react";
 
 // Componentes nuevos
 import { FacturasListView } from "./components/FacturasListView";
@@ -40,6 +37,8 @@ import { formatFecha } from "../../../utils/fecha";
 
 type View = "list" | "form";
 
+const FACTURA_FORM_ID = "factura-form";
+
 export function getFacturaDocument(
   factura: any,
   contratos: any[],
@@ -48,8 +47,6 @@ export function getFacturaDocument(
   clienteCompleto: any = null,
   clienteCuentas: any[] = [],
   depCuentas: any[] = [],
-  autorizadoPor: string = "",
-  revisadoPor: string = "",
 ) {
   const contrato = contratos.find(
     (c: any) => c.id_contrato === factura.id_contrato,
@@ -64,7 +61,6 @@ export function getFacturaDocument(
   const empresaTelefono = dependencia?.telefono || "";
   const empresaWeb = dependencia?.web || "";
   const empresaEmail = dependencia?.email || "";
-  const empresaNit = dependencia?.nit || "";
   const empresaReeup = dependencia?.reeup || "";
 
   const numeroContrato = contrato?.codigo || "";
@@ -294,6 +290,7 @@ export function FacturasPage() {
 
   // Vista actual (list o form)
   const [view, setView] = useState<View>("list");
+  const [isSavingFactura, setIsSavingFactura] = useState(false);
 
   // Datos maestros
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
@@ -359,6 +356,7 @@ export function FacturasPage() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [facturasHook.hasMore, facturasHook.isFetchingMore, facturasHook.loadMore]);
 
   /**
@@ -421,6 +419,7 @@ export function FacturasPage() {
         facturasHook.setFormData((prev: Record<string, any>) => ({ ...prev, id_moneda: monedaId }));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [facturasHook.selectedContratoId, contratos]);
 
   /**
@@ -433,28 +432,33 @@ export function FacturasPage() {
    * Manejar guardado de factura
    */
   const handleSaveFactura = async () => {
-    const stockErrors = productSelectionHook.selectedProducts.filter((p) => {
-      const stock = stockMap.get(p.id_producto) ?? 0;
-      return p.cantidad > stock;
-    });
-    if (stockErrors.length > 0) {
-      const names = stockErrors.map((p) => {
-        const pr = productosSource.find((pr: any) => pr.id_producto === p.id_producto);
-        return pr?.nombre || `ID ${p.id_producto}`;
+    setIsSavingFactura(true);
+    try {
+      const stockErrors = productSelectionHook.selectedProducts.filter((p) => {
+        const stock = stockMap.get(p.id_producto) ?? 0;
+        return p.cantidad > stock;
       });
-      toast.error(`Stock insuficiente para: ${names.join(", ")}`);
-      return;
-    }
-    const result = await facturasHook.handleSave(
-      productSelectionHook.selectedProducts,
-      contratos,
-      user?.dependencia?.id_dependencia,
-    );
-    if (result.success) {
-      toast.success(result.message);
-      setView("list");
-    } else {
-      toast.error(result.message);
+      if (stockErrors.length > 0) {
+        const names = stockErrors.map((p) => {
+          const pr = productosSource.find((pr: any) => pr.id_producto === p.id_producto);
+          return pr?.nombre || `ID ${p.id_producto}`;
+        });
+        toast.error(`Stock insuficiente para: ${names.join(", ")}`);
+        return;
+      }
+      const result = await facturasHook.handleSave(
+        productSelectionHook.selectedProducts,
+        contratos,
+        user?.dependencia?.id_dependencia,
+      );
+      if (result.success) {
+        toast.success(result.message);
+        setView("list");
+      } else {
+        toast.error(result.message);
+      }
+    } finally {
+      setIsSavingFactura(false);
     }
   };
 
@@ -610,8 +614,6 @@ export function FacturasPage() {
       clienteCompleto,
       clienteCuentas,
       depCuentas,
-      "",
-      "",
     );
     const printWindow = window.open("", "_blank");
     if (printWindow) {
@@ -667,8 +669,6 @@ export function FacturasPage() {
       clienteCompleto,
       clienteCuentas,
       depCuentas,
-      "",
-      "",
     );
     const printWindow = window.open("", "_blank");
     if (printWindow) {
@@ -707,9 +707,55 @@ export function FacturasPage() {
   };
 
   // Render según vista actual
-  if (view === "list") {
-    return (
-      <div className="p-6">
+  const facturaForm = (
+    <FacturaForm
+      formId={FACTURA_FORM_ID}
+      formData={facturasHook.formData}
+      selectedProducts={productSelectionHook.selectedProducts}
+      productSearch={productSelectionHook.productSearch}
+      productosFiltrados={productosFiltrados}
+      total={productSelectionHook.getTotal()}
+      productos={productosSource as Productos[]}
+      monedas={monedas}
+      selectedContratoId={facturasHook.selectedContratoId}
+      contratos={contratos}
+      clientes={clientes}
+      onFormDataChange={(data: Record<string, any>) =>
+        facturasHook.setFormData(data)
+      }
+      onProductSearchChange={(search: string) =>
+        productSelectionHook.setProductSearch(search)
+      }
+      onAddProduct={(id: number) => {
+        const stock = stockMap.get(id) ?? 0;
+        if (stock < 1) {
+          const pr = productosSource.find((p: any) => p.id_producto === id);
+          toast.error(`"${pr?.nombre || pr?.nombre || `ID ${id}`}" no tiene stock disponible`);
+          return;
+        }
+        productSelectionHook.addProduct(id, productosSource as Productos[]);
+      }}
+      onUpdateCantidad={(id: number, cant: number) =>
+        productSelectionHook.updateCantidad(id, cant)
+      }
+      onUpdatePrecio={(id: number, precio: number) =>
+        productSelectionHook.updatePrecioVenta(id, precio)
+      }
+      onUpdatePrecioCompra={(id: number, precio: number) =>
+        productSelectionHook.updatePrecioCompra(id, precio)
+      }
+      onRemoveProduct={(id: number) =>
+        productSelectionHook.removeProduct(id)
+      }
+      onSelectedContratoChange={(id: number | null) =>
+        facturasHook.setSelectedContratoId(id)
+      }
+      onSave={handleSaveFactura}
+    />
+  );
+
+  return (
+    <div className="p-6">
 <FacturasListView
           facturas={facturasHook.facturas}
           isLoading={facturasHook.isLoading}
@@ -760,62 +806,38 @@ export function FacturasPage() {
           onConfirm={confirmModal.onConfirm}
           onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         />
+
+        <FormModal
+          isOpen={view === "form"}
+          onClose={handleCancelForm}
+          title={facturasHook.editingId ? "Editar Factura" : "Nueva Factura"}
+          subtitle="Complete los datos de la factura"
+          icon={<Receipt className="h-6 w-6" />}
+          size="xl"
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancelForm}
+                disabled={isSavingFactura}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form={FACTURA_FORM_ID}
+                disabled={isSavingFactura}
+                isLoading={isSavingFactura}
+                className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                Guardar
+              </Button>
+            </>
+          }
+        >
+          {facturaForm}
+        </FormModal>
       </div>
     );
   }
-
-  // Vista de formulario
-  if (view === "form") {
-    return (
-      <div className="p-6">
-        <FacturaForm
-          editingId={facturasHook.editingId}
-          formData={facturasHook.formData}
-          selectedProducts={productSelectionHook.selectedProducts}
-          productSearch={productSelectionHook.productSearch}
-          productosFiltrados={productosFiltrados}
-          total={productSelectionHook.getTotal()}
-          productos={productosSource as Productos[]}
-          monedas={monedas}
-          selectedContratoId={facturasHook.selectedContratoId}
-          contratos={contratos}
-          clientes={clientes}
-          onFormDataChange={(data: Record<string, any>) =>
-            facturasHook.setFormData(data)
-          }
-          onProductSearchChange={(search: string) =>
-            productSelectionHook.setProductSearch(search)
-          }
-          onAddProduct={(id: number) => {
-            const stock = stockMap.get(id) ?? 0;
-            if (stock < 1) {
-              const pr = productosSource.find((p: any) => p.id_producto === id);
-              toast.error(`"${pr?.nombre || pr?.nombre || `ID ${id}`}" no tiene stock disponible`);
-              return;
-            }
-            productSelectionHook.addProduct(id, productosSource as Productos[]);
-          }}
-          onUpdateCantidad={(id: number, cant: number) =>
-            productSelectionHook.updateCantidad(id, cant)
-          }
-          onUpdatePrecio={(id: number, precio: number) =>
-            productSelectionHook.updatePrecioVenta(id, precio)
-          }
-          onUpdatePrecioCompra={(id: number, precio: number) =>
-            productSelectionHook.updatePrecioCompra(id, precio)
-          }
-          onRemoveProduct={(id: number) =>
-            productSelectionHook.removeProduct(id)
-          }
-          onSelectedContratoChange={(id: number | null) =>
-            facturasHook.setSelectedContratoId(id)
-          }
-          onSave={handleSaveFactura}
-          onCancel={handleCancelForm}
-        />
-      </div>
-    );
-  }
-
-  return null;
-}

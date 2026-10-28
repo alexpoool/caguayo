@@ -1,27 +1,19 @@
 # -*- coding: utf-8 -*-
 """DTOs de la migración del legacy."""
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
-
-
-class FicheroLegacyInfo(BaseModel):
-    rol: str
-    etiqueta: str
-    descripcion: str
-    subido: bool
-    bytes: int = 0
-    ruta: Optional[str] = None
-
-
-class FicherosSubidos(BaseModel):
-    ficheros: Dict[str, FicheroLegacyInfo] = {}
 
 
 class IdentidadBase(BaseModel):
     base_etl: str
     base_app: str
     coherente: bool
+    #: False cuando no se pudo determinar la base del ETL. No bloquea la
+    #: migración (coherente sigue en True); sólo dice que nadie lo comprobó.
+    verificado: bool = True
+    fuente_etl: Optional[str] = None
+    fuente_app: Optional[str] = None
     detalle: List[str] = []
 
 
@@ -31,7 +23,13 @@ class EstadoMigracion(BaseModel):
     revision: Optional[str] = None
     identidad: IdentidadBase
     operacion_en_curso: bool = False
-    ficheros: Dict[str, FicheroLegacyInfo] = {}
+    # `dump_disponible` sustituye a los ficheros que se subían antes: ahora el
+    # legacy viene en el repositorio y lo único que hay que poder responder es si
+    # está en su sitio. `dump_motivo` explica por qué no, porque un botón
+    # deshabilitado sin razón no ayuda a nadie.
+    dump_disponible: bool = True
+    dump_ruta: Optional[str] = None
+    dump_motivo: Optional[str] = None
 
 
 class FaseInforme(BaseModel):

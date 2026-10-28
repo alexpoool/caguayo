@@ -1,10 +1,20 @@
 # -*- coding: utf-8 -*-
 """Lectura del dump MariaDB.
 
-El dump concentra cada tabla en un único `INSERT ... VALUES` con tuplas
-separadas por comas. El cuerpo contiene comillas dobles escapadas con
+El dump concentra cada tabla en un único `INSERT`/`REPLACE ... VALUES` con
+tuplas separadas por comas. El cuerpo contiene comillas dobles escapadas con
 backslash dentro de literales de texto (\\"La Caridad\\"), comillas simples
 duplicadas y valores de hasta 24 KB, por lo que no basta con un `split(',')`.
+
+Dos cosas del dialecto hacen que un `.*?;` no valga para cortar el cuerpo:
+
+- Las sentencias son `REPLACE INTO`, no `INSERT INTO`. HeidiSQL exporta así.
+- Un `;` puede caer DENTRO de un literal (`'Calle # 12 16-A ,Localidad
+  ;Rosabal'`), así que el primer `;` del texto no es el final de la sentencia:
+  cortar ahí descarta las filas siguientes sin avisar.
+
+Por eso el patrón sólo localiza la cabecera y el cuerpo lo recorta
+`_fin_sentencia`, que recorre el texto respetando comillas y backslashes.
 
 No se interpreta SQL: sólo se extraen las filas de las tablas de interés.
 """
@@ -12,16 +22,53 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-_PATRON = re.compile(
-    r"INSERT\s+INTO\s+`{tabla}`\s*\((.*?)\)\s*VALUES(.*?);",
-    re.S | re.I,
-)
-
 
 def _patron(tabla):
     return re.compile(
-        r"INSERT\s+INTO\s+`%s`\s*\((.*?)\)\s*VALUES(.*?);" % tabla, re.S | re.I
+        r"(?:INSERT|REPLACE)\s+INTO\s+`%s`\s*\((.*?)\)\s*VALUES" % tabla,
+        re.S | re.I,
     )
+
+
+def _fin_sentencia(texto: str, inicio: int) -> int:
+    """Índice del `;` que cierra la sentencia que empieza en `inicio`.
+
+    Es el mismo recorrido con estado que hace `_tokenizar_valores` —comillas
+    simples y dobles, backslashes y comillas duplicadas— pero parando en el
+    primer `;` que quede fuera de un literal.
+
+    Si no hay ninguno se devuelve el final del fichero. Un dump truncado es un
+    problema del fichero; perder filas porque no se topó el cierre es un
+    problema nuestro y además silencioso.
+    """
+    en_literal = None
+    largo = len(texto)
+    i = inicio
+
+    while i < largo:
+        c = texto[i]
+
+        if en_literal is not None:
+            if c == "\\" and i + 1 < largo:
+                i += 2
+                continue
+            if c == en_literal:
+                if i + 1 < largo and texto[i + 1] == en_literal:
+                    i += 2
+                    continue
+                en_literal = None
+            i += 1
+            continue
+
+        if c in "'\"":
+            en_literal = c
+            i += 1
+            continue
+        if c == ";":
+            return i
+        i += 1
+
+    return largo
 
 
 def _tokenizar_valores(cuerpo: str):
@@ -163,7 +210,9 @@ def leer_tabla(ruta_dump, tabla: str):
     for coincidencia in _patron(tabla).finditer(texto):
         if columnas is None:
             columnas = [c.strip().strip("`") for c in coincidencia.group(1).split(",")]
-        for tupla in _tokenizar_valores(coincidencia.group(2)):
+        inicio = coincidencia.end()
+        cuerpo = texto[inicio:_fin_sentencia(texto, inicio)]
+        for tupla in _tokenizar_valores(cuerpo):
             if len(tupla) != len(columnas):
                 descartadas += 1
                 continue
@@ -192,9 +241,9 @@ def leer_clientes(ruta_dump):
 def leer_catalogo(rutas, tabla):
     """Lee un catálogo de una o varias bases legacy y lo devuelve unificado.
 
-    Los catálogos no están todos en la misma base: `caguayo_comercial` no tiene
-    ninguna fila de tipo_convenio y `caguayo` es la que aporta los tipos de
-    contrato que le faltan a la otra.
+    Acepta una tupla de rutas porque la Fase I declara sus orígenes en
+    `config.CATALOGOS` y así el leer_catalogo no sabe de cuántas bases se trata.
+    Hoy todas apuntan al mismo dump de `caguayo_comercial`.
 
     Cada fila se anota con la base de la que salió en la clave `_origen`, y se
     descartan las que no traen nombre: en el legacy hay ids sueltos sin texto,

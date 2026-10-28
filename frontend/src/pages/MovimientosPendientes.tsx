@@ -115,9 +115,11 @@ export function MovimientosPendientesPage() {
     hasMore,
     loadMore,
     refresh,
+    total: totalPendientes,
   } = useInfiniteList<MovimientoPendiente>({
     queryKeyBase: 'movimientos-pendientes',
-    queryFn: (skip, limit) => movimientosService.getMovimientosPendientes(skip, limit),
+    queryFn: (skip, limit, _search, onTotal) =>
+      movimientosService.getMovimientosPendientes(skip, limit, onTotal),
     limit: 100,
   });
 
@@ -369,7 +371,7 @@ export function MovimientosPendientesPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Movimientos Pendientes</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Movimientos en espera de confirmación ({filteredPendientes.length} registros)
+              Movimientos en espera de confirmación ({searchTerm ? filteredPendientes.length : totalPendientes ?? movimientosPendientes.length} registros)
             </p>
           </div>
         </div>

@@ -7,7 +7,6 @@ import {
   Shield,
   Edit,
   Trash2,
-  Save,
   X,
   Copy,
   CheckCircle,
@@ -16,6 +15,8 @@ import {
   CreditCard,
   Plus,
   Search,
+  Lock,
+  AtSign,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -27,6 +28,7 @@ import {
   CardHeader,
   CardTitle,
   ConfirmModal,
+  FormModal,
   Table,
   TableHeader,
   TableBody,
@@ -35,12 +37,12 @@ import {
   TableCell,
 } from "../components/ui";
 import { administracionService, dependenciasService } from "../services/administracion";
-import { useAuth } from "../context/AuthContext";
 import type { Usuario, UsuarioCreate } from "../types/usuario";
+
+const USUARIO_FORM_ID = "usuario-form";
 
 export function UsuariosPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
   const [view, setView] = useState<"list" | "form">("list");
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,7 +53,10 @@ export function UsuariosPage() {
     segundo_apellido: "",
     cargo: "",
     id_grupo: 0,
+    alias: "",
+    contrasenia: "",
   });
+  const [confirmarContrasenia, setConfirmarContrasenia] = useState("");
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -62,8 +67,7 @@ export function UsuariosPage() {
   const [createdUserModal, setCreatedUserModal] = useState<{
     isOpen: boolean;
     usuario: Usuario | null;
-    contrasenia: string;
-  }>({ isOpen: false, usuario: null, contrasenia: "" });
+  }>({ isOpen: false, usuario: null });
 
   const [detailModal, setDetailModal] = useState<{
     isOpen: boolean;
@@ -101,14 +105,15 @@ export function UsuariosPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       toast.success("Usuario creado exitosamente");
+      setView("list");
       resetUsuarioForm();
       setCreatedUserModal({
         isOpen: true,
         usuario: data,
-        contrasenia: data.password_temporal || "",
       });
     },
-    onError: () => toast.error("Error al crear usuario"),
+    onError: (error: Error) =>
+      toast.error(error.message || "Error al crear usuario"),
   });
 
   const updateUsuario = useMutation({
@@ -117,9 +122,12 @@ export function UsuariosPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       toast.success("Usuario actualizado");
+      setView("list");
       setEditingUsuario(null);
       resetUsuarioForm();
     },
+    onError: (error: Error) =>
+      toast.error(error.message || "Error al actualizar usuario"),
   });
 
   const deleteUsuario = useMutation({
@@ -130,7 +138,7 @@ export function UsuariosPage() {
     },
   });
 
-  const resetUsuarioForm = () =>
+  const resetUsuarioForm = () => {
     setUsuarioForm({
       ci: "",
       nombre: "",
@@ -138,7 +146,11 @@ export function UsuariosPage() {
       segundo_apellido: "",
       cargo: "",
       id_grupo: 0,
+      alias: "",
+      contrasenia: "",
     });
+    setConfirmarContrasenia("");
+  };
 
   const handleUsuarioSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,7 +159,8 @@ export function UsuariosPage() {
       !usuarioForm.nombre ||
       !usuarioForm.primer_apellido ||
       !usuarioForm.cargo ||
-      !usuarioForm.id_grupo
+      !usuarioForm.id_grupo ||
+      !usuarioForm.alias.trim()
     ) {
       toast.error("Todos los campos requeridos deben completarse");
       return;
@@ -155,10 +168,27 @@ export function UsuariosPage() {
     if (editingUsuario) {
       updateUsuario.mutate({
         id: editingUsuario.id_usuario,
-        data: usuarioForm,
+        data: {
+          ci: usuarioForm.ci,
+          nombre: usuarioForm.nombre,
+          primer_apellido: usuarioForm.primer_apellido,
+          segundo_apellido: usuarioForm.segundo_apellido,
+          cargo: usuarioForm.cargo,
+          id_grupo: usuarioForm.id_grupo,
+          id_dependencia: usuarioForm.id_dependencia,
+          alias: usuarioForm.alias.trim(),
+        },
       });
     } else {
-      createUsuario.mutate(usuarioForm);
+      if (usuarioForm.contrasenia.length < 6) {
+        toast.error("La contraseña debe tener al menos 6 caracteres");
+        return;
+      }
+      if (usuarioForm.contrasenia !== confirmarContrasenia) {
+        toast.error("Las contraseñas no coinciden");
+        return;
+      }
+      createUsuario.mutate({ ...usuarioForm, alias: usuarioForm.alias.trim() });
     }
   };
 
@@ -184,7 +214,10 @@ export function UsuariosPage() {
       cargo: usuario.cargo,
       id_grupo: usuario.id_grupo,
       id_dependencia: usuario.id_dependencia,
+      alias: usuario.alias,
+      contrasenia: "",
     });
+    setConfirmarContrasenia("");
     setView("form");
   };
 
@@ -194,34 +227,44 @@ export function UsuariosPage() {
     resetUsuarioForm();
   };
 
-  if (view === "form") {
-    return (
-      <div className="space-y-4 animate-fade-in-up">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" onClick={handleCancel}>
-              <X className="h-4 w-4 mr-2" />
-              Cancelar
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded shadow-lg">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex items-baseline">
-                <h1 className="text-xl font-bold text-gray-900">
-                  {editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {editingUsuario
-                    ? "Modifique los datos del usuario"
-                    : "Complete los datos del nuevo usuario"}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+  const isSaving = createUsuario.isPending || updateUsuario.isPending;
 
-        <Card className="hover:shadow-lg transition-shadow duration-300">
+  const formModal = (
+    <FormModal
+      isOpen={view === "form"}
+      onClose={handleCancel}
+      title={editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}
+      subtitle={
+        editingUsuario
+          ? "Modifique los datos del usuario"
+          : "Complete los datos del nuevo usuario"
+      }
+      icon={<Users className="h-6 w-6" />}
+      size="lg"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isSaving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form={USUARIO_FORM_ID}
+            disabled={isSaving}
+            isLoading={isSaving}
+            className="gap-2 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            {editingUsuario ? "Actualizar" : "Guardar"}
+          </Button>
+        </>
+      }
+    >
+      <div className="p-4 md:p-6">
+        <Card className="border-0 shadow-none">
           <CardHeader className="border-b bg-gradient-to-r from-green-50 to-emerald-50">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg">
@@ -232,6 +275,7 @@ export function UsuariosPage() {
           </CardHeader>
           <CardContent className="pt-6">
             <form
+              id={USUARIO_FORM_ID}
               onSubmit={handleUsuarioSubmit}
               className="grid grid-cols-2 gap-4"
             >
@@ -315,6 +359,58 @@ export function UsuariosPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <AtSign className="h-5 w-5 text-teal-500" />
+                  Alias *
+                </Label>
+                <Input
+                  value={usuarioForm.alias}
+                  onChange={(e) =>
+                    setUsuarioForm({
+                      ...usuarioForm,
+                      alias: e.target.value,
+                    })
+                  }
+                  placeholder="Alias de acceso"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                />
+              </div>
+              {!editingUsuario && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <Lock className="h-5 w-5 text-rose-500" />
+                      Contraseña *
+                    </Label>
+                    <Input
+                      type="password"
+                      value={usuarioForm.contrasenia}
+                      onChange={(e) =>
+                        setUsuarioForm({
+                          ...usuarioForm,
+                          contrasenia: e.target.value,
+                        })
+                      }
+                      placeholder="Contraseña (mínimo 6 caracteres)"
+                      className="transition-all duration-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <Lock className="h-5 w-5 text-rose-400" />
+                      Confirmar Contraseña *
+                    </Label>
+                    <Input
+                      type="password"
+                      value={confirmarContrasenia}
+                      onChange={(e) => setConfirmarContrasenia(e.target.value)}
+                      placeholder="Repita la contraseña"
+                      className="transition-all duration-200 focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
+                    />
+                  </div>
+                </>
+              )}
+              <div className="space-y-2">
                 <Label
                   htmlFor="id_grupo"
                   className="flex items-center gap-2 text-gray-700"
@@ -376,30 +472,12 @@ export function UsuariosPage() {
                   )}
                 </select>
               </div>
-              <div className="col-span-2 flex gap-3 pt-2">
-                <Button
-                  type="submit"
-                  className="gap-2 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-                >
-                  <Save className="h-4 w-4" />
-                  {editingUsuario ? "Actualizar" : "Guardar"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleCancel}
-                  className="hover:bg-gray-200 transition-colors"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancelar
-                </Button>
-              </div>
             </form>
           </CardContent>
         </Card>
       </div>
-    );
-  }
+    </FormModal>
+  );
 
   const content = (
     <div className="space-y-4">
@@ -417,17 +495,10 @@ export function UsuariosPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setView("form")}
-          className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Usuario
-        </Button>
       </div>
 
-      <div className="flex gap-2">
-        <div className="flex-1 relative max-w-md">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[12rem] max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
             type="text"
@@ -437,6 +508,17 @@ export function UsuariosPage() {
             className="pl-10"
           />
         </div>
+        <Button
+          onClick={() => {
+            setEditingUsuario(null);
+            resetUsuarioForm();
+            setView("form");
+          }}
+          className="ml-auto gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo Usuario
+        </Button>
       </div>
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -532,6 +614,8 @@ export function UsuariosPage() {
         message={confirmModal.message}
         type="danger"
       />
+
+      {formModal}
     </div>
   );
 
@@ -558,8 +642,8 @@ export function UsuariosPage() {
             <div className="p-6 space-y-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-sm text-green-800 mb-2">
-                  El usuario ha sido creado con las siguientes credenciales
-                  autogeneradas:
+                  El usuario ha sido creado correctamente. Comparta su alias de
+                  acceso:
                 </p>
               </div>
 
@@ -600,40 +684,10 @@ export function UsuariosPage() {
                       {createdUserModal.usuario.alias}
                     </div>
                   </div>
-
-                  <div>
-                    <Label className="text-blue-700 flex items-center gap-2">
-                      Contraseña Temporal
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => {
-                          if (createdUserModal.usuario!.password_temporal) {
-                            navigator.clipboard.writeText(
-                              createdUserModal.usuario!.password_temporal!,
-                            );
-                            setCopiedField("password");
-                            setTimeout(() => setCopiedField(null), 2000);
-                          }
-                        }}
-                      >
-                        {copiedField === "password" ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </Label>
-                    <div className="font-mono font-medium text-lg">
-                      {createdUserModal.usuario.password_temporal}
-                    </div>
-                  </div>
                 </div>
 
                 <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  ⚠️ Esta información solo se muestra una vez. Asegúrese de
-                  copiar la contraseña antes de cerrar.
+                  La contraseña es la que se ingresó en el formulario de creación.
                 </p>
               </div>
             </div>

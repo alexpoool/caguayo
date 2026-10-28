@@ -1,19 +1,21 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal } from '../../components/ui';
 import { ClienteForm } from '../clientes/components/form/ClienteForm';
 import { contratosService, clientesService, monedaService, solicitudesService, configuracionService } from '../../services/api';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import type { ContratoWithDetails, ContratoCreate } from '../../types/contrato';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, User, DollarSign, Calendar, Tag, X, Eye, Layers, Receipt } from 'lucide-react';
+import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, User, Tag, X, Layers, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { formatFecha } from '../../utils/fecha';
 import { DateInput } from '../../components/ui';
 
 type View = 'list' | 'form';
+
+const CONTRATO_FORM_ID = 'contrato-form';
 
 export function ContratosPage() {
   const navigate = useNavigate();
@@ -29,8 +31,8 @@ export function ContratosPage() {
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filtroCliente, setFiltroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [filtroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
@@ -77,10 +79,13 @@ export function ContratosPage() {
     loadMore,
     refresh,
     reset,
+    searchTerm,
+    setSearch,
+    total: totalContratos,
   } = useInfiniteList<ContratoWithDetails>({
     queryKeyBase: 'contratos',
-    queryFn: (skip, limit) =>
-      contratosService.getContratos(skip, limit, filtroCliente || undefined),
+    queryFn: (skip, limit, search, onTotal) =>
+      contratosService.getContratos(skip, limit, filtroCliente || undefined, search, onTotal),
     extraQueryKeyParams: [filtroCliente],
     limit: 100,
   });
@@ -137,7 +142,7 @@ export function ContratosPage() {
   const loadInitialData = async () => {
     try {
       const [clientesRes, monedasRes, estadosRes, tiposRes] = await Promise.all([
-        clientesService.getClientes(0, 1000),
+        clientesService.getClientes(0, 1000, "CLIENTE,AMBAS"),
         monedaService.getMonedas(0, 100),
         configuracionService.getEstadosContrato(),
         configuracionService.getTiposContrato()
@@ -150,6 +155,7 @@ export function ContratosPage() {
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       const fecha = formData.fecha || hoy;
       const vigencia = formData.vigencia || addDays(fecha, 1);
@@ -187,7 +193,9 @@ export function ContratosPage() {
       setView('list');
       resetForm();
       refresh();
-    } catch (error: any) { toast.error(error.message || 'Error'); }
+    } catch (error: any) { toast.error(error.message || 'Error'); } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (id: number, nombre: string) => {
@@ -231,18 +239,6 @@ export function ContratosPage() {
     setView('form');
   };
 
-  const filteredContratos = useMemo(() => {
-    let result = contratos;
-    if (searchTerm) {
-      result = result.filter(c => 
-        c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.estado?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    return result;
-  }, [contratos, searchTerm]);
-
   const renderList = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -253,10 +249,7 @@ export function ContratosPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Contratos</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              {filteredContratos.length === contratos.length 
-                ? `Gestión de contratos (${contratos.length} items)`
-                : `Mostrando ${filteredContratos.length} de ${contratos.length} contratos`
-              }
+              {`Gestión de contratos (${totalContratos ?? contratos.length} items)`}
             </p>
           </div>
         </div>
@@ -275,7 +268,7 @@ export function ContratosPage() {
           <Input
             placeholder="Buscar contratos..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -311,7 +304,6 @@ export function ContratosPage() {
                     Facturas
                   </div>
                 </TableHead>
-                <TableHead>Vigencia</TableHead>
                 <TableHead>Suplementos</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -332,14 +324,14 @@ export function ContratosPage() {
                     Error al cargar contratos: {(error as Error)?.message || 'Error desconocido'}
                   </TableCell>
                 </TableRow>
-              ) : filteredContratos.length === 0 ? (
+              ) : contratos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron contratos que coincidan con la búsqueda' : 'No hay contratos'}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredContratos.map((item) => (
+                contratos.map((item) => (
                   <TableRow key={item.id_contrato} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
@@ -367,22 +359,6 @@ export function ContratosPage() {
                         <Receipt className="h-3.5 w-3.5" />
                         Ver
                       </Button>
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const vigencia = item.vigencia;
-                        const vencida = vigencia && new Date(vigencia) < new Date(hoy);
-                        return (
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-sm font-medium ${
-                            vencida
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            <Calendar className="h-3 w-3" />
-                            {formatFecha(vigencia) || 'N/A'}
-                          </span>
-                        );
-                      })()}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Button
@@ -424,17 +400,15 @@ export function ContratosPage() {
           </Table>
         </div>
         {/* Sentinel para infinite scroll */}
-        {!isLoading && filteredContratos.length > 0 && (
+        {!isLoading && contratos.length > 0 && (hasMore || isFetchingMore) && (
           <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
             {isFetchingMore ? (
               <span className="text-sm text-teal-600 flex items-center gap-2">
                 <div className="h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                 Cargando más...
               </span>
-            ) : hasMore ? (
-              <span className="text-sm text-gray-400">Desplázate para cargar más</span>
             ) : (
-              <span className="text-sm text-gray-400">— Fin de los resultados —</span>
+              <span className="text-sm text-gray-400">Desplázate para cargar más</span>
             )}
           </div>
         )}
@@ -443,36 +417,11 @@ export function ContratosPage() {
   );
 
   const renderForm = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {solicitudParam && (
-            <Button variant="outline" onClick={() => navigate('/proyectos/solicitudes')} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          )}
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
-            <FileText className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Editar Contrato' : 'Nuevo Contrato'}</h2>
-            <p className="text-sm text-gray-500 ml-3 hidden sm:block">Complete los datos del contrato</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <FileText className="h-5 w-5 text-teal-600" />
-            Información del Contrato
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
+    <form
+      id={CONTRATO_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Fila 1: Nombre + Tipo */}
             <div>
@@ -607,22 +556,55 @@ export function ContratosPage() {
               <Input value={formData.documento_final || ''} onChange={(e: any) => setFormData({...formData, documento_final: e.target.value})} className="mt-1" placeholder="Número de documento" />
             </div>
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-              <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    </form>
   );
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Contrato' : 'Nuevo Contrato'}
+        subtitle="Complete los datos del contrato"
+        icon={<FileText className="h-6 w-6" />}
+        size="xl"
+        footer={
+          <>
+            {solicitudParam && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => navigate('/proyectos/solicitudes')}
+                disabled={isSaving}
+                className="gap-2 mr-auto"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Volver a Solicitudes
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={CONTRATO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingId ? 'Actualizar' : 'Guardar'}
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

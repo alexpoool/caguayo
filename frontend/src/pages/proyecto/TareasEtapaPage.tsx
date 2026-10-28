@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
 import { tareasEtapaService, etapasProyectoService, serviciosProyectoService, monedaService } from '../../services/api';
 import type { TareaEtapa, TareaEtapaCreate, TareaEtapaUpdate, Etapa, Servicio, ServicioCreate } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ListChecks, X, Eye, DollarSign, Hash, FileText, Wrench } from 'lucide-react';
+import { Plus, Trash2, Edit, ArrowLeft, Search, ListChecks, X, DollarSign, Hash, FileText, Wrench } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMonedaContrato } from '../../hooks/useMonedaContrato';
 
 type View = 'list' | 'form';
+
+const TAREA_FORM_ID = 'tarea-form';
 
 export function TareasEtapaPage() {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ export function TareasEtapaPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   // Moneda del contrato de la solicitud de la etapa: fija, no se puede cambiar
   const { data: monedaContrato } = useMonedaContrato(etapa?.id_solicitud_servicio);
@@ -56,7 +58,10 @@ export function TareasEtapaPage() {
     type: 'danger'
   });
 
-  useEffect(() => { loadInitialData(); }, []);
+  useEffect(() => {
+    loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadInitialData = async () => {
     try {
@@ -81,6 +86,7 @@ export function TareasEtapaPage() {
     } catch (error) { console.error('Error:', error); }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (view === 'list' && etapaParam) loadTareas(); }, [view, etapaParam]);
 
   useEffect(() => {
@@ -94,6 +100,7 @@ export function TareasEtapaPage() {
   }, []);
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       if (editingId) {
         const data: TareaEtapaUpdate = {
@@ -125,6 +132,7 @@ export function TareasEtapaPage() {
       resetForm();
       loadTareas();
     } catch (error: any) { toast.error(error.message || 'Error'); }
+    finally { setIsSaving(false); }
   };
 
   const handleDelete = async (id: number, concepto: string) => {
@@ -141,28 +149,6 @@ export function TareasEtapaPage() {
       },
       type: 'danger'
     });
-  };
-
-  const handleServicioChange = (servicioId: number) => {
-    if (editingId) {
-      setFormData({ ...formData, id_servicio: servicioId });
-      return;
-    }
-    const servicio = servicios.find(s => s.id_servicio === servicioId);
-    if (servicio) {
-      const codigoExtendido = servicio.codigo_servicio || '';
-      
-      setFormData({
-        ...formData,
-        id_servicio: servicioId,
-        codigo_extendido: codigoExtendido,
-        concepto_modificado: servicio.concepto || '',
-        unidad_medida: servicio.unidad_medida || 'unidades',
-        precio_ajustado: servicio.precio || 0,
-        id_moneda: monedaContrato || etapa?.id_moneda || servicio.id_moneda || '',
-        observaciones_ajustadas: servicio.observaciones || ''
-      });
-    }
   };
 
   const resetForm = () => {
@@ -389,32 +375,12 @@ export function TareasEtapaPage() {
   );
 
   const renderForm = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <ListChecks className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Tarea' : 'Nueva Tarea'}</h2>
-            <p className="text-gray-500 mt-1">{etapa ? `Etapa: ${etapa.nombre_etapa || `#${etapa.numero_etapa}`}` : ''}</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ListChecks className="h-5 w-5 text-teal-600" />
-            Información de la Tarea
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form
+      id={TAREA_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex gap-2 items-start md:col-span-2">
               <div ref={dropdownServicioRef} className="relative flex-1">
                 <Label className="text-sm font-medium">Servicio</Label>
@@ -508,22 +474,44 @@ export function TareasEtapaPage() {
               <Input value={formData.observaciones_ajustadas || ''} onChange={(e: any) => setFormData({ ...formData, observaciones_ajustadas: e.target.value })} className="mt-1" placeholder="Observaciones" />
             </div>
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-              <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      </form>
   );
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Tarea' : 'Nueva Tarea'}
+        subtitle={etapa ? `Etapa: ${etapa.nombre_etapa || `#${etapa.numero_etapa}`}` : undefined}
+        icon={<ListChecks className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={TAREA_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -534,8 +522,8 @@ export function TareasEtapaPage() {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay isOpen={true} onClose={() => setDetailModal({ isOpen: false, item: null })} ariaLabel="Detalle de tarea">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -587,11 +575,9 @@ export function TareasEtapaPage() {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
-      {showNuevoServicioModal && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      <ModalOverlay isOpen={showNuevoServicioModal} onClose={() => setShowNuevoServicioModal(false)} ariaLabel="Nuevo Servicio">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -666,9 +652,7 @@ export function TareasEtapaPage() {
               </button>
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+      </ModalOverlay>
     </div>
   );
 }

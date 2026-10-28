@@ -1,7 +1,7 @@
 from typing import List, Optional
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import text
+from sqlalchemy import or_, text
 from sqlalchemy.orm import selectinload
 from src.repository.cliente_repo import (
     cliente_repo,
@@ -32,6 +32,52 @@ from src.dto import (
     CuentaRead,
     CuentaUpdate,
 )
+
+PERSON_TYPES = {"NATURAL", "TCP", "JURIDICA"}
+
+
+class ClienteConReferenciasError(Exception):
+    """El tercero tiene registros asociados que impiden su eliminación."""
+
+    def __init__(self, referencias: list[str]):
+        self.referencias = referencias
+        super().__init__(
+            "No se puede eliminar: tiene "
+            + ", ".join(referencias)
+            + " asociados. Elimine primero esos registros."
+        )
+
+
+def _sanitize_search(search: str) -> str:
+    """Escapa los comodines de LIKE para buscar el texto literal."""
+    return search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _aplicar_filtros(statement, tipo_relacion=None, search=None):
+    """Aplica los filtros de listado y conteo con el mismo WHERE."""
+    if tipo_relacion:
+        # Soportar valores separados por coma (ej. "PROVEEDOR,AMBAS").
+        tipos = [t.strip() for t in tipo_relacion.split(",") if t.strip()]
+        if tipos and set(tipos).issubset(PERSON_TYPES):
+            statement = statement.where(Cliente.tipo_persona.in_(tipos))
+        elif len(tipos) == 1:
+            statement = statement.where(Cliente.tipo_relacion == tipos[0])
+        elif len(tipos) > 1:
+            statement = statement.where(Cliente.tipo_relacion.in_(tipos))
+
+    if search and search.strip():
+        patron = f"%{_sanitize_search(search.strip())}%"
+        statement = statement.where(
+            or_(
+                Cliente.codigo.ilike(patron),
+                Cliente.nombre.ilike(patron),
+                Cliente.nit.ilike(patron),
+                Cliente.telefono.ilike(patron),
+                Cliente.email.ilike(patron),
+            )
+        )
+
+    return statement
 
 
 class ClienteService:
@@ -123,6 +169,7 @@ class ClienteService:
         skip: int = 0,
         limit: int = 10000,
         tipo_relacion: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> List[ClienteRead]:
 
         statement = select(Cliente).options(
@@ -134,21 +181,9 @@ class ClienteService:
             selectinload(Cliente.cliente_tcp),
         )
 
-        # Person type filters (NATURAL, TCP, JURIDICA)
-        person_types = {"NATURAL", "TCP", "JURIDICA"}
-
-        if tipo_relacion:
-            # Support comma-separated values (e.g., "PROVEEDOR,AMBAS")
-            tipos = [t.strip() for t in tipo_relacion.split(",") if t.strip()]
-            # Check if filtering by person type (NATURAL, TCP, JURIDICA)
-            if tipos and set(tipos).issubset(person_types):
-                statement = statement.where(Cliente.tipo_persona.in_(tipos))
-            else:
-                # Filter by relation type (CLIENTE, PROVEEDOR, AMBAS)
-                if len(tipos) == 1:
-                    statement = statement.where(Cliente.tipo_relacion == tipos[0])
-                elif len(tipos) > 1:
-                    statement = statement.where(Cliente.tipo_relacion.in_(tipos))
+        statement = _aplicar_filtros(
+            statement, tipo_relacion=tipo_relacion, search=search
+        )
 
         statement = statement.order_by(Cliente.id_cliente.desc()).offset(skip).limit(limit)
         results = await db.exec(statement)
@@ -157,13 +192,26 @@ class ClienteService:
         return [ClienteRead.model_validate(c) for c in db_clientes]
 
     @staticmethod
+    async def count_clientes(
+        db: AsyncSession,
+        tipo_relacion: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> int:
+        """Total con el mismo WHERE que get_clientes (header X-Total-Count)."""
+        from sqlalchemy import func
+
+        statement = select(func.count()).select_from(Cliente)
+        statement = _aplicar_filtros(
+            statement, tipo_relacion=tipo_relacion, search=search
+        )
+        result = await db.exec(statement)
+        return result.one()
+
+    @staticmethod
     async def update_cliente(
         db: AsyncSession, cliente_id: int, cliente_update: ClienteUpdate
     ) -> Optional[ClienteRead]:
         from src.models.cuenta import Cuenta
-
-        print(f"[DEBUG] update_cliente: cliente_id={cliente_id}")
-        print(f"[DEBUG] update_cliente: cliente_update type={type(cliente_update)}")
 
         db_cliente = await cliente_repo.get(db, id=cliente_id)
         if not db_cliente:
@@ -171,9 +219,6 @@ class ClienteService:
 
         # Detectar si es dict u objeto Pydantic
         if isinstance(cliente_update, dict):
-            print(
-                f"[DEBUG] update_cliente: Es dict, keys={list(cliente_update.keys())}"
-            )
             cuentas_data = cliente_update.get("cuentas")
             update_data = {
                 k: v
@@ -183,9 +228,6 @@ class ClienteService:
                 and v is not None
             }
         else:
-            print(
-                f"[DEBUG] update_cliente: Es Pydantic model, cuentas={cliente_update.cuentas}"
-            )
             cuentas_data = cliente_update.cuentas
             update_data = cliente_update.model_dump(
                 exclude={
@@ -197,9 +239,8 @@ class ClienteService:
                 exclude_none=True,
             )
 
-        print(f"[DEBUG] update_cliente: cuentas_data={cuentas_data}")
-
         # Update manual de campos (evitar usar repo.update con dict)
+        tipo_persona_anterior = db_cliente.tipo_persona
         for field, value in update_data.items():
             setattr(db_cliente, field, value)
         await db.flush()
@@ -228,9 +269,9 @@ class ClienteService:
             await valor_actual(db, cliente_id, campo_marcado) if campo_marcado else None
         )
 
-        # La fila tipo-específica se borra y se reinserta desde el payload. Si el
-        # payload no trae la especialidad, se arrastra la que ya tenía para no
-        # perderla al guardar cualquier otro dato del artista.
+        # Sólo se reemplaza la fila tipo-específica cuyo payload viene informado.
+        # Antes se borraban todas y, si el payload no traía los datos de la
+        # persona, se perdían al guardar cualquier otro campo del registro.
         especialidad_antes = await db.execute(
             text("SELECT id_especialidad FROM clientes_persona_natural"
                  " WHERE id_cliente = :id"),
@@ -238,45 +279,59 @@ class ClienteService:
         )
         especialidad_previa = especialidad_antes.scalar()
 
-        # Limpiar todas las tablas tipo-específicas
-        await db.execute(
-            text("DELETE FROM clientes_persona_natural WHERE id_cliente = :id"),
-            {"id": cliente_id},
-        )
-        await db.execute(
-            text("DELETE FROM clientes_persona_juridica WHERE id_cliente = :id"),
-            {"id": cliente_id},
-        )
-        await db.execute(
-            text("DELETE FROM cliente_tcp WHERE id_cliente = :id"), {"id": cliente_id}
-        )
+        datos_por_tipo = {
+            "NATURAL": cliente_natural_data,
+            "JURIDICA": cliente_juridica_data,
+            "TCP": cliente_tcp_data,
+        }
+        datos_tipo = datos_por_tipo.get(tipo)
 
-        if tipo == "NATURAL" and cliente_natural_data:
-            nat_dict = (
-                cliente_natural_data
-                if isinstance(cliente_natural_data, dict)
-                else cliente_natural_data.model_dump()
-            )
-            nat_dict["id_cliente"] = cliente_id
-            if nat_dict.get("id_especialidad") is None:
-                nat_dict["id_especialidad"] = especialidad_previa
-            db.add(ClienteNatural(**nat_dict))
-        elif tipo == "JURIDICA" and cliente_juridica_data:
-            jur_dict = (
-                cliente_juridica_data
-                if isinstance(cliente_juridica_data, dict)
-                else cliente_juridica_data.model_dump()
-            )
-            jur_dict["id_cliente"] = cliente_id
-            db.add(ClienteJuridica(**jur_dict))
-        elif tipo == "TCP" and cliente_tcp_data:
-            tcp_dict = (
-                cliente_tcp_data
-                if isinstance(cliente_tcp_data, dict)
-                else cliente_tcp_data.model_dump()
-            )
-            tcp_dict["id_cliente"] = cliente_id
-            db.add(ClienteTCP(**tcp_dict))
+        if (
+            "tipo_persona" in update_data
+            and tipo != tipo_persona_anterior
+            and not datos_tipo
+        ):
+            raise ValueError("Debe enviar los datos del nuevo tipo de persona")
+
+        if datos_tipo:
+            # Si cambió el tipo de persona no deben quedar filas huérfanas del
+            # tipo anterior; si no cambió, se reemplaza sólo la fila actual.
+            for tabla in (
+                "clientes_persona_natural",
+                "clientes_persona_juridica",
+                "cliente_tcp",
+            ):
+                await db.execute(
+                    text(f"DELETE FROM {tabla} WHERE id_cliente = :id"),
+                    {"id": cliente_id},
+                )
+
+            if tipo == "NATURAL":
+                nat_dict = (
+                    cliente_natural_data
+                    if isinstance(cliente_natural_data, dict)
+                    else cliente_natural_data.model_dump()
+                )
+                nat_dict["id_cliente"] = cliente_id
+                if nat_dict.get("id_especialidad") is None:
+                    nat_dict["id_especialidad"] = especialidad_previa
+                db.add(ClienteNatural(**nat_dict))
+            elif tipo == "JURIDICA":
+                jur_dict = (
+                    cliente_juridica_data
+                    if isinstance(cliente_juridica_data, dict)
+                    else cliente_juridica_data.model_dump()
+                )
+                jur_dict["id_cliente"] = cliente_id
+                db.add(ClienteJuridica(**jur_dict))
+            elif tipo == "TCP":
+                tcp_dict = (
+                    cliente_tcp_data
+                    if isinstance(cliente_tcp_data, dict)
+                    else cliente_tcp_data.model_dump()
+                )
+                tcp_dict["id_cliente"] = cliente_id
+                db.add(ClienteTCP(**tcp_dict))
 
         await db.flush()
 
@@ -290,7 +345,6 @@ class ClienteService:
                 await db.flush()
 
         # --- Procesar cuentas bancarias ---
-        print(f"[DEBUG] update_cliente: cuentas_data={cuentas_data}")
 
         if cuentas_data is not None:
             # Eliminar cuentas existentes para evitar duplicados
@@ -327,8 +381,6 @@ class ClienteService:
                 db.add(Cuenta(**cuenta_clean))
 
             await db.flush()
-        else:
-            print("[DEBUG] update_cliente: No se procesan cuentas (None)")
 
         # Commit all changes
         await db.commit()
@@ -352,6 +404,58 @@ class ClienteService:
 
     @staticmethod
     async def delete_cliente(db: AsyncSession, cliente_id: int) -> bool:
+        db_cliente = await cliente_repo.get(db, id=cliente_id)
+        if not db_cliente:
+            return False
+
+        # Tablas con FK sin CASCADE: si hay registros de negocio se bloquea el
+        # borrado con un mensaje claro en lugar de un error de integridad.
+        referencias = (
+            ("movimientos", "SELECT COUNT(*) FROM movimiento WHERE id_cliente = :id"),
+            (
+                "liquidaciones",
+                "SELECT COUNT(*) FROM liquidacion WHERE id_cliente = :id",
+            ),
+            (
+                "productos en liquidaciones",
+                "SELECT COUNT(*) FROM productos_en_liquidacion WHERE id_cliente = :id",
+            ),
+            (
+                "solicitudes de servicio",
+                "SELECT COUNT(*) FROM solicitud_servicio WHERE id_cliente = :id",
+            ),
+            (
+                "personas en etapas",
+                "SELECT COUNT(*) FROM persona_etapa WHERE id_persona = :id",
+            ),
+            (
+                "personas en liquidaciones",
+                "SELECT COUNT(*) FROM persona_liquidacion WHERE id_persona = :id",
+            ),
+        )
+        encontradas = []
+        for nombre, consulta in referencias:
+            total = (
+                await db.execute(text(consulta), {"id": cliente_id})
+            ).scalar() or 0
+            if total:
+                encontradas.append(nombre)
+        if encontradas:
+            raise ClienteConReferenciasError(encontradas)
+
+        # Datos propios del tercero: sus FK no tienen CASCADE, así que se
+        # eliminan antes que la fila principal.
+        for tabla in (
+            "clientes_persona_natural",
+            "clientes_persona_juridica",
+            "cliente_tcp",
+            "cuenta",
+        ):
+            await db.execute(
+                text(f"DELETE FROM {tabla} WHERE id_cliente = :id"),
+                {"id": cliente_id},
+            )
+
         await db.execute(
             text("DELETE FROM clientes WHERE id_cliente = :id"), {"id": cliente_id}
         )

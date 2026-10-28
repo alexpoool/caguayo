@@ -7,8 +7,8 @@ import {
   DateInput,
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
+  FormModal,
+  ConfirmModal,
 } from "../components/ui";
 import {
   contratosService,
@@ -17,13 +17,11 @@ import {
   ventasEfectivoService,
   clientesService,
   monedaService,
-  dependenciasService,
   configuracionService,
 } from "../services/api";
 import { useDependenciasFiltradas } from "../hooks/useDependenciasFiltradas";
 import type { Cliente } from "../types/ventas";
 import type { Moneda } from "../types/moneda";
-import type { Dependencia } from "../types/dependencia";
 import type {
   ContratoWithDetails,
   ContratoCreate,
@@ -33,13 +31,11 @@ import type {
 } from "../types/contrato";
 import {
   Plus,
-  Save,
   Trash2,
   Edit,
   FileText,
   Receipt,
   CreditCard,
-  ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { required, esFechaValida, fechaNoAnterior, seleccionValida } from "../utils/validacionFormularios";
@@ -48,9 +44,12 @@ import { required, esFechaValida, fechaNoAnterior, seleccionValida } from "../ut
 type View = "list" | "form";
 type TabType = "contratos" | "suplementos" | "facturas" | "efectivo";
 
+const VENTA_OPERACION_FORM_ID = "venta-operacion-form";
+
 export function VentasOperacionesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<View>("list");
+  const [eliminarModal, setEliminarModal] = useState<{ isOpen: boolean; id: number | null }>({ isOpen: false, id: null });
   const [tab, setTab] = useState<TabType>(() => {
     const t = searchParams.get("tab");
     if (
@@ -83,6 +82,7 @@ export function VentasOperacionesPage() {
     null,
   );
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const clienteRef = useRef<HTMLDivElement | null>(null);
@@ -111,6 +111,7 @@ export function VentasOperacionesPage() {
     else if (tab === "suplementos" && selectedContratoId) loadSuplementos();
     else if (tab === "facturas" && selectedContratoId) loadFacturas();
     else if (tab === "efectivo") loadVentasEfectivo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, selectedContratoId]);
 
 const loadInitialData = async () => {
@@ -208,6 +209,7 @@ const loadInitialData = async () => {
       toast.error(fieldErrors.join('\n• '));
       return;
     }
+    setIsSaving(true);
     try {
       if (tab === "contratos") {
         const data: ContratoCreate = {
@@ -222,9 +224,11 @@ const loadInitialData = async () => {
           documento_final: formData.documento_final,
           monto: Number(formData.monto) || 0,
         };
-        editingId
-          ? await contratosService.updateContrato(editingId, data)
-          : await contratosService.createContrato(data);
+        if (editingId) {
+          await contratosService.updateContrato(editingId, data);
+        } else {
+          await contratosService.createContrato(data);
+        }
         toast.success(editingId ? "Actualizado" : "Creado");
       } else if (tab === "suplementos") {
         const data = {
@@ -233,9 +237,11 @@ const loadInitialData = async () => {
           fecha: formData.fecha || new Date().toISOString().split("T")[0],
           documento: formData.documento,
         };
-        editingId
-          ? await suplementosService.updateSuplemento(editingId, data as any)
-          : await suplementosService.createSuplemento(data as any);
+        if (editingId) {
+          await suplementosService.updateSuplemento(editingId, data as any);
+        } else {
+          await suplementosService.createSuplemento(data as any);
+        }
         toast.success(editingId ? "Actualizado" : "Creado");
       } else if (tab === "facturas") {
         const data = {
@@ -245,9 +251,11 @@ const loadInitialData = async () => {
           observaciones: formData.observaciones,
           pago_actual: Number(formData.pago_actual) || 0,
         };
-        editingId
-          ? await facturasService.updateFactura(editingId, data as any)
-          : await facturasService.createFactura(data as any);
+        if (editingId) {
+          await facturasService.updateFactura(editingId, data as any);
+        } else {
+          await facturasService.createFactura(data as any);
+        }
         toast.success(editingId ? "Actualizado" : "Creado");
       } else if (tab === "efectivo") {
         const data = {
@@ -256,12 +264,11 @@ const loadInitialData = async () => {
           cajero: formData.cajero || "",
           id_dependencia: Number(formData.id_dependencia) || 1,
         };
-        editingId
-          ? await ventasEfectivoService.updateVentaEfectivo(
-              editingId,
-              data as any,
-            )
-          : await ventasEfectivoService.createVentaEfectivo(data as any);
+        if (editingId) {
+          await ventasEfectivoService.updateVentaEfectivo(editingId, data as any);
+        } else {
+          await ventasEfectivoService.createVentaEfectivo(data as any);
+        }
         toast.success(editingId ? "Actualizado" : "Creado");
       }
       setView("list");
@@ -272,11 +279,17 @@ const loadInitialData = async () => {
       else loadVentasEfectivo();
     } catch (error: any) {
       toast.error(error.message || "Error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Eliminar?")) return;
+    setEliminarModal({ isOpen: true, id });
+  };
+
+  const confirmarDelete = async (id: number) => {
+    if (!id) return;
     try {
       if (tab === "contratos") {
         await contratosService.deleteContrato(id);
@@ -534,38 +547,11 @@ const loadInitialData = async () => {
   );
 
   const renderForm = () => (
-    <>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">
-          {editingId ? "Editar" : "Nuevo"}{" "}
-          {tab === "contratos"
-            ? "Contrato"
-            : tab === "suplementos"
-              ? "Suplemento"
-              : tab === "facturas"
-                ? "Factura"
-                : "Venta en Efectivo"}
-        </h2>
-        <Button variant="outline" onClick={() => { setView("list"); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <FileText className="h-5 w-5 text-blue-600" />
-            {editingId ? "Editar" : "Nuevo"}{" "}
-            {tab === "contratos"
-              ? "Contrato"
-              : tab === "suplementos"
-                ? "Suplemento"
-                : tab === "facturas"
-                  ? "Factura"
-                  : "Venta en Efectivo"}
-          </CardTitle>
-        </CardHeader>
-      <CardContent className="p-6">
+      <form
+        id={VENTA_OPERACION_FORM_ID}
+        onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+        className="p-4 md:p-6"
+      >
         <div className="grid gap-6">
           {tab === "contratos" && (
             <>
@@ -842,33 +828,68 @@ const loadInitialData = async () => {
               </div>
             </>
           )}
-          <div className="flex gap-2 mt-8 pt-6 border-t">
-            <Button onClick={handleSave}>
-              <Save className="w-4 h-4 mr-2" />
-              Guardar
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setView("list");
-                resetForm();
-              }}
-            >
-              Cancelar
-            </Button>
-          </div>
         </div>
-      </CardContent>
-    </Card>
-    </>
+      </form>
   );
 
   return (
     <div className="p-6">
       <h1 className="text-xl font-bold mb-6">Ventas - Operaciones</h1>
       {renderTabs()}
-      {view === "list" && renderList()}
-      {view === "form" && renderForm()}
+      {renderList()}
+      <FormModal
+        isOpen={view === "form"}
+        onClose={() => { setView("list"); resetForm(); }}
+        title={`${editingId ? "Editar" : "Nuevo"} ${
+          tab === "contratos"
+            ? "Contrato"
+            : tab === "suplementos"
+              ? "Suplemento"
+              : tab === "facturas"
+                ? "Factura"
+                : "Venta en Efectivo"
+        }`}
+        icon={<FileText className="h-6 w-6" />}
+        size="xl"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView("list"); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={VENTA_OPERACION_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
+
+      {/* Confirmación de eliminación */}
+      <ConfirmModal
+        isOpen={eliminarModal.isOpen}
+        onClose={() => setEliminarModal({ isOpen: false, id: null })}
+        onConfirm={() => {
+          const id = eliminarModal.id;
+          setEliminarModal({ isOpen: false, id: null });
+          if (id) confirmarDelete(id);
+        }}
+        title="¿Eliminar registro?"
+        message="Esta acción no se puede deshacer. Los datos asociados se cancelan o quedan anulados para conservar la trazabilidad."
+        confirmText="Eliminar"
+        type="danger"
+      />
     </div>
   );
 }

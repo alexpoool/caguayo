@@ -1,26 +1,106 @@
 # -*- coding: utf-8 -*-
 """Orquestador del ETL de migración MariaDB -> PostgreSQL.
 
-    python main.py              simulación: no escribe nada en la base
-    python main.py --commit     ejecuta la migración por lotes
+    python main.py                simulación: no escribe nada en la base
+    python main.py --commit       ejecuta la migración por lotes
+
+    python main.py --instrucciones   qué hace falta para sacar los volcados
+    python main.py --generar-dumps   los extrae del MariaDB del legacy
+    python main.py --adoptar A B     instala dos volcados que ya tienes
 """
 import sys
 
+import config
 import db
+import geo
+from cliente_pivote import asegurar_pivote
 from config import TABLA_CLIENTES
+from diagnostico import Diagnostico
 from deduplicacion import valores_de
 from log import Registro, imprimir_resumen
 from migrar_artistas import cargar_artistas
 from migrar_catalogo import cargar_catalogo
+from migrar_contratos import cargar_contratos
 from migrar_grupos import cargar_grupos
 from migrar_clientes import cargar_clientes
 from migrar_corregidos import cargar_corregidos
 from migrar_cuentas import cargar_cuentas
 from migrar_especialidades import cargar_especialidades
 from migrar_cuentas_dependencia import cargar_cuentas_dependencia
+from migrar_liquidaciones import cargar_liquidaciones
+from migrar_liquidaciones_etapa import cargar_liquidaciones_etapa
+from migrar_monedas import MonedaEnUso, sembrar_monedas
+from migrar_solicitudes import cargar_solicitudes
+from migrar_etapas import cargar_etapas
+from migrar_suplementos import cargar_suplementos
 from migrar_tcp import cargar_tcp
 from migrar_usuarios import cargar_usuarios
 from verificar import verificar
+
+SOLO = ("--solo-corregidos", "--solo-cuentas", "--solo-usuarios",
+        "--solo-cuentas-dep", "--solo-especialidades", "--solo-catalogo",
+        "--solo-grupos", "--solo-liquidaciones", "--solo-contratos",
+        "--solo-suplementos", "--solo-solicitudes", "--solo-etapas",
+        "--solo-liquidaciones-etapa")
+
+
+def _dumps_necesarios(argv):
+    """Qué volcados hace falta para esta ejecución.
+
+    `config.CATALOGOS` es la respuesta: un volcado hace falta si algún catálogo
+    lo lee. Ahora mismo la Fase I lee `tipo_contrato` sólo del comercial, así
+    que `principal.sql` no se exige —sin él la Fase I migra `tipo_contrato` y se
+    salta `tipo_convenio`, con un WARNING en `migracion_log`.
+
+    El día que un catálogo vuelva a leer de la principal, esto se ajusta solo:
+    basta con que `CATALOGOS` lo mencione.
+    """
+    del argv  # la Catálogo ya decide; no hace falta mirar los flags
+    return ("comercial",)
+
+
+def _volcados(argv):
+    """`--generar-dumps` y `--adoptar`: preparar los ficheros del legacy."""
+    import generar_dumps
+
+    if "--instrucciones" in argv:
+        return generar_dumps.imprimir_instrucciones()
+
+    solo = [rol for flag, rol in (("--solo-comercial", "comercial"),
+                                  ("--solo-principal", "principal"))
+            if flag in argv]
+    roles = tuple(solo) if solo else ("comercial", "principal")
+    forzar = "--forzar" in argv
+
+    if "--adoptar" in argv:
+        origenes = argv[argv.index("--adoptar") + 1:argv.index("--adoptar") + 3]
+        if len(origenes) < 2:
+            print("--adoptar necesita dos rutas: COMERCIAL PRINCIPAL")
+            return 1
+        print("ADOPTANDO VOLCADOS EXISTENTES")
+        try:
+            for origen, rol in zip(origenes, roles):
+                generar_dumps.adoptar(origen, rol, forzar=forzar)
+        except generar_dumps.DumpInvalido as exc:
+            print("\nERROR: %s" % exc)
+            return 1
+        print("\nVolcados en %s. Ya se puede migrar sin exportar nada."
+              % config.DIR_DUMPS)
+        return 0
+
+    if "--generar-dumps" in argv:
+        print("GENERANDO VOLCADOS DEL LEGACY")
+        try:
+            for rol in roles:
+                generar_dumps.volcar(rol, forzar=forzar)
+        except generar_dumps.DumpInvalido as exc:
+            print("\nERROR: %s" % exc)
+            return 1
+        print("\nVolcados en %s. Siguiente paso: python main.py"
+              % config.DIR_DUMPS)
+        return 0
+
+    return None
 
 
 def _valores_migrados(pares):
@@ -60,13 +140,50 @@ def _fase_d_solo(registro, dry_run):
     print("CSV de rechazos: %s (%d filas)" % (ruta, total))
     print()
     print("=== VERIFICACIÓN POST-MIGRACIÓN ===")
-    verificar()
+    return 0 if verificar() else 1
+
+
+def _fase_aislada(titulo, correr, registro, dry_run):
+    """Imprime la fase, la ejecuta, y cierra el ciclo de log y verificación.
+
+    Es lo mismo que hacen las siete fases que ya tenían su `--solo-*`, pero en
+    una función. No se unifican con aquéllas porque cada una tiene algo
+    particular —la D lee el destino antes, la J además mueve usuarios— y tocar
+    siete bloques que hoy funcionan no compensa. Esto es sólo para las tres
+    nuevas, que sí son idénticas entre sí.
+    """
+    print(titulo)
+    correr()
+    print()
+    imprimir_resumen(registro)
+    print()
+    if dry_run:
+        print("Simulación completada. No se ha escrito nada.")
+        return 0
+    with db.conexion() as conn:
+        db.crear_log(conn)
+        with conn.cursor() as cur:
+            registro.volcar_db(cur)
+        conn.commit()
+    print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
+    print()
     return 0
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     dry_run = "--commit" not in argv
+
+    volcados = _volcados(argv)
+    if volcados is not None:
+        return volcados
+
+    try:
+        config.comprobar_dumps(_dumps_necesarios(argv))
+    except config.DumpAusente as exc:
+        print("\nERROR: %s" % exc)
+        return 1
+
     solo_corregidos = "--solo-corregidos" in argv
     solo_cuentas = "--solo-cuentas" in argv
     solo_usuarios = "--solo-usuarios" in argv
@@ -74,6 +191,12 @@ def main(argv=None):
     solo_especialidades = "--solo-especialidades" in argv
     solo_catalogo = "--solo-catalogo" in argv
     solo_grupos = "--solo-grupos" in argv
+    solo_liquidaciones = "--solo-liquidaciones" in argv
+    solo_liquidaciones_etapa = "--solo-liquidaciones-etapa" in argv
+    solo_contratos = "--solo-contratos" in argv
+    solo_suplementos = "--solo-suplementos" in argv
+    solo_solicitudes = "--solo-solicitudes" in argv
+    solo_etapas = "--solo-etapas" in argv
 
     print("=" * 66)
     print("  MIGRACIÓN MariaDB → PostgreSQL  (artista, cliente)")
@@ -83,6 +206,87 @@ def main(argv=None):
     print()
 
     registro = Registro()
+    # El autodiagnóstico se acumula en toda la ejecución y se imprime una vez, al
+    # final. Cada fase lo recibe por si quiere añadir sus comprobaciones.
+    diagnostico = Diagnostico()
+
+    # Se comprueba antes de nada, incluso en simulación: si los ids fijos de
+    # geo.py no apuntan a lo que deben, las fases siguientes escriben la
+    # provincia equivocada sin que ninguna salte. Mejor pararse aquí con el
+    # nombre de los dos municipios que no cuadran que migrar 1371 clientes mal.
+    print("=== COMPROBACIÓN GEOGRÁFICA ===")
+    with db.conexion() as conn:
+        geografia = db.nombres_geografia(conn)
+    problemas_geo = geo.verificar_mapas(
+        geografia["provincia"], geografia["municipio"])
+    if problemas_geo:
+        print("  FALLO: geo.py y el destino no coinciden. No se migra nada.")
+        print("  Los ids de provincia/municipio están reasignados; revisa el")
+        print("  orden de siembra de alembic/env.py antes de seguir.")
+        for etiqueta, id_legacy, id_destino, esperado, encontrado in problemas_geo:
+            print("    - %s legacy %-3s -> destino %-4s  esperaba %r, hay %r"
+                  % (etiqueta, id_legacy, id_destino, esperado, encontrado))
+        return 1
+    print("  geo.py coincide con el destino: %d municipios de referencia OK"
+          % len(geo.MUN_MAP))
+    print()
+
+    # Antes de cualquier fase: deja `moneda` con las cuatro monedas del destino
+    # (CUC, CUP, USD, EUR). Las fases K/L/M/O/P resuelven la moneda por símbolo
+    # contra esta tabla, así que tiene que estar lista antes de que corran, y
+    # también en los atajos --solo-*.
+    print("=== PASO 0: MONEDAS DEL DESTINO ===")
+    try:
+        sembrar_monedas(registro=registro, dry_run=dry_run)
+    except MonedaEnUso as exc:
+        print("  FALLO: %s" % exc)
+        return 1
+    print()
+
+    # Paso 0b: el cliente de rescate `SIN-CLIENTE`. Las Fases L y N cuelgan de
+    # él los contratos y solicitudes que no tienen cliente propio (o cuyo cliente
+    # no se puede recuperar ni por código ni por NIT); sin esa fila, con
+    # `contrato.id_cliente` NOT NULL, se descartarían. Va aquí, antes de los
+    # atajos --solo-*, para que también lo tengan.
+    print("=== PASO 0b: CLIENTE PIVOTE ===")
+    asegurar_pivote(registro=registro, dry_run=dry_run)
+    print()
+
+    if solo_liquidaciones_etapa:
+        return _fase_aislada(
+            "=== FASE P: LIQUIDACIONES DE LAS ETAPAS (aislada) ===",
+            lambda: cargar_liquidaciones_etapa(registro=registro, dry_run=dry_run),
+            registro, dry_run)
+
+    if solo_etapas:
+        return _fase_aislada(
+            "=== FASE O: ETAPAS, TAREAS Y REALIZADORES (aislada) ===",
+            lambda: cargar_etapas(registro=registro, dry_run=dry_run),
+            registro, dry_run)
+
+    if solo_solicitudes:
+        return _fase_aislada(
+            "=== FASE N: SOLICITUDES DEL LEGACY (aislada) ===",
+            lambda: cargar_solicitudes(registro=registro, dry_run=dry_run),
+            registro, dry_run)
+
+    if solo_suplementos:
+        return _fase_aislada(
+            "=== FASE M: SUPLEMENTOS DEL LEGACY (aislada) ===",
+            lambda: cargar_suplementos(registro=registro, dry_run=dry_run),
+            registro, dry_run)
+
+    if solo_contratos:
+        return _fase_aislada(
+            "=== FASE L: CONTRATOS DEL LEGACY (aislada) ===",
+            lambda: cargar_contratos(registro=registro, dry_run=dry_run),
+            registro, dry_run)
+
+    if solo_liquidaciones:
+        return _fase_aislada(
+            "=== FASE K: LIQUIDACIONES DEL LEGACY (aislada) ===",
+            lambda: cargar_liquidaciones(registro=registro, dry_run=dry_run),
+            registro, dry_run)
 
     if solo_grupos:
         print("=== FASE J: GRUPOS DEL LEGACY (aislada) ===")
@@ -100,11 +304,10 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_catalogo:
-        print("=== FASE I: CATÁLOGOS TIPO_CONTRATO / TIPO_CONVENIO (aislada) ===")
+        print("=== FASE I: CATÁLOGO TIPO_CONTRATO (aislada) ===")
         cargar_catalogo(registro=registro, dry_run=dry_run)
         print()
         imprimir_resumen(registro)
@@ -119,8 +322,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_especialidades:
         print("=== FASE H: ESPECIALIDADES DEL ARTISTA (aislada) ===")
@@ -138,8 +340,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_cuentas_dep:
         print("=== FASE G: CUENTAS DE LA DEPENDENCIA (aislada) ===")
@@ -157,8 +358,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_usuarios:
         print("=== FASE F: USUARIOS (aislada) ===")
@@ -176,8 +376,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_cuentas:
         print("=== FASE E: CUENTAS BANCARIAS (aislada) ===")
@@ -195,8 +394,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_corregidos:
         return _fase_d_solo(registro, dry_run)
@@ -248,7 +446,7 @@ def main(argv=None):
     cargar_especialidades(registro=registro, dry_run=dry_run)
     print()
 
-    print("=== FASE I: CATÁLOGOS TIPO_CONTRATO / TIPO_CONVENIO ===")
+    print("=== FASE I: CATÁLOGO TIPO_CONTRATO ===")
     cargar_catalogo(registro=registro, dry_run=dry_run)
     print()
 
@@ -256,14 +454,65 @@ def main(argv=None):
     cargar_grupos(registro=registro, dry_run=dry_run)
     print()
 
+    # K, L y M son el bloque de documentos comerciales del legacy. Las
+    # dependencias:
+    #   K -> clientes de la Fase A (artistas).   No depende de L.
+    #   L -> clientes de la Fase B.              No depende de K.
+    #   M -> los contratos de la L.              Ésta sí es una dependencia
+    #                                             real: el supplements cuelga
+    #                                             de un id_contrato que
+    #                                             asigna PostgreSQL, y sin L no
+    #                                             hay a qué colgarlo.
+    # K y L pueden ir en cualquier orden entre sí; M tiene que ir la última.
+    print("=== FASE K: LIQUIDACIONES DEL LEGACY ===")
+    cargar_liquidaciones(registro=registro, dry_run=dry_run)
+    print()
+
+    print("=== FASE L: CONTRATOS DEL LEGACY ===")
+    cargar_contratos(registro=registro, dry_run=dry_run)
+    print()
+
+    print("=== FASE M: SUPLEMENTOS DEL LEGACY ===")
+    cargar_suplementos(registro=registro, dry_run=dry_run)
+    print()
+
+    # N tiene que ir antes que O por los datos, no sólo por el orden: las etapas
+    # cuelgan de `solicitud_servicio`, y para llegar a la solicitud hay que pasar
+    # por el contrato. La O resuelve ese camino leyendo el destino, que ya tiene
+    # las solicitudes enlazadas y los contratos partidos por moneda.
+    print("=== FASE N: SOLICITUDES DEL LEGACY ===")
+    cargar_solicitudes(registro=registro, dry_run=dry_run, diag=diagnostico)
+    print()
+
+    print("=== FASE O: ETAPAS, TAREAS Y REALIZADORES ===")
+    cargar_etapas(registro=registro, dry_run=dry_run, diag=diagnostico)
+    print()
+
+    # P tiene que ir después de la O por los datos, no sólo por el orden: cada
+    # liquidación cuelga de una etapa y dice qué realizador se lleva el dinero. La
+    # etapa y el realizador los pone la O; la P los lee, no los decide. Sin la O
+    # antes no hay dónde colocar nada y las 4.362 salen descartadas.
+    print("=== FASE P: LIQUIDACIONES DE LAS ETAPAS ===")
+    cargar_liquidaciones_etapa(registro=registro, dry_run=dry_run)
+    print()
+
     print("=== RESUMEN DE LA MIGRACIÓN ===")
     imprimir_resumen(registro)
+    print()
+
+    diagnostico.imprimir()
     print()
 
     if dry_run:
         print("Simulación completada. No se ha escrito nada.")
         print("Ejecuta `python main.py --commit` para migrar.")
-        return 0
+        # En simulación el destino no se ha tocado, así que su estado no dice
+        # nada del resultado de esta migración. Se enseña igualmente, que es
+        # como se ve si arrastra restos de una pasada anterior, pero no cambia
+        # el código de salida: informa la simulación, falla la migración.
+        print("\n=== ESTADO ACTUAL DEL DESTINO (no es el resultado de esta "
+              "migración) ===")
+        return 0 if verificar() else 1
 
     with db.conexion() as conn:
         db.crear_log(conn)
@@ -276,8 +525,10 @@ def main(argv=None):
     print()
 
     print("=== VERIFICACIÓN POST-MIGRACIÓN ===")
-    verificar()
-    return 0
+    # El código de salida tiene que reflejar el resultado: antes se llamaba a
+    # verificar() y se devolvía 0 igual, así que un exit code 0 no significaba
+    # que la migración estuviera bien.
+    return 0 if verificar() else 1
 
 
 if __name__ == "__main__":

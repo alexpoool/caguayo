@@ -50,8 +50,12 @@ class Contrato(SQLModel, table=True):
             ForeignKey("clientes.id_cliente", ondelete="CASCADE"), nullable=False
         )
     )
-    nombre: str = Field(max_length=200)
+    nombre: str = Field(max_length=300)
     proforma: Optional[str] = Field(default=None, max_length=100)
+    #: El TEXTO del contrato, migrated del legacy. `proforma` de arriba NO es
+    #: esto: en la aplicación es el número de proforma, y meterle encima 50 KB de
+    #: HTML del legacy lo rompería.
+    texto_contrato: Optional[str] = Field(default=None)
     id_estado: int = Field(foreign_key="estado_contrato.id_estado_contrato")
     fecha: date = Field(default=date.today())
     vigencia: date
@@ -80,7 +84,7 @@ class Suplemento(SQLModel, table=True):
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_contrato: int = Field(foreign_key="contrato.id_contrato")
-    nombre: str = Field(max_length=200)
+    nombre: str = Field(max_length=300)
     id_estado: int = Field(foreign_key="estado_contrato.id_estado_contrato")
     fecha: date = Field(default=date.today())
     fecha_vigencia: date = Field()
@@ -109,6 +113,8 @@ class Factura(SQLModel, table=True):
     fecha: date = Field(default=date.today())
     monto: Decimal = Field(default=Decimal("0.00"))
     pago_actual: Decimal = Field(default=Decimal("0.00"))
+    # Borrado lógico: una factura con pagos/movimientos no se borra, se anula.
+    estado: str = Field(default="ACTIVA", max_length=20)
 
     contrato: "Contrato" = Relationship(back_populates="facturas")
     items_factura: List["ItemFactura"] = Relationship(back_populates="factura")

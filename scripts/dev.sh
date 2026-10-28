@@ -86,6 +86,14 @@ wait_for_port() {
 
 # ── Cargar .env ──────────────────────────────────────────────────────────
 load_env() {
+  # backend/.env es el dueño de la configuración de PostgreSQL. Se sourcea
+  # primero y el .env de la raíz después, de modo que lo que esté en ambos lo
+  # gane la raíz, como antes de mover las variables.
+  if [ -f backend/.env ]; then
+    set -a
+    source backend/.env
+    set +a
+  fi
   if [ -f .env ]; then
     set -a
     source .env

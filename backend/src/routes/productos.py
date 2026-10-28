@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
 import logging
@@ -35,8 +35,12 @@ async def read_productos(
     limit: int = 100,
     search: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     try:
+        response.headers["X-Total-Count"] = str(
+            await ProductosService.count_productos(db, search=search)
+        )
         return await ProductosService.get_productos(
             db, skip=skip, limit=limit, search=search
         )

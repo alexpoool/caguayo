@@ -1,7 +1,7 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import text
+from sqlalchemy import func, text, or_
 from typing import List, Optional, Any
 from decimal import Decimal
 from src.repository.base import CRUDBase
@@ -11,10 +11,12 @@ from src.utils.codigos_entidad import (
 )
 from src.models.contrato import (
     Contrato,
+    EstadoContrato,
     Suplemento,
     Factura,
     VentaEfectivo,
 )
+from src.models.cliente import Cliente
 from src.models.item_anexo import ItemAnexo
 from src.models.item_factura import ItemFactura
 from src.models.item_venta_efectivo import ItemVentaEfectivo
@@ -57,6 +59,7 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
         skip: int = 0,
         limit: int = 10000,
         id_cliente: Optional[int] = None,
+        search: Optional[str] = None,
     ) -> List[Contrato]:
         statement = (
             select(Contrato)
@@ -68,14 +71,89 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
             )
         )
 
+        # Los contratos anulados (borrado lógico con datos asociados) no se
+        # muestran en el listado.
+        estado_anulado = (
+            await db.exec(
+                select(EstadoContrato.id_estado_contrato).where(
+                    EstadoContrato.nombre == "ANULADO"
+                )
+            )
+        ).first()
+        if estado_anulado is not None:
+            statement = statement.where(Contrato.id_estado != estado_anulado)
+
         if id_cliente is not None:
             statement = statement.where(Contrato.id_cliente == id_cliente)
+
+        # Búsqueda por texto: código y nombre del contrato, nombre y código del
+        # cliente, y estado. Se hace en SQL y no en el cliente porque el
+        # listado llega paginado (100 por página): filtrar sólo lo cargado no
+        # encontraría un contrato que aún no se ha traído.
+        if search and search.strip():
+            patron = "%%%s%%" % search.strip()
+            statement = (
+                statement.join(
+                    Cliente, Cliente.id_cliente == Contrato.id_cliente
+                ).join(
+                    EstadoContrato,
+                    EstadoContrato.id_estado_contrato == Contrato.id_estado,
+                ).where(
+                    or_(
+                        Contrato.codigo.ilike(patron),
+                        Contrato.nombre.ilike(patron),
+                        Cliente.codigo.ilike(patron),
+                        Cliente.nombre.ilike(patron),
+                        EstadoContrato.nombre.ilike(patron),
+                    )
+                )
+            )
 
         statement = (
             statement.offset(skip).limit(limit).order_by(Contrato.id_contrato.desc())
         )
         results = await db.exec(statement)
         return results.all()
+
+    async def count_all(
+        self,
+        db: AsyncSession,
+        id_cliente: Optional[int] = None,
+        search: Optional[str] = None,
+    ) -> int:
+        """Total con el mismo WHERE que get_all_with_details (header X-Total-Count)."""
+        statement = select(func.count()).select_from(Contrato)
+        estado_anulado = (
+            await db.exec(
+                select(EstadoContrato.id_estado_contrato).where(
+                    EstadoContrato.nombre == "ANULADO"
+                )
+            )
+        ).first()
+        if estado_anulado is not None:
+            statement = statement.where(Contrato.id_estado != estado_anulado)
+        if id_cliente is not None:
+            statement = statement.where(Contrato.id_cliente == id_cliente)
+        if search and search.strip():
+            patron = "%%%s%%" % search.strip()
+            statement = (
+                statement.join(
+                    Cliente, Cliente.id_cliente == Contrato.id_cliente
+                ).join(
+                    EstadoContrato,
+                    EstadoContrato.id_estado_contrato == Contrato.id_estado,
+                ).where(
+                    or_(
+                        Contrato.codigo.ilike(patron),
+                        Contrato.nombre.ilike(patron),
+                        Cliente.codigo.ilike(patron),
+                        Cliente.nombre.ilike(patron),
+                        EstadoContrato.nombre.ilike(patron),
+                    )
+                )
+            )
+        result = await db.exec(statement)
+        return result.one()
 
     async def get_by_id_with_details(
         self, db: AsyncSession, id_contrato: int
@@ -210,6 +288,8 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
             .limit(limit)
             .order_by(Factura.id_factura.desc())
         )
+        # Las facturas anuladas (borrado lógico) no se muestran en el listado.
+        statement = statement.where(Factura.estado != "ANULADA")
         results = await db.exec(statement)
         return results.all()
 

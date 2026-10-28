@@ -59,6 +59,12 @@ class SolicitudServicioBase(SQLModel):
     id_usuario: Optional[int] = None
     aprobado: bool = False
     codigo_proyecto: Optional[str] = None
+    # Escritos por la migración, no por la aplicación. Van en el Base para que el
+    # `read` los devuelva y la pantalla pueda avisar de que el estado es
+    # provisional. `estado_por_revisar` no se manda en el `create` a propósito:
+    # sólo la migración los pone en True.
+    estado_por_revisar: bool = False
+    motivo_revision: Optional[str] = None
 
 
 class SolicitudServicioCreate(SolicitudServicioBase):
@@ -73,7 +79,6 @@ class SolicitudServicioUpdate(SQLModel):
     id_cliente: Optional[int] = None
     id_contrato: Optional[int] = None
     id_suplemento: Optional[int] = None
-    codigo_solicitud: Optional[str] = None
     nombres_rep: Optional[str] = None
     apellido1_rep: Optional[str] = None
     apellido2_rep: Optional[str] = None
@@ -88,7 +93,6 @@ class SolicitudServicioUpdate(SQLModel):
     material_asumido_x: Optional[bool] = None
     id_usuario: Optional[int] = None
     aprobado: Optional[bool] = None
-    codigo_proyecto: Optional[str] = None
 
 
 # ==========================================
@@ -169,6 +173,11 @@ class PersonaEtapaBase(SQLModel):
     id_moneda: Optional[int] = None
     liquidada: bool = False
     por_cobrar: Decimal = Decimal("0.00")
+    # Los escribe la migración, no la aplicación: sirven para que la pantalla
+    # avise de que la etapa de esta persona es una suposición. Van en el Base
+    # para que también los devuelva el `read`.
+    asignada_por_migracion: bool = False
+    motivo_asignacion: Optional[str] = None
 
 
 class PersonaEtapaCreate(PersonaEtapaBase):

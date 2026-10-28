@@ -3,6 +3,11 @@ const MESES = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
 
+const MESES_CORTOS = [
+  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+];
+
 const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 
 /**
@@ -77,6 +82,34 @@ export const formatFechaMesLargo = (valor: string | Date | null | undefined): st
   const p = partes(valor);
   if (!p) return '';
   return `${p[2]} de ${MESES[p[1] - 1]} de ${p[0]}`;
+};
+
+/**
+ * Formatea un rango de fechas de forma compacta: `18 oct – 22 oct 2026`.
+ * El anio se repite solo cuando las fechas caen en anios distintos
+ * (`18 dic 2026 – 5 ene 2027`). Si ambas fechas coinciden, devuelve una sola.
+ */
+export const formatRangoFechasCorto = (
+  inicio: string | Date | null | undefined,
+  fin: string | Date | null | undefined,
+): string => {
+  const desde = partes(inicio);
+  const hasta = partes(fin);
+  if (!desde || !hasta) return '';
+
+  const f = (p: [number, number, number], conAnio: boolean) =>
+    `${p[2]} ${MESES_CORTOS[p[1] - 1]}${conAnio ? ` ${p[0]}` : ''}`;
+
+  if (
+    desde[0] === hasta[0] &&
+    desde[1] === hasta[1] &&
+    desde[2] === hasta[2]
+  ) {
+    return f(desde, true);
+  }
+
+  const mismoAnio = desde[0] === hasta[0];
+  return `${f(desde, !mismoAnio)} – ${f(hasta, true)}`;
 };
 
 /**

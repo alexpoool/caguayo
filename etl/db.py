@@ -17,6 +17,7 @@ from config import (
     DIR_SQL,
     POSTGRES,
     TABLA_CLIENTES,
+    TABLA_CONTRATO,
     TABLA_CUENTA,
     TABLA_CUENTA_DEP,
     TABLA_ESPECIALIDAD,
@@ -198,6 +199,22 @@ def valores_existentes(conn, tabla, columna):
         return {f[0] for f in cur.fetchall()}
 
 
+def nombres_geografia(conn):
+    """{id: nombre} de `provincia` y de `municipio`, para contrastar geo.py.
+
+    Los mapas de `geo.py` son ids fijos que dependen del orden de siembra. Esta
+    función existe para que ese supuesto se pueda comprobar contra la base viva
+    en vez de confiar en él.
+    """
+    salida = {}
+    with conn.cursor() as cur:
+        for tabla, clave in (("provincia", "id_provincia"),
+                             ("municipio", "id_municipio")):
+            cur.execute("SELECT {c}, nombre FROM {t}".format(c=clave, t=tabla))
+            salida[tabla] = {f[0]: f[1] for f in cur.fetchall()}
+    return salida
+
+
 def pares_existentes_cuenta(conn, tabla=TABLA_CUENTA):
     """Pares (id_cliente, numero_cuenta) ya presentes en `cuenta`.
 
@@ -218,6 +235,19 @@ def mapa_codigo_a_cliente(conn):
     with conn.cursor() as cur:
         cur.execute("SELECT codigo, id_cliente FROM {t}".format(t=TABLA_CLIENTES))
         return {f[0]: f[1] for f in cur.fetchall()}
+
+
+def mapa_nit_a_cliente(conn):
+    """`clientes.nit` -> `id_cliente`.
+
+    Alternativa de `mapa_codigo_a_cliente` para recuperar un cliente que la Fase
+    B descartó por código duplicado: el superviviente de la deduplicación tiene
+    el mismo NIT, y `clientes.nit` es UNIQUE, así que el mapa es 1:1. Los NIT en
+    NULL se saltan (el legacy no los tiene, pero el pivote podría).
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT nit, id_cliente FROM {t}".format(t=TABLA_CLIENTES))
+        return {f[0]: f[1] for f in cur.fetchall() if f[0]}
 
 
 def columnas(conn, tabla):
@@ -398,3 +428,55 @@ def clientes_ya_migrados(conn):
         if columna in columnas(conn, tabla):
             valores |= {v for v in valores_existentes(conn, tabla, columna) if v}
     return valores
+
+
+def monedas_por_simbolo(conn) -> dict:
+    """`moneda.simbolo` -> `id_moneda`, para las fases K, L y M.
+
+    Se busca por SÍMBOLO y no por nombre: el legacy guarda la moneda como
+    'CUC'/'CUP' en un `varchar(3)`, que es el símbolo, y el destino tiene
+    'USD'/'CUP' como `simbolo` corto y un `nombre` legible. El símbolo es
+    además UNIQUE, así que la clave no puede repetirse.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT simbolo, id_moneda FROM moneda")
+        return {(s or "").strip().upper(): i for s, i in cur.fetchall()}
+
+
+def estados_contrato(conn) -> dict:
+    """`estado_contrato.nombre` -> `id_estado_contrato`.
+
+    Los ids no se transportan: el catálogo del legacy (`estado_cs`) y el del
+    destino no comparten ni un nombre. Lo que hay es una traducción de uno a
+    otro, y es la fase L la que la aplica; aquí sólo se lee el destino por
+    nombre, que es lo único que sobrevive entre las dos bases.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT nombre, id_estado_contrato FROM estado_contrato")
+        return {n: i for n, i in cur.fetchall() if n}
+
+
+def tipos_contrato(conn) -> dict:
+    """`tipo_contrato.nombre` -> `id_tipo_contrato`.
+
+    Como el resto de catálogos: por nombre, nunca por id. Los ids del legacy y
+    los del destino no coinciden —el 3 de una base y el 3 de la otra no son el
+    mismo tipo— y la Fase L traduce por el nombre normalizado.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT nombre, id_tipo_contrato FROM tipo_contrato")
+        return {n: i for n, i in cur.fetchall() if n}
+
+
+def codigos_de_contrato(conn) -> dict:
+    """`contrato.codigo` -> `id_contrato` de los contratos ya migrados.
+
+    La Fase M lo usa para colgar cada suplemento de su contrato: el suplemento no
+    trae el código de su contrato, sólo su id del legacy, y los ids no se
+    transportan. Se indexa por el código que la Fase L le calculó a cada
+    contrato, que es la única forma de emparejar los dos lados.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT codigo, id_contrato FROM %s WHERE codigo IS NOT NULL"
+                    % TABLA_CONTRATO)
+        return {c: i for c, i in cur.fetchall() if c}

@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Settings,
@@ -24,10 +25,7 @@ import {
   Wallet,
   AlertCircle,
   Search,
-  ChevronLeft,
-  ChevronRight,
   Palette,
-  Database,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -57,7 +55,6 @@ import {
   tipoEntidadService,
   dj08Service,
 } from "../services/api";
-import { MigracionLegacy } from "./migracion/MigracionLegacy";
 import type {
   ActividadEconomicaInput,
   TributoInput,
@@ -80,8 +77,7 @@ type ConfigSubTabType =
   | "tipo-entidad"
   | "dj08-actividades"
   | "dj08-tributos"
-  | "especialidades"
-  | "migracion";
+  | "especialidades";
 
 const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-contrato", label: "Tipos de Contrato" },
@@ -91,12 +87,33 @@ const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-proveedores", label: "Tipos de Proveedores" },
   { id: "tipo-convenios", label: "Tipos de Convenio" },
   { id: "tipo-dependencia", label: "Tipos de Dependencia" },
+  { id: "tipo-cuenta", label: "Tipos de Cuenta" },
   { id: "tipo-entidad", label: "Tipos de Entidad" },
   { id: "dj08-actividades", label: "Actividades Económicas" },
   { id: "dj08-tributos", label: "Tributos" },
   { id: "especialidades", label: "Especialidades" },
-  { id: "migracion", label: "Migración" },
 ];
+
+/** Slug de URL de cada pestaña (`/configuracion/<slug>`). */
+const CONFIG_SLUGS: Record<ConfigSubTabType, string> = {
+  "tipo-contrato": "tipos-contrato",
+  "estado-contrato": "estados-contrato",
+  categorias: "categorias",
+  subcategorias: "subcategorias",
+  "tipo-proveedores": "tipos-proveedores",
+  "tipo-convenios": "tipos-convenio",
+  "tipo-dependencia": "tipos-dependencia",
+  "tipo-cuenta": "tipos-cuenta",
+  "tipo-entidad": "tipos-entidad",
+  "dj08-actividades": "actividades-economicas",
+  "dj08-tributos": "tributos",
+  especialidades: "especialidades",
+};
+
+/** Inverso de `CONFIG_SLUGS`: slug → pestaña. */
+const CONFIG_TABS = Object.fromEntries(
+  Object.entries(CONFIG_SLUGS).map(([tab, slug]) => [slug, tab]),
+) as Record<string, ConfigSubTabType>;
 
 /** 1234.5 -> "1.234,50" (montos de los catálogos DJ-08). */
 const fmtMonto = (valor: unknown) =>
@@ -219,8 +236,27 @@ function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
 export function ConfiguracionPage() {
   const queryClient = useQueryClient();
-  const [activeConfigSubTab, setActiveConfigSubTab] =
-    useState<ConfigSubTabType>("tipo-contrato");
+  const navigate = useNavigate();
+  const { pagina } = useParams<{ pagina?: string }>();
+  // Cada catálogo tiene su propia URL (`/configuracion/<pagina>`); `?tab=`
+  // se mantiene como alias para enlaces antiguos.
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tabDesdeQuery = configSubTabs.some((tab) => tab.id === tabParam)
+    ? (tabParam as ConfigSubTabType)
+    : undefined;
+  const activeConfigSubTab: ConfigSubTabType =
+    (pagina ? CONFIG_TABS[pagina] : undefined) ??
+    tabDesdeQuery ??
+    "tipo-contrato";
+  const currentSubTab = configSubTabs.find((t) => t.id === activeConfigSubTab);
+
+  // Canoniza la URL: sin página o con página desconocida se redirige al slug
+  // de la pestaña activa; un `?tab=` antiguo se traduce a su slug.
+  useEffect(() => {
+    if (pagina && CONFIG_TABS[pagina]) return;
+    navigate(`/configuracion/${CONFIG_SLUGS[activeConfigSubTab]}`, { replace: true });
+  }, [pagina, activeConfigSubTab, navigate]);
   const [searchTerm, setSearchTerm] = useState("");
   const [modalType, setModalType] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -235,39 +271,8 @@ export function ConfiguracionPage() {
     item: any | null;
   }>({ isOpen: false, item: null });
 
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const checkScroll = useCallback(() => {
-    const el = tabsRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 2);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
-  }, []);
-
-  useEffect(() => {
-    const el = tabsRef.current;
-    if (!el) return;
-    checkScroll();
-    el.addEventListener("scroll", checkScroll, { passive: true });
-    window.addEventListener("resize", checkScroll);
-    return () => {
-      el.removeEventListener("scroll", checkScroll);
-      window.removeEventListener("resize", checkScroll);
-    };
-  }, [checkScroll]);
-
-  const scrollTabs = (direction: "left" | "right") => {
-    const el = tabsRef.current;
-    if (!el) return;
-    const amount = 180;
-    el.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
-  };
-
   const {
     data: tiposContrato = [],
-    isLoading: loadingTiposContrato,
     refetch: refetchTiposContrato,
   } = useQuery({
     queryKey: ["tiposContrato"],
@@ -276,7 +281,6 @@ export function ConfiguracionPage() {
 
   const {
     data: estadosContrato = [],
-    isLoading: loadingEstadosContrato,
     refetch: refetchEstadosContrato,
   } = useQuery({
     queryKey: ["estadosContrato"],
@@ -285,7 +289,6 @@ export function ConfiguracionPage() {
 
   const {
     data: categorias = [],
-    isLoading: loadingCategorias,
     refetch: refetchCategorias,
   } = useQuery({
     queryKey: ["categorias"],
@@ -294,7 +297,6 @@ export function ConfiguracionPage() {
 
   const {
     data: subcategorias = [],
-    isLoading: loadingSubcategorias,
     refetch: refetchSubcategorias,
   } = useQuery({
     queryKey: ["subcategorias"],
@@ -303,7 +305,6 @@ export function ConfiguracionPage() {
 
   const {
     data: tiposProveedor = [],
-    isLoading: loadingTiposProveedor,
     refetch: refetchTiposProveedor,
   } = useQuery({
     queryKey: ["tiposProveedor"],
@@ -312,7 +313,6 @@ export function ConfiguracionPage() {
 
   const {
     data: tiposConvenio = [],
-    isLoading: loadingTiposConvenio,
     refetch: refetchTiposConvenio,
   } = useQuery({
     queryKey: ["tiposConvenio"],
@@ -321,7 +321,6 @@ export function ConfiguracionPage() {
 
   const {
     data: especialidades = [],
-    isLoading: loadingEspecialidades,
     refetch: refetchEspecialidades,
   } = useQuery({
     queryKey: ["especialidades"],
@@ -330,7 +329,6 @@ export function ConfiguracionPage() {
 
   const {
     data: tiposDependencia = [],
-    isLoading: loadingTiposDependencia,
     refetch: refetchTiposDependencia,
   } = useQuery({
     queryKey: ["tiposDependencia"],
@@ -339,7 +337,6 @@ export function ConfiguracionPage() {
 
 const {
     data: tiposCuenta = [],
-    isLoading: loadingTiposCuenta,
     refetch: refetchTiposCuenta,
   } = useQuery({
     queryKey: ["tiposCuenta"],
@@ -349,7 +346,6 @@ const {
 
   const {
     data: tiposEntidad = [],
-    isLoading: loadingTiposEntidad,
     refetch: refetchTiposEntidad,
   } = useQuery({
     queryKey: ["tiposEntidad"],
@@ -358,7 +354,6 @@ const {
 
   const {
     data: dj08Actividades = [],
-    isLoading: loadingDj08Actividades,
     refetch: refetchDj08Actividades,
   } = useQuery({
     queryKey: ["dj08Actividades"],
@@ -367,26 +362,11 @@ const {
 
   const {
     data: dj08Tributos = [],
-    isLoading: loadingDj08Tributos,
     refetch: refetchDj08Tributos,
   } = useQuery({
     queryKey: ["dj08Tributos"],
     queryFn: () => dj08Service.listarTributos(),
   });
-
-  const isAnyLoading =
-    loadingTiposContrato ||
-    loadingEstadosContrato ||
-    loadingCategorias ||
-    loadingSubcategorias ||
-    loadingTiposProveedor ||
-    loadingTiposConvenio ||
-    loadingTiposDependencia ||
-    loadingTiposCuenta ||
-    loadingTiposEntidad ||
-    loadingDj08Actividades ||
-    loadingDj08Tributos ||
-    loadingEspecialidades;
 
   // Mutations para tipos de contrato
   const createTipoContrato = useMutation({
@@ -1239,7 +1219,6 @@ const {
 
   const isSubcategoria = activeConfigSubTab === "subcategorias";
   const isEspecialidades = activeConfigSubTab === "especialidades";
-  const isMigracion = activeConfigSubTab === "migracion";
   const isDj08Catalogo =
     activeConfigSubTab === "dj08-actividades" ||
     activeConfigSubTab === "dj08-tributos";
@@ -1649,7 +1628,6 @@ const {
                     variant="outline"
                     onClick={() => setEditingItem(null)}
                   >
-                    <X className="h-4 w-4 mr-2" />
                     Cancelar
                   </Button>
                 )}
@@ -1810,24 +1788,6 @@ const {
   };
 
   const renderConfigListView = () => {
-    // La sub-pestaña Importar no es un catálogo más: no tiene tabla, buscador,
-    // botón "Nuevo" ni modal de edición. Devolviendo aquí antes de todo eso, no
-    // hay que añadir una condición en cada uno.
-    if (isMigracion) {
-      return (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-slate-600" />
-            <h2 className="text-lg font-bold text-gray-900">Migración</h2>
-          </div>
-          <p className="text-sm text-gray-500">
-            Migra el legacy completo. Sólo inserta: nunca borra ni actualiza.
-          </p>
-          <MigracionLegacy />
-        </div>
-      );
-    }
-
     const currentItems = getItems();
     const filteredItems = currentItems.filter(
       (item: any) =>
@@ -1835,103 +1795,27 @@ const {
         item.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()),
     );
-    const currentSubTab = configSubTabs.find(
-      (t) => t.id === activeConfigSubTab,
-    );
 
     return (
       <div className="space-y-4 animate-fade-in-up">
         {/* Header de la sección */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className={`p-2 rounded-lg ${
-                activeConfigSubTab === "tipo-contrato"
-                  ? "bg-blue-100"
-                  : activeConfigSubTab === "estado-contrato"
-                    ? "bg-green-100"
-                    : activeConfigSubTab === "categorias"
-                      ? "bg-purple-100"
-                      : activeConfigSubTab === "subcategorias"
-                        ? "bg-orange-100"
-                        : activeConfigSubTab === "tipo-proveedores"
-                          ? "bg-red-100"
-                          : activeConfigSubTab === "tipo-convenios"
-                            ? "bg-teal-100"
-                            : activeConfigSubTab === "tipo-dependencia"
-                              ? "bg-indigo-100"                            : activeConfigSubTab === "tipo-cuenta"
-                              ? "bg-cyan-100"
-                              : activeConfigSubTab === "dj08-actividades"
-                                ? "bg-amber-100"
-                                : activeConfigSubTab === "dj08-tributos"
-                                  ? "bg-cyan-100"
-                                  : "bg-rose-100"
-              }`}
-            >
-              {activeConfigSubTab === "tipo-contrato" && (
-                <ScrollText className="w-5 h-5 text-blue-600" />
-              )}
-              {activeConfigSubTab === "estado-contrato" && (
-                <ToggleLeft className="w-5 h-5 text-green-600" />
-              )}
-              {activeConfigSubTab === "categorias" && (
-                <FolderTree className="w-5 h-5 text-purple-600" />
-              )}
-              {activeConfigSubTab === "subcategorias" && (
-                <Tag className="w-5 h-5 text-orange-600" />
-              )}
-              {activeConfigSubTab === "tipo-proveedores" && (
-                <Truck className="w-5 h-5 text-red-600" />
-              )}
-              {activeConfigSubTab === "tipo-convenios" && (
-                <FileText className="w-5 h-5 text-teal-600" />
-              )}
-              {activeConfigSubTab === "tipo-dependencia" && (
-                <BuildingIcon className="w-5 h-5 text-indigo-600" />
-              )}
-              {activeConfigSubTab === "tipo-cuenta" && (
-                <Wallet className="w-5 h-5 text-cyan-600" />
-              )}
-              {activeConfigSubTab === "tipo-entidad" && (
-                <BuildingIcon className="w-5 h-5 text-rose-600" />
-              )}
-              {activeConfigSubTab === "dj08-actividades" && (
-                <Briefcase className="w-5 h-5 text-amber-600" />
-              )}
-              {activeConfigSubTab === "dj08-tributos" && (
-                <Coins className="w-5 h-5 text-cyan-600" />
-              )}
-              {activeConfigSubTab === "especialidades" && (
-                <Palette className="w-5 h-5 text-fuchsia-600" />
-              )}
-              {isMigracion && <Database className="w-5 h-5 text-slate-600" />}
-            </div>
-            <h2 className="text-lg font-bold text-gray-900">
-              {currentSubTab?.label}
-            </h2>
-            {isAnyLoading ? (
-              <span className="text-sm text-blue-500">Cargando...</span>
-            ) : (
-              <span className="text-sm text-gray-500">
-                ({filteredItems.length} elementos)
-              </span>
-            )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="relative min-w-[12rem] max-w-md flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
-          <Button onClick={() => openModal(activeConfigSubTab)}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button
+            onClick={() => openModal(activeConfigSubTab)}
+            className={`gap-2 bg-gradient-to-r ${getButtonGradient()} text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300`}
+          >
+            <Plus className="h-4 w-4" />
             Nuevo
           </Button>
-        </div>
-
-        {/* Buscador */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Buscar..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
         </div>
 
         {/* Tabla */}
@@ -2122,63 +2006,15 @@ const {
           <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded shadow-lg">
             <Settings className="h-5 w-5 text-white" />
           </div>
-          <div className="flex items-baseline">
-            <h1 className="text-xl font-bold text-gray-900">Administración</h1>
-            <p className="text-gray-500 text-sm">Gestión del sistema</p>
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-xl font-bold text-gray-900">{currentSubTab?.label}</h1>
+            <p className="text-gray-500 text-sm">Administración</p>
           </div>
         </div>
       </div>
 
-      {/* Sub-tabs de configuración */}
-      <div className="relative flex items-center border-b bg-white rounded-t-lg">
-        {/* Arrow left */}
-        {canScrollLeft && (
-          <button
-            onClick={() => scrollTabs("left")}
-            className="absolute left-0 z-10 flex items-center justify-center w-8 h-full bg-gradient-to-r from-white via-white/90 to-transparent hover:bg-gray-50 transition-colors"
-            aria-label="Desplazar a la izquierda"
-          >
-            <ChevronLeft className="h-4 w-4 text-gray-500" />
-          </button>
-        )}
-
-        {/* Tabs container */}
-        <div
-          ref={tabsRef}
-          className="flex gap-1 overflow-x-auto hide-scrollbar px-2 pt-2 flex-1"
-        >
-          {configSubTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveConfigSubTab(tab.id);
-                setSearchTerm("");
-              }}
-              className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeConfigSubTab === tab.id
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Arrow right */}
-        {canScrollRight && (
-          <button
-            onClick={() => scrollTabs("right")}
-            className="absolute right-0 z-10 flex items-center justify-center w-8 h-full bg-gradient-to-l from-white via-white/90 to-transparent hover:bg-gray-50 transition-colors"
-            aria-label="Desplazar a la derecha"
-          >
-            <ChevronRight className="h-4 w-4 text-gray-500" />
-          </button>
-        )}
-      </div>
-
       {/* Vista de lista */}
-      <div className="bg-white rounded-b-lg rounded-tr-lg p-6 border border-t-0">
+      <div className="bg-white rounded-lg p-6 border">
         {renderConfigListView()}
       </div>
 

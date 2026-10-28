@@ -736,6 +736,8 @@ async def get_informe_desempeno(
             SolicitudServicio.codigo_proyecto,
             SolicitudServicio.descripcion.label("proyecto_descripcion"),
             SolicitudServicio.fecha_solicitud,
+            Moneda.nombre.label("moneda_nombre"),
+            Moneda.simbolo.label("moneda_simbolo"),
         )
         .join(Etapa, PersonaEtapa.id_etapa == Etapa.id_etapa)
         .join(
@@ -745,6 +747,11 @@ async def get_informe_desempeno(
         .join(
             Cliente,
             PersonaEtapa.id_persona == Cliente.id_cliente,
+        )
+        .join(
+            Moneda,
+            PersonaEtapa.id_moneda == Moneda.id_moneda,
+            isouter=True,
         )
     )
 
@@ -780,6 +787,7 @@ async def get_informe_desempeno(
                 "etapa_valor": float(r.etapa_valor),
                 "cobro": float(pe.cobro),
                 "por_cobrar": float(pe.por_cobrar),
+                "moneda": r.moneda_simbolo or "",
                 "fecha_pago": r.fecha_pago,
                 "pagada": r.pagada,
                 "fecha_solicitud": r.fecha_solicitud,

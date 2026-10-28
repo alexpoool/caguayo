@@ -1,7 +1,8 @@
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from src.database.connection import get_auth_session, get_session
 from src.services.liquidacion_service import liquidacion_service
 from src.core.exceptions import BusinessLogicError, NotFoundError, ValidationError
@@ -26,9 +27,15 @@ async def listar_liquidaciones(
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar todas las liquidaciones con paginación."""
     try:
+        response.headers["X-Total-Count"] = str(
+            await liquidacion_service.count_liquidaciones(
+                db, cliente_id=cliente_id
+            )
+        )
         return await liquidacion_service.get_liquidaciones(db, skip=skip, limit=limit, cliente_id=cliente_id)
     except Exception as e:
         logger.error("Error al listar liquidaciones", exc_info=True)
@@ -41,8 +48,14 @@ async def listar_liquidaciones_pendientes(
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar liquidaciones pendientes."""
+    response.headers["X-Total-Count"] = str(
+        await liquidacion_service.count_liquidaciones(
+            db, cliente_id=cliente_id, variante="pendientes"
+        )
+    )
     return await liquidacion_service.get_liquidaciones_pendientes(
         db, skip=skip, limit=limit, cliente_id=cliente_id
     )
@@ -54,8 +67,14 @@ async def listar_liquidaciones_liquidadas(
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar liquidaciones liquidadas."""
+    response.headers["X-Total-Count"] = str(
+        await liquidacion_service.count_liquidaciones(
+            db, cliente_id=cliente_id, variante="liquidadas"
+        )
+    )
     return await liquidacion_service.get_liquidaciones_liquidadas(
         db, skip=skip, limit=limit, cliente_id=cliente_id
     )
@@ -203,6 +222,12 @@ async def eliminar_liquidacion(
         raise
     except (BusinessLogicError, ValidationError) as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la liquidación tiene registros asociados",
+        )
     except Exception as e:
         logger.error("Error al eliminar liquidación", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")

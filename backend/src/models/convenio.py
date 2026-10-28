@@ -25,6 +25,9 @@ class Convenio(SQLModel, table=True):
     vigencia: date
     id_tipo_convenio: int = Field(foreign_key="tipo_convenio.id_tipo_convenio")
     codigo: Optional[str] = Field(default=None, max_length=50)
+    # Borrado lógico: un convenio con anexos, liquidaciones o movimientos pasa
+    # a estado ANULADO al "eliminarse", para no romper la trazabilidad.
+    estado: str = Field(default="ACTIVO", max_length=20)
 
     cliente: Optional["Cliente"] = Relationship(back_populates="convenios")
     tipo_convenio: Optional["TipoConvenio"] = Relationship(back_populates="convenios")

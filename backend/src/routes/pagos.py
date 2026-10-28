@@ -48,4 +48,5 @@ async def eliminar_pago(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al eliminar pago: {str(e)}")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

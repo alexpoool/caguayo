@@ -41,8 +41,21 @@ def preparar(registro: Registro, codigos_ya_migrados=(), nits_ya_migrados=(),
 
     sin_codigo = [f for f in filas if not no_vacio(f.get("codigo"))]
     for fila in sin_codigo:
-        registro.descarte(ORIGEN_CLIENTE, fila["_id"], nombre_cliente(fila),
-                          "codigo vacio sin fallback", None)
+        # Antes esto era un descarte y las cuatro filas no llegaban nunca a
+        # PostgreSQL. Pero sus contratos sí: son los que cuelgan del puente
+        # `solicitud_sc`, y sin el cliente la Fase L no tiene a quién apuntar y
+        # los descarta también. Aquí se les inventa un código con el prefijo LEG,
+        # que no colisiona con ninguno de los 561 `codigo` ni con los 873
+        # `codigo_exp` de los artistas: ninguno empieza por LEG.
+        #
+        # Ojo con lo que arrastra: `reglas._mapeo_cliente` hace `nit = nit or
+        # codigo`, así que el NIT de las que no lo tienen queda con el propio
+        # código inventado. Se avisa con un WARNING para que no se lea como un
+        # NIT real.
+        codigo = _codigo_de_rescate(fila)
+        fila["codigo"] = codigo
+        registro.warning(ORIGEN_CLIENTE, fila["_id"], nombre_cliente(fila),
+                         "codigo vacio en el legacy", "se le asigna %s" % codigo)
     filas = [f for f in filas if no_vacio(f.get("codigo"))]
 
     sin_nit = [f for f in filas if not (no_vacio(f.get("nit")) or no_vacio(f.get("codigo")))]
@@ -116,6 +129,17 @@ def _con_nit(fila):
     copia = dict(fila)
     copia["nit"] = no_vacio(fila.get("nit")) or no_vacio(fila.get("codigo"))
     return copia
+
+
+def _codigo_de_rescate(fila):
+    """El código que se le pone a un cliente del legacy que vino sin él.
+
+    `LEG-{id_cliente}`: el id del legacy va dentro porque en esta tabla los ids
+    NO significan lo mismo que en el destino, pero eso da igual — no se
+    transporta a ninguna parte, sólo sirve para que la fila tenga una clave
+    única y rastreable hasta su origen.
+    """
+    return "LEG-%s" % fila["_id"]
 
 
 def nombre_cliente(fila):

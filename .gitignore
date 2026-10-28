@@ -72,4 +72,3 @@ etl/dumps/*
 # Backups automáticos de BDs de dependencias creados desde el panel
 # (Respaldos) o por el job programado: contienen datos, nunca se versionan.
 .respaldos/automaticos/*
->>>>>>> 8278734 (backups: gestión de respaldos y restauración por dependencia (funcionalidad 'backups'))

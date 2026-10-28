@@ -1,23 +1,31 @@
 import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useClientesLogic } from "./clientes/hooks/useClientesLogic";
-import { ClienteForm } from "./clientes/components/form/ClienteForm";
+import { ClienteFormModal } from "./clientes/components/modals/ClienteFormModal";
 import { ClientesList } from "./clientes/components/list/ClientesList";
 import { ConfirmModal } from "../components/ui";
 
+// La misma página se usa en /clientes, /venta/clientes, /compra/clientes y
+// /compra/proveedores. Al cambiar de ruta React reutiliza el componente y su
+// estado, lo que mostraba la lista de clientes en la vista de proveedores (y
+// viceversa) hasta que llegaba la nueva consulta. La key fuerza un montaje
+// limpio en cada ruta.
 export function ClientesPage() {
+  const { pathname, search } = useLocation();
+  return <ClientesPageContent key={`${pathname}${search}`} />;
+}
+
+function ClientesPageContent() {
   const {
-    view,
-    setView,
+    isFormOpen,
+    openForm,
+    closeForm,
     isProveedorView,
     editingCliente,
     setEditingCliente,
-    tipoPersona,
     setTipoPersona,
-    datosNatural,
     setDatosNatural,
-    datosJuridica,
     setDatosJuridica,
-    datosTCP,
     setDatosTCP,
     setCuentasCliente,
     confirmModal,
@@ -29,13 +37,13 @@ export function ClientesPage() {
     provincias,
     createMutation,
     updateMutation,
-    deleteMutation,
     handleEdit,
     handleDelete,
-    filteredClientes,
     hasMore,
     loadMore,
+    isLoading,
     isFetchingMore,
+    totalClientesDB,
   } = useClientesLogic();
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -69,48 +77,51 @@ export function ClientesPage() {
     setCuentasCliente([]);
   };
 
+  const handleCloseForm = () => {
+    resetForm();
+    closeForm();
+  };
+
+  const isSubmitting =
+    createMutation.isPending || updateMutation.isPending;
+
   return (
     <div className="flex-1 w-full bg-gray-50/50">
-      {/* List View */}
-      {view === "list" && (
-        <ClientesList
-          filteredClientes={filteredClientes}
-          totalClientes={clientes.length}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          isProveedorView={isProveedorView}
-          onNew={() => {
-            resetForm();
-            setView("form");
-          }}
-          handleEdit={handleEdit}
-          handleDelete={handleDelete}
-          loadMoreRef={loadMoreRef}
-          isFetchingMore={isFetchingMore}
-          tiposEntidad={tiposEntidad}
-        />
-      )}
+      <ClientesList
+        clientes={clientes}
+        totalClientes={totalClientesDB ?? clientes.length}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        isProveedorView={isProveedorView}
+        onNew={() => {
+          resetForm();
+          openForm();
+        }}
+        handleEdit={handleEdit}
+        handleDelete={handleDelete}
+        loadMoreRef={loadMoreRef}
+        isFetchingMore={isFetchingMore}
+        isLoading={isLoading}
+        tiposEntidad={tiposEntidad}
+      />
 
-      {/* Form View */}
-      {view === "form" && (
-        <ClienteForm
-          isProveedorView={isProveedorView}
-          editingCliente={editingCliente}
-          onCancel={() => {
-            resetForm();
-            setView("list");
-          }}
-          onSubmit={async (data) => {
-            if (editingCliente) {
-              await updateMutation.mutateAsync({ id: editingCliente.id_cliente, data });
-            } else {
-              await createMutation.mutateAsync(data);
-            }
-          }}
-          provincias={provincias}
-          tiposEntidad={tiposEntidad}
-        />
-      )}
+      {/* Form Modal (creación / edición) */}
+      <ClienteFormModal
+        isOpen={isFormOpen}
+        isProveedorView={isProveedorView}
+        editingCliente={editingCliente}
+        isSubmitting={isSubmitting}
+        onClose={handleCloseForm}
+        onSubmit={async (data) => {
+          if (editingCliente) {
+            await updateMutation.mutateAsync({ id: editingCliente.id_cliente, data });
+          } else {
+            await createMutation.mutateAsync(data);
+          }
+        }}
+        provincias={provincias}
+        tiposEntidad={tiposEntidad}
+      />
 
       {/* Main Confirm Modal for Deletes */}
       <ConfirmModal

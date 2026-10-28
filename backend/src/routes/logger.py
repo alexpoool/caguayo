@@ -192,7 +192,9 @@ async def create_log(
     usuario_id = log_data.usuario_id
     usuario_nombre = log_data.usuario_nombre
 
-    if request and not usuario_id:
+    if request and not usuario_id and not usuario_nombre:
+        # Solo se completa desde el token lo que el cliente no envió de
+        # forma explícita: el frontend manda su propio usuario_nombre.
         from src.services.auth_service import decode_token
 
         auth_header = request.headers.get("authorization")

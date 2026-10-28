@@ -27,7 +27,7 @@ import { ClienteDetailModal } from "../modals/ClienteDetailModal";
 import type { Cliente, TipoEntidad } from "../../../../types/ventas";
 
 export interface ClientesListProps {
-  filteredClientes: Cliente[];
+  clientes: Cliente[];
   totalClientes: number;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
@@ -37,11 +37,12 @@ export interface ClientesListProps {
   handleDelete: (cliente: Cliente) => void;
   loadMoreRef?: RefObject<HTMLDivElement>;
   isFetchingMore?: boolean;
+  isLoading?: boolean;
   tiposEntidad?: TipoEntidad[];
 }
 
 export function ClientesList({
-  filteredClientes,
+  clientes,
   totalClientes,
   searchTerm,
   setSearchTerm,
@@ -51,6 +52,7 @@ export function ClientesList({
   handleDelete,
   loadMoreRef,
   isFetchingMore,
+  isLoading,
   tiposEntidad = [],
 }: ClientesListProps) {
   const navigate = useNavigate();
@@ -74,9 +76,9 @@ export function ClientesList({
               {isProveedorView ? "Proveedores" : "Clientes"}
             </h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              {filteredClientes.length === totalClientes
-                ? `Gestión de clientes (${totalClientes} items)`
-                : `Mostrando ${filteredClientes.length} de ${totalClientes} clientes`}
+              {clientes.length === totalClientes
+                ? `Gestión de ${isProveedorView ? "proveedores" : "clientes"} (${totalClientes} items)`
+                : `Mostrando ${clientes.length} de ${totalClientes} ${isProveedorView ? "proveedores" : "clientes"}`}
             </p>
           </div>
         </div>
@@ -93,7 +95,7 @@ export function ClientesList({
         <div className="flex-1 relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
-            placeholder="Buscar clientes..."
+            placeholder={`Buscar ${isProveedorView ? "proveedores" : "clientes"}...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -124,19 +126,33 @@ export function ClientesList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredClientes.length === 0 ? (
+              {isLoading ? (
                 <TableRow>
                   <TableCell
                     colSpan={isProveedorView ? 7 : 6}
                     className="text-center py-12 text-gray-500"
                   >
-                    {isProveedorView
-                      ? "No hay proveedores registrados"
-                      : "No hay clientes registrados"}
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-teal-500" />
+                      Cargando {isProveedorView ? "proveedores" : "clientes"}...
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : clientes.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={isProveedorView ? 7 : 6}
+                    className="text-center py-12 text-gray-500"
+                  >
+                    {searchTerm
+                      ? `No se encontraron ${isProveedorView ? "proveedores" : "clientes"} que coincidan con la búsqueda`
+                      : isProveedorView
+                        ? "No hay proveedores registrados"
+                        : "No hay clientes registrados"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredClientes.map((cliente) => (
+                clientes.map((cliente) => (
                   <TableRow
                     key={cliente.id_cliente}
                     className={`transition-colors cursor-pointer border-l-4 ${

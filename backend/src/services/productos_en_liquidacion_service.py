@@ -8,6 +8,7 @@ from sqlmodel import select
 from src.repository.productos_en_liquidacion_repo import (
     productos_en_liquidacion_repo,
 )
+from src.core.exceptions import BusinessLogicError
 from src.core.config import settings
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
 from src.models.item_anexo import ItemAnexo
@@ -181,6 +182,11 @@ class ProductosEnLiquidacionService:
         )
         if not db_producto:
             return False
+
+        if db_producto.liquidada:
+            raise BusinessLogicError(
+                "No se puede eliminar: el producto ya está liquidado"
+            )
 
         await db.delete(db_producto)
         await db.commit()

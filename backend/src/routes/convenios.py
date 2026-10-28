@@ -1,13 +1,21 @@
 import logging
 from typing import Optional
 from datetime import date
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from src.database.connection import get_auth_session, get_session
-from src.models import Cliente, Cliente as ClienteModel, Convenio
+from src.models import (
+    Cliente,
+    Cliente as ClienteModel,
+    Convenio,
+    Anexo,
+    Movimiento,
+    Liquidacion,
+)
 from src.dto.convenios_dto import ConvenioCreate, ConvenioRead, ConvenioUpdate
 from src.utils import generar_codigo_convenio, _get_denominacion_from_token, verify_auth
 
@@ -28,6 +36,7 @@ async def listar_convenios(
     cliente_id: int = Query(None, description="Filtrar por cliente"),
     search: str = Query(None, description="Buscar por nombre"),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     statement = (
         select(Convenio)
@@ -39,6 +48,13 @@ async def listar_convenios(
     if search:
         escaped = _sanitize_search(search)
         statement = statement.where(Convenio.nombre_convenio.ilike(f"%{escaped}%"))
+    # Los convenios anulados (borrado lógico con datos asociados) no se listan.
+    statement = statement.where(Convenio.estado != "ANULADO")
+    # Total con el mismo WHERE, antes de paginar: header para el contador.
+    total = (
+        await db.exec(select(func.count()).select_from(statement.subquery()))
+    ).one()
+    response.headers["X-Total-Count"] = str(total)
     statement = statement.offset(skip).limit(limit)
     results = await db.exec(statement)
     convenios = results.all()
@@ -47,9 +63,12 @@ async def listar_convenios(
 
 @router.get("/simple")
 async def listar_convenios_simple(db: AsyncSession = Depends(get_session)):
-    statement = select(Convenio.id_convenio, ClienteModel.nombre).join(
-        ClienteModel, isouter=True
-    ).order_by(Convenio.id_convenio.desc())
+    statement = (
+        select(Convenio.id_convenio, ClienteModel.nombre)
+        .join(ClienteModel, isouter=True)
+        .order_by(Convenio.id_convenio.desc())
+        .where(Convenio.estado != "ANULADO")
+    )
     results = await db.exec(statement)
     return [{"id_convenio": c.id_convenio, "nombre": c.nombre} for c in results.all()]
 
@@ -63,6 +82,7 @@ async def contar_convenios(
     if search:
         escaped = _sanitize_search(search)
         statement = statement.where(Convenio.nombre_convenio.ilike(f"%{escaped}%"))
+    statement = statement.where(Convenio.estado != "ANULADO")
     results = await db.exec(statement)
     return results.one()
 
@@ -179,6 +199,12 @@ async def eliminar_convenio(
     authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_session),
 ):
+    """Eliminar un convenio.
+
+    Si no tiene anexos, liquidaciones ni movimientos asociados se borra
+    físicamente. Si los tiene, se anula (borrado lógico) para no romper la
+    trazabilidad; deja de aparecer en los listados.
+    """
     try:
         await verify_auth(authorization=authorization, db=db)
 
@@ -187,10 +213,43 @@ async def eliminar_convenio(
         db_convenio = results.first()
         if not db_convenio:
             raise HTTPException(status_code=404, detail="Convenio no encontrado")
-        await db.delete(db_convenio)
-        await db.commit()
+
+        anexos = (
+            await db.exec(
+                select(func.count()).select_from(Anexo).where(
+                    Anexo.id_convenio == convenioid
+                )
+            )
+        ).one()
+        liquidaciones = (
+            await db.exec(
+                select(func.count()).select_from(Liquidacion).where(
+                    Liquidacion.id_convenio == convenioid
+                )
+            )
+        ).one()
+        movimientos = (
+            await db.exec(
+                select(func.count()).select_from(Movimiento).where(
+                    Movimiento.id_convenio == convenioid
+                )
+            )
+        ).one()
+
+        if anexos or liquidaciones or movimientos:
+            db_convenio.estado = "ANULADO"
+            await db.commit()
+        else:
+            await db.delete(db_convenio)
+            await db.commit()
     except HTTPException:
         raise
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: el convenio tiene registros asociados",
+        )
     except Exception as e:
         logger.error("Error al eliminar convenio", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")

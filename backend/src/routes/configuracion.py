@@ -3,10 +3,8 @@ from typing import List, Optional
 from fastapi import (
     APIRouter,
     Depends,
-    Header,
     HTTPException,
     Query,
-    Request,
 )
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_session
@@ -20,8 +18,6 @@ from src.services.tipo_dependencia_service import tipo_dependencia_service
 from src.services import especialidad_service, migracion_service
 from src.dto import (
     EstadoMigracion,
-    FicheroLegacyInfo,
-    FicherosSubidos,
     InformeMigracion,
     TipoContratoCreate,
     TipoContratoRead,
@@ -451,42 +447,17 @@ async def reactivar_especialidad(
 
 @router.get("/migracion/estado", response_model=EstadoMigracion)
 async def estado_migracion(db: AsyncSession = Depends(get_session)):
-    """Recuentos, salud de la base y qué ficheros hay subidos."""
+    """Recuentos, salud de la base y si el dump del legacy está en su sitio."""
     return await migracion_service.estado(db)
-
-
-@router.get("/migracion/fichero", response_model=FicherosSubidos)
-async def listar_ficheros():
-    return {"ficheros": migracion_service.ficheros_subidos()}
-
-
-@router.post("/migracion/fichero", response_model=FicheroLegacyInfo)
-async def subir_fichero(
-    rol: str = Query(..., description="comercial | principal"),
-    x_nombre_fichero: Optional[str] = Header(None, alias="X-Nombre-Fichero"),
-    request: Request = None,
-):
-    """Recibe los bytes crudos del fichero.
-
-    Se leen con `request.body()` y no con `UploadFile` a propósito: el backend
-    no tiene python-multipart y esta forma no lo necesita.
-    """
-    crudo = await request.body()
-    info = migracion_service.guardar_fichero(rol, crudo)
-    if x_nombre_fichero:
-        logger.info("Migración: fichero '%s' subido para el rol %s",
-                    x_nombre_fichero, rol)
-    return info
-
-
-@router.delete("/migracion/fichero", status_code=204)
-async def quitar_fichero(rol: str = Query(...)):
-    migracion_service.quitar_fichero(rol)
 
 
 @router.post("/migracion/analizar", response_model=InformeMigracion)
 async def analizar_migracion(db: AsyncSession = Depends(get_session)):
-    """Corre el ETL en seco. No escribe nada. Habilita el botón de ejecutar."""
+    """Corre el ETL en seco. No escribe nada.
+
+    No lo usa la pantalla, que va directa al botón de ejecutar; queda por si
+    alguien quiere ver el resumen por API antes de comprometer las filas.
+    """
     return await migracion_service.migrar(db, commit=False)
 
 

@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from src.database.connection import get_auth_session, get_session
 from src.dto.compras_dto import CompraCreate, CompraRead, CompraUpdate
@@ -109,6 +110,12 @@ async def eliminar_compra(
         raise HTTPException(status_code=404, detail=str(e))
     except HTTPException:
         raise
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la compra tiene registros asociados",
+        )
     except Exception:
         logger.error("Error al eliminar compra", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")

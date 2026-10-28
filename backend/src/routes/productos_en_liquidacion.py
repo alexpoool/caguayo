@@ -1,10 +1,15 @@
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.exc import IntegrityError
+from src.core.exceptions import BusinessLogicError
 from src.database.connection import get_auth_session, get_session
 from src.services.productos_en_liquidacion_service import (
     productos_en_liquidacion_service,
+)
+from src.repository.productos_en_liquidacion_repo import (
+    productos_en_liquidacion_repo,
 )
 from src.dto.productos_en_liquidacion_dto import (
     ProductosEnLiquidacionCreate,
@@ -28,8 +33,14 @@ async def listar_productos(
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar todos los productos en liquidación."""
+    response.headers["X-Total-Count"] = str(
+        await productos_en_liquidacion_repo.count_multi_with_relations(
+            db, cliente_id=cliente_id
+        )
+    )
     return await productos_en_liquidacion_service.get_multi(
         skip=skip, limit=limit, db=db, cliente_id=cliente_id
     )
@@ -41,8 +52,14 @@ async def listar_productos_liquidados(
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar productos en liquidación liquidados."""
+    response.headers["X-Total-Count"] = str(
+        await productos_en_liquidacion_repo.count_multi_with_relations(
+            db, cliente_id=cliente_id, liquidada=True
+        )
+    )
     return await productos_en_liquidacion_service.get_liquidadas(
         db, skip=skip, limit=limit, cliente_id=cliente_id
     )
@@ -54,8 +71,14 @@ async def listar_productos_pendientes(
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar productos en liquidación pendientes."""
+    response.headers["X-Total-Count"] = str(
+        await productos_en_liquidacion_repo.count_multi_with_relations(
+            db, cliente_id=cliente_id, liquidada=False
+        )
+    )
     return await productos_en_liquidacion_service.get_pendientes(
         db, skip=skip, limit=limit, cliente_id=cliente_id
     )
@@ -155,6 +178,14 @@ async def eliminar_producto(
             )
     except HTTPException:
         raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: el producto está asociado a otros registros",
+        )
     except Exception as e:
         logger.error("Error al eliminar producto en liquidación", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")

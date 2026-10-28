@@ -9,13 +9,9 @@ import {
   Trash2,
   Coins,
   CircleDollarSign,
-  Save,
-  X,
-  ArrowLeft,
   RefreshCw,
   Type,
   Text,
-  Sparkles,
   AlertCircle,
   Wallet,
   Loader2,
@@ -36,7 +32,10 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
+  FormModal,
 } from "../components/ui";
+
+const MONEDA_FORM_ID = "moneda-form";
 
 export function MonedasPage() {
   const queryClient = useQueryClient();
@@ -73,12 +72,10 @@ export function MonedasPage() {
     error,
     hasMore,
     loadMore,
-    searchTerm,
-    setSearch,
     refresh,
   } = useInfiniteList<Moneda>({
     queryKeyBase: 'monedas',
-    queryFn: (skip, limit) => monedaService.getMonedas(skip, limit),
+    queryFn: (skip, limit, _search, onTotal) => monedaService.getMonedas(skip, limit, onTotal),
   });
 
   // Scroll infinito
@@ -221,160 +218,13 @@ export function MonedasPage() {
     });
   };
 
-  // VISTA: FORMULARIO
-  if (view === "form") {
-    return (
-      <div className="space-y-4 animate-fade-in-up">
-        {/* Header con icono animado */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded shadow-lg animate-bounce-subtle">
-              <Coins className="h-5 w-5 text-white" />
-            </div>
-            <div className="flex items-baseline">
-              <h1 className="text-xl font-bold text-gray-900">
-                {editingMoneda ? "Editar Moneda" : "Nueva Moneda"}
-              </h1>
-              <p className="text-sm text-gray-500">
-                {editingMoneda
-                  ? "Actualice la información de la moneda"
-                  : "Complete los datos para crear una nueva moneda"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Sparkles className="h-6 w-6 text-yellow-500 animate-pulse" />
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setView("list");
-                setEditingMoneda(null);
-                resetForm();
-              }}
-              className="gap-2 hover:scale-105 transition-transform"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Volver a la lista
-            </Button>
-          </div>
-        </div>
+  const closeForm = () => {
+    setView("list");
+    setEditingMoneda(null);
+    resetForm();
+  };
 
-        <form onSubmit={handleSubmit}>
-          <Card className="hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="border-b bg-gradient-to-r from-yellow-50 to-amber-50">
-              <CardTitle className="flex items-center gap-2">
-                <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-lg">
-                  <CircleDollarSign className="h-5 w-5 text-white" />
-                </div>
-                Información de la Moneda
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
-              <div className="md:col-span-2 space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Type className="h-5 w-5 text-blue-500" />
-                  Nombre *
-                </Label>
-                <Input
-                  type="text"
-                  value={formData.nombre}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nombre: e.target.value })
-                  }
-                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.nombre ? "border-red-500" : ""}`}
-                  placeholder="Ej. Dólar"
-                />
-                {formErrors.nombre && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {formErrors.nombre}
-                  </p>
-                )}
-              </div>
-
-              <div className="md:col-span-2 space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Text className="h-5 w-5 text-green-500" />
-                  Denominación *
-                </Label>
-                <Input
-                  type="text"
-                  value={formData.denominacion}
-                  onChange={(e) =>
-                    setFormData({ ...formData, denominacion: e.target.value })
-                  }
-                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 ${formErrors.denominacion ? "border-red-500" : ""}`}
-                  placeholder="Ej. Dólar estadounidense"
-                />
-                {formErrors.denominacion && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {formErrors.denominacion}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Wallet className="h-5 w-5 text-purple-500" />
-                  Símbolo *
-                </Label>
-                <Input
-                  type="text"
-                  value={formData.simbolo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, simbolo: e.target.value })
-                  }
-                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${formErrors.simbolo ? "border-red-500" : ""}`}
-                  placeholder="Ej. $"
-                  maxLength={5}
-                />
-                {formErrors.simbolo && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {formErrors.simbolo}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-end">
-                <p className="text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-                  Ejemplos: $ (Dólar), € (Euro), Bs (Bolívar)
-                </p>
-              </div>
-
-              <div className="flex gap-4 md:col-span-2 pt-4 border-t">
-                <Button
-                  type="submit"
-                  className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-                  disabled={
-                    createMutation.isPending || updateMutation.isPending
-                  }
-                >
-                  <Save className="h-4 w-4" />
-                  {createMutation.isPending || updateMutation.isPending
-                    ? "Guardando..."
-                    : editingMoneda
-                      ? "Actualizar"
-                      : "Guardar"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setView("list");
-                    setEditingMoneda(null);
-                    resetForm();
-                  }}
-                  className="gap-2 hover:bg-gray-200 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                  Cancelar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </form>
-      </div>
-    );
-  }
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   // VISTA: LISTA
   if (isLoading) {
@@ -484,7 +334,11 @@ export function MonedasPage() {
                         Comience creando una nueva moneda
                       </p>
                       <Button
-                        onClick={() => setView("form")}
+                        onClick={() => {
+                          resetForm();
+                          setEditingMoneda(null);
+                          setView("form");
+                        }}
                         className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white"
                       >
                         <Plus className="h-4 w-4" />
@@ -561,6 +415,124 @@ export function MonedasPage() {
         message={confirmModal.message}
         type={confirmModal.type}
       />
+
+      <FormModal
+        isOpen={view === "form"}
+        onClose={closeForm}
+        title={editingMoneda ? "Editar Moneda" : "Nueva Moneda"}
+        subtitle={
+          editingMoneda
+            ? "Actualice la información de la moneda"
+            : "Complete los datos para crear una nueva moneda"
+        }
+        icon={<Coins className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeForm}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={MONEDA_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingMoneda ? "Actualizar" : "Guardar"}
+            </Button>
+          </>
+        }
+      >
+        <form id={MONEDA_FORM_ID} onSubmit={handleSubmit}>
+          <Card className="border-0 shadow-none">
+            <CardHeader className="border-b bg-gradient-to-r from-yellow-50 to-amber-50">
+              <CardTitle className="flex items-center gap-2">
+                <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-lg">
+                  <CircleDollarSign className="h-5 w-5 text-white" />
+                </div>
+                Información de la Moneda
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+              <div className="md:col-span-2 space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Type className="h-5 w-5 text-blue-500" />
+                  Nombre *
+                </Label>
+                <Input
+                  type="text"
+                  value={formData.nombre}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nombre: e.target.value })
+                  }
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.nombre ? "border-red-500" : ""}`}
+                  placeholder="Ej. Dólar"
+                />
+                {formErrors.nombre && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.nombre}
+                  </p>
+                )}
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Text className="h-5 w-5 text-green-500" />
+                  Denominación *
+                </Label>
+                <Input
+                  type="text"
+                  value={formData.denominacion}
+                  onChange={(e) =>
+                    setFormData({ ...formData, denominacion: e.target.value })
+                  }
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 ${formErrors.denominacion ? "border-red-500" : ""}`}
+                  placeholder="Ej. Dólar estadounidense"
+                />
+                {formErrors.denominacion && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.denominacion}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Wallet className="h-5 w-5 text-purple-500" />
+                  Símbolo *
+                </Label>
+                <Input
+                  type="text"
+                  value={formData.simbolo}
+                  onChange={(e) =>
+                    setFormData({ ...formData, simbolo: e.target.value })
+                  }
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${formErrors.simbolo ? "border-red-500" : ""}`}
+                  placeholder="Ej. $"
+                  maxLength={5}
+                />
+                {formErrors.simbolo && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.simbolo}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-end">
+                <p className="text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+                  Ejemplos: $ (Dólar), € (Euro), Bs (Bolívar)
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </form>
+      </FormModal>
     </div>
   );
 }
