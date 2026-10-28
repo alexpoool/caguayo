@@ -17,6 +17,7 @@ from src.core.exceptions import (
     ValidationError,
     BusinessLogicError,
 )
+from src.core.config import settings
 from src.models import (
     Anexo,
     Categorias,
@@ -111,8 +112,8 @@ __all_models__ = [
 ]
 
 app = FastAPI(
-    title="Caguayo",
-    description="Documentación oficial de la API del ERP Caguayo",
+    title=settings.EMPRESA_RAZON_SOCIAL,
+    description=f"Documentación oficial de la API del ERP {settings.EMPRESA_RAZON_SOCIAL}",
     version="1.0.0",
     redirect_slashes=False,
 )
@@ -151,7 +152,7 @@ async def usuarios_lista_frontend():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Usuarios - Caguayo</title>
+    <title>Gestión de Usuarios - {EMPRESA}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -312,7 +313,7 @@ async def usuarios_lista_frontend():
     <!-- Login Section -->
     <div id="login-section">
         <header>
-            <h1>&#127970; Caguayo - Usuarios</h1>
+            <h1>&#127970; {EMPRESA} - Usuarios</h1>
         </header>
         <div class="login-container">
             <div class="login-card">
@@ -343,7 +344,7 @@ async def usuarios_lista_frontend():
     <!-- App Section -->
     <div id="app">
         <header>
-            <h1>&#127970; Caguayo - Usuarios</h1>
+            <h1>&#127970; {EMPRESA} - Usuarios</h1>
             <div class="user-info">
                 <span class="db-badge" id="current-db"></span>
                 <span id="current-user"></span>
@@ -782,7 +783,7 @@ async def usuarios_lista_frontend():
         }
     </script>
 </body>
-</html>"""
+</html>""".replace("{EMPRESA}", settings.EMPRESA_RAZON_SOCIAL)
     return HTMLResponse(content=html)
 
 
@@ -830,7 +831,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "API de Caguayo funcionando"}
+    return {"message": "API del ERP funcionando"}
 
 
 @app.get("/health")

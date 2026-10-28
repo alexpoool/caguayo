@@ -46,6 +46,7 @@ import { Dashboard } from './pages/Dashboard';
 import { LoggerPage } from './pages/Logger';
 import { PerfilPage } from './pages/Perfil';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { useEmpresa } from './config/branding';
 import { ProductosPage } from './pages/Productos';
 import { ClientesPage } from './pages/Clientes';
 import { PerfilClientePage } from './pages/PerfilCliente';
@@ -385,6 +386,7 @@ const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[
 
 function App() {
   const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, funcionalidades, baseDatos } = useAuth();
+  const empresa = useEmpresa();
 
   // Check if user has access to an entire module (at least one funcionalidad)
   const hasModuloAccess = (moduloId: Modulo): boolean => {
@@ -487,8 +489,8 @@ function App() {
           <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-panel-800`}>
             {!slimSidebar && (
               <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-lg bg-brand-500 flex items-center justify-center text-white font-bold text-lg">C</div>
-                <h1 className="text-2xl font-bold tracking-wider text-white">CAGUAYO</h1>
+                <div className="w-9 h-9 rounded-lg bg-brand-500 flex items-center justify-center text-white font-bold text-lg capitalize">{empresa.nombre.charAt(0).toUpperCase()}</div>
+                <h1 className="text-2xl font-bold tracking-wider text-white">{empresa.nombre.toUpperCase()}</h1>
               </div>
             )}
             <button

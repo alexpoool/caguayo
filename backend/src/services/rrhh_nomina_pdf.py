@@ -18,6 +18,7 @@ from typing import Optional
 
 from src.dto import RrhhNominaDetalle
 from src.utils.pdf_template import PDFTemplate
+from src.core.config import settings
 
 ESTADOS = {"pre_nomina": "PRE NÓMINA", "nomina": "NÓMINA"}
 CERO = Decimal("0.00")
@@ -80,7 +81,7 @@ def generar_recibo_pdf(
         landscape_mode=True,
         title_centered=True,
     )
-    template.set_company_header(name="Caguayo")
+    template.set_company_header(name=settings.EMPRESA_RAZON_SOCIAL)
 
     moneda = detalle.moneda_nombre or "—"
     if detalle.moneda_simbolo:

@@ -251,8 +251,8 @@ export function RegisterPage() {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg mb-4">
             <Box className="h-10 w-10 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900">Caguayo</h1>
-          <p className="text-gray-500 mt-2">Sistema de Inventario</p>
+          <h1 className="text-xl font-bold text-gray-900">ITEMLI</h1>
+          <p className="text-gray-500 mt-2">Sistema de Gestión</p>
         </div>
 
         {/* Register Card */}

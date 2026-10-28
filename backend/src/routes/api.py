@@ -44,6 +44,7 @@ from .servicios import (
 )
 from .logger import router as logger_router
 from .backups import router as backups_router
+from .branding import router as branding_router
 from .existencias import existencias_router
 from .ventas import router as ventas_router
 from .compras import router as compras_router
@@ -80,6 +81,7 @@ from .rrhh_pagos_resultado import rrhh_pagos_resultado_router
 api_router = APIRouter(prefix="/api/v1")
 
 api_router.include_router(auth_router)
+api_router.include_router(branding_router)
 api_router.include_router(conexiones_router)
 api_router.include_router(productos_router)
 api_router.include_router(dashboard_router)

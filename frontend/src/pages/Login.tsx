@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { PRODUCTO } from "../config/branding";
 import { Button, Input } from "../components/ui";
 import {
   Loader2,
@@ -160,10 +161,10 @@ export function LoginPage() {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* Logo */}
+        {/* Logo del producto */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-            Caguayo
+            {PRODUCTO.nombre}
           </h1>
           <div className="mx-auto mt-4 w-12 h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" />
         </div>
@@ -295,7 +296,7 @@ export function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-slate-400 mt-6">
-          © {new Date().getFullYear()} Caguayo. Todos los derechos reservados.
+          © {new Date().getFullYear()} {PRODUCTO.nombre}. Todos los derechos reservados.
         </p>
       </div>
     </div>

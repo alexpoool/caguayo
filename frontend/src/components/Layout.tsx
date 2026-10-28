@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../lib/utils';
+import { useEmpresa } from '../config/branding';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,10 +16,11 @@ export function Layout({ children, className }: LayoutProps) {
 }
 
 export function Sidebar({ children }: { children: React.ReactNode }) {
+  const empresa = useEmpresa();
   return (
     <div className="w-64 bg-gray-900 text-white min-h-screen p-4">
       <div className="mb-8">
-        <h1 className="text-xl font-bold">CAGUAYO</h1>
+        <h1 className="text-xl font-bold">{empresa.nombre.toUpperCase()}</h1>
       </div>
       <nav className="space-y-2">
         {children}

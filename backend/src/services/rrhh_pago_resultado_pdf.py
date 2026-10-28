@@ -15,6 +15,7 @@ from io import BytesIO
 from src.dto import RrhhPagoResultadoRead
 from src.services.rrhh_nomina_pdf import _fmt, _fmt_rango, _fmt_tasa
 from src.utils.pdf_template import PDFTemplate
+from src.core.config import settings
 
 CERO = 0.0
 
@@ -35,7 +36,7 @@ def generar_documento_pdf(
         landscape_mode=True,
         title_centered=True,
     )
-    template.set_company_header(name="Caguayo")
+    template.set_company_header(name=settings.EMPRESA_RAZON_SOCIAL)
 
     template.add_info_grid(
         [

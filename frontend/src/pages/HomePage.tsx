@@ -1,4 +1,5 @@
 import { useAuth } from '../context/AuthContext';
+import { useEmpresa } from '../config/branding';
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -131,6 +132,7 @@ const guideSteps = [
 
 export function HomePage() {
   const { funcionalidades, user } = useAuth();
+  const empresa = useEmpresa();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     terceros: false,
     inventario: false,
@@ -194,7 +196,7 @@ export function HomePage() {
                 Bienvenido, <span className="text-brand-100">{user?.nombre || 'Usuario'}</span> 👋
               </h1>
               <p className="mt-2 text-sm text-slate-200 md:text-base">
-                Has iniciado sesión como <strong>{user?.grupo?.nombre || 'Usuario'}</strong> en Caguayo.
+                Has iniciado sesión como <strong>{user?.grupo?.nombre || 'Usuario'}</strong> en {empresa.nombre}.
               </p>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-slate-300 md:justify-start md:text-sm">
                 <span>📅 {formatDate()}</span>
@@ -206,7 +208,7 @@ export function HomePage() {
               <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-brand-400/60 bg-brand-500/20 text-4xl shadow-inner">
                 🎛️
               </div>
-              <p className="mt-2 text-sm font-semibold tracking-wide">CAGUAYO</p>
+              <p className="mt-2 text-sm font-semibold tracking-wide">{empresa.nombre.toUpperCase()}</p>
               <small className="text-xs text-slate-300">Sistema de Gestión</small>
             </div>
           </div>

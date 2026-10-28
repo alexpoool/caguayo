@@ -48,6 +48,7 @@ import type {
   Cliente
 } from '../../services/api';
 import { formatFecha } from '../../utils/fecha';
+import { empresaActual } from '../../config/branding';
 
 type View = 'list' | 'form';
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
@@ -784,10 +785,10 @@ export function LiquidacionesPage() {
     <div class="print-header">
     <div class="header-tcp">
         <div class="header-logo">
-            <img src="/logo-black.png" alt="Logo CAGUAYO S.A." />
+            <img src="/empresa/logo-black.png" alt="Logo empresa" />
         </div>
         <div class="header-center">
-            <div class="tcp-title">CAGUAYO S.A.</div>
+            <div class="tcp-title">${empresaActual().razonSocial.toUpperCase()}</div>
             <div class="nombre-titular">${empresaNombre}</div>
             <div class="direccion-contacto">${empresaDireccion}</div>
             <div class="telefonos">Tel: ${empresaTelefono}</div>
@@ -1353,7 +1354,7 @@ export function LiquidacionesPage() {
               <div className="mt-6 pt-6 border-t">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                   <div>
-                    <Label>% Caguayo</Label>
+                    <Label>Comisión de gestión (%)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -1440,7 +1441,7 @@ export function LiquidacionesPage() {
                       <span className="font-medium">{formatCifra(formData.importe)}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
-                      <span>Importe Caguayo ({formData.porcentaje_caguayo || 10}%):</span>
+                      <span>Importe comisión ({formData.porcentaje_caguayo || 10}%):</span>
                       <span>- {formatCifra(calculateImporteCaguayo())}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">

@@ -33,6 +33,7 @@ import { DEFAULTS } from '../../config/defaults';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { formatFecha } from '../../utils/fecha';
 import { CrearLiquidacionForm } from './CrearLiquidacionPage';
+import { empresaActual } from '../../config/branding';
 
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
 
@@ -310,10 +311,10 @@ export function LiquidacionesPage() {
     <div class="print-header">
     <div class="header-tcp">
         <div class="header-logo">
-            <img src="/logo-black.png" alt="Logo CAGUAYO S.A." />
+            <img src="/empresa/logo-black.png" alt="Logo empresa" />
         </div>
         <div class="header-center">
-            <div class="tcp-title">CAGUAYO S.A.</div>
+            <div class="tcp-title">${empresaActual().razonSocial.toUpperCase()}</div>
             <div class="nombre-titular">${empresaNombre}</div>
             <div class="direccion-contacto">${empresaDireccion}</div>
             <div class="telefonos">Tel: ${empresaTelefono}</div>
@@ -325,7 +326,7 @@ export function LiquidacionesPage() {
             <div class="header-box-row"><strong>Código:</strong> ${escapeHtml(String(liquidacion.codigo || 'N/A'))}</div>
             <div class="header-box-row"><strong>Moneda:</strong> ${moneda || 'N/A'}</div>
             <div class="header-box-row" style="border-top:1px solid black;padding-top:4px;margin-top:4px;"><strong>IMPORTE:</strong> ${toFixed(importeDec, 2)}</div>
-            <div class="header-box-row"><span style="color:#666;">Importe Caguayo(${porcentajeCaguayoDec}%):</span> -${toFixed(importeCaguayoDec, 2)}</div>
+            <div class="header-box-row"><span style="color:#666;">Importe comisión (${porcentajeCaguayoDec}%):</span> -${toFixed(importeCaguayoDec, 2)}</div>
             <div class="header-box-row" style="font-weight:bold;border-bottom:1px solid #333;padding-bottom:4px;"><strong>DEVENGADO:</strong> ${subtotalDevengado}</div>
             <div class="header-box-row"><span style="color:#666;">Tributario(${tributarioDec}%):</span> -${valorTributario}</div>
             <div class="header-box-row" style="font-weight:bold;border-bottom:1px solid #333;padding-bottom:4px;"><strong>SUBTOTAL:</strong> ${subtotal}</div>

@@ -34,6 +34,7 @@ import { usePagos } from "./hooks/usePagos";
 import { useProductSelection } from "./hooks/useProductSelection";
 import { useStock } from "../../../hooks/useStock";
 import { formatFecha } from "../../../utils/fecha";
+import { empresaActual } from '../../../config/branding';
 
 type View = "list" | "form";
 
@@ -56,7 +57,7 @@ export function getFacturaDocument(
     dependencias.find((d: any) => d.id_dependencia === factura.id_dependencia);
   const cliente = clienteCompleto || contrato?.cliente;
 
-  const empresaNombre = dependencia?.nombre || "CAGUAYO S.A.";
+  const empresaNombre = dependencia?.nombre || empresaActual().razonSocial;
   const empresaDireccion = dependencia?.direccion || "";
   const empresaTelefono = dependencia?.telefono || "";
   const empresaWeb = dependencia?.web || "";
@@ -174,10 +175,10 @@ export function getFacturaDocument(
     <div class="print-header">
       <div class="header-tcp">
         <div class="header-logo">
-          <img src="/logo-black.png" alt="Logo CAGUAYO S.A." />
+          <img src="/empresa/logo-black.png" alt="Logo empresa" />
         </div>
         <div class="header-center">
-          <div class="tcp-title">CAGUAYO S.A.</div>
+          <div class="tcp-title">${empresaNombre.toUpperCase()}</div>
           <div class="nombre-titular">${empresaNombre}</div>
           <div class="direccion-contacto">${empresaDireccion}</div>
           <div class="telefonos">Tel: ${empresaTelefono}</div>

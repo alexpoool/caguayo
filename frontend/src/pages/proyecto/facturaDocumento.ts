@@ -4,6 +4,7 @@ import type { Moneda } from '../../types/moneda';
 import { authService } from '../../services/auth';
 import { formatCifra } from '../../utils/decimal';
 import { formatFecha } from '../../utils/fecha';
+import { empresaActual } from '../../config/branding';
 
 export type TipoDocumento = 'OFERTA' | 'PRE-FACTURA' | 'FACTURA';
 
@@ -31,7 +32,7 @@ export function getFacturaServicioDocument(
   const cargoUsuario = user?.cargo || '';
 
   const empresa = user?.dependencia;
-  const empresaNombre = empresa?.nombre || 'CAGUAYO S.A.';
+  const empresaNombre = empresa?.nombre || empresaActual().razonSocial;
   const empresaDireccion = empresa?.direccion || '';
   const empresaTelefono = empresa?.telefono || '';
   const empresaWeb = empresa?.web || '';
@@ -194,10 +195,10 @@ export function getFacturaServicioDocument(
     <div class="print-header">
       <div class="header-tcp">
         <div class="header-logo">
-          <img src="/logo-black.png" alt="Logo CAGUAYO S.A." />
+          <img src="/empresa/logo-black.png" alt="Logo empresa" />
         </div>
         <div class="header-center">
-          <div class="tcp-title">CAGUAYO S.A.</div>
+          <div class="tcp-title">${empresaNombre.toUpperCase()}</div>
           <div class="nombre-titular">${empresaNombre}</div>
           <div class="direccion-contacto">${empresaDireccion}</div>
           <div class="telefonos">Tel: ${empresaTelefono}</div>
@@ -216,7 +217,7 @@ export function getFacturaServicioDocument(
 
     ${cuentaSeleccionada ? `
     <div class="info-pago">
-      <div class="pago-titulo">PAGUESE A: CAGUAYO S.A.</div>
+      <div class="pago-titulo">PAGUESE A: ${empresaNombre.toUpperCase()}</div>
       <div class="pago-grid">
         <div><strong>Cuenta:</strong> ${cuentaSeleccionada.numero_cuenta || 'N/A'}</div>
         <div><strong>Moneda:</strong> ${monedasData.find(m => m.id_moneda === cuentaSeleccionada.id_moneda)?.simbolo || 'N/A'}</div>

@@ -8,6 +8,12 @@ class Settings(BaseSettings):
     DEFAULT_PORCENTAJE_CAGUAYO: float = 10.0
     DEFAULT_TRIBUTARIO: float = 5.0
 
+    # Branding de la instalación: nombre corto de la empresa cliente y
+    # su razón social para documentos. Cada despliegue lo configura en
+    # su .env; el default genérico es "ERP".
+    EMPRESA_NOMBRE: str = "ERP"
+    EMPRESA_RAZON_SOCIAL: str = "ERP"
+
     SECRET_KEY: str = "change-me-in-production"
 
     class Config:

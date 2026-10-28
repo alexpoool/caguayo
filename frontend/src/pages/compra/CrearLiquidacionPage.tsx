@@ -41,7 +41,7 @@ export function CrearLiquidacionForm({ formId, initialProveedorId, onExit, onPen
 
   const validateNumericField = (field: string, value: any): string | null => {
     if (field === 'porcentaje_caguayo' || field === 'tributario') {
-      const err = esPorcentaje(value, field === 'porcentaje_caguayo' ? '% Caguayo' : 'Tributario');
+      const err = esPorcentaje(value, field === 'porcentaje_caguayo' ? '% Comisión' : 'Tributario');
       setErrors(prev => ({ ...prev, [field]: err || '' }));
       return err;
     }
@@ -506,7 +506,7 @@ if (!filtroCliente) {
 
           <div className="grid gap-4 md:grid-cols-5 mt-6">
             <div>
-              <Label className="text-sm font-medium">Caguayo (%)</Label>
+              <Label className="text-sm font-medium">Comisión de gestión (%)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -563,7 +563,7 @@ if (!filtroCliente) {
                   <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between pl-4">
-                    <span className="text-sm text-gray-500">Importe Caguayo ({Number(formData.porcentaje_caguayo || DEFAULTS.PORCENTAJE_CAGUAYO)}%):</span>
+                    <span className="text-sm text-gray-500">Importe comisión ({Number(formData.porcentaje_caguayo || DEFAULTS.PORCENTAJE_CAGUAYO)}%):</span>
                   <span className="text-sm text-gray-500">- {calculateImporteCaguayo().toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between border-b border-gray-200 pb-1">
