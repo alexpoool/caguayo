@@ -349,7 +349,6 @@ const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[
     items: [
       { to: '/dependencias', label: 'Dependencias', icon: Building, func: 'dependencias' },
       { to: '/cuentas', label: 'Cuentas', icon: Wallet, func: 'cuentas' },
-      { to: '/respaldos', label: 'Backups', icon: DatabaseBackup, func: 'backups' },
       { to: '/configuracion/tipos-dependencia', label: 'Tipos de Dependencia', icon: Building, func: 'configuracion' },
       { to: '/configuracion/tipos-cuenta', label: 'Tipos de Cuenta', icon: Wallet, func: 'configuracion' },
     ],
@@ -601,12 +600,6 @@ function App() {
                     >
                       <Library className="w-6 h-6" />
                       Catálogos
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/respaldos" onClick={handleLinkClick} disabled={!hasFuncionalidad('backups')}>
-                      <DatabaseBackup className="w-6 h-6" />
-                      Backups
                     </SidebarLink>
                   </li>
                 </ul>
