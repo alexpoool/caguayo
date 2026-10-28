@@ -190,7 +190,7 @@ export function HomePage() {
   return (
     <div className="min-h-full w-full bg-surface">
       <div className="p-6 space-y-6">
-        <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 text-white shadow-lg">
+        <div className="rounded-2xl bg-gradient-to-r from-brand-500 via-panel-800 to-panel-900 text-white shadow-lg">
           <div className="flex flex-col items-center gap-6 px-8 py-8 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-2xl font-semibold md:text-3xl">
