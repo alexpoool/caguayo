@@ -79,7 +79,7 @@ def _bd_admin() -> str:
     DROP, pg_terminate_backend).
 
     NUNCA puede ser la BD objetivo del swap: si ADMIN_DB_NAME coincide con
-    la BD a renomear (p. ej. la central caguayo_sa), la sesión admin misma
+    la BD a renomear (p. ej. la central), la sesión admin misma
     retiene el lock y `ALTER DATABASE ... RENAME` espera eternamente
     ("colgado en swap"). PostgreSQL sólo exige que la sesión que altera esté
     conectada a OTRA BD; usamos `postgres`, la BD de sistema, que siempre
@@ -423,7 +423,7 @@ def listar_backups(base_datos: str, verificacion_detallada: bool = False) -> dic
             if not ruta.name.startswith(prefijo):
                 continue
             # Un dump se cuenta para una sola BD, no para otra cuyo nombre
-            # comparte prefijo (ej.: caguayo y caguayo_sa).
+            # comparte prefijo con otra BD del servidor.
             if _base_de_nombre_archivo(ruta.name) != base_datos:
                 continue
 

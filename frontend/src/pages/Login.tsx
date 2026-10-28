@@ -161,11 +161,16 @@ export function LoginPage() {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* Logo del producto */}
+        {/* Logo del producto (ITEMLI) */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-            {PRODUCTO.nombre}
-          </h1>
+          <img
+            src={PRODUCTO.logo}
+            alt={PRODUCTO.nombre}
+            className="mx-auto w-32 h-32 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
           <div className="mx-auto mt-4 w-12 h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" />
         </div>
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Migración del legacy desde la aplicación.
 
-El dump del legacy viene en el repositorio, en `etl/legacy/caguayo_comercial.sql`.
+El dump del legacy viene en el repositorio, en `etl/dumps/comercial.sql.gpg` (volcado del legacy).
 Antes se subía desde la pantalla de configuración; ya no: el ETL resuelve la ruta
 por su cuenta y este servicio se limita a lanzarlo. Para migrar otro legacy basta
 con reemplazar ese fichero.
@@ -43,7 +43,7 @@ LOCK_BASE = 987654321
 
 def _clave_lock() -> int:
     import zlib
-    base = os.getenv("POSTGRES_DB") or os.getenv("PG_DB") or "caguayo_sa"
+    base = os.getenv("POSTGRES_DB") or os.getenv("PG_DB") or os.getenv("AUTH_DATABASE") or "erp"
     return LOCK_BASE + (zlib.crc32(base.encode("utf-8")) % 100000)
 
 ETL_DIR = Path(__file__).resolve().parents[3] / "etl"
@@ -83,7 +83,7 @@ def dump_legacy() -> dict:
     La ruta la contesta `etl/config.py` —el mismo módulo que va a leer el
     subproceso—, no una constante repetida aquí. Duplicarla es justo lo que
     rompió esto: `config.py` pasó a leer `etl/dumps/comercial.sql` y el backend
-    siguió mirando `etl/legacy/caguayo_comercial.sql`, así que la pantalla decía
+    siguió mirando `etl/dumps/comercial.sql.gpg` (volcado del legacy), así que la pantalla decía
     que no había volcado con el volcado de 6 MB en su sitio y el botón de
     ejecutar quedaba deshabilitado sin explicación.
 
@@ -143,7 +143,7 @@ def cargar_config_etl():
     previo = os.environ.get("PROYECTO_DIR")
     os.environ["PROYECTO_DIR"] = previo or str(ETL_DIR.parent)
     try:
-        spec = importlib.util.spec_from_file_location("_caguayo_etl_config",
+        spec = importlib.util.spec_from_file_location("_erp_etl_config",
                                                        CONFIG_ETL)
         if spec is None or spec.loader is None:
             return None, "no se pudo crear el loader de %s" % CONFIG_ETL
@@ -175,7 +175,7 @@ def comprobar_identidad() -> dict:
 
     El ETL no lee POSTGRES_DB del entorno del backend: lo saca de `etl/config.py`,
     que a su vez lo lee de los `.env`. El backend nunca lo tuvo en `os.environ`,
-    así que este guard comparaba el literal "caguayo_sa" contra la base de la
+    así que este guard comparaba un literal fijo contra la base de la
     aplicación. Siempre coherente, y un ETL apuntado a otra base —cambiando el
     `.env`, que es como se documenta retargetizarlo— pasaba inadvertido.
 

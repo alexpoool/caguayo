@@ -1,7 +1,7 @@
 [project]
-name = "caguayo"
+name = "itemli"
 version = "0.1.0"
-description = "Add your description here"
+description = "ITEMLI — ERP white-label (inventario, terceros, ventas, compras, proyectos, RRHH)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

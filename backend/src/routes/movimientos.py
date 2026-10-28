@@ -151,7 +151,7 @@ async def crear_ajuste(
         import os
 
         # Obtener DB actual del usuario
-        db_name_actual = os.getenv("AUTH_DATABASE", "caguayo_inventario")
+        db_name_actual = os.getenv("AUTH_DATABASE")
 
         # Separar destinos en DB actual vs otras DBs
         destinos_misma_db = []
