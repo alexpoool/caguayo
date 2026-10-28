@@ -15,7 +15,6 @@ import {
 import toast from "react-hot-toast";
 import { apiClient, authHelpers } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
-import { PRODUCTO, useEmpresa } from "../config/branding";
 
 interface ConexionInfo {
   id_conexion: number;
@@ -40,7 +39,6 @@ type ConexionStatus = "idle" | "testing" | "connected" | "error";
 export function RegisterPage() {
   const navigate = useNavigate();
   const { refreshUser } = useAuth();
-  const empresa = useEmpresa();
 
   const [baseDatos, setBaseDatos] = useState("");
   const [idDependencia, setIdDependencia] = useState("");
@@ -246,31 +244,20 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-panel-900 to-panel-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-3xl">
-        {/* Marca del cliente */}
-        <p className="text-center text-xs text-slate-400 uppercase tracking-widest mb-6">
-          {empresa.nombre}
-        </p>
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg mb-4">
+            <Box className="h-10 w-10 text-white" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">ITEMLI</h1>
+          <p className="text-gray-500 mt-2">Sistema de Gestión</p>
+        </div>
 
         {/* Register Card */}
-        <div className="bg-white rounded-2xl shadow-2xl">
-          <div className="p-6 md:p-8">
-            {/* Logo del producto */}
-            <div className="text-center mb-6">
-              <img
-                src={PRODUCTO.logo}
-                alt={PRODUCTO.nombre}
-                className="mx-auto w-20 h-20 object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-              <h2 className="mt-2 text-xl font-semibold text-slate-800 text-center">
-                Crear cuenta
-              </h2>
-            </div>
-
+        <div className="border border-gray-200 rounded-2xl shadow-lg">
+          <div className="p-4">
             <h2 className="text-xl font-semibold text-gray-900 mb-6 text-center">
               Crear Cuenta
             </h2>
@@ -288,7 +275,7 @@ export function RegisterPage() {
                       value={baseDatos}
                       onChange={(e) => handleBaseDatosChange(e.target.value)}
                       disabled={loadingConexiones}
-                      className={`w-full pl-10 pr-10 py-2.5 text-sm border rounded-xl focus:ring-2 focus:border-transparent bg-white transition-colors ${getSelectBorderClass()}`}
+                      className={`w-full pl-10 pr-10 py-3 border-2 rounded-md focus:ring-2 focus:border-transparent bg-white transition-colors ${getSelectBorderClass()}`}
                     >
                       <option value="">
                         {loadingConexiones
@@ -340,7 +327,7 @@ export function RegisterPage() {
                         conexionStatus !== "connected" ||
                         loadingDependencias
                       }
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white transition-colors disabled:bg-slate-50"
+                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-colors disabled:bg-slate-50"
                     >
                       <option value="">
                         {loadingDependencias
@@ -375,7 +362,7 @@ export function RegisterPage() {
                         conexionStatus !== "connected" ||
                         loadingGrupos
                       }
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white transition-colors disabled:bg-slate-50"
+                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-colors disabled:bg-slate-50"
                     >
                       <option value="">
                         {loadingGrupos
@@ -530,7 +517,7 @@ export function RegisterPage() {
                   !idDependencia ||
                   !idGrupo
                 }
-                className="w-full rounded-xl bg-brand-600 hover:bg-brand-700 shadow-none"
+                className="w-full"
               >
                 {loadingRegister ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -541,9 +528,6 @@ export function RegisterPage() {
             </div>
           </div>
         </div>
-        <p className="text-center text-xs text-slate-500 mt-6">
-          © {new Date().getFullYear()} {PRODUCTO.nombre} · Software
-        </p>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { PRODUCTO, useEmpresa } from "../config/branding";
+import { PRODUCTO } from "../config/branding";
 import { Button, Input } from "../components/ui";
 import {
   Loader2,
@@ -28,7 +28,6 @@ type ConexionStatus = "idle" | "testing" | "connected" | "error";
 export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const empresa = useEmpresa();
 
   const [alias, setAlias] = useState("");
   const [contrasenia, setContrasenia] = useState("");
@@ -153,44 +152,49 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-panel-900 to-panel-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Marca del cliente */}
-        <p className="text-center text-xs text-slate-400 uppercase tracking-widest mb-6">
-          {empresa.nombre}
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-100 rounded-full opacity-40 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-50 rounded-full opacity-50 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-100/20 rounded-full blur-3xl" />
+      </div>
 
-        {/* Login card */}
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-md relative z-10">
+        {/* Logo del producto (ITEMLI) */}
+        <div className="text-center mb-8">
+          <img
+            src={PRODUCTO.logo}
+            alt={PRODUCTO.nombre}
+            className="mx-auto w-32 h-32 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+          <div className="mx-auto mt-4 w-12 h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" />
+        </div>
+
+        {/* Login Card */}
+        <div className="bg-white/80 backdrop-blur-sm border-0 rounded-2xl shadow-2xl shadow-blue-900/10 ring-1 ring-blue-100 overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700" />
           <div className="p-8">
-            {/* Logo del producto */}
-            <div className="text-center mb-6">
-              <img
-                src={PRODUCTO.logo}
-                alt={PRODUCTO.nombre}
-                className="mx-auto w-28 h-28 object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-              <h2 className="mt-2 text-xl font-semibold text-slate-800">
-                Iniciar sesión
-              </h2>
-            </div>
+            <h2 className="text-xl font-semibold text-blue-900 mb-6 text-center">
+              Iniciar Sesión
+            </h2>
 
-            <div className="space-y-4">
-              {/* Base de Datos */}
+            <div className="space-y-5">
+              {/* Base de Datos - PRIMERO */}
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Base de Datos
                 </label>
                 <div className="relative">
-                  <Database className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 z-10" />
+                  <Database className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400 z-10" />
                   <select
                     value={baseDatos}
                     onChange={(e) => handleBaseDatosChange(e.target.value)}
                     disabled={loadingConexiones}
-                    className={`w-full pl-10 pr-12 py-2.5 text-sm border rounded-xl bg-white focus:ring-2 focus:border-transparent transition-colors ${getSelectBorderClass()}`}
+                    className={`w-full pl-10 pr-12 py-3 border-2 rounded-xl focus:ring-2 focus:border-transparent bg-white transition-all duration-200 ${getSelectBorderClass()}`}
                   >
                     <option key="empty-option" value="">
                       {loadingConexiones
@@ -206,12 +210,12 @@ export function LoginPage() {
                       </option>
                     ))}
                   </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                     {conexionStatus === "testing" && (
                       <Loader2 className="h-5 w-5 text-amber-500 animate-spin" />
                     )}
                     {conexionStatus === "connected" && (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <CheckCircle className="h-5 w-5 text-green-500" />
                     )}
                     {conexionStatus === "error" && (
                       <XCircle className="h-5 w-5 text-red-500" />
@@ -219,31 +223,31 @@ export function LoginPage() {
                   </div>
                 </div>
                 {conexionStatus === "connected" && (
-                  <p className="text-xs text-green-600 mt-1">
-                    Conectado
+                  <p className="text-xs text-green-600 mt-1 font-medium">
+                    ✓ Conectado
                   </p>
                 )}
                 {conexionStatus === "error" && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Error de conexión
+                  <p className="text-xs text-red-600 mt-1 font-medium">
+                    ✗ Error de conexión
                   </p>
                 )}
               </div>
 
               {/* Alias */}
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
-                  Alias de usuario
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Alias de Usuario
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400" />
                   <Input
                     type="text"
-                    placeholder="Su alias"
+                    placeholder="Ingrese su alias"
                     value={alias}
                     onChange={(e) => setAlias(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                    className="pl-10 rounded-xl text-sm"
+                    className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
                     disabled={!baseDatos}
                   />
                 </div>
@@ -251,23 +255,23 @@ export function LoginPage() {
 
               {/* Contraseña */}
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Contraseña
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400" />
                   <Input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Su contraseña"
+                    placeholder="Ingrese su contraseña"
                     value={contrasenia}
                     onChange={(e) => setContrasenia(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                    className="pl-10 pr-10 rounded-xl text-sm"
+                    className="pl-10 pr-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
                     disabled={!baseDatos}
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-blue-600 focus:outline-none"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
@@ -283,12 +287,12 @@ export function LoginPage() {
               <Button
                 onClick={handleLogin}
                 disabled={loadingLogin || loadingConexiones || !baseDatos}
-                className="w-full rounded-xl h-11 text-sm font-semibold bg-brand-600 hover:bg-brand-700 shadow-none"
+                className="w-full rounded-xl h-12 text-base font-semibold shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30"
               >
                 {loadingLogin ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  "Iniciar sesión"
+                  "Iniciar Sesión"
                 )}
               </Button>
             </div>
@@ -296,8 +300,8 @@ export function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-slate-500 mt-6">
-          © {new Date().getFullYear()} {PRODUCTO.nombre} · Software
+        <p className="text-center text-xs text-slate-400 mt-6">
+          © {new Date().getFullYear()} {PRODUCTO.nombre}. Todos los derechos reservados.
         </p>
       </div>
     </div>
