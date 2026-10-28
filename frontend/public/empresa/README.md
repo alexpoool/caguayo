@@ -9,6 +9,6 @@ aquí (fuera del código, pisables por el cliente):
 
 Estos archivos NO son del producto: al vender la app a un cliente nuevo,
 se reemplazan por los de su marca. El nombre (corto y razón social) se
-configura en el `.env` del backend (`EMPRESA_NOMBRE__RAZON_SOCIAL`) y/o
+configura en el `.env` del backend (`EMPRESA_NOMBRE` / `EMPRESA_RAZON_SOCIAL`) y/o
 en `VITE_EMPRESA_NOMBRE` / `VITE_EMPRESA_RAZON_SOCIAL` del frontend; el
-default es "ERP".
+default es el de esta instalación (Caguayo).

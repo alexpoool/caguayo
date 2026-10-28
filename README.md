@@ -1,4 +1,4 @@
-# ITEMLI — ERP
+# ITEMLI — ERP white-label (instalación de origen: Caguayo)
 
 This repository contains **ITEMLI**, a comprehensive inventory and management system built with FastAPI (Python backend) and React (frontend).
 
@@ -25,7 +25,7 @@ AUTH_DATABASE=micliente_erp       # igual a DATABASE_URL
 
 **Frontend** (`frontend/.env`): el nombre se obtiene del backend
 (`GET /api/v1/config/branding`); los `VITE_EMPRESA_NOMBRE` /
-`VITE_EMPRESA_RAZON_SOCIAL` son solo fallback. Defaults: *"ERP"*.
+`VITE_EMPRESA_RAZON_SOCIAL` son solo fallback. El default de fábrica es el cliente de origen (*Caguayo*); cada despliegue nuevo pone su propio nombre.
 
 ### Assets por cliente
 

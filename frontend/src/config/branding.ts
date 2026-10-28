@@ -9,7 +9,7 @@
  *    (ej. una distribuidora, una agencia, Caguayo…). Aparece en el
  *    sidebar, home, facturas y PDFs. Se obtiene del backend
  *    (`GET /api/v1/config/branding`) con caída a variables VITE_ y
- *    finalmente a "ERP".
+ *    finalmente a la empresa de esta instalación (Caguayo).
  */
 import { useEffect, useReducer } from 'react';
 
@@ -29,7 +29,7 @@ export interface Empresa {
 }
 
 const fallbackEmpresa = (): Empresa => {
-  const envNombre = (import.meta.env.VITE_EMPRESA_NOMBRE as string | undefined)?.trim() || 'ERP';
+  const envNombre = (import.meta.env.VITE_EMPRESA_NOMBRE as string | undefined)?.trim() || 'Caguayo';
   const envRazon =
     ((import.meta.env.VITE_EMPRESA_RAZON_SOCIAL as string | undefined)?.trim() || envNombre);
   return { nombre: envNombre, razonSocial: envRazon };
@@ -49,13 +49,13 @@ async function ensureEmpresaCargada(): Promise<void> {
       const info = data?.empresa;
       if (info?.nombre || info?.razon_social) {
         empresa = {
-          nombre: info.nombre || 'ERP',
-          razonSocial: info.razon_social || info.nombre || 'ERP',
+          nombre: info.nombre || 'Caguayo',
+          razonSocial: info.razon_social || info.nombre || 'CAGUAYO S.A.',
         };
         listeners.forEach((l) => l());
       }
     } catch {
-      // Sin backend (o sin red): se queda el valor de env / "ERP".
+      // Sin backend (o sin red): se queda el valor de env / el default.
     }
   })();
 }
