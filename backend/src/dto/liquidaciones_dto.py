@@ -28,8 +28,8 @@ class LiquidacionBase(SQLModel):
     gasto_empresa: Decimal = Field(default=Decimal("0.00"), ge=0)
     importe: Decimal = Field(default=Decimal("0.00"), ge=0)
     neto_pagar: Decimal = Field(default=Decimal("0.00"), ge=0)
-    porcentaje_caguayo: Decimal = Field(default=Decimal("10.00"), ge=0, le=100)
-    importe_caguayo: Decimal = Field(default=Decimal("0.00"), ge=0)
+    porcentaje_agencia: Decimal = Field(default=Decimal("10.00"), ge=0, le=100)
+    importe_agencia: Decimal = Field(default=Decimal("0.00"), ge=0)
     tributario_monto: Decimal = Field(default=Decimal("0.00"), ge=0)
     tipo_pago: str = "TRANSFERENCIA"
 
@@ -45,7 +45,7 @@ class LiquidacionCreate(SQLModel):
     tributario: Optional[Decimal] = Field(default=None, ge=0, le=100)
     comision_bancaria: Optional[Decimal] = Field(default=None, ge=0)
     gasto_empresa: Optional[Decimal] = Field(default=None, ge=0)
-    porcentaje_caguayo: Optional[Decimal] = Field(
+    porcentaje_agencia: Optional[Decimal] = Field(
         default=Decimal("10.00"), ge=0, le=100
     )
     tipo_pago: str = "TRANSFERENCIA"

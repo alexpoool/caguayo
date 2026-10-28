@@ -345,8 +345,8 @@ export interface PersonaLiquidacion {
   id_moneda?: number;
   tipo_pago?: string;
   importe: number;
-  porcentaje_caguayo: number;
-  importe_caguayo: number;
+  porcentaje_agencia: number;
+  importe_agencia: number;
   porciento_gestion: number;
   porciento_empresa: number;
   devengado: number;
@@ -372,8 +372,8 @@ export interface PersonaLiquidacionCreate {
   descripcion?: string;
   id_moneda?: number;
   importe?: number;
-  porcentaje_caguayo?: number;
-  importe_caguayo?: number;
+  porcentaje_agencia?: number;
+  importe_agencia?: number;
   porciento_gestion?: number;
   porciento_empresa?: number;
   devengado?: number;
@@ -398,8 +398,8 @@ export interface PersonaLiquidacionUpdate {
   id_moneda?: number;
   tipo_pago?: string;
   importe?: number;
-  porcentaje_caguayo?: number;
-  importe_caguayo?: number;
+  porcentaje_agencia?: number;
+  importe_agencia?: number;
   porciento_gestion?: number;
   porciento_empresa?: number;
   devengado?: number;
@@ -425,7 +425,7 @@ export type PersonaLiquidacionInput = {
   descripcion?: string;
   id_moneda?: number;
   tipo_pago?: string;
-  porcentaje_caguayo?: number;
+  porcentaje_agencia?: number;
   tributario?: number;
   gasto_empresa?: number;
   comision_bancaria?: number;
@@ -445,7 +445,7 @@ export type PersonaLiquidacionInputUpdate = {
   descripcion?: string;
   id_moneda?: number;
   tipo_pago?: string;
-  porcentaje_caguayo?: number;
+  porcentaje_agencia?: number;
   tributario?: number;
   gasto_empresa?: number;
   comision_bancaria?: number;

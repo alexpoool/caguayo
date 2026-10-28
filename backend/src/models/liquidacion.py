@@ -55,10 +55,10 @@ class Liquidacion(SQLModel, table=True):
     neto_pagar: Decimal = Field(
         default=Decimal("0.00"), decimal_places=2, max_digits=15
     )
-    porcentaje_caguayo: Decimal = Field(
+    porcentaje_agencia: Decimal = Field(
         default=Decimal("10.00"), decimal_places=2, max_digits=5
     )
-    importe_caguayo: Decimal = Field(
+    importe_agencia: Decimal = Field(
         default=Decimal("0.00"), decimal_places=2, max_digits=15
     )
     tributario_monto: Decimal = Field(

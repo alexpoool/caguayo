@@ -385,8 +385,8 @@ class PersonaLiquidacionBase(SQLModel):
     id_moneda: Optional[int] = None
     tipo_pago: str = "TRANSFERENCIA"
     importe: Decimal = Decimal("0.00")
-    porcentaje_caguayo: Decimal = Decimal("10.00")
-    importe_caguayo: Decimal = Decimal("0.00")
+    porcentaje_agencia: Decimal = Decimal("10.00")
+    importe_agencia: Decimal = Decimal("0.00")
     porciento_gestion: Decimal = Decimal("0.00")
     porciento_empresa: Decimal = Decimal("0.00")
     devengado: Decimal = Decimal("0.00")
@@ -414,7 +414,7 @@ class PersonaLiquidacionCreateInput(SQLModel):
     descripcion: Optional[str] = Field(default=None, max_length=500)
     id_moneda: Optional[int] = None
     tipo_pago: str = "TRANSFERENCIA"
-    porcentaje_caguayo: float = 10.0
+    porcentaje_agencia: float = 10.0
     tributario: float = 5.0
     gasto_empresa: float = 0.0
     comision_bancaria: float = 0.0
@@ -429,11 +429,11 @@ class PersonaLiquidacionCreateInput(SQLModel):
             raise ValueError(f"tipo_pago debe ser uno de {TIPOS_PAGO_VALIDOS}")
         return v
 
-    @field_validator("porcentaje_caguayo")
+    @field_validator("porcentaje_agencia")
     @classmethod
-    def validar_porcentaje_caguayo(cls, v: float) -> float:
+    def validar_porcentaje_agencia(cls, v: float) -> float:
         if v < 0 or v > 100:
-            raise ValueError("porcentaje_caguayo debe estar entre 0 y 100")
+            raise ValueError("porcentaje_agencia debe estar entre 0 y 100")
         return v
 
     @field_validator("tributario")
@@ -466,7 +466,7 @@ class PersonaLiquidacionUpdateInput(SQLModel):
     descripcion: Optional[str] = None
     id_moneda: Optional[int] = None
     tipo_pago: Optional[str] = None
-    porcentaje_caguayo: Optional[float] = None
+    porcentaje_agencia: Optional[float] = None
     tributario: Optional[float] = None
     gasto_empresa: Optional[float] = None
     comision_bancaria: Optional[float] = None
@@ -490,8 +490,8 @@ class PersonaLiquidacionUpdate(SQLModel):
     id_moneda: Optional[int] = None
     tipo_pago: Optional[str] = None
     importe: Optional[Decimal] = None
-    porcentaje_caguayo: Optional[Decimal] = None
-    importe_caguayo: Optional[Decimal] = None
+    porcentaje_agencia: Optional[Decimal] = None
+    importe_agencia: Optional[Decimal] = None
     porciento_gestion: Optional[Decimal] = None
     porciento_empresa: Optional[Decimal] = None
     devengado: Optional[Decimal] = None
@@ -508,7 +508,7 @@ class PersonaLiquidacionUpdate(SQLModel):
 
 class PersonaLiquidacionConfirmar(SQLModel):
     devengado: Optional[float] = Field(default=None, ge=0)
-    porcentaje_caguayo: Optional[float] = Field(default=None, ge=0, le=100)
+    porcentaje_agencia: Optional[float] = Field(default=None, ge=0, le=100)
     tributario: Optional[float] = Field(default=None, ge=0, le=100)
     comision_bancaria: Optional[float] = Field(default=None, ge=0)
     comision_admin_obra: Optional[float] = Field(default=None, ge=0)
@@ -588,7 +588,7 @@ class CertificacionUpdate(SQLModel):
     observaciones: Optional[str] = None
     fecha: Optional[date] = None
     precio_servicio: Optional[Decimal] = None
-    gasto_caguayo: Optional[int] = None
+    gasto_gestion: Optional[int] = None
     a_cobrar: Optional[Decimal] = None
     ajuste_porciento: Optional[Decimal] = None
     ajuste_valor: Optional[Decimal] = None

@@ -896,8 +896,8 @@ async def get_reporte_onat(
                 else "",
                 "importe": float(pl.importe),
                 "devengado": float(pl.devengado),
-                "porcentaje_caguayo": float(pl.porcentaje_caguayo),
-                "importe_caguayo": float(pl.importe_caguayo),
+                "porcentaje_agencia": float(pl.porcentaje_agencia),
+                "importe_agencia": float(pl.importe_agencia),
                 "porciento_gestion": float(pl.porciento_gestion),
                 "porciento_empresa": float(pl.porciento_empresa),
                 "tributario": float(pl.tributario),
@@ -913,7 +913,7 @@ async def get_reporte_onat(
     totales = {
         "total_importe": sum(d["importe"] for d in data),
         "total_devengado": sum(d["devengado"] for d in data),
-        "total_importe_caguayo": sum(d["importe_caguayo"] for d in data),
+        "total_importe_agencia": sum(d["importe_agencia"] for d in data),
         "total_tributario_monto": sum(d["tributario_monto"] for d in data),
         "total_comision_bancaria": sum(d["comision_bancaria"] for d in data),
         "total_gasto_empresa": sum(d["gasto_empresa"] for d in data),
@@ -1098,7 +1098,7 @@ async def get_resumen_liquidaciones(
         "total_gasto_empresa": 0.0,
         "total_importe": 0.0,
         "total_neto_pagar": 0.0,
-        "total_importe_caguayo": 0.0,
+        "total_importe_agencia": 0.0,
         "total_tributario_monto": 0.0,
     }
 
@@ -1123,8 +1123,8 @@ async def get_resumen_liquidaciones(
             "gasto_empresa": float(liq.gasto_empresa),
             "importe": float(liq.importe),
             "neto_pagar": float(liq.neto_pagar),
-            "porcentaje_caguayo": float(liq.porcentaje_caguayo),
-            "importe_caguayo": float(liq.importe_caguayo),
+            "porcentaje_agencia": float(liq.porcentaje_agencia),
+            "importe_agencia": float(liq.importe_agencia),
             "tributario_monto": float(liq.tributario_monto),
             "tipo_pago": liq.tipo_pago,
             "liquidada": liq.liquidada,
@@ -1138,7 +1138,7 @@ async def get_resumen_liquidaciones(
         totales_acum["total_gasto_empresa"] += item["gasto_empresa"]
         totales_acum["total_importe"] += item["importe"]
         totales_acum["total_neto_pagar"] += item["neto_pagar"]
-        totales_acum["total_importe_caguayo"] += item["importe_caguayo"]
+        totales_acum["total_importe_agencia"] += item["importe_agencia"]
         totales_acum["total_tributario_monto"] += item["tributario_monto"]
 
     meta = {

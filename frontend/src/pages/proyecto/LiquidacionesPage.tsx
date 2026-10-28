@@ -94,7 +94,7 @@ export function LiquidacionesPage() {
   const [eliminarModal, setEliminarModal] = useState<{ isOpen: boolean; item: PersonaLiquidacion | null }>({ isOpen: false, item: null });
   const [confirmData, setConfirmData] = useState({
     doc_pago_liquidacion: '',
-    porcentaje_caguayo: 10
+    porcentaje_agencia: 10
   });
   
   const [validacionModal, setValidacionModal] = useState<{ isOpen: boolean; validacion: PersonaLiquidacionValidacion | null }>({ isOpen: false, validacion: null });
@@ -122,7 +122,7 @@ export function LiquidacionesPage() {
     id_moneda: 0,
     tipo_pago: 'TRANSFERENCIA',
     importe: 0,
-    porcentaje_caguayo: 10,
+    porcentaje_agencia: 10,
     tributario: 5,
     comision_bancaria: 0,
     comision_admin_obra: 0,
@@ -302,13 +302,13 @@ export function LiquidacionesPage() {
   });
 
   const confirmarMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { devengado?: number; tributario?: number; comision_bancaria?: number; gasto_empresa?: number; porcentaje_caguayo?: number } }) =>
+    mutationFn: ({ id, data }: { id: number; data: { devengado?: number; tributario?: number; comision_bancaria?: number; gasto_empresa?: number; porcentaje_agencia?: number } }) =>
       personaLiquidacionService.confirmarLiquidacion(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
       toast.success('Liquidación confirmada');
       setConfirmModal({ isOpen: false, item: null });
-      setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 });
+      setConfirmData({ doc_pago_liquidacion: '', porcentaje_agencia: 10 });
     },
     onError: (error: any) => {
       toast.error(error?.message || 'Error al confirmar liquidación');
@@ -317,7 +317,7 @@ export function LiquidacionesPage() {
 
   const handleConfirmar = (item: PersonaLiquidacion) => {
     setConfirmModal({ isOpen: true, item });
-    setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 });
+    setConfirmData({ doc_pago_liquidacion: '', porcentaje_agencia: 10 });
   };
 
   const handleConfirmarSubmit = async () => {
@@ -338,15 +338,15 @@ export function LiquidacionesPage() {
       }
     }
 
-    const porcentajeCaguayo = confirmData.porcentaje_caguayo || item.porcentaje_caguayo || 10;
-    const importeCaguayo = Number(item.importe) * (porcentajeCaguayo / 100);
-    const devengado = Number(item.importe) - importeCaguayo;
+    const porcentajeAgenciaLocal = confirmData.porcentaje_agencia || item.porcentaje_agencia || 10;
+    const importeAgenciaLocal = Number(item.importe) * (porcentajeAgenciaLocal / 100);
+    const devengado = Number(item.importe) - importeAgenciaLocal;
     
     confirmarMutation.mutate({
       id: item.id_liquidacion,
       data: {
         devengado,
-        porcentaje_caguayo: porcentajeCaguayo,
+        porcentaje_agencia: porcentajeAgenciaLocal,
         tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
         comision_admin_obra: item.comision_admin_obra || 0,
@@ -364,7 +364,7 @@ export function LiquidacionesPage() {
       id_moneda: monedas[0]?.id_moneda ?? 0,
       tipo_pago: 'TRANSFERENCIA',
       importe: 0,
-      porcentaje_caguayo: 10,
+      porcentaje_agencia: 10,
       tributario: 5,
       comision_bancaria: 0,
       comision_admin_obra: 0,
@@ -409,16 +409,16 @@ export function LiquidacionesPage() {
     }
   };
 
-  const calculateImporteCaguayo = () => {
+  const calculateImporteGestion = () => {
     const importe = Number(formData.importe) || 0;
-    const porcentaje = Number(formData.porcentaje_caguayo) || 0;
+    const porcentaje = Number(formData.porcentaje_agencia) || 0;
     return importe * (porcentaje / 100);
   };
 
   const calculateDevengado = () => {
     const importe = Number(formData.importe) || 0;
-    const importe_caguayo = calculateImporteCaguayo();
-    return importe - importe_caguayo;
+    const importe_agencia = calculateImporteGestion();
+    return importe - importe_agencia;
   };
 
   const calculateTributarioMonto = () => {
@@ -582,7 +582,7 @@ export function LiquidacionesPage() {
         id_moneda: item.id_moneda || (monedas[0]?.id_moneda ?? 0),
         tipo_pago: item.tipo_pago || 'TRANSFERENCIA',
         importe: item.importe || 0,
-        porcentaje_caguayo: item.porcentaje_caguayo || 10,
+        porcentaje_agencia: item.porcentaje_agencia || 10,
         tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
         comision_admin_obra: item.comision_admin_obra || 0,
@@ -651,7 +651,7 @@ export function LiquidacionesPage() {
       descripcion: formData.descripcion || undefined,
       id_moneda: monedaContrato || formData.id_moneda || undefined,
       tipo_pago: formData.tipo_pago,
-      porcentaje_caguayo: Number(formData.porcentaje_caguayo) || 10,
+      porcentaje_agencia: Number(formData.porcentaje_agencia) || 10,
       tributario: Number(formData.tributario) || 5,
       comision_bancaria: Number(formData.comision_bancaria) || 0,
       comision_admin_obra: Number(formData.comision_admin_obra) || 0,
@@ -709,8 +709,8 @@ export function LiquidacionesPage() {
     const observacionLiquidacion = liquidacion?.observacion || '';
     const docPagoLiquidacion = liquidacion?.doc_pago_liquidacion || '';
     
-    const porcentajeCaguayo = Number(liquidacion.porcentaje_caguayo || 10);
-    const importeCaguayo = formatCifra(liquidacion.importe_caguayo || (liquidacion.importe * porcentajeCaguayo / 100));
+    const porcentajeAgenciaLocal = Number(liquidacion.porcentaje_agencia || 10);
+    const importeAgenciaLocal = formatCifra(liquidacion.importe_agencia || (liquidacion.importe * porcentajeAgenciaLocal / 100));
     const devengado = formatCifra(liquidacion.devengado);
     const tributario = Number(liquidacion.tributario || 5);
     const tributarioMonto = formatCifra(liquidacion.tributario_monto || (Number(devengado) * tributario / 100));
@@ -800,7 +800,7 @@ export function LiquidacionesPage() {
             <div class="header-box-row"><strong>Número:</strong> ${liquidacion.numero || 'N/A'}</div>
             <div class="header-box-row"><strong>Moneda:</strong> ${nombreMoneda || 'N/A'}</div>
             <div class="header-box-row" style="border-top: 1px solid black; padding-top: 4px; margin-top: 4px;"><strong>IMPORTE:</strong> ${importe}</div>
-            <div class="header-box-row"><span style="color: #666;">Importe Caguayo(${porcentajeCaguayo}%):</span> -${importeCaguayo}</div>
+            <div class="header-box-row"><span style="color: #666;">Importe comisión (${porcentajeAgenciaLocal}%):</span> -${importeAgenciaLocal}</div>
             <div class="header-box-row" style="font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px;"><strong>DEVENGADO:</strong> ${devengado}</div>
             <div class="header-box-row"><span style="color: #666;">Tributario(${tributario}%):</span> -${tributarioMonto}</div>
             <div class="header-box-row" style="font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px;"><strong>SUBTOTAL:</strong> ${subtotal}</div>
@@ -1358,8 +1358,8 @@ export function LiquidacionesPage() {
                     <Input
                       type="number"
                       step="0.01"
-                      value={formData.porcentaje_caguayo}
-                      onChange={(e) => setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) }))}
+                      value={formData.porcentaje_agencia}
+                      onChange={(e) => setFormData(prev => ({ ...prev, porcentaje_agencia: Number(e.target.value) }))}
                       className="mt-1"
                     />
                   </div>
@@ -1441,8 +1441,8 @@ export function LiquidacionesPage() {
                       <span className="font-medium">{formatCifra(formData.importe)}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
-                      <span>Importe comisión ({formData.porcentaje_caguayo || 10}%):</span>
-                      <span>- {formatCifra(calculateImporteCaguayo())}</span>
+                      <span>Importe comisión ({formData.porcentaje_agencia || 10}%):</span>
+                      <span>- {formatCifra(calculateImporteGestion())}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-800">Devengado:</span>
@@ -1590,7 +1590,7 @@ export function LiquidacionesPage() {
       )}
 
       {confirmModal.isOpen && confirmModal.item && (
-        <ModalOverlay isOpen={true} onClose={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 }); }} ariaLabel="Confirmar Liquidación">
+        <ModalOverlay isOpen={true} onClose={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ doc_pago_liquidacion: '', porcentaje_agencia: 10 }); }} ariaLabel="Confirmar Liquidación">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1603,7 +1603,7 @@ export function LiquidacionesPage() {
                     <p className="text-sm text-gray-500 font-mono">{confirmModal.item.numero || 'Sin código'}</p>
                   </div>
                 </div>
-                <button onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 }); }} className="p-2 hover:bg-gray-200 rounded-full">
+                <button onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ doc_pago_liquidacion: '', porcentaje_agencia: 10 }); }} className="p-2 hover:bg-gray-200 rounded-full">
                   <XCircle className="h-6 w-6 text-gray-500" />
                 </button>
               </div>
@@ -1643,7 +1643,7 @@ export function LiquidacionesPage() {
                 {confirmarMutation.isPending ? 'Confirmando...' : 'Confirmar'}
               </button>
               <button
-                onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 }); }}
+                onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ doc_pago_liquidacion: '', porcentaje_agencia: 10 }); }}
                 className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancelar

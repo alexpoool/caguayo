@@ -1005,9 +1005,9 @@ class PersonaLiquidacionService:
             if persona_etapa and persona_etapa.cobro:
                 importe = Decimal(str(persona_etapa.cobro))
 
-        porcentaje_caguayo = Decimal(str(data.porcentaje_caguayo or 10))
-        importe_caguayo = importe * (porcentaje_caguayo / 100)
-        devengado = importe - importe_caguayo
+        porcentaje_agencia = Decimal(str(data.porcentaje_agencia or 10))
+        importe_agencia = importe * (porcentaje_agencia / 100)
+        devengado = importe - importe_agencia
 
         tributario = Decimal(str(data.tributario or 5))
         tributario_monto = devengado * (tributario / 100)
@@ -1029,8 +1029,8 @@ class PersonaLiquidacionService:
             id_moneda=data.id_moneda,
             tipo_pago=data.tipo_pago,
             importe=importe,
-            porcentaje_caguayo=porcentaje_caguayo,
-            importe_caguayo=importe_caguayo,
+            porcentaje_agencia=porcentaje_agencia,
+            importe_agencia=importe_agencia,
             devengado=devengado,
             tributario=tributario,
             tributario_monto=tributario_monto,
@@ -1095,13 +1095,13 @@ class PersonaLiquidacionService:
             else (liq.importe or Decimal("0"))
         )
 
-        porcentaje_caguayo = (
-            Decimal(str(data.porcentaje_caguayo))
-            if data.porcentaje_caguayo is not None
-            else (liq.porcentaje_caguayo or Decimal("10"))
+        porcentaje_agencia = (
+            Decimal(str(data.porcentaje_agencia))
+            if data.porcentaje_agencia is not None
+            else (liq.porcentaje_agencia or Decimal("10"))
         )
-        importe_caguayo = importe * (porcentaje_caguayo / 100)
-        devengado = importe - importe_caguayo
+        importe_agencia = importe * (porcentaje_agencia / 100)
+        devengado = importe - importe_agencia
 
         tributario = (
             Decimal(str(data.tributario))
@@ -1138,8 +1138,8 @@ class PersonaLiquidacionService:
             descripcion=data.descripcion,
             id_moneda=data.id_moneda,
             tipo_pago=data.tipo_pago,
-            porcentaje_caguayo=porcentaje_caguayo,
-            importe_caguayo=importe_caguayo,
+            porcentaje_agencia=porcentaje_agencia,
+            importe_agencia=importe_agencia,
             devengado=devengado,
             tributario=tributario,
             tributario_monto=tributario_monto,
@@ -1246,8 +1246,8 @@ class PersonaLiquidacionService:
                     f"El importe de la liquidación ({importe:.2f}) excede el saldo disponible ({disponible:.2f})"
                 )
 
-        if data.porcentaje_caguayo is not None:
-            liquidacion_obj.porcentaje_caguayo = Decimal(str(data.porcentaje_caguayo))
+        if data.porcentaje_agencia is not None:
+            liquidacion_obj.porcentaje_agencia = Decimal(str(data.porcentaje_agencia))
         if data.tributario is not None:
             liquidacion_obj.tributario = Decimal(str(data.tributario))
         if data.gasto_empresa is not None:
@@ -1257,9 +1257,9 @@ class PersonaLiquidacionService:
         if data.comision_admin_obra is not None:
             liquidacion_obj.comision_admin_obra = Decimal(str(data.comision_admin_obra))
 
-        porcentaje_caguayo = liquidacion_obj.porcentaje_caguayo or Decimal("10")
-        liquidacion_obj.importe_caguayo = importe * (porcentaje_caguayo / 100)
-        liquidacion_obj.devengado = importe - liquidacion_obj.importe_caguayo
+        porcentaje_agencia = liquidacion_obj.porcentaje_agencia or Decimal("10")
+        liquidacion_obj.importe_agencia = importe * (porcentaje_agencia / 100)
+        liquidacion_obj.devengado = importe - liquidacion_obj.importe_agencia
 
         tributario = liquidacion_obj.tributario or Decimal("5")
         liquidacion_obj.tributario_monto = liquidacion_obj.devengado * (

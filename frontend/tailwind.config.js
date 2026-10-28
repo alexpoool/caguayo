@@ -7,18 +7,24 @@ export default {
   theme: {
     extend: {
       colors: {
+        /* Paleta base del producto (logo ITEMLI: azul eléctrico)
+           con acentos violeta. Las instalaciones del cliente pueden
+           pisarla vía override de este archivo o variables CSS. */
         brand: {
-          50: '#ffe9ee',
-          100: '#ffd2dc',
-          400: '#ff6b85',
-          500: '#e94560',
-          600: '#d63550',
+          50: '#eef3ff',
+          100: '#dce8ff',
+          200: '#bdd4ff',
+          300: '#8db4fb',
+          400: '#5b8df7',
+          500: '#2f6cf5',
+          600: '#1f52d6',
+          700: '#183fa8',
         },
         panel: {
-          600: '#3a3a55',
-          700: '#2d2d44',
-          800: '#2a2a40',
-          900: '#1e1e2f',
+          600: '#3c3564',
+          700: '#2f2a52',
+          800: '#2a2550',
+          900: '#1f1b3f',
         },
         surface: '#f4f6f9',
       },

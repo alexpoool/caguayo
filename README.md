@@ -1,6 +1,64 @@
-# Caguayo Application
+# ITEMLI — ERP
 
-This repository contains the Caguayo application, a comprehensive inventory and management system built with FastAPI (Python backend) and React (frontend).
+This repository contains **ITEMLI**, a comprehensive inventory and management system built with FastAPI (Python backend) and React (frontend).
+
+## Modelo white-label: cómo vender la app a otros clientes
+
+El software es **ITEMLI** (marca del producto, fija). Cada instalación pertenece a
+**una empresa responsable** (el cliente) con su propia marca. Dos capas:
+
+| | Marca del producto (ITEMLI) | Marca del cliente |
+|---|---|---|
+| Configuración | Fija accets en `frontend/public/producto/` | `.env` del despliegue del cliente |
+| Aparece en | Login, Register, favicon, title | Sidebar, Home, Facturas, PDFs |
+
+### Variables por cliente
+
+**Backend** (`backend/.env`):
+
+```env
+EMPRESA_NOMBRE=MiCliente          # nombre corto: sidebar / / / saludos
+EMPRESA_RAZON_SOCIAL=MiCliente S.C.  # razón social: facturas y PDFs
+DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/micliente_erp
+AUTH_DATABASE=micliente_erp       # igual a DATABASE_URL
+```
+
+**Frontend** (`frontend/.env`): el nombre se obtiene del backend
+(`GET /api/v1/config/branding`); los `VITE_EMPRESA_NOMBRE` /
+`VITE_EMPRESA_RAZON_SOCIAL` son solo fallback. Defaults: *"ERP"*.
+
+### Assets por cliente
+
+- `frontend/public/empresa/` — logos del cliente (`logo-black.png` para
+  facturas, favicon opcional). Es pisable: sobreescribir por cliente.
+- `frontend/public/producto/` — assets del producto; NO cambiarlos
+  (`itemli-logo.png`, `favicon.ico`).
+
+### Paleta
+
+La paleta base (azul eléctrico del logo ITEMLI con acentos violeta)
+vive en `frontend/tailwind.config.js` (`brand.*` y `panel.*`). Un
+cliente puede pisarla editando solo eso.
+
+### Checklist para vender a un cliente nuevo
+
+1. Clonar repo (sin cachés/dumps: ver `.gitignore`).
+2. Crear BD del cliente: `CREATE DATABASE micliente_erp;` (y las
+   bases adicionales si el cliente usa varias dependencias).
+3. `backend/.env` con `EMPRESA_NOMBRE`, `EMPRESA_RAZON_SOCIAL`, `DATABASE_URL`,
+   `AUTH_DATABASE` (y credenciales admin si usará respaldos).
+4. `frontend/.env` con `VITE_API_BASE_URL`.
+5. `frontend/public/empresa/` con los logos del cliente.
+6. `cd backend && uv run alembic upgrade head` (crea el esquema).
+7. `cd backend && uv run python -m scripts.init_office micliente_erp`
+   (datos base: monedas, dependencias, funcionalidades).
+8. Crear el grupo administrador + usuarios del cliente.
+9. Arrancar: `scripts/dev.sh` (start).
+10. El módulo `etl/` es migration de datos desde el legacy de una
+    instalación concreta: ignorarlo para nuevos clientes.
+
+Los nombres de BD como `caguayo_sa` que aparecen más abajo son los de
+la instalación de Caguayo (el primer cliente); cada cliente usa los suyos.
 
 ## Project Structure
 

@@ -229,9 +229,9 @@ export function LiquidacionesPage() {
 
     // Financial calculations with Decimal precision
     const importeDec = new Decimal(liquidacion.importe || 0);
-    const porcentajeCaguayoDec = new Decimal(liquidacion.porcentaje_caguayo || DEFAULTS.PORCENTAJE_CAGUAYO);
-    const importeCaguayoDec = mul(importeDec, percentToMultiplier(porcentajeCaguayoDec.toNumber()));
-    const devengadoDec = sub(importeDec, importeCaguayoDec);
+    const porcentajeAgenciaDec = new Decimal(liquidacion.porcentaje_agencia || DEFAULTS.PORCENTAJE_COMISION);
+    const importeAgenciaDec = mul(importeDec, percentToMultiplier(porcentajeAgenciaDec.toNumber()));
+    const devengadoDec = sub(importeDec, importeAgenciaDec);
     const tributarioDec = new Decimal(liquidacion.tributario || 0);
     const tributarioMontoDec = mul(devengadoDec, percentToMultiplier(tributarioDec.toNumber()));
     const subtotalDec = sub(devengadoDec, tributarioMontoDec);
@@ -326,7 +326,7 @@ export function LiquidacionesPage() {
             <div class="header-box-row"><strong>Código:</strong> ${escapeHtml(String(liquidacion.codigo || 'N/A'))}</div>
             <div class="header-box-row"><strong>Moneda:</strong> ${moneda || 'N/A'}</div>
             <div class="header-box-row" style="border-top:1px solid black;padding-top:4px;margin-top:4px;"><strong>IMPORTE:</strong> ${toFixed(importeDec, 2)}</div>
-            <div class="header-box-row"><span style="color:#666;">Importe comisión (${porcentajeCaguayoDec}%):</span> -${toFixed(importeCaguayoDec, 2)}</div>
+            <div class="header-box-row"><span style="color:#666;">Importe comisión (${porcentajeAgenciaDec}%):</span> -${toFixed(importeAgenciaDec, 2)}</div>
             <div class="header-box-row" style="font-weight:bold;border-bottom:1px solid #333;padding-bottom:4px;"><strong>DEVENGADO:</strong> ${subtotalDevengado}</div>
             <div class="header-box-row"><span style="color:#666;">Tributario(${tributarioDec}%):</span> -${valorTributario}</div>
             <div class="header-box-row" style="font-weight:bold;border-bottom:1px solid #333;padding-bottom:4px;"><strong>SUBTOTAL:</strong> ${subtotal}</div>

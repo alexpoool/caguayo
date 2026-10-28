@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     DEFAULT_MONEDA_ID: int = 277
     DEFAULT_DEPENDENCIA_ID: int = 4
-    DEFAULT_PORCENTAJE_CAGUAYO: float = 10.0
+    DEFAULT_PORCENTAJE_COMISION: float = 10.0
     DEFAULT_TRIBUTARIO: float = 5.0
 
     # Branding de la instalación: nombre corto de la empresa cliente y

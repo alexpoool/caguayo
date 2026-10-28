@@ -40,8 +40,8 @@ export function CrearLiquidacionForm({ formId, initialProveedorId, onExit, onPen
   }, []);
 
   const validateNumericField = (field: string, value: any): string | null => {
-    if (field === 'porcentaje_caguayo' || field === 'tributario') {
-      const err = esPorcentaje(value, field === 'porcentaje_caguayo' ? '% Comisión' : 'Tributario');
+    if (field === 'porcentaje_agencia' || field === 'tributario') {
+      const err = esPorcentaje(value, field === 'porcentaje_agencia' ? '% Comisión' : 'Tributario');
       setErrors(prev => ({ ...prev, [field]: err || '' }));
       return err;
     }
@@ -67,7 +67,7 @@ export function CrearLiquidacionForm({ formId, initialProveedorId, onExit, onPen
     tributario: DEFAULTS.TRIBUTARIO,
     comision_bancaria: 0,
     gasto_empresa: 0,
-    porcentaje_caguayo: DEFAULTS.PORCENTAJE_CAGUAYO,
+    porcentaje_agencia: DEFAULTS.PORCENTAJE_COMISION,
     tipo_pago: DEFAULTS.TIPO_PAGO,
     observaciones: '',
     producto_ids: []
@@ -164,17 +164,17 @@ export function CrearLiquidacionForm({ formId, initialProveedorId, onExit, onPen
     return toNumber(total);
   };
 
-  const calculateImporteCaguayo = (): number => {
+  const calculateImporteGestion = (): number => {
     const importe = new Decimal(calculateImporte());
-    const porcentaje = Number(formData.porcentaje_caguayo) || DEFAULTS.PORCENTAJE_CAGUAYO;
+    const porcentaje = Number(formData.porcentaje_agencia) || DEFAULTS.PORCENTAJE_COMISION;
     const result = mul(importe, percentToMultiplier(porcentaje));
     return toNumber(result);
   };
 
   const calculateDevengado = (): number => {
     const importe = new Decimal(calculateImporte());
-    const importe_caguayo = new Decimal(calculateImporteCaguayo());
-    return toNumber(sub(importe, importe_caguayo));
+    const importe_agencia = new Decimal(calculateImporteGestion());
+    return toNumber(sub(importe, importe_agencia));
   };
 
   const calculateTributarioMonto = (): number => {
@@ -237,11 +237,11 @@ if (!filtroCliente) {
       return;
     }
 
-    const caguayoErr = validateNumericField('porcentaje_caguayo', formData.porcentaje_caguayo);
+    const agenciaErr = validateNumericField('porcentaje_agencia', formData.porcentaje_agencia);
     const tributarioErr = validateNumericField('tributario', formData.tributario);
     const comisionErr = validateNumericField('comision_bancaria', formData.comision_bancaria);
     const gastoErr = validateNumericField('gasto_empresa', formData.gasto_empresa);
-    if (caguayoErr || tributarioErr || comisionErr || gastoErr) {
+    if (agenciaErr || tributarioErr || comisionErr || gastoErr) {
       toast.error('Corrija los valores en los campos de cálculos');
       setIsLoading(false);
       return;
@@ -512,10 +512,10 @@ if (!filtroCliente) {
                 step="0.01"
                 min="0"
                 max="100"
-                value={formData.porcentaje_caguayo}
-                onChange={(e: any) => { setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) })); validateNumericField('porcentaje_caguayo', e.target.value); }}
+                value={formData.porcentaje_agencia}
+                onChange={(e: any) => { setFormData(prev => ({ ...prev, porcentaje_agencia: Number(e.target.value) })); validateNumericField('porcentaje_agencia', e.target.value); }}
               />
-              {errors.porcentaje_caguayo && <p className="text-red-500 text-sm mt-1">{errors.porcentaje_caguayo}</p>}
+              {errors.porcentaje_agencia && <p className="text-red-500 text-sm mt-1">{errors.porcentaje_agencia}</p>}
             </div>
             <div>
               <Label className="text-sm font-medium">Tributario (%)</Label>
@@ -563,8 +563,8 @@ if (!filtroCliente) {
                   <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between pl-4">
-                    <span className="text-sm text-gray-500">Importe comisión ({Number(formData.porcentaje_caguayo || DEFAULTS.PORCENTAJE_CAGUAYO)}%):</span>
-                  <span className="text-sm text-gray-500">- {calculateImporteCaguayo().toLocaleString()}</span>
+                    <span className="text-sm text-gray-500">Importe comisión ({Number(formData.porcentaje_agencia || DEFAULTS.PORCENTAJE_COMISION)}%):</span>
+                  <span className="text-sm text-gray-500">- {calculateImporteGestion().toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between border-b border-gray-200 pb-1">
                   <span className="text-base font-semibold text-red-600">DEVENGADO:</span>

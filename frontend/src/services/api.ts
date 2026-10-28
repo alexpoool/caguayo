@@ -854,7 +854,7 @@ export const personaLiquidacionService = {
   },
   async confirmarLiquidacion(id: number, data: {
     devengado?: number;
-    porcentaje_caguayo?: number;
+    porcentaje_agencia?: number;
     tributario?: number;
     comision_bancaria?: number;
     comision_admin_obra?: number;
@@ -1038,8 +1038,8 @@ export interface Liquidacion {
   gasto_empresa: number;
   importe: number;
   neto_pagar: number;
-  porcentaje_caguayo: number;
-  importe_caguayo: number;
+  porcentaje_agencia: number;
+  importe_agencia: number;
   tributario_monto: number;
   tipo_pago: string;
   cliente?: any;
@@ -1061,7 +1061,7 @@ export interface LiquidacionCreate {
   tipo_pago?: string;
   observaciones?: string;
   producto_ids: number[];
-  porcentaje_caguayo?: number;
+  porcentaje_agencia?: number;
 }
 
 export interface LiquidacionConfirmar {
@@ -1071,7 +1071,7 @@ export interface LiquidacionConfirmar {
   comision_bancaria?: number;
   gasto_empresa?: number;
   observaciones?: string;
-  porcentaje_caguayo?: number;
+  porcentaje_agencia?: number;
 }
 
 export const liquidacionService = {
