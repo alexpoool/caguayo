@@ -17,7 +17,7 @@ import type {
 import type { Cuenta, CuentaCreate, CuentaUpdate, CuentaDependencia, CuentaDependenciaCreate, CuentaDependenciaUpdate } from '../types/cuenta';
 import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
 import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate, ConexionDatabase } from '../types/dependencia';
-import type { BackupInfo, BackupListado, BackupJob, BackupJobIniciado, BaseDatoConBackups } from '../types/backup';
+import type { BackupInfo, BackupListado, BackupJob, BackupJobIniciado } from '../types/backup';
 import type { Provincia, Municipio } from '../types/ubicacion';
 import type { Moneda } from '../types/moneda';
 
@@ -256,11 +256,6 @@ export const dependenciasService = {
 // dependencia. El dump y el restore corren como jobs en background en la API;
 // el frontend obtiene un job_id y hace polling de `getJob` hasta que termina.
 export const backupsService = {
-  // BDs no-template del servidor (central incluida) con resumen de backups
-  getBasesDatos: async (): Promise<BaseDatoConBackups[]> => {
-    return await apiClient.get('/backups/bases-datos');
-  },
-
   listar: async (baseDatos: string): Promise<BackupListado> => {
     return await apiClient.get(
       `/backups/bases-datos/${encodeURIComponent(baseDatos)}/listar`,

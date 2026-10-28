@@ -1,15 +1,17 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   DatabaseBackup,
-  Database,
   HardDriveDownload,
-  Eye,
+  RotateCcw,
+  Trash2,
+  CheckCircle2,
+  XCircle,
   AlertTriangle,
   Loader2,
+  X,
+  Archive,
   Clock,
-  Server,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -24,160 +26,391 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  ConfirmModal,
 } from "../components/ui";
+import { useAuth } from "../context/AuthContext";
 import { backupsService } from "../services/administracion";
+import type { BackupInfo, BackupJob } from "../types/backup";
 
 /** Formatea un tamaño en bytes a texto legible. */
 function formatoTamano(bytes: number): string {
-  if (!bytes) return "—";
   if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(2)} GB`;
   if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
   if (bytes >= 1_000) return `${(bytes / 1_000).toFixed(1)} KB`;
   return `${bytes} B`;
 }
 
+/** Badge de checksum/integridad de un dump. */
+function BadgeIntegridad({ backup }: { backup: BackupInfo }) {
+  if (backup.cabecera_ok === false || backup.checksum_ok === false) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs">
+        <XCircle className="h-3 w-3" />
+        Inválido
+      </span>
+    );
+  }
+  if (backup.checksum_ok === null) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs">
+        <AlertTriangle className="h-3 w-3" />
+        Sin .sha256
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">
+      <CheckCircle2 className="h-3 w-3" />
+      Válido
+    </span>
+  );
+}
+
+/** Panel del job en ejecución (o terminado) con sus pasos. */
+function PanelJob({ job }: { job: BackupJob }) {
+  const esJobActivo = job.estado === "pendiente" || job.estado === "ejecutando";
+  const colorEstado =
+    job.estado === "completado"
+      ? "bg-green-50 border-green-300"
+      : job.estado === "fallido"
+        ? "bg-red-50 border-red-300"
+        : "bg-blue-50 border-blue-300";
+
+  return (
+    <div className={`mb-4 p-4 border rounded-lg ${colorEstado}`}>
+      <div className="flex items-center gap-2 mb-3">
+        {esJobActivo ? (
+          <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+        ) : job.estado === "completado" ? (
+          <CheckCircle2 className="h-5 w-5 text-green-600" />
+        ) : (
+          <XCircle className="h-5 w-5 text-red-600" />
+        )}
+        <span className="font-medium text-gray-900">
+          {job.tipo === "backup" ? "Creación de backup" : "Restauración"} —{" "}
+          {job.estado === "ejecutando"
+            ? "en ejecución…"
+            : job.estado === "pendiente"
+              ? "en cola…"
+              : job.estado === "completado"
+                ? "completado"
+                : "falló"}
+        </span>
+      </div>
+
+      <ul className="space-y-1 text-sm">
+        {job.pasos.map((paso) => (
+          <li key={paso.paso} className="flex items-start gap-2">
+            {paso.estado === "en_curso" ? (
+              <Loader2 className="h-4 w-4 text-blue-500 animate-spin mt-0.5" />
+            ) : paso.estado === "ok" ? (
+              <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
+            ) : paso.estado === "advertencia" ? (
+              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+            ) : paso.estado === "error" ? (
+              <XCircle className="h-4 w-4 text-red-600 mt-0.5" />
+            ) : (
+              <Clock className="h-4 w-4 text-gray-400 mt-0.5" />
+            )}
+            <span className="text-gray-800">
+              {paso.paso.replace(/_/g, " ")}
+              {paso.detalle && (
+                <span className="text-gray-500"> — {paso.detalle}</span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {job.estado === "fallido" && (
+        <p className="mt-3 text-sm text-red-700 bg-red-100 rounded p-2 leading-snug">
+          {job.error}
+        </p>
+      )}
+
+      {job.estado === "completado" && job.tipo === "restaurar" && (
+        <p className="mt-3 text-sm text-green-800 bg-green-100 rounded p-2 leading-snug">
+          Restauración aplicada ({job.resultado?.n_tablas} tablas). La BD anterior
+          se conservó como
+          <span className="font-mono"> {job.resultado?.bd_previa || "—"}</span>{" "}
+          para rollback manual si hiciera falta.
+        </p>
+      )}
+      {job.estado === "completado" && job.tipo === "backup" && (
+        <p className="mt-3 text-sm text-green-800 bg-green-100 rounded p-2 leading-snug">
+          Backup creado: {job.resultado?.archivo} (
+          {formatoTamano(job.resultado?.tamano_bytes ?? 0)}).
+        </p>
+      )}
+    </div>
+  );
+}
+
 /**
- * Listado de bases de datos operables (todas las no-template del servidor,
- * central incluida) con el resumen de sus backups. Una BD atiende N
- * dependencias: por eso el módulo está anclado a la BD, no a la dependencia.
+ * Respaldos de LA base de datos del usuario (la elegida al loguearse, traida
+ * de AuthContext): no hay listado de BDs del panel — cada usuario ve y opera
+ * unicamente los respaldos de la BD en la que esta. Restaura toda la base de
+ * datos: cualquier dependencia que viva en ella queda respaldada con el dump.
+ * Una BD atiende N dependencias: el anclaje del modulo es la BD, no la
+ * dependencia. `baseDatos` viene validado por el backend en cada operacion.
  */
 export function RespaldosPage() {
+  const { baseDatos } = useAuth();
+  const baseDatosActual = baseDatos || "";
   const queryClient = useQueryClient();
-  const [backupEnCurso, setBackupEnCurso] = useState<string | null>(null);
 
-  const { data: bases = [], isLoading, error } = useQuery({
-    queryKey: ["bases-datos-backups"],
-    queryFn: () => backupsService.getBasesDatos(),
+  // UI local: modales de restaurar/eliminar + job en seguimiento
+  const [restaurarModal, setRestaurarModal] = useState<{
+    isOpen: boolean;
+    backup: BackupInfo | null;
+  }>({ isOpen: false, backup: null });
+  const [textoConfirmacion, setTextoConfirmacion] = useState("");
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    backup: BackupInfo | null;
+  }>({ isOpen: false, backup: null });
+  const [seguimientoInfo, setSeguimientoInfo] = useState<{
+    jobId: string;
+    cerrado: boolean;
+  } | null>(null);
+
+  const { data: listado, isLoading: cargandoListado, error: errorListado } = useQuery({
+    queryKey: ["backups", baseDatosActual],
+    queryFn: () => backupsService.listar(baseDatosActual),
+    enabled: !!baseDatosActual,
   });
+
+  // Si hay un job lanzado, se hace polling de su estado hasta que termina y
+  // entonces se recarga la lista de backups.
+  const { data: job } = useQuery({
+    queryKey: ["backup-job", seguimientoInfo?.jobId],
+    queryFn: () => backupsService.getJob(seguimientoInfo!.jobId),
+    refetchInterval: (query) =>
+      query.state.data &&
+      ["pendiente", "ejecutando"].includes(query.state.data.estado)
+        ? 2000
+        : false,
+    enabled: !!seguimientoInfo?.jobId,
+  });
+
+  // Al terminar el job se recarga la lista de backups.
+  useEffect(() => {
+    if (job && !["pendiente", "ejecutando"].includes(job.estado)) {
+      queryClient.invalidateQueries({ queryKey: ["backups", baseDatosActual] });
+    }
+  }, [job, baseDatosActual, queryClient]);
 
   const lanzarBackup = useMutation({
-    mutationFn: (baseDatos: string) => backupsService.crear(baseDatos),
-    onSuccess: (_iniciado, baseDatos) => {
-      toast.success(`Backup de ${baseDatos} lanzado — será visible en unos segundos`);
-      // El dump y sidecars aparecen en el disco; al terminar el job el usuario
-      // ve el detalle en la página de la BD. Refrescar el contador aquí.
-      setTimeout(
-        () => queryClient.invalidateQueries({ queryKey: ["bases-datos-backups"] }),
-        1500,
-      );
+    mutationFn: () => backupsService.crear(baseDatosActual),
+    onSuccess: (iniciado) => {
+      setSeguimientoInfo({ jobId: iniciado.job_id, cerrado: false });
+      toast.success("Backup lanzado");
     },
     onError: (error: any) => {
-      toast.error(error?.message || "No se pudo lanzar el backup");
-    },
-    onSettled: (_data, _error, baseDatos) => {
-      setBackupEnCurso((actual) => (actual === baseDatos ? null : actual));
+      toast.error(
+        error?.message || "No se pudo lanzar el backup"
+      );
     },
   });
+
+  const lanzarRestaurar = useMutation({
+    mutationFn: (archivo: string) => backupsService.restaurar(baseDatosActual, archivo),
+    onSuccess: (iniciado) => {
+      setRestaurarModal({ isOpen: false, backup: null });
+      setTextoConfirmacion("");
+      setSeguimientoInfo({ jobId: iniciado.job_id, cerrado: false });
+      toast.success("Restauración lanzada");
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "No se pudo lanzar la restauración");
+    },
+  });
+
+  const eliminarBackup = useMutation({
+    mutationFn: (archivo: string) => backupsService.eliminar(archivo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["backups", baseDatosActual] });
+      setDeleteModal({ isOpen: false, backup: null });
+      toast.success("Backup eliminado");
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "No se pudo eliminar el backup");
+    },
+  });
+
+  const backups = listado?.backups ?? [];
+  const bdsPrevias = listado?.bds_previas ?? [];
+  // Confirmación de restauración: hay que teclear el nombre de la BD.
+  const confirmacionValida = textoConfirmacion === baseDatosActual;
 
   return (
     <div className="space-y-4">
-      {/* Cabecera */}
+      {/* Cabecera (patrón MonedasPage): título + botón Nuevo Respaldo arriba */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-slate-500 to-slate-600 rounded shadow-lg">
             <DatabaseBackup className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Backups</h1>
-            <p className="text-sm text-gray-500">
-              Respaldos y restauración por base de datos (todas las BDs del
-              servidor)
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Respaldos</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Base de datos{" "}
+              <span className="font-mono text-gray-700">{baseDatosActual || "—"}</span>
             </p>
           </div>
         </div>
+        <Button
+          onClick={() => lanzarBackup.mutate()}
+          disabled={!baseDatosActual || lanzarBackup.isPending}
+          isLoading={lanzarBackup.isPending}
+          className="gap-2 bg-gradient-to-r from-blue-500 to-slate-600 hover:from-blue-600 hover:to-slate-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          <HardDriveDownload className="h-4 w-4" />
+          Nuevo Respaldo
+        </Button>
       </div>
 
-      {error && (
+      {!baseDatosActual && (
         <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg text-sm text-yellow-800 flex items-center gap-2">
           <AlertTriangle className="h-5 w-5" />
-          No se pudieron obtener las bases de datos: {error.message}
+          No se pudo determinar la base de datos de tu sesión. Vuelve a entrar.
         </div>
       )}
 
+      {errorListado && (
+        <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg text-sm text-yellow-800 flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5" />
+          No se pudieron listar los backups: {errorListado.message}
+        </div>
+      )}
+
+      {/* Seguimiento del job en curso / último terminado */}
+      {job && seguimientoInfo?.jobId && !seguimientoInfo.cerrado && (
+        <Card>
+          <CardContent className="pt-4 relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2"
+              onClick={() => setSeguimientoInfo({ ...seguimientoInfo, cerrado: true })}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <PanelJob job={job} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Copias de rollback (_prev_) dejadas por restores anteriores */}
+      {bdsPrevias.length > 0 && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+          <p className="font-medium text-blue-900 flex items-center gap-2">
+            <Archive className="h-4 w-4" />
+            Copias de rollback disponibles ({bdsPrevias.length})
+          </p>
+          <p className="mt-1 text-blue-800">
+            Tras cada restauración la BD activa anterior queda como copia
+            genérica <span className="font-mono">_prev_&lt;fecha&gt;</span>. El
+            rollback no se hace desde la UI: un administrador debe decidirlo y
+            ejecutarlo — por ejemplo con{" "}
+            <code className="font-mono text-xs bg-blue-100 px-1 rounded">
+              ALTER DATABASE {baseDatosActual} RENAME TO {baseDatosActual}_cancelar; ALTER
+              DATABASE {bdsPrevias[0]?.nombre} RENAME TO {baseDatosActual};
+            </code>{" "}
+            (deteniendo antes el backend).
+          </p>
+          <ul className="mt-2 space-y-1">
+            {bdsPrevias.map((p) => (
+              <li key={p.nombre} className="text-blue-700">
+                <span className="font-mono">{p.nombre}</span>
+                {p.fecha && (
+                  <span className="text-blue-500 ml-2">
+                    (del restore de {p.fecha})
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Tabla de backups */}
       <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Server className="h-5 w-5 text-blue-600" />
-            Bases de datos
+            <DatabaseBackup className="h-5 w-5 text-blue-600" />
+            Backups disponibles
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {cargandoListado ? (
             <div className="flex items-center justify-center py-8 text-gray-500">
               <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              Cargando bases de datos…
+              Cargando backups…
             </div>
-          ) : bases.length === 0 ? (
+          ) : backups.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              <Database className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-              <p>No hay bases de datos operables en el servidor</p>
+              <DatabaseBackup className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+              <p>No hay backups para esta base de datos</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Crea uno con el botón “Nuevo Respaldo”.
+              </p>
             </div>
           ) : (
             <Table>
               <TableHeader className="bg-gradient-to-r from-blue-50 to-slate-50">
                 <TableRow>
-                  <TableHead>Base de datos</TableHead>
-                  <TableHead>Backups</TableHead>
-                  <TableHead>Más reciente</TableHead>
-                  <TableHead>Tamaño dumps</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Archivo</TableHead>
+                  <TableHead>Tamaño</TableHead>
+                  <TableHead>Integridad</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bases.map((base) => (
-                  <TableRow key={base.nombre_database} className="hover:bg-blue-50/50">
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Database
-                          className="h-4 w-4 text-blue-600"
-                        />
-                        <span className="font-mono">{base.nombre_database}</span>
-                        {base.es_central && (
-                          <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs">
-                            Central
-                          </span>
-                        )}
-                      </div>
+                {backups.map((backup) => (
+                  <TableRow key={backup.archivo} className="hover:bg-blue-50/50">
+                    <TableCell className="whitespace-nowrap">
+                      {backup.fecha}
                     </TableCell>
-                    <TableCell>{base.n_backups}</TableCell>
                     <TableCell>
-                      {base.backup_mas_reciente ? (
-                        <span className="flex items-center gap-1 text-sm">
-                          <Clock className="h-3 w-3 text-gray-400" />
-                          {base.backup_mas_reciente.replace("T", " ").slice(0, 16)}
+                      <span className="font-mono text-xs">{backup.archivo}</span>
+                    </TableCell>
+                    <TableCell>{formatoTamano(backup.tamano_bytes)}</TableCell>
+                    <TableCell>
+                      <BadgeIntegridad backup={backup} />
+                      {backup.detalle_error && (
+                        <span
+                          className="text-xs text-red-600 ml-2"
+                          title={backup.detalle_error}
+                        >
+                          {backup.detalle_error.slice(0, 40)}…
                         </span>
-                      ) : (
-                        <span className="text-gray-400 text-sm">nunca</span>
                       )}
                     </TableCell>
-                    <TableCell>{formatoTamano(base.tamano_total_bytes)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
+                          disabled={backup.cabecera_ok === false}
                           onClick={() => {
-                            setBackupEnCurso(base.nombre_database);
-                            lanzarBackup.mutate(base.nombre_database);
+                            setTextoConfirmacion("");
+                            setRestaurarModal({ isOpen: true, backup });
                           }}
-                          disabled={lanzarBackup.isPending && backupEnCurso === base.nombre_database}
-                          className="text-green-600"
-                          title="Crear backup de esta BD ahora"
+                          className="text-blue-600"
                         >
-                          {lanzarBackup.isPending &&
-                          backupEnCurso === base.nombre_database ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <HardDriveDownload className="h-4 w-4 mr-1" />
-                          )}
-                          Backup
+                          <RotateCcw className="h-4 w-4 mr-1" />
+                          Restaurar
                         </Button>
-                        <Link to={`/respaldos/${base.nombre_database}`}>
-                          <Button variant="ghost" size="sm" className="text-blue-600">
-                            <Eye className="h-4 w-4 mr-1" />
-                            Ver respaldos
-                          </Button>
-                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteModal({ isOpen: true, backup })}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -188,12 +421,105 @@ export function RespaldosPage() {
         </CardContent>
       </Card>
 
-      <p className="text-xs text-gray-500 px-1">
-        La restauración de una BD reemplaza TODA su información: todas las
-        dependencias que atiende. Por eso, dentro del detalle, se pide
-        confirmación tecleando el nombre de la base de datos y se conserva
-        siempre una copia de la BD anterior (_prev_) para rollback.
-      </p>
+      {/* Modal de restauración con confirmación exigente */}
+      {restaurarModal.isOpen && restaurarModal.backup && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full animate-scale-in">
+            <div className="flex items-start justify-between p-6 border-b rounded-t-2xl bg-gradient-to-r from-red-50 to-rose-50">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <RotateCcw className="h-5 w-5 text-red-600" />
+                  Restaurar backup
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Operación destructiva: se reemplazará la base de datos
+                  <span className="font-mono"> {baseDatosActual}</span> completa por el
+                  contenido del backup.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setRestaurarModal({ isOpen: false, backup: null })}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
+                <p>
+                  <span className="text-gray-500">Archivo:</span>{" "}
+                  <span className="font-mono">{restaurarModal.backup.archivo}</span>
+                </p>
+                <p>
+                  <span className="text-gray-500">Fecha:</span>{" "}
+                  {restaurarModal.backup.fecha}
+                </p>
+                <p>
+                  <span className="text-gray-500">Tamaño:</span>{" "}
+                  {formatoTamano(restaurarModal.backup.tamano_bytes)}
+                </p>
+              </div>
+              <ul className="text-sm text-gray-700 list-disc list-inside space-y-1">
+                <li>
+                  Se restaura a una BD temporal, se verifica el contenido
+                  (tablas y filas) y SOLO entonces se hace el cambio.
+                </li>
+                <li>
+                  La BD activa actual NO se borra: queda como copia de rollback
+                  <span className="font-mono"> {baseDatosActual}_prev_&lt;fecha&gt;</span>.
+                </li>
+                <li>
+                  Durante el swap se cierran las conexiones activas de la BD
+                  (todos los usuarios de esta BD verán un error puntual).
+                </li>
+              </ul>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Para confirmar, escriba el nombre de la base de datos{" "}
+                  <span className="font-mono text-red-600">{baseDatosActual}</span>:
+                </label>
+                <input
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-red-500 outline-none font-mono"
+                  value={textoConfirmacion}
+                  onChange={(e) => setTextoConfirmacion(e.target.value)}
+                  placeholder={baseDatosActual}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50 rounded-b-2xl">
+              <Button
+                variant="outline"
+                onClick={() => setRestaurarModal({ isOpen: false, backup: null })}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={!confirmacionValida || lanzarRestaurar.isPending}
+                isLoading={lanzarRestaurar.isPending}
+                onClick={() =>
+                  lanzarRestaurar.mutate(restaurarModal.backup!.archivo)
+                }
+              >
+                <RotateCcw className="h-4 w-4 mr-1" />
+                Restaurar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmación de eliminación de backup */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen && !!deleteModal.backup}
+        onClose={() => setDeleteModal({ isOpen: false, backup: null })}
+        onConfirm={() => eliminarBackup.mutate(deleteModal.backup!.archivo)}
+        title="Eliminar backup"
+        message={`¿Eliminar definitivamente "${deleteModal.backup?.archivo}" (y sus archivos .sha256/.stats)? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        type="danger"
+      />
     </div>
   );
 }

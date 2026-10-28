@@ -59,11 +59,3 @@ export interface BackupJobIniciado {
   estado: string;
 }
 
-/** Fila de BDs del listado del panel Backups (todas las no-template del servidor). */
-export interface BaseDatoConBackups {
-  nombre_database: string;
-  es_central: boolean;
-  n_backups: number;
-  backup_mas_reciente: string | null;
-  tamano_total_bytes: number;
-}
