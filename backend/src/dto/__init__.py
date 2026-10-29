@@ -232,6 +232,16 @@ from .ficha_costo_dto import (
     FichaManoObraCreate,
     FichaManoObraRead,
 )
+from .oferta_tienda_dto import (
+    ItemOfertaTiendaBase,
+    ItemOfertaTiendaCreate,
+    ItemOfertaTiendaRead,
+    OfertaTiendaBase,
+    OfertaTiendaCreate,
+    OfertaTiendaRead,
+    OfertaTiendaReadWithDetails,
+    OfertaTiendaUpdate,
+)
 from .rrhh_dto import (
     RrhhDepartamentoBase,
     RrhhDepartamentoCreate,
@@ -513,6 +523,14 @@ __all__ = [
     "FacturaRead",
     "FacturaReadWithDetails",
     "FacturaUpdate",
+    "OfertaTiendaBase",
+    "OfertaTiendaCreate",
+    "OfertaTiendaRead",
+    "OfertaTiendaReadWithDetails",
+    "OfertaTiendaUpdate",
+    "ItemOfertaTiendaBase",
+    "ItemOfertaTiendaCreate",
+    "ItemOfertaTiendaRead",
     "ItemVentaEfectivoBase",
     "ItemVentaEfectivoCreate",
     "ItemVentaEfectivoRead",

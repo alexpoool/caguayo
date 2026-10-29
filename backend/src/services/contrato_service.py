@@ -34,6 +34,7 @@ from src.models import (
     Convenio,
     ItemVentaEfectivo,
     SolicitudServicio,
+    OfertaTienda,
 )
 from src.dto import (
     TipoContratoCreate,
@@ -267,10 +268,10 @@ class ContratoService:
     async def delete(db: AsyncSession, id: int) -> bool:
         """Eliminar un contrato.
 
-        Si tiene facturas, solicitudes de servicio, movimientos o suplementos
-        con solicitudes asociadas, se anula (borrado lógico) dejando la
-        trazabilidad. Si está limpio, se borra físicamente junto con sus
-        suplementos.
+        Si tiene facturas, solicitudes de servicio, movimientos, ofertas de
+        tienda o suplementos con solicitudes asociadas, se anula (borrado
+        lógico) dejando la trazabilidad. Si está limpio, se borra físicamente
+        junto con sus suplementos.
         """
         contrato = await contrato_repo.get(db, id)
         if not contrato:
@@ -289,13 +290,18 @@ class ContratoService:
                 Movimiento.id_contrato == id
             )
         )).one() or 0
+        ofertas = (await db.exec(
+            select(func.count()).select_from(OfertaTienda).where(
+                OfertaTienda.id_contrato == id
+            )
+        )).one() or 0
         suplementos = (await db.exec(
             select(func.count()).select_from(Suplemento).where(
                 Suplemento.id_contrato == id
             )
         )).one() or 0
 
-        if facturas or solicitudes or movimientos:
+        if facturas or solicitudes or movimientos or ofertas:
             contrato_anulado = (
                 await db.exec(
                     select(EstadoContrato).where(
@@ -544,6 +550,7 @@ async def map_factura_to_read(
                 precio_venta=item.precio_venta,
                 precio_compra=item.precio_compra,
                 id_moneda=item.id_moneda,
+                id_anexo=item.id_anexo,
                 producto=ProductoSimpleRead(
                     id_producto=producto.id_producto,
                     codigo=producto.codigo,
@@ -572,6 +579,104 @@ async def map_factura_to_read(
     )
 
 
+ESTADOS_CONTRATO_NO_OPERABLES = {"ANULADO", "CANCELADO"}
+ESTADOS_CLIENTE_NO_OPERABLES = {"BAJA", "INACTIVO"}
+
+
+async def validar_contrato_para_venta(
+    db: AsyncSession, id_contrato: int
+) -> Contrato:
+    """Valida que el contrato y su cliente admitan operaciones de venta.
+
+    Se usa al crear/editar ofertas de tienda, al convertirlas en factura y al
+    crear facturas directas. Bloquea contratos ANULADO/CANCELADO y clientes
+    dados de baja. Se permite operar sobre contratos PENDIENTE y FINALIZADO:
+    se puede cotizar antes de la aprobación y emitir la factura final.
+
+    Devuelve el contrato con `estado` y `cliente` cargados para que el
+    llamador no tenga que volver a consultarlos.
+    """
+    contrato = await db.get(
+        Contrato,
+        id_contrato,
+        options=[selectinload(Contrato.estado), selectinload(Contrato.cliente)],
+    )
+    if not contrato:
+        raise BusinessLogicError(f"El contrato con ID {id_contrato} no existe.")
+
+    estado = (contrato.estado.nombre if contrato.estado else "").strip().upper()
+    if estado in ESTADOS_CONTRATO_NO_OPERABLES:
+        raise BusinessLogicError(
+            f"El contrato con ID {id_contrato} está {estado.lower()} "
+            "y no admite ventas."
+        )
+
+    estado_cliente = (
+        (contrato.cliente.estado if contrato.cliente else "") or ""
+    ).strip().upper()
+    if estado_cliente in ESTADOS_CLIENTE_NO_OPERABLES:
+        raise BusinessLogicError(
+            f"El cliente del contrato con ID {id_contrato} está dado de baja "
+            "y no admite ventas."
+        )
+
+    return contrato
+
+
+async def crear_items_y_movimientos_venta(
+    db: AsyncSession,
+    factura: Factura,
+    contrato: Optional[Contrato],
+    items_data: list,
+    id_dependencia: Optional[int],
+    denominacion: Optional[str],
+) -> None:
+    """Crea los ItemFactura y los Movimientos de venta pendientes de una factura.
+
+    Lógica compartida por `FacturaService.create` y
+    `OfertaTiendaService.convertir` (conversión oferta → factura): una vez
+    validado el stock, se materializan los items y los movimientos de venta
+    pendientes que descontarán stock al confirmarse.
+    """
+    stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
+    result_tipo = await db.exec(stmt_tipo_mov)
+    tipo_mov = result_tipo.first()
+
+    if items_data and tipo_mov:
+        await item_factura_repo.create_items(
+            db, factura.id_factura, items_data
+        )
+
+        for item in items_data:
+            producto = await db.get(Productos, item["id_producto"])
+            if not producto:
+                continue
+
+            db_movimiento = Movimiento(
+                id_tipo_movimiento=tipo_mov.id_tipo_movimiento,
+                id_dependencia=id_dependencia,
+                id_factura=factura.id_factura,
+                id_contrato=factura.id_contrato,
+                id_cliente=contrato.id_cliente if contrato else None,
+                id_producto=item["id_producto"],
+                cantidad=item["cantidad"],
+                fecha=datetime.now(timezone.utc).replace(tzinfo=None),
+                precio_compra=producto.precio_compra,
+                moneda_compra=producto.moneda_compra,
+                precio_venta=item["precio_venta"],
+                moneda_venta=item["id_moneda"],
+                id_anexo=item.get("id_anexo"),
+                estado="pendiente",
+            )
+            db.add(db_movimiento)
+            await db.flush()
+
+            if db_movimiento.id_movimiento:
+                anio = datetime.now(timezone.utc).year
+                codigo = f"{denominacion}.{str(anio)[-2:]}.FAC{factura.id_factura}.{item['id_producto']}"
+                db_movimiento.codigo = codigo
+
+
 class FacturaService:
     @staticmethod
     async def create(
@@ -587,10 +692,8 @@ class FacturaService:
 
         data.monto = total_monto
 
-        # Validar que el contrato exista
-        contrato = await db.get(Contrato, data.id_contrato)
-        if not contrato:
-            raise BusinessLogicError(f"El contrato con ID {data.id_contrato} no existe.")
+        # Validar que el contrato exista y admita ventas
+        contrato = await validar_contrato_para_venta(db, data.id_contrato)
 
         factura = await factura_repo.create(db, data)
 
@@ -617,10 +720,6 @@ class FacturaService:
 
         id_dependencia = data.id_dependencia or id_dependencia_usuario
 
-        stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
-        result_tipo = await db.exec(stmt_tipo_mov)
-        tipo_mov = result_tipo.first()
-
         # Validar existencias antes de crear factura
         if items_data:
             productos_validar = [
@@ -639,39 +738,9 @@ class FacturaService:
                 )
                 raise BusinessLogicError(f"Stock insuficiente:\n{mensaje}")
 
-        if items_data and tipo_mov:
-            await item_factura_repo.create_items(
-                db, factura.id_factura, items_data
-            )
-
-            for item in items_data:
-                producto = await db.get(Productos, item["id_producto"])
-                if not producto:
-                    continue
-
-                db_movimiento = Movimiento(
-                    id_tipo_movimiento=tipo_mov.id_tipo_movimiento,
-                    id_dependencia=id_dependencia,
-                    id_factura=factura.id_factura,
-                    id_contrato=factura.id_contrato,
-                    id_cliente=contrato.id_cliente if contrato else None,
-                    id_producto=item["id_producto"],
-                    cantidad=item["cantidad"],
-                    fecha=datetime.now(timezone.utc).replace(tzinfo=None),
-                    precio_compra=producto.precio_compra,
-                    moneda_compra=producto.moneda_compra,
-                    precio_venta=item["precio_venta"],
-                    moneda_venta=item["id_moneda"],
-                    id_anexo=item.get("id_anexo"),
-                    estado="pendiente",
-                )
-                db.add(db_movimiento)
-                await db.flush()
-
-                if db_movimiento.id_movimiento:
-                    anio = datetime.now(timezone.utc).year
-                    codigo = f"{denominacion}.{str(anio)[-2:]}.FAC{factura.id_factura}.{item['id_producto']}"
-                    db_movimiento.codigo = codigo
+        await crear_items_y_movimientos_venta(
+            db, factura, contrato, items_data, id_dependencia, denominacion
+        )
 
         await db.commit()
         await db.refresh(factura)

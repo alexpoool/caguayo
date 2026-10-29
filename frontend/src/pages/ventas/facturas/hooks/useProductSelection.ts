@@ -123,6 +123,7 @@ export function useProductSelection() {
         precio_venta: p.precio_venta || 0,
         precio_compra: p.precio_compra || 0,
         id_moneda: p.id_moneda,
+        id_anexo: p.id_anexo ?? null,
         precios: p.precios || [],
       }))
     );

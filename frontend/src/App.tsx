@@ -36,7 +36,8 @@ import {
   ChevronUp,
   ScrollText,
   Library,
-  DatabaseBackup
+  DatabaseBackup,
+  ShoppingBag
 } from 'lucide-react';
 
 import { LoginPage } from './pages/Login';
@@ -87,6 +88,7 @@ import { LiquidacionesPage } from './pages/compra/LiquidacionesPage';
 import { ContratosPage } from './pages/ventas/ContratosPage';
 import { SuplementosPage } from './pages/ventas/SuplementosPage';
 import { FacturasPage } from './pages/ventas/facturas/FacturasPage';
+import { OfertasTiendaPage } from './pages/ventas/ofertas/OfertasPage';
 import { VentasEfectivoPage } from './pages/ventas/VentasEfectivoPage';
 import { ServiciosPage } from './pages/proyecto/ServiciosPage';
 import { SolicitudesPage } from './pages/proyecto/SolicitudesPage';
@@ -135,7 +137,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
   administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/respaldos', '/perfil'],
   terceros: ['/terceros', '/clientes', '/ventas/contratos', '/ventas/suplementos', '/compra/clientes', '/compra/convenios', '/perfil'],
-  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
+  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/ofertas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/perfil'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/perfil'],
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
@@ -316,7 +318,7 @@ const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   inventario: ['movimientos', 'pendientes', 'productos'],
   terceros: ['clientes', 'contratos', 'proveedores', 'convenios'],
   compra: ['proveedores', 'anexos', 'liquidaciones', 'productos_liquidacion'],
-  venta: ['clientes', 'facturas', 'venta_efectivo'],
+  venta: ['clientes', 'facturas', 'venta_efectivo', 'ofertas_tienda'],
   proyecto: ['servicios', 'solicitudes', 'proyectos', 'facturas_servicio', 'ofertas', 'pre_facturas', 'liquidaciones_servicio'],
   reportes: ['reporte_existencias', 'reporte_movimientos_dependencia', 'reporte_movimientos_producto', 'reporte_proveedores', 'reporte_clientes', 'reporte_proyectos', 'reporte_creadores', 'reporte_desempeno', 'reporte_liquidaciones', 'reporte_onat', 'reporte_mincult'],
   administracion: ['configuracion', 'monedas', 'usuarios', 'grupos', 'dependencias', 'cuentas'],
@@ -727,6 +729,12 @@ function App() {
                     </SidebarLink>
                   </li>
                   <li>
+                    <SidebarLink slim={slimSidebar} to="/ventas/ofertas" onClick={handleLinkClick} disabled={!hasFuncionalidad('ofertas_tienda')}>
+                      <ShoppingBag className="w-6 h-6" />
+                      Ofertas Tienda
+                    </SidebarLink>
+                  </li>
+                  <li>
                     <SidebarLink slim={slimSidebar} to="/ventas/efectivo" onClick={handleLinkClick} disabled={!hasFuncionalidad('venta_efectivo')}>
                       <DollarSign className="w-6 h-6" />
                       Efectivo
@@ -1119,6 +1127,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/facturas">
                       <FacturasPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/ventas/ofertas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/ofertas">
+                      <OfertasTiendaPage />
                     </ProtectedRoute>
                   }
                 />

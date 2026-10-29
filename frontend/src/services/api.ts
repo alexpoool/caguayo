@@ -75,6 +75,9 @@ import type {
   FacturaWithDetails,
   FacturaCreate,
   FacturaUpdate,
+  OfertaTiendaWithDetails,
+  OfertaTiendaCreate,
+  OfertaTiendaUpdate,
   VentaEfectivoWithDetails,
   VentaEfectivoCreate,
   VentaEfectivoUpdate,
@@ -620,6 +623,36 @@ export const facturasService = {
 
   async deleteFactura(id: number): Promise<void> {
     return apiClient.delete<void>(`/facturas/${id}`);
+  }
+};
+
+export const ofertasTiendaService = {
+  async getOfertas(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<OfertaTiendaWithDetails[]> {
+    return apiClient.get<OfertaTiendaWithDetails[]>(`/ofertas-tienda?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
+  },
+
+  async getOfertasByContrato(contratoId: number): Promise<OfertaTiendaWithDetails[]> {
+    return apiClient.get<OfertaTiendaWithDetails[]>(`/ofertas-tienda/contrato/${contratoId}`);
+  },
+
+  async getOferta(id: number): Promise<OfertaTiendaWithDetails> {
+    return apiClient.get<OfertaTiendaWithDetails>(`/ofertas-tienda/${id}`);
+  },
+
+  async createOferta(data: OfertaTiendaCreate): Promise<OfertaTiendaWithDetails> {
+    return apiClient.post<OfertaTiendaWithDetails>('/ofertas-tienda', data);
+  },
+
+  async updateOferta(id: number, data: OfertaTiendaUpdate): Promise<OfertaTiendaWithDetails> {
+    return apiClient.put<OfertaTiendaWithDetails>(`/ofertas-tienda/${id}`, data);
+  },
+
+  async deleteOferta(id: number): Promise<void> {
+    return apiClient.delete<void>(`/ofertas-tienda/${id}`);
+  },
+
+  async convertirOferta(id: number): Promise<FacturaWithDetails> {
+    return apiClient.post<FacturaWithDetails>(`/ofertas-tienda/${id}/convertir`, {});
   }
 };
 

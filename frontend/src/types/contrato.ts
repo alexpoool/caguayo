@@ -250,6 +250,61 @@ export interface FacturaUpdate {
   items?: ItemFacturaCreate[];
 }
 
+export interface ItemOfertaTienda {
+  id_item_oferta_tienda: number;
+  id_oferta_tienda: number;
+  id_producto: number;
+  cantidad: number;
+  precio_compra: number;
+  precio_venta: number;
+  id_moneda: number;
+  codigo?: string | null;
+  id_anexo?: number | null;
+  producto?: ProductoSimple;
+}
+
+export interface ItemOfertaTiendaCreate {
+  id_producto: number;
+  cantidad: number;
+  precio_venta: number;
+  id_moneda: number;
+  id_anexo?: number | null;
+}
+
+export interface OfertaTienda {
+  id_oferta_tienda: number;
+  id_contrato: number;
+  codigo_oferta?: string | null;
+  descripcion?: string | null;
+  observaciones?: string | null;
+  fecha: string;
+  monto: number;
+  estado: string;
+  id_factura?: number | null;
+}
+
+export interface OfertaTiendaWithDetails extends OfertaTienda {
+  items: ItemOfertaTienda[] | null;
+}
+
+export interface OfertaTiendaCreate {
+  id_contrato: number;
+  descripcion?: string | null;
+  observaciones?: string | null;
+  fecha: string;
+  monto?: number | null;
+  items: ItemOfertaTiendaCreate[];
+}
+
+export interface OfertaTiendaUpdate {
+  id_contrato?: number;
+  descripcion?: string | null;
+  observaciones?: string | null;
+  fecha?: string;
+  monto?: number | null;
+  items?: ItemOfertaTiendaCreate[];
+}
+
 export interface DependenciaSimple {
   id_dependencia: number;
   nombre: string;

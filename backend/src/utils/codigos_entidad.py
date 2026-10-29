@@ -87,6 +87,28 @@ def generar_codigo_factura(
     )
 
 
+def generar_codigo_oferta_tienda(
+    anio: int, id_contrato: int, secuencia: int
+) -> str:
+    """Código de oferta de tienda: OFT.{año_2d}.{id_contrato:03d}.{secuencia:03d}.
+    El secuencial es propio de la oferta dentro de su contrato.
+    Ej: OFT.26.002.001"""
+    return (
+        f"OFT.{str(anio)[-2:]}."
+        f"{id_contrato:03d}.{secuencia:03d}"
+    )
+
+
+def generar_codigo_item_oferta_tienda(
+    id_contrato: int, sec_oferta: int, codigo_producto: Optional[str] = None, id_producto: int = 0
+) -> str:
+    """Código de item_oferta_tienda: {id_contrato:03d}.{sec_oferta:03d}.{codigo_producto}.
+    Si el producto no tiene código, usa id_producto en 3 dígitos.
+    Ej: 002.001.PROD-002"""
+    codigo = (codigo_producto or "").strip() or f"{id_producto:03d}"
+    return f"{id_contrato:03d}.{sec_oferta:03d}.{codigo}"
+
+
 def generar_codigo_item_factura(
     id_contrato: int, sec_factura: int, codigo_producto: Optional[str] = None, id_producto: int = 0
 ) -> str:

@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from .item_factura import ItemFactura
     from .item_venta_efectivo import ItemVentaEfectivo
     from .pago import Pago
+    from .oferta_tienda import OfertaTienda
 
 
 class TipoContrato(SQLModel, table=True):
@@ -71,6 +72,7 @@ class Contrato(SQLModel, table=True):
     moneda: "Moneda" = Relationship()
     suplementos: List["Suplemento"] = Relationship(back_populates="contrato")
     facturas: List["Factura"] = Relationship(back_populates="contrato")
+    ofertas_tienda: List["OfertaTienda"] = Relationship(back_populates="contrato")
 
 
 class Suplemento(SQLModel, table=True):

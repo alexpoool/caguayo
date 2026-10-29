@@ -40,6 +40,7 @@ from .productos_en_liquidacion import ProductosEnLiquidacion, TipoCompra
 from .item_anexo import ItemAnexo
 from .precio_item_anexo import PrecioItemAnexo
 from .item_factura import ItemFactura
+from .oferta_tienda import OfertaTienda, ItemOfertaTienda
 from .item_venta_efectivo import ItemVentaEfectivo
 from .cuenta_dependencia import CuentaDependencia
 from .log import LogEntry
@@ -135,6 +136,8 @@ __all__ = [
     "ItemAnexo",
     "PrecioItemAnexo",
     "ItemFactura",
+    "OfertaTienda",
+    "ItemOfertaTienda",
     "ItemVentaEfectivo",
     "CuentaDependencia",
     "LogEntry",

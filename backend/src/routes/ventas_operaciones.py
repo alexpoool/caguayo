@@ -11,6 +11,7 @@ from src.services.contrato_service import (
     FacturaService,
     VentaEfectivoService,
 )
+from src.services.oferta_tienda_service import OfertaTiendaService
 from src.repository.contratos_repo import (
     contrato_repo,
     suplemento_repo,
@@ -30,6 +31,9 @@ from src.dto import (
     VentaEfectivoReadWithDetails,
     VentaEfectivoUpdate,
     ItemAnexoDisponible,
+    OfertaTiendaCreate,
+    OfertaTiendaReadWithDetails,
+    OfertaTiendaUpdate,
 )
 from src.utils import _get_denominacion_from_token, _get_user_dependencia_id, verify_auth
 from src.core.exceptions import AppError
@@ -290,6 +294,8 @@ async def crear_factura(
         return await FacturaService.create(db, factura, denominacion=denominacion, id_dependencia_usuario=id_dependencia)
     except HTTPException:
         raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("Error al crear factura: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
@@ -463,6 +469,159 @@ async def actualizar_venta_efectivo(
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
         logger.error("Error al actualizar venta en efectivo", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+ofertas_tienda_router = APIRouter(
+    prefix="/ofertas-tienda", tags=["ofertas-tienda"], redirect_slashes=False
+)
+
+
+@ofertas_tienda_router.post("", response_model=OfertaTiendaReadWithDetails, status_code=201)
+async def crear_oferta_tienda(
+    oferta: OfertaTiendaCreate,
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_session),
+):
+    """Crear una nueva oferta de tienda (no toca stock)."""
+    try:
+        denominacion = await _get_denominacion_from_token(authorization)
+        return await OfertaTiendaService.create(db, oferta, denominacion=denominacion)
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("Error al crear oferta de tienda: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@ofertas_tienda_router.get("", response_model=List[OfertaTiendaReadWithDetails])
+async def obtener_ofertas_tienda(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener todas las ofertas de tienda activas."""
+    try:
+        return await OfertaTiendaService.get_all(db, skip, limit)
+    except Exception as e:
+        logger.error("Error al obtener ofertas de tienda", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@ofertas_tienda_router.get(
+    "/contrato/{contrato_id}", response_model=List[OfertaTiendaReadWithDetails]
+)
+async def obtener_ofertas_tienda_por_contrato(
+    contrato_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener las ofertas de tienda activas de un contrato."""
+    try:
+        return await OfertaTiendaService.get_by_contrato(db, contrato_id)
+    except Exception as e:
+        logger.error("Error al obtener ofertas de tienda", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@ofertas_tienda_router.get("/{oferta_id}", response_model=OfertaTiendaReadWithDetails)
+async def obtener_oferta_tienda(
+    oferta_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener una oferta de tienda por ID (incluye convertidas)."""
+    oferta = await OfertaTiendaService.get(db, oferta_id)
+    if not oferta:
+        raise HTTPException(status_code=404, detail="Oferta no encontrada")
+    return oferta
+
+
+@ofertas_tienda_router.put(
+    "/{oferta_id}", response_model=OfertaTiendaReadWithDetails
+)
+async def actualizar_oferta_tienda(
+    oferta_id: int,
+    update_data: OfertaTiendaUpdate,
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_session),
+):
+    """Actualizar una oferta de tienda (solo si está ACTIVA)."""
+    try:
+        await verify_auth(authorization=authorization, db=db)
+        oferta = await OfertaTiendaService.update(db, oferta_id, update_data)
+        if not oferta:
+            raise HTTPException(status_code=404, detail="Oferta no encontrada")
+        return oferta
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("Error al actualizar oferta de tienda", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@ofertas_tienda_router.delete("/{oferta_id}", status_code=204)
+async def eliminar_oferta_tienda(
+    oferta_id: int,
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_session),
+):
+    """Anular una oferta de tienda (borrado lógico)."""
+    try:
+        await verify_auth(authorization=authorization, db=db)
+        success = await OfertaTiendaService.delete(db, oferta_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Oferta no encontrada")
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la oferta tiene registros asociados",
+        )
+    except Exception as e:
+        logger.error("Error al eliminar oferta de tienda", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@ofertas_tienda_router.post(
+    "/{oferta_id}/convertir", response_model=FacturaReadWithDetails, status_code=201
+)
+async def convertir_oferta_tienda(
+    oferta_id: int,
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_session),
+):
+    """Convertir una oferta de tienda en factura.
+
+    Valida stock: si no alcanza, la oferta queda activa y no se crea la
+    factura. Si alcanza, crea la factura (códigos autogenerados nuevos),
+    copia los items y crea los movimientos de venta pendientes.
+    """
+    try:
+        await verify_auth(authorization=authorization, db=db)
+        denominacion = await _get_denominacion_from_token(authorization)
+        id_dependencia = await _get_user_dependencia_id(authorization)
+        factura = await OfertaTiendaService.convertir(
+            db,
+            oferta_id,
+            denominacion=denominacion,
+            id_dependencia_usuario=id_dependencia,
+        )
+        if not factura:
+            raise HTTPException(status_code=404, detail="Oferta no encontrada")
+        return factura
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("Error al convertir oferta de tienda", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 

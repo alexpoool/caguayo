@@ -192,7 +192,7 @@ def _seed_generic_data(connection):
         "movimientos", "pendientes", "productos", "configuracion", "monedas",
         "usuarios", "grupos", "proveedores", "convenios", "anexos",
         "liquidaciones", "productos_liquidacion", "clientes", "contratos",
-        "suplementos", "facturas", "venta_efectivo", "servicios", "solicitudes",
+        "suplementos", "facturas", "ofertas_tienda", "venta_efectivo", "servicios", "solicitudes",
         "realizadores", "proyectos", "facturas_servicio", "ofertas",
         "pre_facturas", "liquidaciones_servicio", "dependencias", "cuentas",
         "reporte_existencias", "reporte_movimientos_dependencia",
@@ -300,7 +300,7 @@ def _seed_generic_data(connection):
     LECTOR_FUNCIONALIDADES = [
         "movimientos", "productos", "clientes", "convenios", "anexos",
         "liquidaciones", "contratos", "suplementos", "facturas",
-        "venta_efectivo", "servicios", "solicitudes", "realizadores",
+        "ofertas_tienda", "venta_efectivo", "servicios", "solicitudes", "realizadores",
         "proyectos", "dependencias", "cuentas",
         "reporte_existencias", "reporte_movimientos_dependencia",
         "reporte_movimientos_producto", "reporte_proveedores",
