@@ -1,10 +1,11 @@
 import { Receipt, DollarSign, Calendar, CreditCard, Edit, Trash2, Eye, Printer, CheckCircle2 } from 'lucide-react';
 import { Button, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../../components/ui';
-import type { FacturaWithDetails } from '../../../../types/contrato';
+import type { FacturaWithDetails, ContratoWithDetails } from '../../../../types/contrato';
 import { formatFecha } from '../../../../utils/fecha';
 
 interface FacturasTableProps {
   facturas: FacturaWithDetails[];
+  contratos: ContratoWithDetails[];
   onEdit: (factura: FacturaWithDetails) => void;
   onDelete: (id: number, codigo: string) => void;
   onViewDetails: (factura: FacturaWithDetails) => void;
@@ -17,6 +18,7 @@ interface FacturasTableProps {
 
 export function FacturasTable({
   facturas,
+  contratos,
   onEdit,
   onDelete,
   onViewDetails,
@@ -27,6 +29,12 @@ export function FacturasTable({
   tipo = "FACTURA",
 }: FacturasTableProps) {
   const esPreFactura = tipo === "PREFACTURA";
+
+  // La factura no guarda moneda propia: se toma la del contrato.
+  const getMonedaSimbolo = (idContrato: number) => {
+    const contrato = contratos.find((c) => c.id_contrato === idContrato);
+    return contrato?.moneda?.simbolo || '';
+  };
   console.log('[FacturasTable] Render:', {
     facturasCount: facturas.length,
     hasOnViewDocument: typeof onViewDocument,
@@ -92,10 +100,16 @@ export function FacturasTable({
                   </span>
                 </TableCell>
                 <TableCell className="font-medium text-gray-900">
-                  ${Number(item.monto).toFixed(2)}
+                  <span className="text-gray-500 mr-1">
+                    {getMonedaSimbolo(item.id_contrato) || '$'}
+                  </span>
+                  {Number(item.monto).toFixed(2)}
                 </TableCell>
                 <TableCell className="font-medium text-gray-900">
-                  ${Number(item.pago_actual).toFixed(2)}
+                  <span className="text-gray-500 mr-1">
+                    {getMonedaSimbolo(item.id_contrato) || '$'}
+                  </span>
+                  {Number(item.pago_actual).toFixed(2)}
                 </TableCell>
                 <TableCell className="text-gray-500">{formatFecha(item.fecha)}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>

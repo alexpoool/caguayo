@@ -89,6 +89,9 @@ export function OfertasTable({
                   {contrato?.nombre || `#${oferta.id_contrato}`}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                  <span className="text-gray-500 mr-1">
+                    {contrato?.moneda?.simbolo || '$'}
+                  </span>
                   {Number(oferta.monto || 0).toFixed(2)}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
