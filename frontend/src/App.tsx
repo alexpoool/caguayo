@@ -89,6 +89,7 @@ import { ContratosPage } from './pages/ventas/ContratosPage';
 import { SuplementosPage } from './pages/ventas/SuplementosPage';
 import { FacturasPage } from './pages/ventas/facturas/FacturasPage';
 import { OfertasTiendaPage } from './pages/ventas/ofertas/OfertasPage';
+import { PreFacturasPage as PreFacturasTiendaPage } from './pages/ventas/facturas/PreFacturasPage';
 import { VentasEfectivoPage } from './pages/ventas/VentasEfectivoPage';
 import { ServiciosPage } from './pages/proyecto/ServiciosPage';
 import { SolicitudesPage } from './pages/proyecto/SolicitudesPage';
@@ -137,7 +138,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
   administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/respaldos', '/perfil'],
   terceros: ['/terceros', '/clientes', '/ventas/contratos', '/ventas/suplementos', '/compra/clientes', '/compra/convenios', '/perfil'],
-  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/ofertas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
+  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/ofertas', '/ventas/pre-facturas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/perfil'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/perfil'],
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
@@ -385,6 +386,117 @@ const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[
   },
 ];
 
+/** Grupos desplegables del sidebar de Terceros. */
+const TERCEROS_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[] = [
+  {
+    id: 'tienda',
+    label: 'Tienda',
+    items: [
+      { to: '/clientes', label: 'Clientes', icon: UserCircle, func: 'clientes' },
+      { to: '/ventas/contratos', label: 'Contratos', icon: FilePlus, func: 'contratos' },
+    ],
+  },
+  {
+    id: 'compra',
+    label: 'Compra',
+    items: [
+      { to: '/compra/clientes', label: 'Proveedores', icon: Briefcase, func: 'proveedores' },
+      { to: '/compra/convenios', label: 'Convenios', icon: FileText, func: 'convenios' },
+    ],
+  },
+];
+
+/** Grupo "Facturación" del sidebar de Tienda (orden: oferta, pre-factura, factura). */
+const VENTA_FACTURACION: { id: string; label: string; items: AdminSeccionItem[] }[] = [
+  {
+    id: 'facturacion',
+    label: 'Facturación',
+    items: [
+      { to: '/ventas/ofertas', label: 'Oferta', icon: ShoppingBag, func: 'ofertas_tienda' },
+      { to: '/ventas/pre-facturas', label: 'Pre-factura', icon: FileText, func: 'pre_facturas_tienda' },
+      { to: '/ventas/facturas', label: 'Factura', icon: Receipt, func: 'facturas' },
+    ],
+  },
+];
+
+/** Grupo "Facturación" del sidebar de Proyectos (orden: oferta, pre-factura, factura). */
+const PROYECTO_FACTURACION: { id: string; label: string; items: AdminSeccionItem[] }[] = [
+  {
+    id: 'facturacion',
+    label: 'Facturación',
+    items: [
+      { to: '/proyectos/ofertas', label: 'Oferta', icon: FilePlus, func: 'ofertas' },
+      { to: '/proyectos/pre-facturas', label: 'Pre-factura', icon: FileText, func: 'pre_facturas' },
+      { to: '/proyectos/facturas-servicio', label: 'Factura', icon: Receipt, func: 'facturas_servicio' },
+    ],
+  },
+];
+
+/** Grupo retráctil del sidebar. */
+function SidebarSeccion({
+  seccion,
+  abierta,
+  onToggle,
+  slim,
+  onLinkClick,
+  hasFuncionalidad,
+  iconClassName = 'w-4 h-4',
+}: {
+  seccion: { id: string; label: string; items: AdminSeccionItem[] };
+  abierta: boolean;
+  onToggle: (id: string) => void;
+  slim: boolean;
+  onLinkClick: () => void;
+  hasFuncionalidad: (func: string) => boolean;
+  iconClassName?: string;
+}) {
+  return (
+    <div>
+      {!slim && (
+        <button
+          type="button"
+          onClick={() => onToggle(seccion.id)}
+          className="flex w-full items-center justify-between gap-2 rounded px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-300"
+          aria-expanded={abierta}
+        >
+          <span>{seccion.label}</span>
+          <ChevronDown
+            className={`h-3.5 w-3.5 transition-transform ${abierta ? 'rotate-180' : ''}`}
+          />
+        </button>
+      )}
+      {abierta &&
+        seccion.items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <SidebarLink
+              key={item.to}
+              slim={slim}
+              to={item.to}
+              onClick={onLinkClick}
+              disabled={!hasFuncionalidad(item.func)}
+            >
+              <Icon className={iconClassName} /> {item.label}
+            </SidebarLink>
+          );
+        })}
+    </div>
+  );
+}
+
+/** Una sección está abierta si el sidebar es slim o si su ruta actual la contiene. */
+function seccionAbierta(
+  seccion: { id: string; items: AdminSeccionItem[] },
+  pathname: string,
+  abiertas: Record<string, boolean>,
+  slim: boolean,
+): boolean {
+  const contieneRutaActual = seccion.items.some(
+    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
+  );
+  return slim || (abiertas[seccion.id] ?? contieneRutaActual);
+}
+
 function App() {
   const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, funcionalidades, baseDatos } = useAuth();
   const empresa = useEmpresa();
@@ -396,6 +508,9 @@ function App() {
   };
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
   const [adminSeccionesAbiertas, setAdminSeccionesAbiertas] = useState<Record<string, boolean>>({});
+  const [tercerosSeccionesAbiertas, setTercerosSeccionesAbiertas] = useState<Record<string, boolean>>({});
+  const [ventaSeccionesAbiertas, setVentaSeccionesAbiertas] = useState<Record<string, boolean>>({});
+  const [proyectoSeccionesAbiertas, setProyectoSeccionesAbiertas] = useState<Record<string, boolean>>({});
   const [slimSidebar, setSlimSidebar] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -608,32 +723,33 @@ function App() {
                 </ul>
               )}
               {moduloActivo === 'terceros' && (
-                <ul className="space-y-1 px-3">
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('clientes')}>
-                      <UserCircle className="w-6 h-6" />
-                      Clientes
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/ventas/contratos" onClick={handleLinkClick} disabled={!hasFuncionalidad('contratos')}>
-                      <FilePlus className="w-6 h-6" />
-                      Contratos
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/compra/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('proveedores')}>
-                      <Briefcase className="w-6 h-6" />
-                      Proveedores
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/compra/convenios" onClick={handleLinkClick} disabled={!hasFuncionalidad('convenios')}>
-                      <FileText className="w-6 h-6" />
-                      Convenios
-                    </SidebarLink>
-                  </li>
-                </ul>
+                <div className={`${slimSidebar ? 'px-0' : 'px-3'} space-y-1`}>
+                  {TERCEROS_SECCIONES.map((seccion) => {
+                    const abierta = seccionAbierta(
+                      seccion,
+                      location.pathname,
+                      tercerosSeccionesAbiertas,
+                      slimSidebar,
+                    );
+                    return (
+                      <SidebarSeccion
+                        key={seccion.id}
+                        seccion={seccion}
+                        abierta={abierta}
+                        onToggle={(id) =>
+                          setTercerosSeccionesAbiertas((prev) => ({
+                            ...prev,
+                            [id]: !abierta,
+                          }))
+                        }
+                        slim={slimSidebar}
+                        onLinkClick={handleLinkClick}
+                        hasFuncionalidad={hasFuncionalidad}
+                        iconClassName="w-6 h-6"
+                      />
+                    );
+                  })}
+                </div>
               )}
               {moduloActivo === 'administracion' && (
                 <div className={`${slimSidebar ? 'px-0' : 'px-3'} space-y-1`}>
@@ -715,78 +831,86 @@ function App() {
                 </ul>
               )}
               {moduloActivo === 'venta' && (
-                <ul className="space-y-1 px-3">
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/venta/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('clientes')}>
-                      <UserCircle className="w-6 h-6" />
-                      Clientes
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/ventas/facturas" onClick={handleLinkClick} disabled={!hasFuncionalidad('facturas')}>
-                      <Receipt className="w-6 h-6" />
-                      Factura
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/ventas/ofertas" onClick={handleLinkClick} disabled={!hasFuncionalidad('ofertas_tienda')}>
-                      <ShoppingBag className="w-6 h-6" />
-                      Ofertas Tienda
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/ventas/efectivo" onClick={handleLinkClick} disabled={!hasFuncionalidad('venta_efectivo')}>
-                      <DollarSign className="w-6 h-6" />
-                      Efectivo
-                    </SidebarLink>
-                  </li>
-                </ul>
+                <div className={`${slimSidebar ? 'px-0' : 'px-3'} space-y-1`}>
+                  <SidebarLink slim={slimSidebar} to="/venta/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('clientes')}>
+                    <UserCircle className="w-6 h-6" />
+                    Clientes
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/ventas/efectivo" onClick={handleLinkClick} disabled={!hasFuncionalidad('venta_efectivo')}>
+                    <DollarSign className="w-6 h-6" />
+                    Efectivo
+                  </SidebarLink>
+                  {VENTA_FACTURACION.map((seccion) => {
+                    const abierta = seccionAbierta(
+                      seccion,
+                      location.pathname,
+                      ventaSeccionesAbiertas,
+                      slimSidebar,
+                    );
+                    return (
+                      <SidebarSeccion
+                        key={seccion.id}
+                        seccion={seccion}
+                        abierta={abierta}
+                        onToggle={(id) =>
+                          setVentaSeccionesAbiertas((prev) => ({
+                            ...prev,
+                            [id]: !abierta,
+                          }))
+                        }
+                        slim={slimSidebar}
+                        onLinkClick={handleLinkClick}
+                        hasFuncionalidad={hasFuncionalidad}
+                        iconClassName="w-6 h-6"
+                      />
+                    );
+                  })}
+                </div>
               )}
               {moduloActivo === 'proyecto' && (
-                <ul className="space-y-1 px-3">
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/proyectos/solicitudes" onClick={handleLinkClick} disabled={!hasFuncionalidad('solicitudes')}>
-                      <ClipboardList className="w-6 h-6" />
-                      Solicitudes
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/proyectos/proyectos" onClick={handleLinkClick} disabled={!hasFuncionalidad('proyectos')}>
-                      <Layers className="w-6 h-6" />
-                      Proyectos
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/proyectos/facturas-servicio" onClick={handleLinkClick} disabled={!hasFuncionalidad('facturas_servicio')}>
-                      <Receipt className="w-6 h-6" />
-                      Facturas
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/proyectos/pre-facturas" onClick={handleLinkClick} disabled={!hasFuncionalidad('pre_facturas')}>
-                      <FileText className="w-6 h-6" />
-                      Pre-facturas
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/proyectos/ofertas" onClick={handleLinkClick} disabled={!hasFuncionalidad('ofertas')}>
-                      <FilePlus className="w-6 h-6" />
-                      Ofertas
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/proyectos/liquidaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('liquidaciones_servicio')}>
-                      <Calculator className="w-6 h-6" />
-                      Liquidaciones
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/proyectos/servicios" onClick={handleLinkClick} disabled={!hasFuncionalidad('servicios')}>
-                      <Wrench className="w-6 h-6" />
-                      Servicios
-                    </SidebarLink>
-                  </li>
-                </ul>
+                <div className={`${slimSidebar ? 'px-0' : 'px-3'} space-y-1`}>
+                  <SidebarLink slim={slimSidebar} to="/proyectos/solicitudes" onClick={handleLinkClick} disabled={!hasFuncionalidad('solicitudes')}>
+                    <ClipboardList className="w-6 h-6" />
+                    Solicitudes
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/proyectos/proyectos" onClick={handleLinkClick} disabled={!hasFuncionalidad('proyectos')}>
+                    <Layers className="w-6 h-6" />
+                    Proyectos
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/proyectos/liquidaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('liquidaciones_servicio')}>
+                    <Calculator className="w-6 h-6" />
+                    Liquidaciones
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/proyectos/servicios" onClick={handleLinkClick} disabled={!hasFuncionalidad('servicios')}>
+                    <Wrench className="w-6 h-6" />
+                    Servicios
+                  </SidebarLink>
+                  {PROYECTO_FACTURACION.map((seccion) => {
+                    const abierta = seccionAbierta(
+                      seccion,
+                      location.pathname,
+                      proyectoSeccionesAbiertas,
+                      slimSidebar,
+                    );
+                    return (
+                      <SidebarSeccion
+                        key={seccion.id}
+                        seccion={seccion}
+                        abierta={abierta}
+                        onToggle={(id) =>
+                          setProyectoSeccionesAbiertas((prev) => ({
+                            ...prev,
+                            [id]: !abierta,
+                          }))
+                        }
+                        slim={slimSidebar}
+                        onLinkClick={handleLinkClick}
+                        hasFuncionalidad={hasFuncionalidad}
+                        iconClassName="w-6 h-6"
+                      />
+                    );
+                  })}
+                </div>
               )}
               {moduloActivo === 'reportes' && (
                 <div className={`${slimSidebar ? 'px-0' : 'px-3'} space-y-1`}>
@@ -1135,6 +1259,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/ofertas">
                       <OfertasTiendaPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/ventas/pre-facturas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/pre-facturas">
+                      <PreFacturasTiendaPage />
                     </ProtectedRoute>
                   }
                 />

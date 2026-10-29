@@ -305,11 +305,12 @@ async def crear_factura(
 async def obtener_facturas(
     skip: int = 0,
     limit: int = 100,
+    tipo: str = "FACTURA",
     db: AsyncSession = Depends(get_session),
 ):
-    """Obtener todas las facturas."""
+    """Obtener todas las facturas o pre-facturas según `tipo`."""
     try:
-        return await FacturaService.get_all(db, skip, limit)
+        return await FacturaService.get_all(db, skip, limit, tipo)
     except Exception as e:
         logger.error("Error al obtener facturas", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
@@ -320,13 +321,45 @@ async def obtener_facturas(
 )
 async def obtener_facturas_por_contrato(
     contrato_id: int,
+    tipo: str = "FACTURA",
     db: AsyncSession = Depends(get_session),
 ):
-    """Obtener todas las facturas de un contrato."""
+    """Obtener las facturas o pre-facturas de un contrato."""
     try:
-        return await FacturaService.get_by_contrato(db, contrato_id)
+        return await FacturaService.get_by_contrato(db, contrato_id, tipo)
     except Exception as e:
         logger.error("Error al obtener facturas", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@facturas_router.post(
+    "/{factura_id}/aprobar", response_model=FacturaReadWithDetails
+)
+async def aprobar_factura(
+    factura_id: int,
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_session),
+):
+    """Aprobar una pre-factura: la convierte en factura y reserva stock."""
+    try:
+        await verify_auth(authorization=authorization, db=db)
+        denominacion = await _get_denominacion_from_token(authorization)
+        id_dependencia = await _get_user_dependencia_id(authorization)
+        factura = await FacturaService.aprobar(
+            db,
+            factura_id,
+            denominacion=denominacion,
+            id_dependencia_usuario=id_dependencia,
+        )
+        if not factura:
+            raise HTTPException(status_code=404, detail="Pre-factura no encontrada")
+        return factura
+    except HTTPException:
+        raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("Error al aprobar pre-factura", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -500,11 +533,18 @@ async def crear_oferta_tienda(
 async def obtener_ofertas_tienda(
     skip: int = 0,
     limit: int = 100,
+    estado: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Obtener todas las ofertas de tienda activas."""
+    """Obtener las ofertas de tienda.
+
+    Sin `estado` devuelve las vigentes (ACTIVA y CONVERTIDA); con `estado`
+    filtra por ACTIVA, CONVERTIDA, ANULADA o TODAS.
+    """
     try:
-        return await OfertaTiendaService.get_all(db, skip, limit)
+        return await OfertaTiendaService.get_all(db, skip, limit, estado)
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("Error al obtener ofertas de tienda", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
@@ -515,11 +555,14 @@ async def obtener_ofertas_tienda(
 )
 async def obtener_ofertas_tienda_por_contrato(
     contrato_id: int,
+    estado: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Obtener las ofertas de tienda activas de un contrato."""
+    """Obtener las ofertas de tienda de un contrato, con filtro opcional."""
     try:
-        return await OfertaTiendaService.get_by_contrato(db, contrato_id)
+        return await OfertaTiendaService.get_by_contrato(db, contrato_id, estado)
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("Error al obtener ofertas de tienda", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
@@ -594,14 +637,18 @@ async def eliminar_oferta_tienda(
 )
 async def convertir_oferta_tienda(
     oferta_id: int,
+    tipo: str = "FACTURA",
     authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_session),
 ):
-    """Convertir una oferta de tienda en factura.
+    """Convertir una oferta de tienda en factura o pre-factura.
 
-    Valida stock: si no alcanza, la oferta queda activa y no se crea la
-    factura. Si alcanza, crea la factura (códigos autogenerados nuevos),
-    copia los items y crea los movimientos de venta pendientes.
+    Con `tipo=FACTURA` valida stock: si no alcanza, la oferta queda activa y
+    no se crea nada; si alcanza, crea la factura (códigos autogenerados
+    nuevos), copia los items y crea los movimientos de venta pendientes.
+
+    Con `tipo=PREFACTURA` no valida stock ni crea movimientos: solo copia la
+    oferta en una pre-factura, que luego se aprueba desde Pre-facturas.
     """
     try:
         await verify_auth(authorization=authorization, db=db)
@@ -612,6 +659,7 @@ async def convertir_oferta_tienda(
             oferta_id,
             denominacion=denominacion,
             id_dependencia_usuario=id_dependencia,
+            tipo=tipo,
         )
         if not factura:
             raise HTTPException(status_code=404, detail="Oferta no encontrada")

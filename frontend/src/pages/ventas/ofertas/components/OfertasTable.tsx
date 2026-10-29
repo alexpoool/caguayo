@@ -5,7 +5,7 @@ import {
   FileText,
   Printer,
   ShoppingBag,
-  Loader2,
+  CheckCircle2,
 } from 'lucide-react';
 import { formatFecha } from '../../../../utils/fecha';
 import type { OfertaTiendaWithDetails, ContratoWithDetails } from '../../../../types/contrato';
@@ -57,14 +57,11 @@ export function OfertasTable({
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Contrato
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Descripción
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-             Items
-            </th>
             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Monto
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Estado
             </th>
             <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
               Acciones
@@ -76,9 +73,12 @@ export function OfertasTable({
             const contrato = contratos.find(
               (c) => c.id_contrato === oferta.id_contrato
             );
-            const items = oferta.items || [];
             return (
-              <tr key={oferta.id_oferta_tienda} className="hover:bg-gray-50">
+              <tr
+                key={oferta.id_oferta_tienda}
+                className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                onClick={() => onViewDetails(oferta)}
+              >
                 <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                   {oferta.codigo_oferta || `#${oferta.id_oferta_tienda}`}
                 </td>
@@ -88,16 +88,42 @@ export function OfertasTable({
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                   {contrato?.nombre || `#${oferta.id_contrato}`}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">
-                  {oferta.descripcion || '—'}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-700">
-                  {items.length}
-                </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                   {Number(oferta.monto || 0).toFixed(2)}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
+                  {oferta.estado === 'CONVERTIDA' ? (
+                    <div className="flex flex-col items-start">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Convertida
+                      </span>
+                      {oferta.codigo_factura && (
+                        <span
+                          className="mt-1 text-xs text-gray-500 font-mono"
+                          title={
+                            oferta.tipo_factura === 'PREFACTURA'
+                              ? 'Pre-factura generada'
+                              : 'Factura generada'
+                          }
+                        >
+                          {oferta.codigo_factura}
+                        </span>
+                      )}
+                    </div>
+                  ) : oferta.estado === 'ANULADA' ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      Anulada
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                      Activa
+                    </span>
+                  )}
+                </td>
+                <td
+                  className="px-4 py-3 whitespace-nowrap"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="flex items-center justify-center gap-1">
                     <button
                       type="button"
@@ -107,26 +133,26 @@ export function OfertasTable({
                     >
                       <Eye className="h-4 w-4" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => onEdit(oferta)}
-                      title="Editar"
-                      className="p-2 text-gray-500 hover:text-violet-600 hover:bg-violet-50 rounded transition-colors"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onConvertir(oferta)}
-                      title="Convertir en factura"
-                      className="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded transition-colors"
-                    >
-                      {oferta.estado === 'ACTIVA' ? (
-                        <ShoppingBag className="h-4 w-4" />
-                      ) : (
-                        <Loader2 className="h-4 w-4" />
-                      )}
-                    </button>
+                    {oferta.estado === 'ACTIVA' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onEdit(oferta)}
+                          title="Editar"
+                          className="p-2 text-gray-500 hover:text-violet-600 hover:bg-violet-50 rounded transition-colors"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onConvertir(oferta)}
+                          title="Confirmar oferta"
+                          className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
                     <button
                       type="button"
                       onClick={() => onViewDocument(oferta)}
@@ -143,14 +169,16 @@ export function OfertasTable({
                     >
                       <Printer className="h-4 w-4" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => onDelete(oferta.id_oferta_tienda, oferta.codigo_oferta)}
-                      title="Anular oferta"
-                      className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {oferta.estado === 'ACTIVA' && (
+                      <button
+                        type="button"
+                        onClick={() => onDelete(oferta.id_oferta_tienda, oferta.codigo_oferta)}
+                        title="Anular oferta"
+                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

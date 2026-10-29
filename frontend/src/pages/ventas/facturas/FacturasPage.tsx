@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 /* eslint-disable react-refresh/only-export-components */
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   contratosService,
   productosService,
@@ -78,6 +79,9 @@ export function getFacturaDocument(
 
   const cuentaDep = depCuentas.find((c: any) => c.moneda?.nombre === moneda);
   const items = factura.items || [];
+  const esPreFacturaDocumento =
+    (factura.tipo || "FACTURA").toUpperCase() === "PREFACTURA";
+  const tituloDocumento = esPreFacturaDocumento ? "Pre-Factura" : "Factura";
 
   const itemsRows = items
     .map(
@@ -112,7 +116,7 @@ export function getFacturaDocument(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Factura | ${factura.codigo_factura}</title>
+  <title>${tituloDocumento} | ${factura.codigo_factura}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #dbdbdb; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Courier New', 'Monaco', monospace; padding: 30px 20px; }
@@ -187,7 +191,7 @@ export function getFacturaDocument(
           ${empresaReeup ? `<div class="reeup">Código: ${empresaReeup}</div>` : ''}
         </div>
         <div class="header-box">
-          <div class="header-box-title">Factura</div>
+          <div class="header-box-title">${tituloDocumento}</div>
           <div class="header-box-row"><strong>No.:</strong> ${factura.codigo_factura || "N/A"}</div>
           <div class="header-box-row"><strong>Fecha:</strong> ${fechaEmision}</div>
           <div class="header-box-row"><strong>Moneda:</strong> ${moneda || "N/A"}</div>
@@ -284,8 +288,15 @@ export function getFacturaDocument(
  * FacturasPage - Componente principal orquestador
  * Coordina todos los subcomponentes y gestiona el flujo de datos
  */
-export function FacturasPage() {
+export function FacturasPage({
+  tipo = "FACTURA",
+}: {
+  tipo?: "FACTURA" | "PREFACTURA";
+}) {
+  const esPreFactura = tipo === "PREFACTURA";
+  const etiqueta = esPreFactura ? "Pre-factura" : "Factura";
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const initialContratoId = searchParams.get("contrato");
 
@@ -325,7 +336,7 @@ export function FacturasPage() {
   const [pagoModalFactura, setPagoModalFactura] = useState<any | null>(null);
 
   // Hooks personalizados
-  const facturasHook = useFacturas(initialContratoId);
+  const facturasHook = useFacturas(tipo, initialContratoId);
   const pagosHook = usePagos();
   const productSelectionHook = useProductSelection();
 
@@ -435,17 +446,20 @@ export function FacturasPage() {
   const handleSaveFactura = async () => {
     setIsSavingFactura(true);
     try {
-      const stockErrors = productSelectionHook.selectedProducts.filter((p) => {
-        const stock = stockMap.get(p.id_producto) ?? 0;
-        return p.cantidad > stock;
-      });
-      if (stockErrors.length > 0) {
-        const names = stockErrors.map((p) => {
-          const pr = productosSource.find((pr: any) => pr.id_producto === p.id_producto);
-          return pr?.nombre || `ID ${p.id_producto}`;
+      // La pre-factura no toca stock: el backend lo valida al aprobarla.
+      if (!esPreFactura) {
+        const stockErrors = productSelectionHook.selectedProducts.filter((p) => {
+          const stock = stockMap.get(p.id_producto) ?? 0;
+          return p.cantidad > stock;
         });
-        toast.error(`Stock insuficiente para: ${names.join(", ")}`);
-        return;
+        if (stockErrors.length > 0) {
+          const names = stockErrors.map((p) => {
+            const pr = productosSource.find((pr: any) => pr.id_producto === p.id_producto);
+            return pr?.nombre || `ID ${p.id_producto}`;
+          });
+          toast.error(`Stock insuficiente para: ${names.join(", ")}`);
+          return;
+        }
       }
       const result = await facturasHook.handleSave(
         productSelectionHook.selectedProducts,
@@ -467,15 +481,39 @@ export function FacturasPage() {
    * Manejar eliminación de factura
    */
   const handleDeleteFactura = (id: number, codigo: string) => {
+    const singular = etiqueta.toLowerCase();
     setConfirmModal({
       isOpen: true,
-      title: "¿Eliminar factura?",
-      message: `¿Está seguro de eliminar la factura "${codigo}"?`,
+      title: `¿Anular ${singular}?`,
+      message: `¿Está seguro de anular la ${singular} "${codigo}"? Dejará de aparecer en el listado.`,
       type: "danger",
       onConfirm: async () => {
         const result = await facturasHook.handleDelete(id);
         if (result.success) {
           toast.success(result.message);
+        } else {
+          toast.error(result.message);
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+    });
+  };
+
+  /**
+   * Aprobar una pre-factura: se convierte en factura y reserva stock.
+   */
+  const handleAprobarFactura = (factura: any) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "¿Aprobar pre-factura?",
+      message: `La pre-factura "${factura.codigo_factura}" se convertirá en factura: se validará el stock, se generará el código FT y se crearán los movimientos pendientes. Los pagos e items se conservan.`,
+      type: "info",
+      onConfirm: async () => {
+        const result = await facturasHook.handleAprobar(factura.id_factura);
+        if (result.success) {
+          toast.success(result.message);
+          queryClient.invalidateQueries({ queryKey: ["facturas"] });
+          queryClient.invalidateQueries({ queryKey: ["prefacturas"] });
         } else {
           toast.error(result.message);
         }
@@ -728,11 +766,13 @@ export function FacturasPage() {
         productSelectionHook.setProductSearch(search)
       }
       onAddProduct={(id: number) => {
-        const stock = stockMap.get(id) ?? 0;
-        if (stock < 1) {
-          const pr = productosSource.find((p: any) => p.id_producto === id);
-          toast.error(`"${pr?.nombre || pr?.nombre || `ID ${id}`}" no tiene stock disponible`);
-          return;
+        if (!esPreFactura) {
+          const stock = stockMap.get(id) ?? 0;
+          if (stock < 1) {
+            const pr = productosSource.find((p: any) => p.id_producto === id);
+            toast.error(`"${pr?.nombre || pr?.nombre || `ID ${id}`}" no tiene stock disponible`);
+            return;
+          }
         }
         productSelectionHook.addProduct(id, productosSource as Productos[]);
       }}
@@ -752,6 +792,7 @@ export function FacturasPage() {
         facturasHook.setSelectedContratoId(id)
       }
       onSave={handleSaveFactura}
+      tipo={tipo}
     />
   );
 
@@ -772,16 +813,26 @@ export function FacturasPage() {
           }
           onViewDetails={(factura: any) => setDetailModal({ isOpen: true, item: factura })}
           onOpenPagos={handleOpenPagoModal}
+          onAprobar={handleAprobarFactura}
           onViewDocument={handleViewDocument}
           onPrintDocument={handlePrintDocument}
           loadMoreRef={loadMoreRef}
           isFetchingMore={facturasHook.isFetchingMore}
+          tipo={tipo}
         />
 
         {/* Modales */}
         <FacturaDetailModal
           isOpen={detailModal.isOpen}
           factura={detailModal.item}
+          contrato={
+            contratos.find(
+              (c) => c.id_contrato === detailModal.item?.id_contrato,
+            ) || null
+          }
+          onViewDocument={handleViewDocument}
+          onPrintDocument={handlePrintDocument}
+          onAprobar={handleAprobarFactura}
           onClose={() => setDetailModal({ isOpen: false, item: null })}
         />
 
@@ -811,8 +862,12 @@ export function FacturasPage() {
         <FormModal
           isOpen={view === "form"}
           onClose={handleCancelForm}
-          title={facturasHook.editingId ? "Editar Factura" : "Nueva Factura"}
-          subtitle="Complete los datos de la factura"
+          title={
+            facturasHook.editingId
+              ? `Editar ${etiqueta}`
+              : `Nueva ${etiqueta}`
+          }
+          subtitle={`Complete los datos de la ${etiqueta.toLowerCase()}`}
           icon={<Receipt className="h-6 w-6" />}
           size="xl"
           footer={

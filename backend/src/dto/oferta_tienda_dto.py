@@ -44,6 +44,9 @@ class OfertaTiendaRead(OfertaTiendaBase):
     id_oferta_tienda: int
     estado: str = "ACTIVA"
     id_factura: Optional[int] = None
+    # Documento generado al convertir la oferta (factura o pre-factura)
+    tipo_factura: Optional[str] = None
+    codigo_factura: Optional[str] = None
 
 
 class OfertaTiendaReadWithDetails(OfertaTiendaRead):

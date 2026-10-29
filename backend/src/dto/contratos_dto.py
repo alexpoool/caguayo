@@ -184,11 +184,15 @@ class FacturaCreate(FacturaBase):
     id_moneda: Optional[int] = None
     items: Optional[List[ItemFacturaCreate]] = None
     monto: Optional[Decimal] = Field(default=None, ge=0)
+    # FACTURA | PREFACTURA. La pre-factura se crea sin tocar stock y se
+    # aprueba para convertirse en factura.
+    tipo: str = "FACTURA"
 
 
 class FacturaRead(FacturaBase):
     id_factura: int
     estado: str = "ACTIVA"
+    tipo: str = "FACTURA"
 
 
 class FacturaReadWithDetails(FacturaRead):

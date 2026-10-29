@@ -1,4 +1,4 @@
-import { Receipt, DollarSign, Calendar, CreditCard, Edit, Trash2, Eye, Printer } from 'lucide-react';
+import { Receipt, DollarSign, Calendar, CreditCard, Edit, Trash2, Eye, Printer, CheckCircle2 } from 'lucide-react';
 import { Button, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../../components/ui';
 import type { FacturaWithDetails } from '../../../../types/contrato';
 import { formatFecha } from '../../../../utils/fecha';
@@ -9,8 +9,10 @@ interface FacturasTableProps {
   onDelete: (id: number, codigo: string) => void;
   onViewDetails: (factura: FacturaWithDetails) => void;
   onOpenPagos: (factura: FacturaWithDetails) => void;
+  onAprobar?: (factura: FacturaWithDetails) => void;
   onViewDocument: (factura: FacturaWithDetails) => void;
   onPrintDocument: (factura: FacturaWithDetails) => void;
+  tipo?: "FACTURA" | "PREFACTURA";
 }
 
 export function FacturasTable({
@@ -19,9 +21,12 @@ export function FacturasTable({
   onDelete,
   onViewDetails,
   onOpenPagos,
+  onAprobar,
   onViewDocument,
   onPrintDocument,
+  tipo = "FACTURA",
 }: FacturasTableProps) {
+  const esPreFactura = tipo === "PREFACTURA";
   console.log('[FacturasTable] Render:', {
     facturasCount: facturas.length,
     hasOnViewDocument: typeof onViewDocument,
@@ -31,35 +36,35 @@ export function FacturasTable({
   return (
     <div className="overflow-x-auto">
       <Table>
-        <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+        <TableHeader className={`bg-gradient-to-r ${esPreFactura ? 'from-blue-50 to-indigo-50' : 'from-teal-50 to-cyan-50'}`}>
           <TableRow>
             <TableHead>
               <div className="flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-teal-600" />
+                <Receipt className={`h-4 w-4 ${esPreFactura ? 'text-blue-600' : 'text-teal-600'}`} />
                 Código
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-teal-600" />
+                <DollarSign className={`h-4 w-4 ${esPreFactura ? 'text-blue-600' : 'text-teal-600'}`} />
                 Monto
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-teal-600" />
+                <DollarSign className={`h-4 w-4 ${esPreFactura ? 'text-blue-600' : 'text-teal-600'}`} />
                 Pago Actual
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-teal-600" />
+                <Calendar className={`h-4 w-4 ${esPreFactura ? 'text-blue-600' : 'text-teal-600'}`} />
                 Fecha
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-teal-600" />
+                <CreditCard className={`h-4 w-4 ${esPreFactura ? 'text-blue-600' : 'text-teal-600'}`} />
                 Pago
               </div>
             </TableHead>
@@ -70,7 +75,7 @@ export function FacturasTable({
           {facturas.length === 0 ? (
             <TableRow>
               <TableCell colSpan={6} className="text-center py-12 text-gray-500">
-                No hay facturas
+                {esPreFactura ? 'No hay pre-facturas' : 'No hay facturas'}
               </TableCell>
             </TableRow>
           ) : (
@@ -81,7 +86,7 @@ export function FacturasTable({
                 onClick={() => onViewDetails(item)}
               >
                 <TableCell>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-sm font-mono font-medium ${esPreFactura ? 'bg-blue-50 text-blue-700' : 'bg-teal-50 text-teal-700'}`}>
                     <Receipt className="h-3 w-3" />
                     {item.codigo_factura || 'N/A'}
                   </span>
@@ -143,6 +148,19 @@ export function FacturasTable({
                     >
                       <Printer className="h-4 w-4" />
                     </Button>
+
+                    {/* Botón Aprobar (solo pre-facturas) */}
+                    {esPreFactura && onAprobar && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onAprobar(item)}
+                        className="text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 h-8 w-8 transition-colors"
+                        title="Aprobar como factura"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                      </Button>
+                    )}
 
                     {/* Botón Editar */}
                     <Button

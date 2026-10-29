@@ -217,6 +217,8 @@ export interface Factura {
   fecha: string;
   monto: number;
   pago_actual: number;
+  estado?: string;
+  tipo?: "FACTURA" | "PREFACTURA";
   id_dependencia?: number;
   id_moneda?: number;
 }
@@ -235,6 +237,7 @@ export interface FacturaCreate {
   pago_actual?: number;
   id_dependencia?: number;
   id_moneda?: number;
+  tipo?: "FACTURA" | "PREFACTURA";
   items: ItemFacturaCreate[];
 }
 
@@ -281,6 +284,9 @@ export interface OfertaTienda {
   monto: number;
   estado: string;
   id_factura?: number | null;
+  /** Documento generado al convertir la oferta */
+  tipo_factura?: "FACTURA" | "PREFACTURA" | null;
+  codigo_factura?: string | null;
 }
 
 export interface OfertaTiendaWithDetails extends OfertaTienda {

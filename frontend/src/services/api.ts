@@ -597,12 +597,23 @@ export const suplementosService = {
 };
 
 export const facturasService = {
-  async getFacturas(skip = 0, limit = 100): Promise<FacturaWithDetails[]> {
-    return apiClient.get<FacturaWithDetails[]>(`/facturas?skip=${skip}&limit=${limit}`);
+  async getFacturas(
+    skip = 0,
+    limit = 100,
+    tipo: "FACTURA" | "PREFACTURA" = "FACTURA",
+  ): Promise<FacturaWithDetails[]> {
+    return apiClient.get<FacturaWithDetails[]>(
+      `/facturas?skip=${skip}&limit=${limit}&tipo=${tipo}`,
+    );
   },
 
-  async getFacturasByContrato(contratoId: number): Promise<FacturaWithDetails[]> {
-    return apiClient.get<FacturaWithDetails[]>(`/facturas/contrato/${contratoId}`);
+  async getFacturasByContrato(
+    contratoId: number,
+    tipo: "FACTURA" | "PREFACTURA" = "FACTURA",
+  ): Promise<FacturaWithDetails[]> {
+    return apiClient.get<FacturaWithDetails[]>(
+      `/facturas/contrato/${contratoId}?tipo=${tipo}`,
+    );
   },
 
   async getProductosByFactura(facturaId: number): Promise<ProductoConCantidad[]> {
@@ -623,16 +634,36 @@ export const facturasService = {
 
   async deleteFactura(id: number): Promise<void> {
     return apiClient.delete<void>(`/facturas/${id}`);
+  },
+
+  async aprobarFactura(id: number): Promise<FacturaWithDetails> {
+    return apiClient.post<FacturaWithDetails>(`/facturas/${id}/aprobar`, {});
   }
 };
 
 export const ofertasTiendaService = {
-  async getOfertas(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<OfertaTiendaWithDetails[]> {
-    return apiClient.get<OfertaTiendaWithDetails[]>(`/ofertas-tienda?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
+  async getOfertas(
+    skip = 0,
+    limit = 100,
+    estado?: string,
+    onTotal?: (t: number | null) => void,
+  ): Promise<OfertaTiendaWithDetails[]> {
+    const filtroEstado = estado ? `&estado=${estado}` : '';
+    return apiClient.get<OfertaTiendaWithDetails[]>(
+      `/ofertas-tienda?skip=${skip}&limit=${limit}${filtroEstado}`,
+      undefined,
+      captureTotal(onTotal),
+    );
   },
 
-  async getOfertasByContrato(contratoId: number): Promise<OfertaTiendaWithDetails[]> {
-    return apiClient.get<OfertaTiendaWithDetails[]>(`/ofertas-tienda/contrato/${contratoId}`);
+  async getOfertasByContrato(
+    contratoId: number,
+    estado?: string,
+  ): Promise<OfertaTiendaWithDetails[]> {
+    const filtroEstado = estado ? `?estado=${estado}` : '';
+    return apiClient.get<OfertaTiendaWithDetails[]>(
+      `/ofertas-tienda/contrato/${contratoId}${filtroEstado}`,
+    );
   },
 
   async getOferta(id: number): Promise<OfertaTiendaWithDetails> {
@@ -651,8 +682,14 @@ export const ofertasTiendaService = {
     return apiClient.delete<void>(`/ofertas-tienda/${id}`);
   },
 
-  async convertirOferta(id: number): Promise<FacturaWithDetails> {
-    return apiClient.post<FacturaWithDetails>(`/ofertas-tienda/${id}/convertir`, {});
+  async convertirOferta(
+    id: number,
+    tipo: "FACTURA" | "PREFACTURA" = "FACTURA",
+  ): Promise<FacturaWithDetails> {
+    return apiClient.post<FacturaWithDetails>(
+      `/ofertas-tienda/${id}/convertir?tipo=${tipo}`,
+      {},
+    );
   }
 };
 

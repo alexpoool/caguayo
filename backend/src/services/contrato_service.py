@@ -65,6 +65,7 @@ from src.dto import (
 )
 from src.utils import (
     generar_codigo_factura,
+    generar_codigo_item_factura,
     generar_codigo_venta_efectivo,
     generar_codigo_contrato,
     generar_codigo_suplemento,
@@ -550,6 +551,7 @@ async def map_factura_to_read(
                 precio_venta=item.precio_venta,
                 precio_compra=item.precio_compra,
                 id_moneda=item.id_moneda,
+                codigo=item.codigo,
                 id_anexo=item.id_anexo,
                 producto=ProductoSimpleRead(
                     id_producto=producto.id_producto,
@@ -575,6 +577,7 @@ async def map_factura_to_read(
         monto=factura.monto,
         pago_actual=factura.pago_actual,
         estado=getattr(factura, "estado", None) or "ACTIVA",
+        tipo=getattr(factura, "tipo", None) or "FACTURA",
         items=items_con_producto,
     )
 
@@ -623,6 +626,56 @@ async def validar_contrato_para_venta(
     return contrato
 
 
+async def crear_movimientos_venta_factura(
+    db: AsyncSession,
+    factura: Factura,
+    contrato: Optional[Contrato],
+    items_data: list,
+    id_dependencia: Optional[int],
+    denominacion: Optional[str],
+) -> None:
+    """Crea los movimientos de venta pendientes de una factura.
+
+    Al confirmarse descuentan stock. Se usa al crear una factura y al aprobar
+    una pre-factura (momento en que recién se reserva el stock).
+    """
+    stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
+    result_tipo = await db.exec(stmt_tipo_mov)
+    tipo_mov = result_tipo.first()
+
+    if not items_data or not tipo_mov:
+        return
+
+    for item in items_data:
+        producto = await db.get(Productos, item["id_producto"])
+        if not producto:
+            continue
+
+        db_movimiento = Movimiento(
+            id_tipo_movimiento=tipo_mov.id_tipo_movimiento,
+            id_dependencia=id_dependencia,
+            id_factura=factura.id_factura,
+            id_contrato=factura.id_contrato,
+            id_cliente=contrato.id_cliente if contrato else None,
+            id_producto=item["id_producto"],
+            cantidad=item["cantidad"],
+            fecha=datetime.now(timezone.utc).replace(tzinfo=None),
+            precio_compra=producto.precio_compra,
+            moneda_compra=producto.moneda_compra,
+            precio_venta=item["precio_venta"],
+            moneda_venta=item["id_moneda"],
+            id_anexo=item.get("id_anexo"),
+            estado="pendiente",
+        )
+        db.add(db_movimiento)
+        await db.flush()
+
+        if db_movimiento.id_movimiento:
+            anio = datetime.now(timezone.utc).year
+            codigo = f"{denominacion}.{str(anio)[-2:]}.FAC{factura.id_factura}.{item['id_producto']}"
+            db_movimiento.codigo = codigo
+
+
 async def crear_items_y_movimientos_venta(
     db: AsyncSession,
     factura: Factura,
@@ -638,43 +691,36 @@ async def crear_items_y_movimientos_venta(
     validado el stock, se materializan los items y los movimientos de venta
     pendientes que descontarán stock al confirmarse.
     """
-    stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
-    result_tipo = await db.exec(stmt_tipo_mov)
-    tipo_mov = result_tipo.first()
+    if items_data:
+        await item_factura_repo.create_items(db, factura.id_factura, items_data)
 
-    if items_data and tipo_mov:
-        await item_factura_repo.create_items(
-            db, factura.id_factura, items_data
-        )
+    await crear_movimientos_venta_factura(
+        db, factura, contrato, items_data, id_dependencia, denominacion
+    )
 
-        for item in items_data:
-            producto = await db.get(Productos, item["id_producto"])
-            if not producto:
-                continue
 
-            db_movimiento = Movimiento(
-                id_tipo_movimiento=tipo_mov.id_tipo_movimiento,
-                id_dependencia=id_dependencia,
-                id_factura=factura.id_factura,
-                id_contrato=factura.id_contrato,
-                id_cliente=contrato.id_cliente if contrato else None,
-                id_producto=item["id_producto"],
-                cantidad=item["cantidad"],
-                fecha=datetime.now(timezone.utc).replace(tzinfo=None),
-                precio_compra=producto.precio_compra,
-                moneda_compra=producto.moneda_compra,
-                precio_venta=item["precio_venta"],
-                moneda_venta=item["id_moneda"],
-                id_anexo=item.get("id_anexo"),
-                estado="pendiente",
-            )
-            db.add(db_movimiento)
-            await db.flush()
+TIPOS_FACTURA = {"FACTURA", "PREFACTURA"}
 
-            if db_movimiento.id_movimiento:
-                anio = datetime.now(timezone.utc).year
-                codigo = f"{denominacion}.{str(anio)[-2:]}.FAC{factura.id_factura}.{item['id_producto']}"
-                db_movimiento.codigo = codigo
+
+async def siguiente_secuencia_factura(
+    db: AsyncSession, id_contrato: int, tipo: str
+) -> int:
+    """Siguiente secuencial de factura/pre-factura dentro de un contrato.
+
+    Se calcula desde la parte 4 de `codigo_factura` de la misma serie, no con
+    ROW_NUMBER: al anular no se reutilizan números y al aprobar una
+    pre-factura se continúa la serie FT real del contrato.
+    """
+    stmt = text(
+        "SELECT COALESCE(MAX(CAST(split_part(codigo_factura, '.', 4) AS INTEGER)), 0) + 1 "
+        "FROM factura "
+        "WHERE id_contrato = :id_contrato AND tipo = :tipo "
+        "AND split_part(codigo_factura, '.', 4) ~ '^[0-9]+$'"
+    )
+    result = await db.exec(
+        stmt, params={"id_contrato": id_contrato, "tipo": tipo}
+    )
+    return result.one()[0]
 
 
 class FacturaService:
@@ -682,65 +728,63 @@ class FacturaService:
     async def create(
         db: AsyncSession, data: FacturaCreate, denominacion: Optional[str] = None, id_dependencia_usuario: Optional[int] = None
     ) -> FacturaReadWithDetails:
+        tipo = (data.tipo or "FACTURA").strip().upper()
+        if tipo not in TIPOS_FACTURA:
+            raise BusinessLogicError(
+                "El tipo de factura debe ser FACTURA o PREFACTURA."
+            )
+        data.tipo = tipo
+
         data_dict = data.model_dump(exclude_none=True)
         items_data = data_dict.pop("items", [])
 
-        total_monto = sum(
-            Decimal(str(item["cantidad"])) * Decimal(str(item["precio_venta"]))
-            for item in items_data
-        )
-
-        data.monto = total_monto
+        data.monto = _calcular_monto_items(items_data)
 
         # Validar que el contrato exista y admita ventas
         contrato = await validar_contrato_para_venta(db, data.id_contrato)
 
         factura = await factura_repo.create(db, data)
 
-        anio = data.fecha.year
-
-        # Secuencia de la factura dentro de su contrato (orden por fecha, id)
-        stmt_sec = text(
-            "SELECT rn FROM ("
-            "  SELECT id_factura, "
-            "         ROW_NUMBER() OVER ("
-            "             PARTITION BY id_contrato ORDER BY fecha, id_factura"
-            "         ) AS rn"
-            "  FROM factura"
-            ") t WHERE id_factura = :id_factura"
+        secuencia = await siguiente_secuencia_factura(
+            db, factura.id_contrato, tipo
         )
-        result_sec = await db.exec(stmt_sec, params={"id_factura": factura.id_factura})
-        secuencia = result_sec.one()[0]
-
         factura.codigo_factura = generar_codigo_factura(
-            denominacion or "", anio, factura.id_contrato, secuencia
+            denominacion or "", data.fecha.year, factura.id_contrato, secuencia, tipo
         )
         db.add(factura)
         await db.flush()
 
         id_dependencia = data.id_dependencia or id_dependencia_usuario
 
-        # Validar existencias antes de crear factura
-        if items_data:
-            productos_validar = [
-                {"id_producto": item["id_producto"], "cantidad": item["cantidad"]}
-                for item in items_data
-            ]
-
-            resultado_validacion = await ExistenciaService.validar_multiple(
-                db, productos_validar, id_dependencia
-            )
-
-            if not resultado_validacion["valido"]:
-                errores = resultado_validacion["errores"]
-                mensaje = "\n".join(
-                    [f"Producto {e['id_producto']}: {e['mensaje']}" for e in errores]
+        if tipo == "PREFACTURA":
+            # La pre-factura no toca stock: solo guarda sus items. El stock se
+            # valida y se reserva recién al aprobarla como factura.
+            if items_data:
+                await item_factura_repo.create_items(
+                    db, factura.id_factura, items_data
                 )
-                raise BusinessLogicError(f"Stock insuficiente:\n{mensaje}")
+        else:
+            # Validar existencias antes de crear factura
+            if items_data:
+                productos_validar = [
+                    {"id_producto": item["id_producto"], "cantidad": item["cantidad"]}
+                    for item in items_data
+                ]
 
-        await crear_items_y_movimientos_venta(
-            db, factura, contrato, items_data, id_dependencia, denominacion
-        )
+                resultado_validacion = await ExistenciaService.validar_multiple(
+                    db, productos_validar, id_dependencia
+                )
+
+                if not resultado_validacion["valido"]:
+                    errores = resultado_validacion["errores"]
+                    mensaje = "\n".join(
+                        [f"Producto {e['id_producto']}: {e['mensaje']}" for e in errores]
+                    )
+                    raise BusinessLogicError(f"Stock insuficiente:\n{mensaje}")
+
+            await crear_items_y_movimientos_venta(
+                db, factura, contrato, items_data, id_dependencia, denominacion
+            )
 
         await db.commit()
         await db.refresh(factura)
@@ -748,6 +792,93 @@ class FacturaService:
         factura_con_detalles = await factura_repo.get_by_id_with_details(
             db, factura.id_factura
         )
+        return await map_factura_to_read(db, factura_con_detalles)
+
+    @staticmethod
+    async def aprobar(
+        db: AsyncSession,
+        id: int,
+        denominacion: Optional[str] = None,
+        id_dependencia_usuario: Optional[int] = None,
+    ) -> FacturaReadWithDetails:
+        """Aprobar una pre-factura y convertirla en factura.
+
+        Valida stock, renumera la factura y sus items a la serie FT y crea los
+        movimientos de venta pendientes con la dependencia del usuario que
+        aprueba. La fila, sus items y sus pagos se conservan.
+        """
+        factura = await factura_repo.get_by_id_with_details(db, id)
+        if not factura:
+            return None
+        if factura.estado == "ANULADA":
+            raise BusinessLogicError("No se puede aprobar una pre-factura anulada.")
+        if (factura.tipo or "FACTURA").upper() != "PREFACTURA":
+            raise BusinessLogicError("La factura ya está aprobada.")
+
+        contrato = await validar_contrato_para_venta(db, factura.id_contrato)
+
+        items_db = await item_factura_repo.get_by_factura(db, id)
+        items_data = [
+            {
+                "id_producto": it.id_producto,
+                "cantidad": it.cantidad,
+                "precio_venta": it.precio_venta,
+                "id_moneda": it.id_moneda,
+                "id_anexo": it.id_anexo,
+            }
+            for it in items_db
+        ]
+
+        # Validar existencias en el almacén de quien aprueba
+        if items_data:
+            productos_validar = [
+                {"id_producto": it["id_producto"], "cantidad": it["cantidad"]}
+                for it in items_data
+            ]
+            resultado = await ExistenciaService.validar_multiple(
+                db, productos_validar, id_dependencia_usuario
+            )
+            if not resultado["valido"]:
+                mensaje = "\n".join(
+                    f"Producto {e['id_producto']}: {e['mensaje']}"
+                    for e in resultado["errores"]
+                )
+                raise BusinessLogicError(f"Stock insuficiente:\n{mensaje}")
+
+        # Renumerar a la serie de facturas (FT) conservando la fila y los pagos
+        secuencia = await siguiente_secuencia_factura(
+            db, factura.id_contrato, "FACTURA"
+        )
+        factura.codigo_factura = generar_codigo_factura(
+            denominacion or "",
+            factura.fecha.year,
+            factura.id_contrato,
+            secuencia,
+            "FACTURA",
+        )
+        factura.tipo = "FACTURA"
+        db.add(factura)
+        await db.flush()
+
+        for it in items_db:
+            producto = await db.get(Productos, it.id_producto)
+            it.codigo = generar_codigo_item_factura(
+                factura.id_contrato,
+                secuencia,
+                producto.codigo if producto else None,
+                it.id_producto,
+            )
+            db.add(it)
+        await db.flush()
+
+        await crear_movimientos_venta_factura(
+            db, factura, contrato, items_data, id_dependencia_usuario, denominacion
+        )
+
+        await db.commit()
+        await db.refresh(factura)
+
+        factura_con_detalles = await factura_repo.get_by_id_with_details(db, id)
         return await map_factura_to_read(db, factura_con_detalles)
 
     @staticmethod
@@ -759,9 +890,9 @@ class FacturaService:
 
     @staticmethod
     async def get_all(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int = 100, tipo: str = "FACTURA"
     ) -> List[FacturaReadWithDetails]:
-        facturas = await factura_repo.get_all_with_details(db, skip, limit)
+        facturas = await factura_repo.get_all_with_details(db, skip, limit, tipo)
         result = []
         for factura in facturas:
             result.append(await map_factura_to_read(db, factura))
@@ -769,9 +900,9 @@ class FacturaService:
 
     @staticmethod
     async def get_by_contrato(
-        db: AsyncSession, id_contrato: int
+        db: AsyncSession, id_contrato: int, tipo: str = "FACTURA"
     ) -> List[FacturaReadWithDetails]:
-        facturas = await factura_repo.get_by_contrato(db, id_contrato)
+        facturas = await factura_repo.get_by_contrato(db, id_contrato, tipo)
         result = []
         for factura in facturas:
             result.append(await map_factura_to_read(db, factura))
@@ -799,10 +930,12 @@ class FacturaService:
                 )
                 data_dict["monto"] = total_monto
 
-        factura = await factura_repo.update(db, id, data_dict)
+        factura = await factura_repo.update(db, id, FacturaUpdate(**data_dict))
         if not factura:
             return None
-        return await map_factura_to_read(db, factura)
+        # Recargar con items para evitar lazy-load fuera del contexto async
+        factura_con_detalles = await factura_repo.get_by_id_with_details(db, id)
+        return await map_factura_to_read(db, factura_con_detalles)
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
@@ -819,16 +952,18 @@ class FacturaService:
         from src.models import ProductosEnLiquidacion
         from src.models.item_anexo import ItemAnexo
 
-        # 1) Revertir item_anexo.vendido usando los items de la factura
-        items = await item_factura_repo.get_by_factura(db, id)
-        for if_item in items:
-            if if_item.id_producto:
-                stmt_ia = select(ItemAnexo).where(
-                    ItemAnexo.id_producto == if_item.id_producto
-                )
-                for ia in (await db.exec(stmt_ia)).all():
-                    ia.vendido = max(0, ia.vendido - if_item.cantidad)
-                    db.add(ia)
+        # 1) Revertir item_anexo.vendido usando los items de la factura.
+        #    En una pre-factura nunca se vendió: no se tocó `vendido`.
+        if (factura.tipo or "FACTURA").upper() != "PREFACTURA":
+            items = await item_factura_repo.get_by_factura(db, id)
+            for if_item in items:
+                if if_item.id_producto:
+                    stmt_ia = select(ItemAnexo).where(
+                        ItemAnexo.id_producto == if_item.id_producto
+                    )
+                    for ia in (await db.exec(stmt_ia)).all():
+                        ia.vendido = max(0, ia.vendido - if_item.cantidad)
+                        db.add(ia)
 
         # 2) Desvincular productos_en_liquidacion (columna nullable)
         stmt_liq = select(ProductosEnLiquidacion).where(

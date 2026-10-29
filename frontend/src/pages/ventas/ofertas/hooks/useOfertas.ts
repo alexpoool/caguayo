@@ -7,7 +7,12 @@ import type {
 } from '../../../../types/contrato';
 import { useInfiniteList } from '../../../../hooks/useInfiniteList';
 
-export function useOfertas(initialContratoId?: string | null) {
+export type EstadoOfertaFiltro = 'ACTIVA' | 'CONVERTIDA' | 'ANULADA' | 'TODAS';
+
+export function useOfertas(
+  initialContratoId?: string | null,
+  estadoFiltro: EstadoOfertaFiltro = 'TODAS',
+) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(
     initialContratoId ? Number(initialContratoId) : null
@@ -17,27 +22,30 @@ export function useOfertas(initialContratoId?: string | null) {
   });
 
   /**
-   * Lista de ofertas de tienda (solo ACTIVAS) según el contrato seleccionado
+   * Lista de ofertas de tienda según el contrato y el estado seleccionados
    */
   const infinite = useInfiniteList<OfertaTiendaWithDetails>({
     queryKeyBase: 'ofertas-tienda',
     queryFn: async (skip: number, limit: number) => {
       if (selectedContratoId) {
-        return ofertasTiendaService.getOfertasByContrato(selectedContratoId);
+        return ofertasTiendaService.getOfertasByContrato(
+          selectedContratoId,
+          estadoFiltro,
+        );
       }
-      return ofertasTiendaService.getOfertas(skip, limit);
+      return ofertasTiendaService.getOfertas(skip, limit, estadoFiltro);
     },
-    extraQueryKeyParams: [selectedContratoId],
+    extraQueryKeyParams: [selectedContratoId, estadoFiltro],
     limit: 100,
   });
 
   /**
-   * Resetea la lista cuando cambia el filtro de contrato
+   * Resetea la lista cuando cambia el filtro de contrato o de estado
    */
   useEffect(() => {
     infinite.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedContratoId]);
+  }, [selectedContratoId, estadoFiltro]);
 
   /**
    * Abre el formulario para crear (sin argumento) o editar una oferta
@@ -140,15 +148,22 @@ export function useOfertas(initialContratoId?: string | null) {
   };
 
   /**
-   * Convierte la oferta en factura (crea factura + movimientos de venta)
+   * Convierte la oferta en factura o pre-factura.
+   *
+   * - FACTURA: crea factura + movimientos de venta (valida stock).
+   * - PREFACTURA: crea pre-factura sin tocar stock; se aprueba después.
    */
-  const handleConvertir = async (id: number) => {
+  const handleConvertir = async (
+    id: number,
+    tipo: 'FACTURA' | 'PREFACTURA' = 'FACTURA',
+  ) => {
     try {
-      const factura = await ofertasTiendaService.convertirOferta(id);
+      const factura = await ofertasTiendaService.convertirOferta(id, tipo);
       infinite.refresh();
+      const etiqueta = tipo === 'PREFACTURA' ? 'Pre-factura' : 'Factura';
       return {
         success: true,
-        message: `Factura ${factura.codigo_factura} creada correctamente`,
+        message: `${etiqueta} ${factura.codigo_factura} creada correctamente`,
         factura,
       };
     } catch (error: any) {

@@ -334,7 +334,7 @@ def test_convertir_con_stock_crea_factura_items_y_movimientos(client, headers):
         assert factura["items"][0]["cantidad"] == 4
         assert factura["items"][0]["id_anexo"] == id_anexo
 
-        # La oferta quedó CONVERTIDA con rastro de la factura y fuera del listado
+        # La oferta quedó CONVERTIDA con rastro de la factura y sigue visible
         oferta = _sql(
             "SELECT estado, id_factura FROM oferta_tienda"
             " WHERE id_oferta_tienda = :o",
@@ -343,7 +343,12 @@ def test_convertir_con_stock_crea_factura_items_y_movimientos(client, headers):
         assert oferta[0] == "CONVERTIDA"
         assert oferta[1] == id_factura
         listado = client.get("/api/v1/ofertas-tienda", headers=headers).json()
-        assert id_oferta not in [o["id_oferta_tienda"] for o in listado]
+        en_listado = [o for o in listado if o["id_oferta_tienda"] == id_oferta]
+        assert len(en_listado) == 1
+        assert en_listado[0]["estado"] == "CONVERTIDA"
+        assert en_listado[0]["id_factura"] == id_factura
+        assert en_listado[0]["tipo_factura"] == "FACTURA"
+        assert en_listado[0]["codigo_factura"] == factura["codigo_factura"]
 
         # Movimientos de venta pendientes por el item
         movs = _sql(
@@ -383,6 +388,118 @@ def test_convertir_con_stock_crea_factura_items_y_movimientos(client, headers):
         _sql("DELETE FROM item_anexo WHERE id_producto = :p", {"p": id_producto})
         _sql("DELETE FROM anexo WHERE id_anexo = :a", {"a": id_anexo})
         _sql("DELETE FROM convenio WHERE id_convenio = :c", {"c": id_convenio})
+        _sql("DELETE FROM productos WHERE id_producto = :p", {"p": id_producto})
+
+
+@pytest.mark.usefixtures("db_session")
+def test_convertir_oferta_a_prefactura_no_toca_stock(client, headers):
+    """Una oferta puede aprobarse como pre-factura: serie PFT, sin stock ni
+    movimientos; queda pendiente de aprobar desde Pre-facturas."""
+    suffix = uuid.uuid4().hex[:8]
+    id_moneda = _moneda_id()
+    # Producto sin stock (sin item_anexo): una pre-factura no debe validarlo
+    id_producto = _scalar(
+        "INSERT INTO productos (id_subcategoria, nombre, descripcion, precio_compra, precio_venta,"
+        " moneda_compra, moneda_venta, precio_minimo)"
+        " VALUES ((SELECT id_subcategoria FROM subcategorias LIMIT 1), :nombre, 'TEST sin stock', 0, 10,"
+        f" {id_moneda}, {id_moneda}, 0)"
+        " RETURNING id_producto",
+        {"nombre": f"TEST prod prefactura {suffix}"},
+    )
+    id_contrato = _crear_contrato(
+        1, 1, id_moneda, f"TEST contrato prefactura {suffix}"
+    )
+    id_oferta = None
+    id_factura = None
+    try:
+        r = client.post(
+            "/api/v1/ofertas-tienda",
+            json={
+                "id_contrato": id_contrato,
+                "fecha": "2026-07-01",
+                "descripcion": "TEST oferta a prefactura",
+                "items": [
+                    {
+                        "id_producto": id_producto,
+                        "cantidad": 2,
+                        "precio_venta": 10,
+                        "id_moneda": id_moneda,
+                    }
+                ],
+            },
+            headers=headers,
+        )
+        assert r.status_code == 201, r.text
+        id_oferta = r.json()["id_oferta_tienda"]
+
+        rc = client.post(
+            f"/api/v1/ofertas-tienda/{id_oferta}/convertir?tipo=PREFACTURA",
+            headers=headers,
+        )
+        assert rc.status_code == 201, rc.text
+        prefactura = rc.json()
+        id_factura = prefactura["id_factura"]
+
+        assert prefactura["tipo"] == "PREFACTURA"
+        assert prefactura["codigo_factura"].startswith("PFT.")
+        assert Decimal(str(prefactura["monto"])) == Decimal("20.00")
+        assert len(prefactura["items"]) == 1
+        assert prefactura["items"][0]["cantidad"] == 2
+
+        # Sin movimientos: el stock se reserva al aprobarla
+        assert (
+            _scalar(
+                "SELECT COUNT(*) FROM movimiento WHERE id_factura = :f",
+                {"f": id_factura},
+            )
+            == 0
+        )
+
+        # La oferta quedó CONVERTIDA y apunta a la pre-factura
+        oferta = _sql(
+            "SELECT estado, id_factura FROM oferta_tienda"
+            " WHERE id_oferta_tienda = :o",
+            {"o": id_oferta},
+        )[0]
+        assert oferta[0] == "CONVERTIDA"
+        assert oferta[1] == id_factura
+
+        # Sigue visible en el listado, con el rastro del documento generado
+        listado = client.get("/api/v1/ofertas-tienda", headers=headers).json()
+        en_listado = [o for o in listado if o["id_oferta_tienda"] == id_oferta]
+        assert len(en_listado) == 1
+        assert en_listado[0]["estado"] == "CONVERTIDA"
+        assert en_listado[0]["tipo_factura"] == "PREFACTURA"
+        assert en_listado[0]["codigo_factura"] == prefactura["codigo_factura"]
+
+        # La pre-factura aparece en su listado, no en el de facturas
+        prefacturas = client.get(
+            "/api/v1/facturas?tipo=PREFACTURA", headers=headers
+        ).json()
+        assert id_factura in [f["id_factura"] for f in prefacturas]
+        facturas = client.get("/api/v1/facturas", headers=headers).json()
+        assert id_factura not in [f["id_factura"] for f in facturas]
+
+        # Un tipo inválido se rechaza sin crear nada
+        rt = client.post(
+            f"/api/v1/ofertas-tienda/{id_oferta}/convertir?tipo=OTRO",
+            headers=headers,
+        )
+        assert rt.status_code == 400, rt.text
+    finally:
+        if id_oferta:
+            _sql(
+                "DELETE FROM item_oferta_tienda WHERE id_oferta_tienda = :o",
+                {"o": id_oferta},
+            )
+            _sql(
+                "DELETE FROM oferta_tienda WHERE id_oferta_tienda = :o",
+                {"o": id_oferta},
+            )
+        if id_factura:
+            _sql("DELETE FROM item_factura WHERE id_factura = :f", {"f": id_factura})
+            _sql("DELETE FROM factura WHERE id_factura = :f", {"f": id_factura})
+        _sql("DELETE FROM contrato WHERE id_contrato = :c", {"c": id_contrato})
         _sql("DELETE FROM productos WHERE id_producto = :p", {"p": id_producto})
 
 
@@ -557,4 +674,78 @@ def test_crear_factura_directa_contrato_anulado_bloquea(client, headers):
         )
         assert n == 0
     finally:
+        _sql("DELETE FROM contrato WHERE id_contrato = :c", {"c": id_contrato})
+
+
+@pytest.mark.usefixtures("db_session")
+def test_filtro_estado_ofertas(client, headers):
+    """El listado filtra por estado (ACTIVA/CONVERTIDA/ANULADA/TODAS)."""
+    suffix = uuid.uuid4().hex[:8]
+    id_contrato = _crear_contrato(
+        1, 1, _moneda_id(), f"TEST contrato filtro estado {suffix}"
+    )
+
+    def _crear_oferta(estado: str, seq: int) -> int:
+        return _scalar(
+            "INSERT INTO oferta_tienda"
+            " (id_contrato, codigo_oferta, fecha, monto, estado)"
+            " VALUES (:c, :codigo, DATE '2026-07-01', 10, :estado)"
+            " RETURNING id_oferta_tienda",
+            {
+                "c": id_contrato,
+                "codigo": f"OFT-TEST-{suffix}-{seq}",
+                "estado": estado,
+            },
+        )
+
+    id_activa = _crear_oferta("ACTIVA", 1)
+    id_convertida = _crear_oferta("CONVERTIDA", 2)
+    id_anulada = _crear_oferta("ANULADA", 3)
+
+    def _ofertas(query: str) -> list[dict]:
+        r = client.get(f"/api/v1/ofertas-tienda{query}", headers=headers)
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    def _ids(query: str) -> list[int]:
+        return [o["id_oferta_tienda"] for o in _ofertas(query)]
+
+    try:
+        # Sin filtro: vigentes (activas + convertidas), sin anuladas
+        ids = _ids("?skip=0&limit=100")
+        assert id_activa in ids
+        assert id_convertida in ids
+        assert id_anulada not in ids
+
+        # Filtro explícito por estado (puede haber otras ofertas en la BD,
+        # así que se valida el estado de cada fila devuelta)
+        for estado, esperado in (
+            ("ACTIVA", id_activa),
+            ("CONVERTIDA", id_convertida),
+            ("ANULADA", id_anulada),
+        ):
+            ofertas = _ofertas(f"?estado={estado}")
+            assert esperado in [o["id_oferta_tienda"] for o in ofertas]
+            assert all(o["estado"] == estado for o in ofertas)
+
+        # TODAS incluye también las anuladas
+        ids_todas = _ids("?estado=TODAS")
+        assert {id_activa, id_convertida, id_anulada} <= set(ids_todas)
+
+        # Filtro por contrato respeta el estado (lista exacta del contrato)
+        r = client.get(
+            f"/api/v1/ofertas-tienda/contrato/{id_contrato}?estado=ANULADA",
+            headers=headers,
+        )
+        assert r.status_code == 200, r.text
+        assert [o["id_oferta_tienda"] for o in r.json()] == [id_anulada]
+
+        # Estado inválido → 400
+        r = client.get("/api/v1/ofertas-tienda?estado=OTRO", headers=headers)
+        assert r.status_code == 400, r.text
+        assert "Estado no válido" in r.json()["detail"]
+    finally:
+        _sql(
+            "DELETE FROM oferta_tienda WHERE id_contrato = :c", {"c": id_contrato}
+        )
         _sql("DELETE FROM contrato WHERE id_contrato = :c", {"c": id_contrato})

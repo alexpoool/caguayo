@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   contratosService,
   productosService,
@@ -23,10 +24,14 @@ import { ShoppingBag } from "lucide-react";
 import { OfertasListView } from "./components/OfertasListView";
 import { OfertaForm } from "./components/OfertaForm";
 import { OfertaDetailModal } from "./components/modals/OfertaDetailModal";
+import {
+  ConvertirOfertaModal,
+  type TipoConversion,
+} from "./components/modals/ConvertirOfertaModal";
 import { ConfirmDeleteModal } from "../facturas/components/modals/ConfirmDeleteModal";
 
 // Hooks
-import { useOfertas } from "./hooks/useOfertas";
+import { useOfertas, type EstadoOfertaFiltro } from "./hooks/useOfertas";
 import { useProductSelection } from "../facturas/hooks/useProductSelection";
 import { formatFecha } from "../../../utils/fecha";
 import { empresaActual } from '../../../config/branding';
@@ -218,14 +223,17 @@ export function getOfertaDocumento(
  */
 export function OfertasTiendaPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const initialContratoId = searchParams.get("contrato");
 
   const [isSavingOferta, setIsSavingOferta] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
+  const [estadoFiltro, setEstadoFiltro] = useState<EstadoOfertaFiltro>("TODAS");
 
   // Datos maestros
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [itemsAnexo, setItemsAnexo] = useState<any[]>([]);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
 
@@ -234,6 +242,10 @@ export function OfertasTiendaPage() {
     isOpen: boolean;
     item: OfertaTiendaWithDetails | null;
   }>({ isOpen: false, item: null });
+  const [convertirModal, setConvertirModal] = useState<{
+    isOpen: boolean;
+    oferta: OfertaTiendaWithDetails | null;
+  }>({ isOpen: false, oferta: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -243,7 +255,7 @@ export function OfertasTiendaPage() {
   }>({ isOpen: false, title: "", message: "", onConfirm: () => {}, type: "danger" });
 
   // Hooks
-  const ofertasHook = useOfertas(initialContratoId);
+  const ofertasHook = useOfertas(initialContratoId, estadoFiltro);
   const productSelectionHook = useProductSelection();
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -270,14 +282,16 @@ export function OfertasTiendaPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [contratosRes, depsRes, itemsRes] = await Promise.all([
+        const [contratosRes, depsRes, itemsRes, clientesRes] = await Promise.all([
           contratosService.getContratos(0, 1000),
           dependenciasService.getDependencias(undefined, 0, 1000),
           productosService.getProductosConStockItemAnexo(),
+          clientesService.getClientes(0, 10000, "CLIENTE,AMBAS"),
         ]);
         setContratos(contratosRes);
         setDependencias(depsRes);
         setItemsAnexo(itemsRes);
+        setClientes(clientesRes);
       } catch (error) {
         console.error("Error loading initial data:", error);
         toast.error("Error al cargar datos iniciales");
@@ -351,33 +365,39 @@ export function OfertasTiendaPage() {
   };
 
   /**
-   * Conversión a factura
+   * Aprobación de la oferta: abre el modal para elegir factura o pre-factura
    */
   const handleConvertirOferta = (oferta: OfertaTiendaWithDetails) => {
     if (oferta.estado !== "ACTIVA") {
       toast.error("Solo se pueden convertir ofertas en estado ACTIVA");
       return;
     }
-    setConfirmModal({
-      isOpen: true,
-      title: "¿Convertir en factura?",
-      message: `La oferta "${oferta.codigo_oferta || "#" + oferta.id_oferta_tienda}" se convertirá en factura. Validará el stock y creará los movimientos de venta pendientes.`,
-      type: "info",
-      onConfirm: async () => {
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        setIsConverting(true);
-        try {
-          const result = await ofertasHook.handleConvertir(oferta.id_oferta_tienda);
-          if (result.success) {
-            toast.success(result.message);
-          } else {
-            toast.error(result.message);
-          }
-        } finally {
-          setIsConverting(false);
-        }
-      },
-    });
+    setConvertirModal({ isOpen: true, oferta });
+  };
+
+  /**
+   * Confirma la conversión con el tipo elegido en el modal
+   */
+  const confirmarConvertirOferta = async (tipo: TipoConversion) => {
+    const oferta = convertirModal.oferta;
+    if (!oferta) return;
+    setConvertirModal({ isOpen: false, oferta: null });
+    setIsConverting(true);
+    try {
+      const result = await ofertasHook.handleConvertir(
+        oferta.id_oferta_tienda,
+        tipo,
+      );
+      if (result.success) {
+        toast.success(result.message);
+        queryClient.invalidateQueries({ queryKey: ["facturas"] });
+        queryClient.invalidateQueries({ queryKey: ["prefacturas"] });
+      } else {
+        toast.error(result.message);
+      }
+    } finally {
+      setIsConverting(false);
+    }
   };
 
   /**
@@ -467,6 +487,8 @@ export function OfertasTiendaPage() {
         isLoading={ofertasHook.isLoading}
         contratos={contratos}
         selectedContratoId={ofertasHook.selectedContratoId}
+        estadoFiltro={estadoFiltro}
+        onEstadoFiltroChange={setEstadoFiltro}
         onSelectedContratoChange={(id: number | null) =>
           ofertasHook.setSelectedContratoId(id)
         }
@@ -485,7 +507,17 @@ export function OfertasTiendaPage() {
       <OfertaDetailModal
         isOpen={detailModal.isOpen}
         oferta={detailModal.item}
+        onViewDocument={handleViewDocument}
+        onPrintDocument={handlePrintDocument}
         onClose={() => setDetailModal({ isOpen: false, item: null })}
+      />
+
+      <ConvertirOfertaModal
+        isOpen={convertirModal.isOpen}
+        oferta={convertirModal.oferta}
+        isConverting={isConverting}
+        onConfirm={confirmarConvertirOferta}
+        onClose={() => setConvertirModal({ isOpen: false, oferta: null })}
       />
 
       <ConfirmDeleteModal
@@ -536,6 +568,7 @@ export function OfertasTiendaPage() {
           productos={productosSource as Productos[]}
           selectedContratoId={ofertasHook.selectedContratoId}
           contratos={contratos}
+          clientes={clientes}
           onFormDataChange={(data: Record<string, any>) =>
             ofertasHook.setFormData(data)
           }

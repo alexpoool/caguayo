@@ -28,6 +28,7 @@ interface FacturaFormProps {
   onRemoveProduct: (id: number) => void;
   onSelectedContratoChange: (id: number | null) => void;
   onSave: () => void;
+  tipo?: "FACTURA" | "PREFACTURA";
 }
 
 export function FacturaForm({
@@ -51,7 +52,14 @@ export function FacturaForm({
   onRemoveProduct,
   onSelectedContratoChange,
   onSave,
+  tipo = "FACTURA",
 }: FacturaFormProps) {
+  const esPreFactura = tipo === "PREFACTURA";
+  const ringClass = esPreFactura
+    ? "focus:ring-blue-500 focus:border-blue-500"
+    : "focus:ring-violet-500 focus:border-violet-500";
+  const accentBg = esPreFactura ? "bg-blue-600 hover:bg-blue-700" : "bg-violet-600 hover:bg-violet-700";
+  const etiqueta = esPreFactura ? "Pre-factura" : "Factura";
   const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
@@ -125,7 +133,7 @@ export function FacturaForm({
                   }}
                   onFocus={() => setShowClienteDropdown(true)}
                   placeholder="Buscar cliente..."
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
+                  className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 outline-none bg-white ${ringClass}`}
                 />
               </div>
               {showClienteDropdown && (
@@ -184,7 +192,7 @@ export function FacturaForm({
                   }}
                   onFocus={() => setShowContratoDropdown(true)}
                   placeholder="Buscar contrato..."
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
+                  className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 outline-none bg-white ${ringClass}`}
                 />
               </div>
               {showContratoDropdown && (
@@ -220,7 +228,7 @@ export function FacturaForm({
               <div className="flex gap-2 mt-1">
                 <DateInput
                   id="fecha"
-                  className="flex-1 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                  className={`flex-1 focus:ring-2 ${ringClass}`}
                   value={formData.fecha || new Date().toISOString().split('T')[0]}
                   onChange={(fecha: string) =>
                     onFormDataChange({ ...formData, fecha })
@@ -229,7 +237,7 @@ export function FacturaForm({
                 <button
                   type="button"
                   onClick={() => onFormDataChange({ ...formData, fecha: new Date().toISOString().split('T')[0] })}
-                  className="px-3 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
+                  className={`px-3 py-2 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap ${accentBg}`}
                 >
                   Hoy
                 </button>
@@ -248,7 +256,7 @@ export function FacturaForm({
                   onFormDataChange({ ...formData, descripcion: e.target.value })
                 }
                 className="mt-1"
-                placeholder="Descripción de la factura"
+                placeholder={`Descripción de la ${etiqueta.toLowerCase()}`}
               />
             </div>
           </div>

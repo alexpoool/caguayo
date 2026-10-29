@@ -4,18 +4,21 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import text
 
 from src.repository.oferta_tienda_repo import (
+    ESTADOS_FILTRO,
     oferta_tienda_repo,
     item_oferta_tienda_repo,
 )
-from src.repository.contratos_repo import factura_repo
+from src.repository.contratos_repo import factura_repo, item_factura_repo
 from src.services.existencia_service import ExistenciaService
 from src.services.contrato_service import (
+    TIPOS_FACTURA,
     crear_items_y_movimientos_venta,
     map_factura_to_read,
+    siguiente_secuencia_factura,
     validar_contrato_para_venta,
 )
 from src.core.exceptions import BusinessLogicError
-from src.models import OfertaTienda
+from src.models import OfertaTienda, Factura
 from src.dto import (
     ItemOfertaTiendaRead,
     OfertaTiendaCreate,
@@ -58,6 +61,11 @@ async def map_oferta_to_read(
             )
         )
 
+    # Rastro del documento generado al convertir (factura o pre-factura)
+    factura_generada = (
+        await db.get(Factura, oferta.id_factura) if oferta.id_factura else None
+    )
+
     return OfertaTiendaReadWithDetails(
         id_oferta_tienda=oferta.id_oferta_tienda,
         id_contrato=oferta.id_contrato,
@@ -68,8 +76,22 @@ async def map_oferta_to_read(
         monto=oferta.monto,
         estado=getattr(oferta, "estado", None) or "ACTIVA",
         id_factura=getattr(oferta, "id_factura", None),
+        tipo_factura=factura_generada.tipo if factura_generada else None,
+        codigo_factura=factura_generada.codigo_factura if factura_generada else None,
         items=items_con_producto,
     )
+
+
+def _normalizar_estado_filtro(estado: Optional[str]) -> Optional[str]:
+    """Valida el filtro de estado del listado (ACTIVA/CONVERTIDA/ANULADA/TODAS)."""
+    if estado is None:
+        return None
+    valor = estado.strip().upper()
+    if valor not in ESTADOS_FILTRO:
+        raise BusinessLogicError(
+            "Estado no válido. Use ACTIVA, CONVERTIDA, ANULADA o TODAS."
+        )
+    return valor
 
 
 async def _secuencia_oferta(db: AsyncSession, id_oferta_tienda: int) -> int:
@@ -84,21 +106,6 @@ async def _secuencia_oferta(db: AsyncSession, id_oferta_tienda: int) -> int:
         ") t WHERE id_oferta_tienda = :id_oferta"
     )
     result = await db.exec(stmt_sec, params={"id_oferta": id_oferta_tienda})
-    return result.one()[0]
-
-
-async def _secuencia_factura(db: AsyncSession, id_factura: int) -> int:
-    """Secuencia de la factura dentro de su contrato (orden por fecha, id)."""
-    stmt_sec = text(
-        "SELECT rn FROM ("
-        "  SELECT id_factura, "
-        "         ROW_NUMBER() OVER ("
-        "             PARTITION BY id_contrato ORDER BY fecha, id_factura"
-        "         ) AS rn"
-        "  FROM factura"
-        ") t WHERE id_factura = :id_factura"
-    )
-    result = await db.exec(stmt_sec, params={"id_factura": id_factura})
     return result.one()[0]
 
 
@@ -159,9 +166,12 @@ class OfertaTiendaService:
 
     @staticmethod
     async def get_all(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int = 100, estado: Optional[str] = None
     ) -> List[OfertaTiendaReadWithDetails]:
-        ofertas = await oferta_tienda_repo.get_all_with_details(db, skip, limit)
+        estado = _normalizar_estado_filtro(estado)
+        ofertas = await oferta_tienda_repo.get_all_with_details(
+            db, skip, limit, estado
+        )
         result = []
         for oferta in ofertas:
             result.append(await map_oferta_to_read(db, oferta))
@@ -169,9 +179,10 @@ class OfertaTiendaService:
 
     @staticmethod
     async def get_by_contrato(
-        db: AsyncSession, id_contrato: int
+        db: AsyncSession, id_contrato: int, estado: Optional[str] = None
     ) -> List[OfertaTiendaReadWithDetails]:
-        ofertas = await oferta_tienda_repo.get_by_contrato(db, id_contrato)
+        estado = _normalizar_estado_filtro(estado)
+        ofertas = await oferta_tienda_repo.get_by_contrato(db, id_contrato, estado)
         result = []
         for oferta in ofertas:
             result.append(await map_oferta_to_read(db, oferta))
@@ -233,7 +244,7 @@ class OfertaTiendaService:
             return False
         if oferta.estado == "CONVERTIDA":
             raise BusinessLogicError(
-                "No se puede anular: la oferta ya fue convertida en factura."
+                "No se puede anular: la oferta ya fue convertida en factura o pre-factura."
             )
         oferta.estado = "ANULADA"
         db.add(oferta)
@@ -246,13 +257,22 @@ class OfertaTiendaService:
         id_oferta: int,
         denominacion: Optional[str] = None,
         id_dependencia_usuario: Optional[int] = None,
+        tipo: str = "FACTURA",
     ) -> FacturaReadWithDetails:
-        """Convertir una oferta en factura.
+        """Convertir una oferta en factura o pre-factura.
 
         Copia los datos de la oferta a una factura nueva (los códigos se
-        regeneran), valida stock y crea los movimientos de venta pendientes.
-        Si el stock no alcanza, se bloquea y la oferta queda activa.
+        regeneran). Si `tipo` es FACTURA, valida stock y crea los movimientos
+        de venta pendientes; si el stock no alcanza, se bloquea y la oferta
+        queda activa. Si es PREFACTURA, solo copia los items: el stock se
+        valida y se reserva al aprobarla desde Pre-facturas.
         """
+        tipo = (tipo or "FACTURA").strip().upper()
+        if tipo not in TIPOS_FACTURA:
+            raise BusinessLogicError(
+                "El tipo debe ser FACTURA o PREFACTURA."
+            )
+
         oferta = await oferta_tienda_repo.get_by_id_with_details(db, id_oferta)
         if not oferta:
             return None
@@ -275,8 +295,9 @@ class OfertaTiendaService:
             for it in items
         ]
 
-        # Validar existencias: tras convertir, la factura las vende
-        if items_data:
+        # Validar existencias solo si la oferta pasa directo a factura: una
+        # pre-factura no toca stock hasta que se apruebe.
+        if tipo == "FACTURA" and items_data:
             productos_validar = [
                 {"id_producto": it["id_producto"], "cantidad": it["cantidad"]}
                 for it in items_data
@@ -298,23 +319,34 @@ class OfertaTiendaService:
             observaciones=oferta.observaciones,
             fecha=oferta.fecha,
             monto=oferta.monto,
+            tipo=tipo,
         )
 
         factura = await factura_repo.create(db, data_factura)
 
-        secuencia = await _secuencia_factura(db, factura.id_factura)
+        secuencia = await siguiente_secuencia_factura(
+            db, factura.id_contrato, tipo
+        )
         factura.codigo_factura = generar_codigo_factura(
             denominacion or "",
             factura.fecha.year,
             factura.id_contrato,
             secuencia,
+            tipo,
         )
         db.add(factura)
         await db.flush()
 
-        await crear_items_y_movimientos_venta(
-            db, factura, contrato, items_data, id_dependencia_usuario, denominacion
-        )
+        if tipo == "PREFACTURA":
+            # Solo items: el stock se reserva al aprobarla.
+            if items_data:
+                await item_factura_repo.create_items(
+                    db, factura.id_factura, items_data
+                )
+        else:
+            await crear_items_y_movimientos_venta(
+                db, factura, contrato, items_data, id_dependencia_usuario, denominacion
+            )
 
         oferta.estado = "CONVERTIDA"
         oferta.id_factura = factura.id_factura

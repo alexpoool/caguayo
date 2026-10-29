@@ -14,13 +14,34 @@ from src.dto.oferta_tienda_dto import OfertaTiendaCreate, OfertaTiendaUpdate, It
 from src.repository.contratos_repo import normalize_id
 from src.utils.codigos_entidad import generar_codigo_item_oferta_tienda
 
-# Las ofertas no activas no se muestran en el listado.
-ESTADOS_LISTABLES = ("ACTIVA",)
+# Las ofertas anuladas (borrado lógico) no se muestran por defecto; las
+# convertidas sí, para conservar el rastro de la factura/pre-factura generada.
+ESTADOS_LISTABLES = ("ACTIVA", "CONVERTIDA")
+# Estados admitidos por el filtro de la página.
+ESTADOS_FILTRO = ("ACTIVA", "CONVERTIDA", "ANULADA", "TODAS")
+
+
+def _filtro_estado(estado: Optional[str]):
+    """Condición de estado para el listado.
+
+    Sin filtro se devuelven las ofertas vigentes (activas y convertidas); las
+    anuladas solo aparecen si se piden explícitamente o con `TODAS`.
+    """
+    if not estado:
+        return OfertaTienda.estado.in_(ESTADOS_LISTABLES)
+    valor = estado.strip().upper()
+    if valor == "TODAS":
+        return None
+    return OfertaTienda.estado == valor
 
 
 class OfertaTiendaRepository(CRUDBase[OfertaTienda, OfertaTiendaCreate, OfertaTiendaUpdate]):
     async def get_all_with_details(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        estado: Optional[str] = None,
     ) -> List[OfertaTienda]:
         statement = (
             select(OfertaTienda)
@@ -29,11 +50,13 @@ class OfertaTiendaRepository(CRUDBase[OfertaTienda, OfertaTiendaCreate, OfertaTi
                     ItemOfertaTienda.producto
                 )
             )
-            .where(OfertaTienda.estado.in_(ESTADOS_LISTABLES))
             .offset(skip)
             .limit(limit)
             .order_by(OfertaTienda.id_oferta_tienda.desc())
         )
+        condicion = _filtro_estado(estado)
+        if condicion is not None:
+            statement = statement.where(condicion)
         results = await db.exec(statement)
         return results.all()
 
@@ -53,7 +76,7 @@ class OfertaTiendaRepository(CRUDBase[OfertaTienda, OfertaTiendaCreate, OfertaTi
         return results.first()
 
     async def get_by_contrato(
-        self, db: AsyncSession, id_contrato: int
+        self, db: AsyncSession, id_contrato: int, estado: Optional[str] = None
     ) -> List[OfertaTienda]:
         statement = (
             select(OfertaTienda)
@@ -62,12 +85,12 @@ class OfertaTiendaRepository(CRUDBase[OfertaTienda, OfertaTiendaCreate, OfertaTi
                     ItemOfertaTienda.producto
                 )
             )
-            .where(
-                OfertaTienda.id_contrato == id_contrato,
-                OfertaTienda.estado.in_(ESTADOS_LISTABLES),
-            )
+            .where(OfertaTienda.id_contrato == id_contrato)
             .order_by(OfertaTienda.id_oferta_tienda.desc())
         )
+        condicion = _filtro_estado(estado)
+        if condicion is not None:
+            statement = statement.where(condicion)
         results = await db.exec(statement)
         return results.all()
 

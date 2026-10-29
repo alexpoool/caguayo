@@ -4,7 +4,13 @@ import type { FacturaWithDetails } from '../../../../types/contrato';
 import { useInfiniteList } from '../../../../hooks/useInfiniteList';
 import { prepararFacturaParaAPI, validarFactura } from '../utils/facturasUtils';
 
-export function useFacturas(initialContratoId?: string | null) {
+export type TipoFactura = 'FACTURA' | 'PREFACTURA';
+
+export function useFacturas(
+  tipo: TipoFactura = 'FACTURA',
+  initialContratoId?: string | null,
+) {
+  const esPreFactura = tipo === 'PREFACTURA';
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(
     initialContratoId ? Number(initialContratoId) : null
@@ -12,18 +18,18 @@ export function useFacturas(initialContratoId?: string | null) {
   const [formData, setFormData] = useState<Record<string, any>>({});
 
   /**
-   * Lista infinita de facturas según el contrato seleccionado
+   * Lista infinita de facturas o pre-facturas según el contrato seleccionado
    */
   const infinite = useInfiniteList<FacturaWithDetails>({
-    queryKeyBase: 'facturas',
+    queryKeyBase: esPreFactura ? 'prefacturas' : 'facturas',
     queryFn: async (skip: number, limit: number) => {
       if (selectedContratoId) {
         // getFacturasByContrato no soporta paginación; se obtienen todas de una vez
-        return facturasService.getFacturasByContrato(selectedContratoId);
+        return facturasService.getFacturasByContrato(selectedContratoId, tipo);
       }
-      return facturasService.getFacturas(skip, limit);
+      return facturasService.getFacturas(skip, limit, tipo);
     },
-    extraQueryKeyParams: [selectedContratoId],
+    extraQueryKeyParams: [selectedContratoId, tipo],
     limit: 100,
   });
 
@@ -46,8 +52,8 @@ export function useFacturas(initialContratoId?: string | null) {
       return { success: false, message: validacionGeneral.errors.join('\n• ') };
     }
     try {
-      // Validar stock antes de crear/actualizar
-      if (!editingId && selectedProducts.length > 0) {
+      // La pre-factura no toca stock: el backend lo valida al aprobarla.
+      if (!esPreFactura && !editingId && selectedProducts.length > 0) {
         const idDependencia = userDependenciaId;
         
         const validacion = await existenciaService.validarMultiple(
@@ -69,12 +75,16 @@ export function useFacturas(initialContratoId?: string | null) {
       if (editingId) {
         await facturasService.updateFactura(editingId, data);
       } else {
-        await facturasService.createFactura(data);
+        await facturasService.createFactura({ ...data, tipo });
       }
       
       infinite.refresh();
       resetForm();
-      return { success: true, message: editingId ? 'Actualizado' : 'Creado' };
+      const etiqueta = esPreFactura ? 'Pre-factura' : 'Factura';
+      return {
+        success: true,
+        message: editingId ? `${etiqueta} actualizada` : `${etiqueta} creada`,
+      };
     } catch (error: any) {
       return { success: false, message: error.message || 'Error al guardar factura' };
     }
@@ -111,6 +121,19 @@ export function useFacturas(initialContratoId?: string | null) {
   };
 
   /**
+   * Aprueba una pre-factura: se convierte en factura en el backend.
+   */
+  const handleAprobar = async (id: number) => {
+    try {
+      await facturasService.aprobarFactura(id);
+      infinite.refresh();
+      return { success: true, message: 'Pre-factura aprobada como factura' };
+    } catch (error: any) {
+      return { success: false, message: error.message || 'Error al aprobar la pre-factura' };
+    }
+  };
+
+  /**
    * Resetea el formulario
    */
   const resetForm = () => {
@@ -135,6 +158,7 @@ export function useFacturas(initialContratoId?: string | null) {
     setFormData,
     handleSave,
     handleDelete,
+    handleAprobar,
     openForm,
     resetForm,
   };

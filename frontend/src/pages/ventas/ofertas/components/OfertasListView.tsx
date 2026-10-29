@@ -6,12 +6,15 @@ import type {
   OfertaTiendaWithDetails,
   ContratoWithDetails,
 } from '../../../../types/contrato';
+import type { EstadoOfertaFiltro } from '../hooks/useOfertas';
 
 interface OfertasListViewProps {
   ofertas: OfertaTiendaWithDetails[];
   isLoading?: boolean;
   contratos: ContratoWithDetails[];
   selectedContratoId: number | null;
+  estadoFiltro: EstadoOfertaFiltro;
+  onEstadoFiltroChange: (estado: EstadoOfertaFiltro) => void;
   onSelectedContratoChange: (id: number | null) => void;
   onAddNew: () => void;
   onEdit: (oferta: OfertaTiendaWithDetails) => void;
@@ -24,11 +27,20 @@ interface OfertasListViewProps {
   isFetchingMore: boolean;
 }
 
+const ESTADOS_OFERTA: { valor: EstadoOfertaFiltro; label: string }[] = [
+  { valor: 'TODAS', label: 'Todas' },
+  { valor: 'ACTIVA', label: 'Activas' },
+  { valor: 'CONVERTIDA', label: 'Convertidas' },
+  { valor: 'ANULADA', label: 'Anuladas' },
+];
+
 export function OfertasListView({
   ofertas,
   isLoading = false,
   contratos,
   selectedContratoId,
+  estadoFiltro,
+  onEstadoFiltroChange,
   onSelectedContratoChange,
   onAddNew,
   onEdit,
@@ -82,6 +94,24 @@ export function OfertasListView({
           <Plus className="h-4 w-4" />
           Nueva Oferta
         </Button>
+      </div>
+
+      {/* Filtro por estado */}
+      <div className="flex flex-wrap gap-2">
+        {ESTADOS_OFERTA.map(({ valor, label }) => (
+          <button
+            key={valor}
+            type="button"
+            onClick={() => onEstadoFiltroChange(valor)}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              estadoFiltro === valor
+                ? 'bg-violet-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Filtro por contrato (buscador) */}

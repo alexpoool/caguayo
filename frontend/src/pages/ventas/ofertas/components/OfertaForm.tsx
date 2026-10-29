@@ -5,6 +5,7 @@ import { ProductSelector } from '../../facturas/components/ProductSelector';
 import type { SelectedProduct } from '../../facturas/hooks/useProductSelection';
 import type { Productos } from '../../../../types';
 import type { ContratoWithDetails } from '../../../../types/contrato';
+import type { Cliente } from '../../../../types/ventas';
 
 interface OfertaFormProps {
   formId: string;
@@ -16,6 +17,7 @@ interface OfertaFormProps {
   productos: Productos[];
   selectedContratoId: number | null;
   contratos: ContratoWithDetails[];
+  clientes: Cliente[];
   onFormDataChange: (data: Record<string, any>) => void;
   onProductSearchChange: (search: string) => void;
   onAddProduct: (id: number) => void;
@@ -36,6 +38,7 @@ export function OfertaForm({
   productos,
   selectedContratoId,
   contratos,
+  clientes,
   onFormDataChange,
   onProductSearchChange,
   onAddProduct,
@@ -45,22 +48,55 @@ export function OfertaForm({
   onSelectedContratoChange,
   onSave,
 }: OfertaFormProps) {
+  const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const [contratoSearch, setContratoSearch] = useState('');
   const [showContratoDropdown, setShowContratoDropdown] = useState(false);
+  const clienteRef = useRef<HTMLDivElement>(null);
   const contratoRef = useRef<HTMLDivElement>(null);
 
+  const selectedCliente = useMemo(() => {
+    if (!selectedClienteId) return null;
+    return clientes.find((c) => c.id_cliente === selectedClienteId) || null;
+  }, [selectedClienteId, clientes]);
+
+  const filteredClientes = useMemo(() => {
+    if (!clienteSearch) return clientes;
+    const q = clienteSearch.toLowerCase();
+    return clientes.filter(
+      (c) =>
+        c.nombre?.toLowerCase().includes(q) || c.codigo?.toLowerCase().includes(q)
+    );
+  }, [clientes, clienteSearch]);
+
   const filteredContratos = useMemo(() => {
-    if (!contratoSearch) return contratos;
+    let list = contratos;
+    if (selectedClienteId) {
+      list = list.filter((c) => c.id_cliente === selectedClienteId);
+    }
+    if (!contratoSearch) return list;
     const q = contratoSearch.toLowerCase();
-    return contratos.filter(
+    return list.filter(
       (c) =>
         c.nombre?.toLowerCase().includes(q) ||
         c.cliente?.nombre?.toLowerCase().includes(q)
     );
-  }, [contratos, contratoSearch]);
+  }, [contratos, selectedClienteId, contratoSearch]);
+
+  // Al editar (o abrir con ?contrato=) el contrato ya viene elegido:
+  // se sincroniza el cliente para que el filtro muestre el correcto.
+  useEffect(() => {
+    if (!selectedContratoId) return;
+    const contrato = contratos.find((c) => c.id_contrato === selectedContratoId);
+    if (contrato) setSelectedClienteId(contrato.id_cliente);
+  }, [selectedContratoId, contratos]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
+      if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) {
+        setShowClienteDropdown(false);
+      }
       if (contratoRef.current && !contratoRef.current.contains(e.target as Node)) {
         setShowContratoDropdown(false);
       }
@@ -77,6 +113,70 @@ export function OfertaForm({
     >
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Cliente (buscador) */}
+          <div ref={clienteRef} className="relative">
+            <Label className="text-sm font-medium">Cliente</Label>
+            <div className="relative mt-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                value={selectedCliente ? selectedCliente.nombre : clienteSearch}
+                onChange={(e) => {
+                  setClienteSearch(e.target.value);
+                  if (selectedCliente) {
+                    setSelectedClienteId(null);
+                    onSelectedContratoChange(null);
+                  }
+                  setShowClienteDropdown(true);
+                }}
+                onFocus={() => setShowClienteDropdown(true)}
+                placeholder="Buscar cliente..."
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none bg-white"
+              />
+            </div>
+            {showClienteDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {selectedClienteId && (
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors font-medium border-b border-gray-200"
+                    onClick={() => {
+                      setSelectedClienteId(null);
+                      onSelectedContratoChange(null);
+                      setShowClienteDropdown(false);
+                    }}
+                  >
+                    ✕ Quitar filtro de cliente
+                  </button>
+                )}
+                {filteredClientes.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-gray-500">
+                    No se encontraron clientes
+                  </div>
+                ) : (
+                  filteredClientes.map((c) => (
+                    <button
+                      key={c.id_cliente}
+                      type="button"
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors ${
+                        selectedClienteId === c.id_cliente
+                          ? 'bg-violet-100 font-medium'
+                          : ''
+                      }`}
+                      onClick={() => {
+                        setSelectedClienteId(c.id_cliente);
+                        onSelectedContratoChange(null);
+                        setClienteSearch('');
+                        setShowClienteDropdown(false);
+                      }}
+                    >
+                      {c.nombre} ({c.codigo})
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Contrato (buscador) */}
           <div ref={contratoRef} className="relative">
             <Label className="text-sm font-medium">Contrato *</Label>
@@ -108,6 +208,7 @@ export function OfertaForm({
                       className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors"
                       onClick={() => {
                         onSelectedContratoChange(c.id_contrato);
+                        setSelectedClienteId(c.id_cliente);
                         setContratoSearch('');
                         setShowContratoDropdown(false);
                       }}

@@ -76,13 +76,24 @@ def generar_codigo_liquidacion(
 
 
 def generar_codigo_factura(
-    denominacion: str, anio: int, id_contrato: int, secuencia: int
+    denominacion: str,
+    anio: int,
+    id_contrato: int,
+    secuencia: int,
+    tipo: str = "FACTURA",
 ) -> str:
     """Código de factura: {den}.{año_2d}.{id_contrato:03d}.{secuencia:03d}.
-    El secuencial es propio de la factura dentro de su contrato.
-    Ej: FT.26.002.001"""
+
+    Las pre-facturas usan la serie PFT; las facturas, el prefijo de la
+    denominación (FT). El secuencial es propio del tipo dentro del contrato.
+    Ej: FT.26.002.001 / PFT.26.002.001
+    """
+    if (tipo or "").strip().upper() == "PREFACTURA":
+        prefijo = "PFT"
+    else:
+        prefijo = _prefijo(denominacion)
     return (
-        f"{_prefijo(denominacion)}.{str(anio)[-2:]}."
+        f"{prefijo}.{str(anio)[-2:]}."
         f"{id_contrato:03d}.{secuencia:03d}"
     )
 

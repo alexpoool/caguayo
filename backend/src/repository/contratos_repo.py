@@ -277,13 +277,18 @@ class SuplementoRepository(CRUDBase[Suplemento, SuplementoCreate, SuplementoUpda
 
 class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
     async def get_all_with_details(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        tipo: str = "FACTURA",
     ) -> List[Factura]:
         statement = (
             select(Factura)
             .options(
                 selectinload(Factura.items_factura).selectinload(ItemFactura.producto)
             )
+            .where(Factura.tipo == tipo)
             .offset(skip)
             .limit(limit)
             .order_by(Factura.id_factura.desc())
@@ -307,14 +312,17 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
         return results.first()
 
     async def get_by_contrato(
-        self, db: AsyncSession, id_contrato: int
+        self, db: AsyncSession, id_contrato: int, tipo: str = "FACTURA"
     ) -> List[Factura]:
         statement = (
             select(Factura)
             .options(
                 selectinload(Factura.items_factura).selectinload(ItemFactura.producto)
             )
-            .where(Factura.id_contrato == id_contrato)
+            .where(
+                Factura.id_contrato == id_contrato,
+                Factura.tipo == tipo,
+            )
             .order_by(Factura.id_factura.desc())
         )
         results = await db.exec(statement)
@@ -330,11 +338,15 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
             "fecha": factura_data.fecha,
             "monto": factura_data.monto or Decimal("0.00"),
             "pago_actual": factura_data.pago_actual or Decimal("0.00"),
+            "tipo": (factura_data.tipo or "FACTURA").strip().upper(),
         }
 
         factura = Factura(**factura_dict)
         db.add(factura)
-        await db.commit()
+        # Solo flush: el servicio dueño de la transacción decide el commit.
+        # Así, si la validación de stock o los items fallan, no queda una
+        # factura huérfana con código TMP_.
+        await db.flush()
         await db.refresh(factura)
         return factura
 
@@ -496,17 +508,12 @@ class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
 
         factura = await db.get(Factura, id_factura)
         if factura and created_items:
-            stmt_sec = text(
-                "SELECT rn FROM ("
-                "  SELECT id_factura, "
-                "         ROW_NUMBER() OVER ("
-                "             PARTITION BY id_contrato ORDER BY fecha, id_factura"
-                "         ) AS rn"
-                "  FROM factura"
-                ") t WHERE id_factura = :id_factura"
+            # El secuencial del item sigue la serie de su factura (FT/PFT).
+            # Se toma del código ya asignado al padre para no mezclar series.
+            partes = (factura.codigo_factura or "").split(".")
+            sec_factura = (
+                int(partes[3]) if len(partes) >= 4 and partes[3].isdigit() else 1
             )
-            result_sec = await db.exec(stmt_sec, params={"id_factura": id_factura})
-            sec_factura = result_sec.one()[0]
 
             for db_item in created_items:
                 producto = await db.get(Productos, db_item.id_producto)
