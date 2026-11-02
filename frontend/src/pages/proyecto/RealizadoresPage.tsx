@@ -23,6 +23,7 @@ import {
   monedaService,
   solicitudesService,
   personaLiquidacionService,
+  tiposEntidadService,
 } from "../../services/api";
 import type {
   PersonaEtapa,
@@ -36,6 +37,7 @@ import type {
   ClienteNatural,
   ClienteTCP,
   ClienteJuridica,
+  TipoEntidad,
 } from "../../types/ventas";
 import type { Moneda } from "../../types/moneda";
 import {
@@ -87,6 +89,7 @@ export function RealizadoresPage() {
   const [personasJuridicas, setPersonasJuridicas] = useState<ClienteJuridica[]>(
     [],
   );
+  const [tiposEntidad, setTiposEntidad] = useState<TipoEntidad[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [liquidaciones, setLiquidaciones] = useState<PersonaLiquidacion[]>([]);
@@ -158,6 +161,16 @@ export function RealizadoresPage() {
 
   const getLabelTipo = (idPersona: number): string => {
     const tipo = getTipoPersona(idPersona);
+    if (tipo === "juridica") {
+      const juridica = personasJuridicas.find(
+        (p) => p.id_cliente === idPersona,
+      ) as unknown as Cliente | undefined;
+      const idTipoEntidad = juridica?.cliente_juridica?.id_tipo_entidad;
+      const tipoEntidad = tiposEntidad.find(
+        (t) => t.id_tipo_entidad === idTipoEntidad,
+      );
+      if (tipoEntidad?.nombre) return tipoEntidad.nombre;
+    }
     const labels: Record<string, string> = {
       natural: "Natural",
       tcp: "TCP",
@@ -186,6 +199,7 @@ export function RealizadoresPage() {
         tcpRes,
         juridicasRes,
         liquidacionesRes,
+        tiposEntidadRes,
       ] = await Promise.all([
         clientesService.getClientes(0, 10000),
         clientesService.getPersonasNaturales(),
@@ -194,6 +208,7 @@ export function RealizadoresPage() {
         clientesService.getClientes(0, 10000, "TCP"),
         clientesService.getClientes(0, 10000, "JURIDICA"),
         personaLiquidacionService.getLiquidaciones(0, 10000),
+        tiposEntidadService.getTiposEntidad(),
       ]);
       setTodosClientes(todosClientesRes);
       setPersonasNaturales(personasRes);
@@ -202,6 +217,7 @@ export function RealizadoresPage() {
       setMonedas(monedasRes);
       setSolicitudes(solicitudesRes);
       setLiquidaciones(liquidacionesRes);
+      setTiposEntidad(tiposEntidadRes);
       if (etapaParam) {
         const etapaData = await etapasProyectoService.getEtapa(
           Number(etapaParam),

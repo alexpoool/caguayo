@@ -64,6 +64,19 @@ export function ClientesList({
     cliente: null,
   });
 
+  // Para personas jurídicas se muestra el tipo de entidad (empresa, cooperativa,
+  // etc.) en lugar de la etiqueta genérica "JURIDICA".
+  const getTipoLabel = (cliente: Cliente): string => {
+    if (cliente.tipo_persona === "JURIDICA") {
+      const idTipoEntidad = cliente.cliente_juridica?.id_tipo_entidad;
+      const tipoEntidad = tiposEntidad.find(
+        (t) => t.id_tipo_entidad === idTipoEntidad,
+      );
+      if (tipoEntidad?.nombre) return tipoEntidad.nombre;
+    }
+    return cliente.tipo_persona || "NATURAL";
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -202,7 +215,7 @@ export function ClientesList({
                               : "bg-orange-100 text-orange-800"
                         }`}
                       >
-                        {cliente.tipo_persona || "NATURAL"}
+                        {getTipoLabel(cliente)}
                       </span>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
