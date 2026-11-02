@@ -1019,6 +1019,31 @@ function App() {
             )}
           </div>
         )}
+
+        {/* Footer del sidebar: perfil de usuario (visible en todos los módulos) */}
+        <div className={`border-t border-panel-800 ${slimSidebar ? 'flex justify-center py-3' : 'px-3 py-3'}`}>
+          <button
+            onClick={() => setShowAccountModal(true)}
+            className={`flex items-center rounded-lg p-1.5 hover:bg-white/10 transition-colors group ${slimSidebar ? 'justify-center' : 'gap-3 w-full'}`}
+            title="Perfil"
+          >
+            <div className="w-9 h-9 rounded-full bg-brand-500 flex items-center justify-center text-white font-bold shrink-0">
+              {user?.nombre ? user.nombre.charAt(0).toUpperCase() : 'U'}
+            </div>
+            {!slimSidebar && (
+              <div className="min-w-0 text-left leading-tight">
+                <span className="block text-sm font-medium text-slate-200 group-hover:text-white truncate">
+                  {user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}
+                </span>
+                {user?.cargo && (
+                  <span className="block text-xs text-slate-400 group-hover:text-slate-300 truncate">
+                    {user.cargo}
+                  </span>
+                )}
+              </div>
+            )}
+          </button>
+        </div>
         </aside>
         )}
         <header className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 min-w-0 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-6 py-4 h-16 flex items-center justify-between`}>
@@ -1031,27 +1056,6 @@ function App() {
             >
               <Home className="w-6 h-6 text-slate-200 group-hover:text-white transition-colors" />
             </Link>
-            <button
-              onClick={() =>
-                hasModuloAccess('administracion') &&
-                handleModuloClick('administracion')
-              }
-              disabled={!hasModuloAccess('administracion')}
-              title={
-                hasModuloAccess('administracion')
-                  ? 'Administración'
-                  : 'No tienes acceso a este módulo'
-              }
-              className={`p-2 rounded-lg transition-all duration-300 ease-out hover:scale-110 active:scale-95 group
-                ${!hasModuloAccess('administracion')
-                  ? 'text-slate-500 cursor-not-allowed hover:scale-100'
-                  : moduloActivo === 'administracion'
-                    ? 'bg-white/10 text-brand-400'
-                    : 'text-slate-200 hover:text-white hover:bg-gray-100'
-                }`}
-            >
-              <Settings className="w-6 h-6 transition-colors" />
-            </button>
           </div>
 
           <div className="flex items-center gap-6">
@@ -1083,22 +1087,27 @@ function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              to="/perfil"
-              className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
-              title="Perfil"
+            <button
+              onClick={() =>
+                hasModuloAccess('administracion') &&
+                handleModuloClick('administracion')
+              }
+              disabled={!hasModuloAccess('administracion')}
+              title={
+                hasModuloAccess('administracion')
+                  ? 'Administración'
+                  : 'No tienes acceso a este módulo'
+              }
+              className={`p-2 rounded-lg transition-all duration-300 ease-out hover:scale-110 active:scale-95 group
+                ${!hasModuloAccess('administracion')
+                  ? 'text-slate-500 cursor-not-allowed hover:scale-100'
+                  : moduloActivo === 'administracion'
+                    ? 'bg-white/10 text-brand-400'
+                    : 'text-slate-200 hover:text-white hover:bg-gray-100'
+                }`}
             >
-              <div className="text-left leading-tight hidden sm:block">
-                <span className="block text-sm font-medium text-slate-200 group-hover:text-white">
-                  {user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}
-                </span>
-                {user?.cargo && (
-                  <span className="block text-xs text-slate-400 group-hover:text-slate-300">
-                    {user.cargo}
-                  </span>
-                )}
-              </div>
-            </Link>
+              <Settings className="w-6 h-6 transition-colors" />
+            </button>
           </div>
         </header>
         <div className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col w-full`}>
@@ -1906,20 +1915,17 @@ function App() {
                 className="w-full text-left px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                 onClick={() => {
                   setShowAccountModal(false);
-                  setModuloActivo('administracion');
                   navigate('/perfil');
                 }}
               >
                 Ver perfil
               </button>
 
-              {/* TODO: Implementar la acción de 'Salir del sistema' aquí (por ejemplo llamar a la API y limpiar estado). */}
               <button
                 className="w-full text-left px-4 py-2 rounded-md border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-                onClick={async () => {
+                onClick={() => {
                   setShowAccountModal(false);
-                  await logout();
-                  navigate('/login', { replace: true });
+                  setShowLogoutConfirm(true);
                 }}
               >
                 Salir del sistema
