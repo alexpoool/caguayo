@@ -484,17 +484,17 @@ function SidebarSeccion({
   );
 }
 
-/** Una sección está abierta si el sidebar es slim o si su ruta actual la contiene. */
+/**
+ * Una sección está abierta si el sidebar es slim o si el usuario la desplegó.
+ * Por defecto las secciones de Terceros, Tienda y Proyectos aparecen desplegadas.
+ */
 function seccionAbierta(
   seccion: { id: string; items: AdminSeccionItem[] },
-  pathname: string,
+  _pathname: string,
   abiertas: Record<string, boolean>,
   slim: boolean,
 ): boolean {
-  const contieneRutaActual = seccion.items.some(
-    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
-  );
-  return slim || (abiertas[seccion.id] ?? contieneRutaActual);
+  return slim || (abiertas[seccion.id] ?? true);
 }
 
 function App() {
