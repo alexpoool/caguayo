@@ -204,6 +204,10 @@ export const clientesService = {
     tipoRelacion?: string,
     search?: string,
     onTotal?: (t: number | null) => void,
+    filtros?: {
+      tipoPersona?: "NATURAL" | "JURIDICA" | "TCP";
+      idTipoEntidad?: number;
+    },
   ): Promise<Cliente[]> {
     const params = new URLSearchParams({
       skip: String(skip),
@@ -214,6 +218,12 @@ export const clientesService = {
     }
     if (search) {
       params.append("search", search);
+    }
+    if (filtros?.tipoPersona) {
+      params.append("tipo_persona", filtros.tipoPersona);
+    }
+    if (filtros?.idTipoEntidad) {
+      params.append("id_tipo_entidad", String(filtros.idTipoEntidad));
     }
     return apiClient.get<Cliente[]>(`/clientes?${params.toString()}`, undefined, captureTotal(onTotal));
   },

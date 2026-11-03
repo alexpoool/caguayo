@@ -22,15 +22,19 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  Select,
 } from "../../../../components/ui";
 import { ClienteDetailModal } from "../modals/ClienteDetailModal";
 import type { Cliente, TipoEntidad } from "../../../../types/ventas";
+import type { FiltroTipoPersona } from "../../hooks/useClientesLogic";
 
 export interface ClientesListProps {
   clientes: Cliente[];
   totalClientes: number;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  filtroTipo: FiltroTipoPersona;
+  setFiltroTipo: (filtro: FiltroTipoPersona) => void;
   isProveedorView: boolean;
   onNew: () => void;
   handleEdit: (cliente: Cliente) => void;
@@ -46,6 +50,8 @@ export function ClientesList({
   totalClientes,
   searchTerm,
   setSearchTerm,
+  filtroTipo,
+  setFiltroTipo,
   isProveedorView,
   onNew,
   handleEdit,
@@ -114,6 +120,35 @@ export function ClientesList({
             className="pl-10"
           />
         </div>
+        <div className="w-56">
+          <Select
+            value={filtroTipo}
+            onChange={(e) =>
+              setFiltroTipo(e.target.value as FiltroTipoPersona)
+            }
+            aria-label="Filtrar por tipo de persona"
+            title="Filtrar por tipo de persona"
+          >
+            <option value="TODOS">Todos los tipos</option>
+            <optgroup label="Tipo de persona">
+              <option value="NATURAL">Persona natural</option>
+              <option value="TCP">TCP</option>
+              <option value="JURIDICA">Todas las personas jurídicas</option>
+            </optgroup>
+            {tiposEntidad.length > 0 && (
+              <optgroup label="Entidades jurídicas">
+                {tiposEntidad.map((tipo) => (
+                  <option
+                    key={tipo.id_tipo_entidad}
+                    value={`ENTIDAD:${tipo.id_tipo_entidad}`}
+                  >
+                    {tipo.nombre}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </Select>
+        </div>
       </div>
 
       {/* Tabla de clientes */}
@@ -157,7 +192,7 @@ export function ClientesList({
                     colSpan={isProveedorView ? 7 : 6}
                     className="text-center py-12 text-gray-500"
                   >
-                    {searchTerm
+                    {searchTerm || filtroTipo !== "TODOS"
                       ? `No se encontraron ${isProveedorView ? "proveedores" : "clientes"} que coincidan con la búsqueda`
                       : isProveedorView
                         ? "No hay proveedores registrados"

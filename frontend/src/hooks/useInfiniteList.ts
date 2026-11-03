@@ -72,6 +72,18 @@ export function useInfiniteList<T>({
     setTotal(null);
   }
 
+  // Lo mismo cuando cambian los filtros externos (params extra de la query):
+  // sin reiniciar `skip` la nueva consulta pediría una página avanzada.
+  const paramsKey = JSON.stringify(extraQueryKeyParams);
+  const [appliedParamsKey, setAppliedParamsKey] = useState(paramsKey);
+  if (appliedParamsKey !== paramsKey) {
+    setAppliedParamsKey(paramsKey);
+    setSkip(0);
+    setAllItems([]);
+    setHasMore(true);
+    setTotal(null);
+  }
+
   // ── Reset ────────────────────────────────────────────────────────────────
 
   const reset = useCallback(() => {

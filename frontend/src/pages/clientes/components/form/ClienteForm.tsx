@@ -22,7 +22,7 @@ import {
   Save,
 } from "lucide-react";
 
-import { TipoPersona } from "./types";
+import { TipoPersona, TipoRelacion } from "./types";
 import { NaturalForm } from "./forms-especificos/NaturalForm";
 import { JuridicaForm } from "./forms-especificos/JuridicaForm";
 import { TCPForm } from "./forms-especificos/TCPForm";
@@ -298,8 +298,52 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     setFormData((prev: any) => ({ ...prev, tipo_persona: null }));
   };
 
-  const relacionActual =
+  const relacionActual: TipoRelacion =
     formData.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE");
+
+  // En edición la relación original no se puede quitar; solo se puede sumar
+  // la otra para pasar a AMBAS (y volver a la original al desmarcarla).
+  const relacionOriginal: TipoRelacion =
+    editingCliente?.tipo_relacion ||
+    (isProveedorView ? "PROVEEDOR" : "CLIENTE");
+  const bloqueadoCliente =
+    Boolean(editingCliente) &&
+    (relacionOriginal === "CLIENTE" ||
+      (relacionOriginal === "AMBAS" && relacionActual === "CLIENTE"));
+  const bloqueadoProveedor =
+    Boolean(editingCliente) &&
+    (relacionOriginal === "PROVEEDOR" ||
+      (relacionOriginal === "AMBAS" && relacionActual === "PROVEEDOR"));
+
+  const esCliente =
+    relacionActual === "CLIENTE" || relacionActual === "AMBAS";
+  const esProveedor =
+    relacionActual === "PROVEEDOR" || relacionActual === "AMBAS";
+
+  const aplicarRelacion = (cliente: boolean, proveedor: boolean) => {
+    const tipo_relacion: TipoRelacion =
+      cliente && proveedor
+        ? "AMBAS"
+        : cliente
+          ? "CLIENTE"
+          : proveedor
+            ? "PROVEEDOR"
+            : relacionActual;
+    setFormData((prev: any) => ({ ...prev, tipo_relacion }));
+  };
+
+  const toggleCliente = () => {
+    if (bloqueadoCliente) return;
+    // Nunca se puede quedar sin ninguna relación marcada.
+    if (esCliente && !esProveedor) return;
+    aplicarRelacion(!esCliente, esProveedor);
+  };
+
+  const toggleProveedor = () => {
+    if (bloqueadoProveedor) return;
+    if (esProveedor && !esCliente) return;
+    aplicarRelacion(esCliente, !esProveedor);
+  };
 
   const personaCompleta =
     tipoPersona === "NATURAL"
@@ -418,38 +462,55 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
         <div className="mb-6">
           <span className="text-sm font-medium text-gray-700">Tipo de Relación:</span>
           <div className="mt-2 flex flex-wrap gap-4">
-            {(
-              [
-                { valor: "CLIENTE", etiqueta: "Cliente" },
-                { valor: "PROVEEDOR", etiqueta: "Proveedor" },
-                { valor: "AMBAS", etiqueta: "Cliente y proveedor" },
-              ] as const
-            ).map((opcion) => (
+            {[
+              {
+                valor: "CLIENTE",
+                etiqueta: "Cliente",
+                checked: esCliente,
+                disabled: bloqueadoCliente,
+                onToggle: toggleCliente,
+              },
+              {
+                valor: "PROVEEDOR",
+                etiqueta: "Proveedor",
+                checked: esProveedor,
+                disabled: bloqueadoProveedor,
+                onToggle: toggleProveedor,
+              },
+            ].map((opcion) => (
               <label
                 key={opcion.valor}
-                className={`flex items-center gap-2 cursor-pointer rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                  relacionActual === opcion.valor
+                title={
+                  opcion.disabled
+                    ? "Esta relación no se puede desmarcar"
+                    : undefined
+                }
+                className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                  opcion.checked
                     ? "border-teal-500 bg-teal-50 text-teal-800"
                     : "border-gray-300 text-gray-600 hover:border-gray-400"
-                }`}
+                } ${opcion.disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
               >
                 <input
-                  type="radio"
+                  type="checkbox"
                   name="tipo_relacion"
                   value={opcion.valor}
-                  checked={relacionActual === opcion.valor}
-                  onChange={() =>
-                    setFormData((prev: any) => ({
-                      ...prev,
-                      tipo_relacion: opcion.valor,
-                    }))
-                  }
+                  checked={opcion.checked}
+                  disabled={opcion.disabled}
+                  onChange={opcion.onToggle}
                   className="w-4 h-4"
                 />
                 {opcion.etiqueta}
               </label>
             ))}
           </div>
+          {editingCliente && (
+            <p className="mt-2 text-xs text-gray-500">
+              {relacionOriginal === "AMBAS"
+                ? "Si desmarca una relación, la que quede no se podrá desmarcar. Puede volver a marcar la otra para dejarlo como cliente y proveedor."
+                : "La relación original no se puede quitar. Marca la otra opción para convertir el registro en cliente y proveedor."}
+            </p>
+          )}
         </div>
 
         {/* Datos Base del Cliente */}

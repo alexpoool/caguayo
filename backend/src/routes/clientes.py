@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
@@ -22,17 +22,34 @@ async def listar_clientes(
     search: Optional[str] = Query(
         None, description="Buscar por código, nombre, NIT, teléfono o email"
     ),
+    tipo_persona: Optional[Literal["NATURAL", "JURIDICA", "TCP"]] = Query(
+        None,
+        description="Filtrar por tipo de persona (NATURAL, JURIDICA, TCP)",
+    ),
+    id_tipo_entidad: Optional[int] = Query(
+        None, ge=1, description="Filtrar jurídicas por tipo de entidad"
+    ),
     db: AsyncSession = Depends(get_session),
     response: Response = None,
 ):
-    """Listar todos los clientes con paginación y opcionalmente filtrar por tipo_relacion."""
+    """Listar todos los clientes con paginación y filtros opcionales."""
     response.headers["X-Total-Count"] = str(
         await ClienteService.count_clientes(
-            db, tipo_relacion=tipo_relacion, search=search
+            db,
+            tipo_relacion=tipo_relacion,
+            search=search,
+            tipo_persona=tipo_persona,
+            id_tipo_entidad=id_tipo_entidad,
         )
     )
     return await ClienteService.get_clientes(
-        db, skip=skip, limit=limit, tipo_relacion=tipo_relacion, search=search
+        db,
+        skip=skip,
+        limit=limit,
+        tipo_relacion=tipo_relacion,
+        search=search,
+        tipo_persona=tipo_persona,
+        id_tipo_entidad=id_tipo_entidad,
     )
 
 

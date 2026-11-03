@@ -11,7 +11,7 @@ from src.repository.cliente_repo import (
     tipo_entidad_repo,
     cuenta_repo,
 )
-from src.models import Cliente
+from src.models import Cliente, ClienteJuridica
 from src.dto import (
     ClienteCreate,
     ClienteRead,
@@ -35,6 +35,29 @@ from src.dto import (
 
 PERSON_TYPES = {"NATURAL", "TCP", "JURIDICA"}
 
+# La relación original de un tercero no se puede quitar: solo conservarse o
+# ampliarse a AMBAS. Un registro AMBAS puede volver a una sola relación.
+TRANSICIONES_RELACION = {
+    "CLIENTE": {"CLIENTE", "AMBAS"},
+    "PROVEEDOR": {"PROVEEDOR", "AMBAS"},
+    "AMBAS": {"CLIENTE", "PROVEEDOR", "AMBAS"},
+}
+
+
+def _validar_transicion_relacion(
+    actual: Optional[str], nueva: Optional[str]
+) -> None:
+    """Impide que una edición degrade un tercero a la relación contraria."""
+    if not nueva or not actual:
+        return
+    actual = actual.strip().upper()
+    permitidas = TRANSICIONES_RELACION.get(actual)
+    if permitidas and nueva.strip().upper() not in permitidas:
+        raise ValueError(
+            "No se puede quitar la relación original: use AMBAS para que el "
+            "registro siga siendo cliente y proveedor"
+        )
+
 
 class ClienteConReferenciasError(Exception):
     """El tercero tiene registros asociados que impiden su eliminación."""
@@ -53,7 +76,13 @@ def _sanitize_search(search: str) -> str:
     return search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def _aplicar_filtros(statement, tipo_relacion=None, search=None):
+def _aplicar_filtros(
+    statement,
+    tipo_relacion=None,
+    search=None,
+    tipo_persona=None,
+    id_tipo_entidad=None,
+):
     """Aplica los filtros de listado y conteo con el mismo WHERE."""
     if tipo_relacion:
         # Soportar valores separados por coma (ej. "PROVEEDOR,AMBAS").
@@ -64,6 +93,16 @@ def _aplicar_filtros(statement, tipo_relacion=None, search=None):
             statement = statement.where(Cliente.tipo_relacion == tipos[0])
         elif len(tipos) > 1:
             statement = statement.where(Cliente.tipo_relacion.in_(tipos))
+
+    if tipo_persona:
+        statement = statement.where(Cliente.tipo_persona == tipo_persona)
+
+    if id_tipo_entidad:
+        # Sólo las personas jurídicas tienen entidad; el join interno ya
+        # excluye naturales y TCP.
+        statement = statement.join(
+            ClienteJuridica, ClienteJuridica.id_cliente == Cliente.id_cliente
+        ).where(ClienteJuridica.id_tipo_entidad == id_tipo_entidad)
 
     if search and search.strip():
         patron = f"%{_sanitize_search(search.strip())}%"
@@ -170,6 +209,8 @@ class ClienteService:
         limit: int = 10000,
         tipo_relacion: Optional[str] = None,
         search: Optional[str] = None,
+        tipo_persona: Optional[str] = None,
+        id_tipo_entidad: Optional[int] = None,
     ) -> List[ClienteRead]:
 
         statement = select(Cliente).options(
@@ -182,7 +223,11 @@ class ClienteService:
         )
 
         statement = _aplicar_filtros(
-            statement, tipo_relacion=tipo_relacion, search=search
+            statement,
+            tipo_relacion=tipo_relacion,
+            search=search,
+            tipo_persona=tipo_persona,
+            id_tipo_entidad=id_tipo_entidad,
         )
 
         statement = statement.order_by(Cliente.id_cliente.desc()).offset(skip).limit(limit)
@@ -196,13 +241,19 @@ class ClienteService:
         db: AsyncSession,
         tipo_relacion: Optional[str] = None,
         search: Optional[str] = None,
+        tipo_persona: Optional[str] = None,
+        id_tipo_entidad: Optional[int] = None,
     ) -> int:
         """Total con el mismo WHERE que get_clientes (header X-Total-Count)."""
         from sqlalchemy import func
 
         statement = select(func.count()).select_from(Cliente)
         statement = _aplicar_filtros(
-            statement, tipo_relacion=tipo_relacion, search=search
+            statement,
+            tipo_relacion=tipo_relacion,
+            search=search,
+            tipo_persona=tipo_persona,
+            id_tipo_entidad=id_tipo_entidad,
         )
         result = await db.exec(statement)
         return result.one()
@@ -216,6 +267,13 @@ class ClienteService:
         db_cliente = await cliente_repo.get(db, id=cliente_id)
         if not db_cliente:
             return None
+
+        # Detectar si es dict u objeto Pydantic
+        if isinstance(cliente_update, dict):
+            nueva_relacion = cliente_update.get("tipo_relacion")
+        else:
+            nueva_relacion = cliente_update.tipo_relacion
+        _validar_transicion_relacion(db_cliente.tipo_relacion, nueva_relacion)
 
         # Detectar si es dict u objeto Pydantic
         if isinstance(cliente_update, dict):

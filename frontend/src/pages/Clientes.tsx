@@ -32,6 +32,8 @@ function ClientesPageContent() {
     setConfirmModal,
     searchTerm,
     setSearchTerm,
+    filtroTipo,
+    setFiltroTipo,
     clientes,
     tiposEntidad,
     provincias,
@@ -92,6 +94,8 @@ function ClientesPageContent() {
         totalClientes={totalClientesDB ?? clientes.length}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
+        filtroTipo={filtroTipo}
+        setFiltroTipo={setFiltroTipo}
         isProveedorView={isProveedorView}
         onNew={() => {
           resetForm();

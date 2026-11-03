@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useInfiniteList } from "../../../hooks/useInfiniteList";
@@ -20,6 +20,14 @@ import type {
 import toast from "react-hot-toast";
 
 type TipoPersona = "NATURAL" | "JURIDICA" | "TCP";
+
+/** Filtro de la lista: "ENTIDAD:<id>" filtra jurídicas por tipo de entidad. */
+export type FiltroTipoPersona =
+  | "TODOS"
+  | "NATURAL"
+  | "TCP"
+  | "JURIDICA"
+  | `ENTIDAD:${number}`;
 
 const DEFAULT_LIMIT = 100;
 
@@ -63,6 +71,21 @@ export function useClientesLogic() {
   // ── Lista infinita de clientes ────────────────────────────────────────────
   const tipoRelacionFilter = isProveedorView ? "PROVEEDOR,AMBAS" : "CLIENTE,AMBAS";
 
+  // Filtro por tipo de persona (natural, TCP, jurídica o una entidad concreta).
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipoPersona>("TODOS");
+
+  const filtrosPersona = useMemo(() => {
+    if (filtroTipo === "TODOS") return {};
+    if (
+      filtroTipo === "NATURAL" ||
+      filtroTipo === "TCP" ||
+      filtroTipo === "JURIDICA"
+    ) {
+      return { tipoPersona: filtroTipo };
+    }
+    return { idTipoEntidad: Number(filtroTipo.slice("ENTIDAD:".length)) };
+  }, [filtroTipo]);
+
   const {
     items: clientes,
     isLoading,
@@ -81,10 +104,11 @@ export function useClientesLogic() {
         limit,
         tipoRelacionFilter,
         search,
-        onTotal
+        onTotal,
+        filtrosPersona
       ),
     limit: DEFAULT_LIMIT,
-    extraQueryKeyParams: [isProveedorView],
+    extraQueryKeyParams: [isProveedorView, filtroTipo],
   });
 
   const { data: tiposEntidad = [] } = useQuery({
@@ -189,6 +213,8 @@ export function useClientesLogic() {
     setConfirmModal,
     searchTerm,
     setSearchTerm: setSearch,
+    filtroTipo,
+    setFiltroTipo,
     clientes,
     tiposEntidad,
     monedas,
