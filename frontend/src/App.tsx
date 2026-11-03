@@ -36,7 +36,6 @@ import {
   ChevronUp,
   ScrollText,
   Library,
-  DatabaseBackup,
   ShoppingBag
 } from 'lucide-react';
 
@@ -135,12 +134,12 @@ const queryClient = new QueryClient({
 });
 
 const rutasPorModulo: Record<Modulo, string[]> = {
-  inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
+  inventario: ['/inventario', '/inventario/existencias', '/inventario/movimientos-dependencia', '/inventario/movimientos-producto', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
   administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/respaldos', '/perfil'],
-  terceros: ['/terceros', '/clientes', '/ventas/contratos', '/ventas/suplementos', '/compra/clientes', '/compra/convenios', '/perfil'],
-  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/ofertas', '/ventas/pre-facturas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
-  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/perfil'],
-  proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/perfil'],
+  terceros: ['/terceros', '/terceros/registro-clientes', '/terceros/registro-proveedores', '/terceros/registro-realizadores', '/clientes', '/ventas/contratos', '/ventas/suplementos', '/compra/clientes', '/compra/convenios', '/perfil'],
+  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/ofertas', '/ventas/pre-facturas', '/ventas/efectivo', '/ventas/cuentas', '/ventas/registro-clientes', '/perfil'],
+  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/compra/reporte-proveedores', '/compra/resumen-liquidaciones', '/perfil'],
+  proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/proyectos/registro-proyectos', '/proyectos/registro-realizadores', '/proyectos/informe-desempeno', '/perfil'],
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
   home: ['/', '/perfil'],
   dj08: ['/dj08', '/perfil'],
@@ -335,6 +334,24 @@ interface AdminSeccionItem {
   func: string;
 }
 
+interface SidebarSeccionDef {
+  id: string;
+  label: string;
+  items: AdminSeccionItem[];
+}
+
+/** Título de cabecera de cada sidebar de módulo. */
+const TITULOS_MODULO: Partial<Record<Modulo, string>> = {
+  inventario: 'Gestión Inventario',
+  terceros: 'Gestión Terceros',
+  compra: 'Gestión Compra',
+  venta: 'Gestión Tienda',
+  proyecto: 'Gestión Proyectos',
+  administracion: 'Administración y Configuración',
+  reportes: 'Reportes',
+  rrhh: 'Gestión RRHH',
+};
+
 /** Grupos desplegables del sidebar de Administración. */
 const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[] = [
   {
@@ -390,7 +407,7 @@ const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[
 const TERCEROS_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[] = [
   {
     id: 'tienda',
-    label: 'Tienda',
+    label: 'Ventas',
     items: [
       { to: '/clientes', label: 'Clientes', icon: UserCircle, func: 'clientes' },
       { to: '/ventas/contratos', label: 'Contratos', icon: FilePlus, func: 'contratos' },
@@ -428,6 +445,68 @@ const PROYECTO_FACTURACION: { id: string; label: string; items: AdminSeccionItem
       { to: '/proyectos/ofertas', label: 'Oferta', icon: FilePlus, func: 'ofertas' },
       { to: '/proyectos/pre-facturas', label: 'Pre-factura', icon: FileText, func: 'pre_facturas' },
       { to: '/proyectos/facturas-servicio', label: 'Factura', icon: Receipt, func: 'facturas_servicio' },
+    ],
+  },
+];
+
+/** Reportes del módulo Inventario (misma página Reportes, con el reporte preseleccionado). */
+const REPORTES_INVENTARIO: SidebarSeccionDef[] = [
+  {
+    id: 'reportes-inventario',
+    label: 'Reportes',
+    items: [
+      { to: '/inventario/existencias?report=existencias', label: 'Existencias', icon: Boxes, func: 'reporte_existencias' },
+      { to: '/inventario/movimientos-dependencia?report=movimientos-dependencia', label: 'Mov. por Dependencia', icon: ArrowLeftRight, func: 'reporte_movimientos_dependencia' },
+      { to: '/inventario/movimientos-producto', label: 'Mov. por Producto', icon: Package, func: 'reporte_movimientos_producto' },
+    ],
+  },
+];
+
+/** Reportes del módulo Terceros. */
+const REPORTES_TERCEROS: SidebarSeccionDef[] = [
+  {
+    id: 'reportes-terceros',
+    label: 'Reportes',
+    items: [
+      { to: '/terceros/registro-clientes?report=clientes', label: 'Registro de Clientes', icon: Users, func: 'reporte_clientes' },
+      { to: '/terceros/registro-proveedores?report=proveedores', label: 'Registro de Proveedores', icon: UserCircle, func: 'reporte_proveedores' },
+      { to: '/terceros/registro-realizadores?report=creadores', label: 'Registro de Realizadores', icon: Users, func: 'reporte_creadores' },
+    ],
+  },
+];
+
+/** Reportes del módulo Compra. */
+const REPORTES_COMPRA: SidebarSeccionDef[] = [
+  {
+    id: 'reportes-compra',
+    label: 'Reportes',
+    items: [
+      { to: '/compra/reporte-proveedores?report=proveedores', label: 'Registro de Proveedores', icon: UserCircle, func: 'reporte_proveedores' },
+      { to: '/compra/resumen-liquidaciones?report=liquidaciones', label: 'Resumen de Liquidaciones', icon: Calculator, func: 'reporte_liquidaciones' },
+    ],
+  },
+];
+
+/** Reportes del módulo Tienda. */
+const REPORTES_VENTA: SidebarSeccionDef[] = [
+  {
+    id: 'reportes-venta',
+    label: 'Reportes',
+    items: [
+      { to: '/ventas/registro-clientes?report=clientes', label: 'Registro de Clientes', icon: Users, func: 'reporte_clientes' },
+    ],
+  },
+];
+
+/** Reportes del módulo Proyectos. */
+const REPORTES_PROYECTO: SidebarSeccionDef[] = [
+  {
+    id: 'reportes-proyecto',
+    label: 'Reportes',
+    items: [
+      { to: '/proyectos/registro-proyectos?report=proyectos', label: 'Registro de Proyectos', icon: Layers, func: 'reporte_proyectos' },
+      { to: '/proyectos/registro-realizadores?report=creadores', label: 'Registro de Realizadores', icon: Users, func: 'reporte_creadores' },
+      { to: '/proyectos/informe-desempeno?report=desempeno', label: 'Informe de Desempeño', icon: BarChart3, func: 'reporte_desempeno' },
     ],
   },
 ];
@@ -497,6 +576,47 @@ function seccionAbierta(
   return slim || (abiertas[seccion.id] ?? true);
 }
 
+/** Secciones de Reportes reutilizables dentro de cada módulo. */
+function GrupoReportes({
+  secciones,
+  abiertas,
+  setAbiertas,
+  slim,
+  onLinkClick,
+  hasFuncionalidad,
+  iconClassName = 'w-4 h-4',
+}: {
+  secciones: SidebarSeccionDef[];
+  abiertas: Record<string, boolean>;
+  setAbiertas: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  slim: boolean;
+  onLinkClick: () => void;
+  hasFuncionalidad: (func: string) => boolean;
+  iconClassName?: string;
+}) {
+  return (
+    <>
+      {secciones.map((seccion) => {
+        const abierta = slim || (abiertas[seccion.id] ?? false);
+        return (
+          <SidebarSeccion
+            key={seccion.id}
+            seccion={seccion}
+            abierta={abierta}
+            onToggle={(id) =>
+              setAbiertas((prev) => ({ ...prev, [id]: !abierta }))
+            }
+            slim={slim}
+            onLinkClick={onLinkClick}
+            hasFuncionalidad={hasFuncionalidad}
+            iconClassName={iconClassName}
+          />
+        );
+      })}
+    </>
+  );
+}
+
 function App() {
   const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, funcionalidades, baseDatos } = useAuth();
   const empresa = useEmpresa();
@@ -511,6 +631,7 @@ function App() {
   const [tercerosSeccionesAbiertas, setTercerosSeccionesAbiertas] = useState<Record<string, boolean>>({});
   const [ventaSeccionesAbiertas, setVentaSeccionesAbiertas] = useState<Record<string, boolean>>({});
   const [proyectoSeccionesAbiertas, setProyectoSeccionesAbiertas] = useState<Record<string, boolean>>({});
+  const [reportesSeccionesAbiertas, setReportesSeccionesAbiertas] = useState<Record<string, boolean>>({});
   const [slimSidebar, setSlimSidebar] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -619,28 +740,39 @@ function App() {
           </div>
           {location.pathname !== '/' && (
             <nav className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-4 ${slimSidebar ? 'px-1' : ''}`}>
+              {!slimSidebar && TITULOS_MODULO[moduloActivo] && (
+                <div className="mb-4 flex items-center gap-2.5 px-4">
+                  <span className="h-5 w-1 shrink-0 rounded-full bg-brand-500" />
+                  <h2 className="truncate text-base font-bold text-white">
+                    {TITULOS_MODULO[moduloActivo]}
+                  </h2>
+                </div>
+              )}
               <>
               {moduloActivo === 'inventario' && (
-                <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/movimientos" onClick={handleLinkClick} exact disabled={!hasFuncionalidad('movimientos')}>
-                      <ArrowLeftRight className="w-5 h-5" />
-                      Movimientos
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/movimientos/pendientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('pendientes')}>
-                      <Clock className="w-6 h-6" />
-                      Pendientes
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/productos" onClick={handleLinkClick} disabled={!hasFuncionalidad('productos')}>
-                      <Boxes className="w-6 h-6" />
-                      Productos
-                    </SidebarLink>
-                  </li>
-                </ul>
+                <div className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
+                  <SidebarLink slim={slimSidebar} to="/movimientos" onClick={handleLinkClick} exact disabled={!hasFuncionalidad('movimientos')}>
+                    <ArrowLeftRight className="w-5 h-5" />
+                    Movimientos
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/movimientos/pendientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('pendientes')}>
+                    <Clock className="w-6 h-6" />
+                    Pendientes
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/productos" onClick={handleLinkClick} disabled={!hasFuncionalidad('productos')}>
+                    <Boxes className="w-6 h-6" />
+                    Productos
+                  </SidebarLink>
+                  <GrupoReportes
+                    secciones={REPORTES_INVENTARIO}
+                    abiertas={reportesSeccionesAbiertas}
+                    setAbiertas={setReportesSeccionesAbiertas}
+                    slim={slimSidebar}
+                    onLinkClick={handleLinkClick}
+                    hasFuncionalidad={hasFuncionalidad}
+                    iconClassName="w-6 h-6"
+                  />
+                </div>
               )}
               {moduloActivo === 'dj08' && (
                 <ul className="space-y-1 px-3">
@@ -749,6 +881,15 @@ function App() {
                       />
                     );
                   })}
+                  <GrupoReportes
+                    secciones={REPORTES_TERCEROS}
+                    abiertas={reportesSeccionesAbiertas}
+                    setAbiertas={setReportesSeccionesAbiertas}
+                    slim={slimSidebar}
+                    onLinkClick={handleLinkClick}
+                    hasFuncionalidad={hasFuncionalidad}
+                    iconClassName="w-6 h-6"
+                  />
                 </div>
               )}
               {moduloActivo === 'administracion' && (
@@ -803,32 +944,33 @@ function App() {
                 </div>
               )}
               {moduloActivo === 'compra' && (
-                <ul className="space-y-1 px-3">
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/compra/proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('proveedores')}>
-                      <Briefcase className="w-6 h-6" />
-                      Proveedores
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/compra/anexos" onClick={handleLinkClick} disabled={!hasFuncionalidad('anexos')}>
-                      <Boxes className="w-6 h-6" />
-                      Anexos
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/compra/liquidaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('liquidaciones')}>
-                      <Coins className="w-6 h-6" />
-                      Liquidaciones
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/compra/productos-liquidacion" onClick={handleLinkClick} disabled={!hasFuncionalidad('productos_liquidacion')}>
-                      <Coins className="w-6 h-6" />
-                      Productos en Liquidación
-                    </SidebarLink>
-                  </li>
-                </ul>
+                <div className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
+                  <SidebarLink slim={slimSidebar} to="/compra/proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('proveedores')}>
+                    <Briefcase className="w-6 h-6" />
+                    Proveedores
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/compra/anexos" onClick={handleLinkClick} disabled={!hasFuncionalidad('anexos')}>
+                    <Boxes className="w-6 h-6" />
+                    Anexos
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/compra/liquidaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('liquidaciones')}>
+                    <Coins className="w-6 h-6" />
+                    Liquidaciones
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/compra/productos-liquidacion" onClick={handleLinkClick} disabled={!hasFuncionalidad('productos_liquidacion')}>
+                    <Coins className="w-6 h-6" />
+                    Productos en Liquidación
+                  </SidebarLink>
+                  <GrupoReportes
+                    secciones={REPORTES_COMPRA}
+                    abiertas={reportesSeccionesAbiertas}
+                    setAbiertas={setReportesSeccionesAbiertas}
+                    slim={slimSidebar}
+                    onLinkClick={handleLinkClick}
+                    hasFuncionalidad={hasFuncionalidad}
+                    iconClassName="w-6 h-6"
+                  />
+                </div>
               )}
               {moduloActivo === 'venta' && (
                 <div className={`${slimSidebar ? 'px-0' : 'px-3'} space-y-1`}>
@@ -865,6 +1007,15 @@ function App() {
                       />
                     );
                   })}
+                  <GrupoReportes
+                    secciones={REPORTES_VENTA}
+                    abiertas={reportesSeccionesAbiertas}
+                    setAbiertas={setReportesSeccionesAbiertas}
+                    slim={slimSidebar}
+                    onLinkClick={handleLinkClick}
+                    hasFuncionalidad={hasFuncionalidad}
+                    iconClassName="w-6 h-6"
+                  />
                 </div>
               )}
               {moduloActivo === 'proyecto' && (
@@ -910,6 +1061,15 @@ function App() {
                       />
                     );
                   })}
+                  <GrupoReportes
+                    secciones={REPORTES_PROYECTO}
+                    abiertas={reportesSeccionesAbiertas}
+                    setAbiertas={setReportesSeccionesAbiertas}
+                    slim={slimSidebar}
+                    onLinkClick={handleLinkClick}
+                    hasFuncionalidad={hasFuncionalidad}
+                    iconClassName="w-6 h-6"
+                  />
                 </div>
               )}
               {moduloActivo === 'reportes' && (
@@ -1299,7 +1459,7 @@ function App() {
                   path="/ventas/registro-clientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas">
-                      <ReporteClientes />
+                      <ReportesHome />
                     </ProtectedRoute>
                   }
                 />
@@ -1413,7 +1573,23 @@ function App() {
                   path="/proyectos/registro-proyectos"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos">
-                      <ReporteProyectos />
+                      <ReportesHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/proyectos/registro-realizadores"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos">
+                      <ReportesHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/proyectos/informe-desempeno"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos">
+                      <ReportesHome />
                     </ProtectedRoute>
                   }
                 />
@@ -1760,7 +1936,7 @@ function App() {
                   path="/inventario/existencias"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario">
-                      <ReporteExistencias />
+                      <ReportesHome />
                     </ProtectedRoute>
                   }
                 />
@@ -1768,7 +1944,7 @@ function App() {
                   path="/inventario/movimientos-dependencia"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario">
-                      <ReporteMovimientosDependencia />
+                      <ReportesHome />
                     </ProtectedRoute>
                   }
                 />
@@ -1781,13 +1957,48 @@ function App() {
                   }
                 />
                 <Route
-                  path="/compra/proveedores"
+                  path="/compra/reporte-proveedores"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra">
-                      <ReporteProveedores />
+                      <ReportesHome />
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/compra/resumen-liquidaciones"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra">
+                      <ReportesHome />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Reportes reutilizados desde el módulo Terceros */}
+                <Route
+                  path="/terceros/registro-clientes"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros">
+                      <ReportesHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/terceros/registro-proveedores"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros">
+                      <ReportesHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/terceros/registro-realizadores"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros">
+                      <ReportesHome />
+                    </ProtectedRoute>
+                  }
+                />
+
                 <Route
                   path="/reportes"
                   element={

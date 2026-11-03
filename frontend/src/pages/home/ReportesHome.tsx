@@ -431,16 +431,6 @@ const PIE_COLORS = [
   "#06b6d4", "#ec4899",
 ];
 
-const FALLBACK_DATA = [
-  { name: "Ene", monto: 4000, cantidad: 240 },
-  { name: "Feb", monto: 3000, cantidad: 139 },
-  { name: "Mar", monto: 5000, cantidad: 980 },
-  { name: "Abr", monto: 4500, cantidad: 390 },
-  { name: "May", monto: 6000, cantidad: 480 },
-  { name: "Jun", monto: 5500, cantidad: 380 },
-  { name: "Jul", monto: 7000, cantidad: 430 },
-];
-
 function computeBasicStats(values: number[]): ChartStats {
   if (values.length === 0) return { total: 0, promedio: 0, max: 0, min: 0, count: 0 };
   const total = values.reduce((s, v) => s + v, 0);
@@ -460,7 +450,7 @@ function formatNumber(n: number): string {
 }
 
 export function ReportesHome() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const reportId = searchParams.get("report");
   const [chartType, setChartType] = useState<ChartType>("bar");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -576,10 +566,6 @@ export function ReportesHome() {
   }, [previewData, activeReport]);
 
   useEffect(() => {
-    if (!reportId) return;
-  }, [reportId, setSearchParams]);
-
-  useEffect(() => {
     if (prevReportId && prevReportId !== reportId) {
       setIsTransitioning(true);
       const timer = setTimeout(() => setIsTransitioning(false), 300);
@@ -600,7 +586,6 @@ export function ReportesHome() {
     return () => document.removeEventListener("mousedown", handler);
   }, [filterOpen]);
 
-  const handleSelectReport = useCallback((id: string) => { setSearchParams({ report: id }); }, [setSearchParams]);
   const updateFilter = useCallback((key: string, value: string) => { setFilters((prev) => ({ ...prev, [key]: value })); }, []);
 
   const handleDownload = useCallback(async () => {
@@ -947,22 +932,6 @@ export function ReportesHome() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-
-        {/* Report selector */}
-        <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm p-4 transition-all duration-300 ease-in-out delay-75 ${isTransitioning ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Seleccionar reporte</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {REPORTS.map((report) => (
-              <button key={report.id} onClick={() => handleSelectReport(report.id)}
-                className={`flex items-center gap-2.5 p-3 rounded-xl text-left transition-all duration-150 ${activeReport?.id === report.id ? "bg-brand-50 border-2 border-brand-200 shadow-sm" : "bg-gray-50 border-2 border-transparent hover:bg-gray-100 hover:border-gray-200"}`}>
-                <div className={`w-7 h-7 rounded-lg ${report.color} flex items-center justify-center flex-shrink-0`} style={{ color: report.colorHex }}>
-                  {report.icon}
-                </div>
-                <span className={`text-xs font-medium truncate ${activeReport?.id === report.id ? "text-brand-700" : "text-gray-600"}`}>{report.title}</span>
-              </button>
-            ))}
           </div>
         </div>
       </div>

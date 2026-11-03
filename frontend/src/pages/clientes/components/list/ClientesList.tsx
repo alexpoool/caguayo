@@ -11,6 +11,9 @@ import {
   Trash2,
   Loader2,
   AlertTriangle,
+  SlidersHorizontal,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import {
   Button,
@@ -83,6 +86,13 @@ export function ClientesList({
     return cliente.tipo_persona || "NATURAL";
   };
 
+  const hayFiltros = searchTerm.trim() !== "" || filtroTipo !== "TODOS";
+
+  const limpiarFiltros = () => {
+    setSearchTerm("");
+    setFiltroTipo("TODOS");
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -110,44 +120,84 @@ export function ClientesList({
         </Button>
       </div>
 
-      <div className="flex gap-2 items-center flex-wrap">
-        <div className="flex-1 relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder={`Buscar ${isProveedorView ? "proveedores" : "clientes"}...`}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="w-56">
-          <Select
-            value={filtroTipo}
-            onChange={(e) =>
-              setFiltroTipo(e.target.value as FiltroTipoPersona)
-            }
-            aria-label="Filtrar por tipo de persona"
-            title="Filtrar por tipo de persona"
-          >
-            <option value="TODOS">Todos los tipos</option>
-            <optgroup label="Tipo de persona">
-              <option value="NATURAL">Persona natural</option>
-              <option value="TCP">TCP</option>
-              <option value="JURIDICA">Todas las personas jurídicas</option>
-            </optgroup>
-            {tiposEntidad.length > 0 && (
-              <optgroup label="Entidades jurídicas">
-                {tiposEntidad.map((tipo) => (
-                  <option
-                    key={tipo.id_tipo_entidad}
-                    value={`ENTIDAD:${tipo.id_tipo_entidad}`}
-                  >
-                    {tipo.nombre}
-                  </option>
-                ))}
-              </optgroup>
+      {/* Filtros */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
+                Filtros
+              </span>
+            </div>
+            {hayFiltros && (
+              <button
+                type="button"
+                onClick={limpiarFiltros}
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              >
+                <X className="h-3.5 w-3.5" />
+                Limpiar
+              </button>
             )}
-          </Select>
+          </div>
+
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            <div className="relative flex-1 md:max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder={`Buscar ${isProveedorView ? "proveedores" : "clientes"} por nombre, código o NIT/CI...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-10 border-gray-200 bg-gray-50 pl-10 pr-10 focus:bg-white"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  aria-label="Limpiar búsqueda"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="relative w-full md:w-64">
+              <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-teal-600" />
+              <Select
+                value={filtroTipo}
+                onChange={(e) =>
+                  setFiltroTipo(e.target.value as FiltroTipoPersona)
+                }
+                aria-label="Filtrar por tipo de persona"
+                title="Filtrar por tipo de persona"
+                className="h-10 cursor-pointer appearance-none !border-gray-200 bg-gray-50 !pl-9 !pr-9 text-sm font-medium text-gray-700 hover:!border-teal-300 focus:bg-white"
+              >
+                <option value="TODOS">Todos los tipos</option>
+                <optgroup label="Tipo de persona">
+                  <option value="NATURAL">Creador</option>
+                  <option value="TCP">TCP</option>
+                  <option value="JURIDICA">Entidades</option>
+                </optgroup>
+                {tiposEntidad.length > 0 && (
+                  <optgroup label="Tipo de entidades">
+                    {tiposEntidad.map((tipo) => (
+                      <option
+                        key={tipo.id_tipo_entidad}
+                        value={`ENTIDAD:${tipo.id_tipo_entidad}`}
+                      >
+                        {tipo.nombre}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </Select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
+          </div>
         </div>
       </div>
 
