@@ -43,7 +43,7 @@ export const JuridicaForm: React.FC<DatosJuridicaFormProps> = ({
                   : undefined,
               })
             }
-            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
           >
             <option value="">Seleccione tipo</option>
             {tiposEntidad.map((t) => (

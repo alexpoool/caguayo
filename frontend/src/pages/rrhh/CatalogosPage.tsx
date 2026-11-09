@@ -10,7 +10,6 @@ import {
   type RrhhCatalogoConfig,
 } from '../../types/rrhh';
 import {
-  Plus,
   Edit,
   Trash2,
   Settings,
@@ -37,6 +36,7 @@ import {
   TableCell,
   ConfirmModal,
   Modal,
+  CreateButton,
 } from '../../components/ui';
 
 /** Filas del formulario según el catálogo seleccionado. */
@@ -237,11 +237,11 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
       {!(embebido && config.custom) && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+            <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
               <Settings className="h-6 w-6 text-brand-600" />
               {embebido ? config.nombre : 'Catálogos'}
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-gray-500">
               {embebido
                 ? config.descripcion
                 : 'Todo el catálogo del módulo: contratos, bonificaciones, deducciones, pagos, departamentos, puestos, tipos de evaluación, periodos y calificaciones.'}
@@ -252,7 +252,7 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
 
       {/* Pestañas por catálogo (solo en el módulo RRHH) */}
       {!embebido && (
-        <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+        <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
           {RRHH_CATALOGOS.map((cat) => (
             <button
               key={cat.id}
@@ -261,7 +261,7 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 cat.id === tabId
                   ? 'bg-brand-600 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               {cat.nombre}
@@ -273,8 +273,8 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
       {/* Barra de búsqueda y acción */}
       {!config.custom && (
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
               placeholder={`Buscar en ${config.nombre.toLowerCase()}...`}
               value={searchTerm}
@@ -288,21 +288,14 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
               onChange={(e) =>
                 setFiltroEstado(e.target.value as typeof filtroEstado)
               }
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="todos">Todos</option>
               <option value="activo">Activos</option>
               <option value="inactivo">Inactivos</option>
             </select>
           )}
-          <Button
-            size="sm"
-            onClick={handleNuevo}
-            className="ml-auto gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-          >
-            <Plus className="h-4 w-4" />
-            Nuevo
-          </Button>
+          <CreateButton label="Nuevo" onClick={handleNuevo} size="sm" className="ml-auto" />
         </div>
       )}
 
@@ -352,10 +345,10 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
                     const registro = comoRegistro(item);
                     return (
                       <TableRow key={idDe(item)}>
-                        <TableCell className="font-medium text-slate-900">
+                        <TableCell className="font-medium text-gray-900">
                           {registro.nombre as string}
                         </TableCell>
-                        <TableCell className="max-w-[280px] truncate text-slate-500">
+                        <TableCell className="max-w-[280px] truncate text-gray-500">
                           {(registro.descripcion as string | null) || '—'}
                         </TableCell>
                         {config.tieneValor && (
@@ -371,8 +364,8 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
                             <span
                               className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
                                 registro.es_porcentaje
-                                  ? 'bg-blue-50 text-blue-700'
-                                  : 'bg-slate-100 text-slate-600'
+                                  ? 'bg-brand-50 text-brand-700'
+                                  : 'bg-gray-100 text-gray-600'
                               }`}
                             >
                               {registro.es_porcentaje ? (
@@ -436,7 +429,7 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
             onClick={cerrarForm}
             title="Cerrar"
             aria-label="Cerrar"
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -458,7 +451,7 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
                     {formErrors.nombre}
                   </p>
                 ) : (
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-gray-400">
                     {form.nombre.length}/{config.maxNombre} caracteres
                   </p>
                 )}
@@ -474,7 +467,7 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
                   }
                   placeholder="Qué representa este registro (opcional)"
                   rows={3}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 />
               </div>
 
@@ -487,7 +480,7 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
                     onChange={(e) =>
                       setForm({ ...form, es_porcentaje: e.target.checked })
                     }
-                    className="h-4 w-4 rounded border-slate-300"
+                    className="h-4 w-4 rounded border-gray-300"
                   />
                   <Label htmlFor="es_porcentaje">
                     Se aplica como porcentaje del salario
@@ -504,7 +497,7 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
                     onChange={(e) =>
                       setForm({ ...form, valor: Number(e.target.value) })
                     }
-                    className={`flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 ${
+                    className={`flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 ${
                       formErrors.valor ? 'border-red-500' : ''
                     }`}
                   >
@@ -527,7 +520,7 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
                 <Button
                   type="submit"
                   disabled={saveMutation.isPending}
-                  className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   {saveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -581,7 +574,7 @@ function ActionButton({
       className={`rounded-md p-1.5 transition-all ${
         danger
           ? 'text-red-600 hover:bg-red-50 hover:scale-110'
-          : 'text-blue-600 hover:bg-blue-50 hover:scale-110'
+          : 'text-brand-600 hover:bg-brand-50 hover:scale-110'
       }`}
     >
       {children}
@@ -593,7 +586,7 @@ function EstadoBadge({ activo }: { activo: boolean }) {
   return (
     <span
       className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-        activo ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+        activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
       }`}
     >
       {activo ? 'Activo' : 'Inactivo'}
@@ -605,7 +598,7 @@ function LoadingRows() {
   return (
     <div className="space-y-2 py-4">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-gray-100" />
       ))}
     </div>
   );
@@ -614,8 +607,8 @@ function LoadingRows() {
 function EmptyState({ mensaje }: { mensaje: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <Settings className="h-10 w-10 text-slate-300" />
-      <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
+      <Settings className="h-10 w-10 text-gray-300" />
+      <p className="max-w-sm text-sm text-gray-500">{mensaje}</p>
     </div>
   );
 }
@@ -630,7 +623,7 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-gray-600">
         {mensaje || 'No se pudieron cargar los registros'}
       </p>
       <Button variant="outline" size="sm" onClick={onReintentar}>

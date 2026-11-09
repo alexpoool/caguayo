@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState, useDeferredValue } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { coincideBusqueda, normalizarBusqueda } from "../utils/busqueda";
 import {
   Users,
   UserPlus,
@@ -13,7 +14,6 @@ import {
   User,
   Building,
   CreditCard,
-  Plus,
   Search,
   Lock,
   AtSign,
@@ -35,6 +35,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  CreateButton,
 } from "../components/ui";
 import { administracionService, dependenciasService } from "../services/administracion";
 import type { Usuario, UsuarioCreate } from "../types/usuario";
@@ -46,6 +47,7 @@ export function UsuariosPage() {
   const [view, setView] = useState<"list" | "form">("list");
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [usuarioForm, setUsuarioForm] = useState<UsuarioCreate>({
     ci: "",
     nombre: "",
@@ -91,14 +93,16 @@ export function UsuariosPage() {
     queryFn: () => dependenciasService.getDependencias(true),
   });
 
-  const filteredUsuarios = searchTerm.trim()
-    ? usuarios.filter(
-        (u) =>
-          u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          u.primer_apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          u.ci.includes(searchTerm),
-      )
-    : usuarios;
+  const filteredUsuarios = useMemo(() => {
+    const termino = normalizarBusqueda(deferredSearchTerm).trim();
+    if (!termino) return usuarios;
+    return usuarios.filter(
+      (u) =>
+        coincideBusqueda(u.nombre, termino) ||
+        coincideBusqueda(u.primer_apellido, termino) ||
+        coincideBusqueda(u.ci, termino),
+    );
+  }, [usuarios, deferredSearchTerm]);
 
   const createUsuario = useMutation({
     mutationFn: administracionService.createUsuario,
@@ -277,11 +281,11 @@ export function UsuariosPage() {
             <form
               id={USUARIO_FORM_ID}
               onSubmit={handleUsuarioSubmit}
-              className="grid grid-cols-2 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
             >
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <CreditCard className="h-5 w-5 text-blue-500" />
+                  <CreditCard className="h-5 w-5 text-brand-500" />
                   CI *
                 </Label>
                 <Input
@@ -290,7 +294,7 @@ export function UsuariosPage() {
                     setUsuarioForm({ ...usuarioForm, ci: e.target.value })
                   }
                   placeholder="Carnet de identidad"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 />
               </div>
               <div className="space-y-2">
@@ -309,7 +313,7 @@ export function UsuariosPage() {
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <User className="h-5 w-5 text-purple-500" />
+                  <User className="h-5 w-5 text-brand-500" />
                   Primer Apellido *
                 </Label>
                 <Input
@@ -321,7 +325,7 @@ export function UsuariosPage() {
                     })
                   }
                   placeholder="Primer apellido"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 />
               </div>
               <div className="space-y-2">
@@ -343,7 +347,7 @@ export function UsuariosPage() {
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <User className="h-5 w-5 text-cyan-500" />
+                  <User className="h-5 w-5 text-brand-500" />
                   Cargo *
                 </Label>
                 <Input
@@ -355,12 +359,12 @@ export function UsuariosPage() {
                     })
                   }
                   placeholder="Cargo del usuario"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 />
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <AtSign className="h-5 w-5 text-teal-500" />
+                  <AtSign className="h-5 w-5 text-brand-500" />
                   Alias *
                 </Label>
                 <Input
@@ -372,7 +376,7 @@ export function UsuariosPage() {
                     })
                   }
                   placeholder="Alias de acceso"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 />
               </div>
               {!editingUsuario && (
@@ -443,13 +447,13 @@ export function UsuariosPage() {
                   htmlFor="id_dependencia"
                   className="flex items-center gap-2 text-gray-700"
                 >
-                  <Building className="h-5 w-5 text-indigo-500" />
+                  <Building className="h-5 w-5 text-brand-500" />
                   Dependencia
                 </Label>
                 <select
                   id="id_dependencia"
                   aria-label="Dependencia"
-                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   value={usuarioForm.id_dependencia || ""}
                   onChange={(e) =>
                     setUsuarioForm({
@@ -481,7 +485,7 @@ export function UsuariosPage() {
 
   const content = (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded shadow-lg animate-bounce-subtle">
             <Users className="h-5 w-5 text-white" />
@@ -508,17 +512,7 @@ export function UsuariosPage() {
             className="pl-10"
           />
         </div>
-        <Button
-          onClick={() => {
-            setEditingUsuario(null);
-            resetUsuarioForm();
-            setView("form");
-          }}
-          className="ml-auto gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Usuario
-        </Button>
+        <CreateButton label="Nuevo Usuario" onClick={() => { setEditingUsuario(null); resetUsuarioForm(); setView("form"); }} />
       </div>
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -563,13 +557,13 @@ export function UsuariosPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-medium">
                         {usuario.ci}
                       </span>
                     </TableCell>
                     <TableCell>{usuario.cargo}</TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-medium">
                         <Shield className="h-3 w-3" />
                         {usuario.grupo?.nombre || "Sin grupo"}
                       </span>
@@ -584,7 +578,7 @@ export function UsuariosPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(usuario)}
-                          className="text-blue-600 hover:bg-blue-50 h-8 w-8"
+                          className="text-brand-600 hover:bg-brand-50 h-8 w-8"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -622,9 +616,9 @@ export function UsuariosPage() {
   const ModalUsuarioCreado = () =>
     createPortal(
       createdUserModal.isOpen && createdUserModal.usuario && (
-        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b">
               <h2 className="text-lg font-semibold text-green-700 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5" />
                 Usuario Creado Exitosamente
@@ -639,7 +633,7 @@ export function UsuariosPage() {
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-sm text-green-800 mb-2">
                   El usuario ha sido creado correctamente. Comparta su alias de
@@ -657,9 +651,9 @@ export function UsuariosPage() {
                   </div>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 space-y-3">
                   <div>
-                    <Label className="text-blue-700 flex items-center gap-2">
+                    <Label className="text-brand-700 flex items-center gap-2">
                       Alias (Usuario)
                       <Button
                         variant="ghost"
@@ -709,9 +703,9 @@ export function UsuariosPage() {
   const ModalDetalleUsuario = () =>
     createPortal(
       detailModal.isOpen && detailModal.usuario && (
-        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
-            <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b">
               <h2 className="text-lg font-semibold">Detalles del Usuario</h2>
               <Button
                 variant="ghost"
@@ -723,7 +717,7 @@ export function UsuariosPage() {
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-2xl">
                   {detailModal.usuario.nombre.charAt(0).toUpperCase()}
@@ -737,7 +731,7 @@ export function UsuariosPage() {
                   <p className="text-gray-500">{detailModal.usuario.alias}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-gray-600">C.I</Label>
                   <div className="font-medium">{detailModal.usuario.ci}</div>
@@ -752,7 +746,7 @@ export function UsuariosPage() {
                     {detailModal.usuario.grupo?.nombre || "-"}
                   </div>
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <Label className="text-gray-600">Dependencia</Label>
                   <div className="font-medium">
                     {detailModal.usuario.dependencia?.nombre ||

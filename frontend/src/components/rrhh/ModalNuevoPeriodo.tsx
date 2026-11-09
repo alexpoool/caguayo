@@ -83,15 +83,15 @@ export function ModalNuevoPeriodo({
       onClose={onClose}
       className="!max-w-xl overflow-hidden"
     >
-      <div className="flex items-center gap-3 border-b bg-gradient-to-r from-sky-50 to-sky-100 px-6 py-4 pr-12">
-        <div className="rounded-lg bg-gradient-to-br from-sky-500 to-sky-600 p-2">
+      <div className="flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
           <CalendarRange className="h-5 w-5 text-white" />
         </div>
         <div className="min-w-0">
           <h2 className="truncate text-lg font-bold text-gray-900">
             Nuevo periodo
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-gray-500">
             Al guardarlo quedará seleccionado en el formulario.
           </p>
         </div>
@@ -114,7 +114,7 @@ export function ModalNuevoPeriodo({
           {error ? (
             <p className="text-xs text-red-500">{error}</p>
           ) : (
-            <p className="text-xs text-slate-400">{nombre.length}/100 caracteres</p>
+            <p className="text-xs text-gray-400">{nombre.length}/100 caracteres</p>
           )}
         </div>
 
@@ -126,7 +126,7 @@ export function ModalNuevoPeriodo({
             onChange={(e) => setDescripcion(e.target.value)}
             placeholder="Qué representa este periodo (opcional)"
             rows={3}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
         </div>
 
@@ -142,7 +142,7 @@ export function ModalNuevoPeriodo({
           <Button
             type="submit"
             disabled={mutation.isPending}
-            className="gap-2 bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-lg transition-all duration-300 hover:from-sky-600 hover:to-sky-700"
+            className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg transition-all duration-300 hover:from-brand-600 hover:to-brand-700"
           >
             {mutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -18,6 +18,7 @@ import type { Productos } from "../../../types";
 import type { Dependencia } from "../../../types/dependencia";
 import type { Pago } from "../../../types/pago";
 import toast from "react-hot-toast";
+import { useDebounce } from "../../../hooks/useDebounce";
 import { useAuth } from "../../../context/AuthContext";
 import { Button, FormModal } from "../../../components/ui";
 import { Receipt } from "lucide-react";
@@ -310,6 +311,23 @@ export function FacturasPage({
   const [monedas, setMonedas] = useState<any[]>([]);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clienteSearchRemoto, setClienteSearchRemoto] = useState("");
+  const debouncedClienteSearch = useDebounce(clienteSearchRemoto, 300);
+
+  useEffect(() => {
+    let activo = true;
+    clientesService
+      .getClientes(0, 50, "CLIENTE,AMBAS", debouncedClienteSearch)
+      .then((res) => {
+        if (activo) setClientes(res);
+      })
+      .catch(() => {
+        if (activo) setClientes([]);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [debouncedClienteSearch]);
 
   // Modales
   const [detailModal, setDetailModal] = useState<{
@@ -376,18 +394,16 @@ export function FacturasPage({
    */
   const loadInitialData = async () => {
     try {
-      const [contratosRes, monedasRes, depsRes, clientesRes, itemsRes] =
+      const [contratosRes, monedasRes, depsRes, itemsRes] =
         await Promise.all([
           contratosService.getContratos(0, 1000),
           monedaService.getMonedas(0, 100),
           dependenciasService.getDependencias(undefined, 0, 1000),
-          clientesService.getClientes(0, 10000, "CLIENTE,AMBAS"),
           productosService.getProductosConStockItemAnexo(),
         ]);
       setContratos(contratosRes);
       setMonedas(monedasRes);
       setDependencias(depsRes);
-      setClientes(clientesRes);
       setItemsAnexo(itemsRes);
     } catch (error) {
       console.error("Error loading initial data:", error);
@@ -745,6 +761,19 @@ export function FacturasPage({
     productSelectionHook.resetSelection();
   };
 
+  // El selector remoto no conoce al cliente del contrato ya elegido; se fusiona.
+  const clientesParaFormulario = useMemo(() => {
+    const contrato = contratos.find(
+      (c) => c.id_contrato === facturasHook.selectedContratoId,
+    );
+    const clienteContrato = contrato?.cliente as Cliente | undefined;
+    if (!clienteContrato) return clientes;
+    if (clientes.some((c) => c.id_cliente === clienteContrato.id_cliente)) {
+      return clientes;
+    }
+    return [clienteContrato, ...clientes];
+  }, [clientes, contratos, facturasHook.selectedContratoId]);
+
   // Render según vista actual
   const facturaForm = (
     <FacturaForm
@@ -758,7 +787,8 @@ export function FacturasPage({
       monedas={monedas}
       selectedContratoId={facturasHook.selectedContratoId}
       contratos={contratos}
-      clientes={clientes}
+      clientes={clientesParaFormulario}
+      onClienteSearch={setClienteSearchRemoto}
       onFormDataChange={(data: Record<string, any>) =>
         facturasHook.setFormData(data)
       }
@@ -797,7 +827,7 @@ export function FacturasPage({
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
 <FacturasListView
           facturas={facturasHook.facturas}
           isLoading={facturasHook.isLoading}
@@ -885,7 +915,7 @@ export function FacturasPage({
                 form={FACTURA_FORM_ID}
                 disabled={isSavingFactura}
                 isLoading={isSavingFactura}
-                className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 Guardar
               </Button>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rrhhService } from '../../services/rrhh';
+import { toISODateLocal } from '../../utils/fecha';
 import {
   RRHH_ESTADOS_ASISTENCIA,
   RRHH_ESTADO_ASISTENCIA_BADGE,
@@ -44,7 +45,7 @@ import {
   SearchSelect,
 } from '../../components/ui';
 
-const hoyISO = () => new Date().toISOString().slice(0, 10);
+const hoyISO = () => toISODateLocal();
 
 /** Hora local actual en `HH:MM` (la que se propone al marcar). */
 const horaActualHHMM = () => {
@@ -110,7 +111,7 @@ const etiquetaEstadoTabla = (fila: RrhhAsistenciaListado) =>
 const badgeEstadoTabla = (fila: RrhhAsistenciaListado) =>
   RRHH_ESTADO_ASISTENCIA_BADGE[
     fila.estado === 'tardanza' ? 'presente' : fila.estado
-  ] ?? 'bg-slate-100 text-slate-500';
+  ] ?? 'bg-gray-100 text-gray-500';
 
 export function AsistenciaPage() {
   const queryClient = useQueryClient();
@@ -361,18 +362,18 @@ export function AsistenciaPage() {
         {
           etiqueta: 'Permisos',
           valor: resumen.permisos,
-          color: 'text-purple-600',
+          color: 'text-brand-600',
         },
         {
           etiqueta: 'Vacaciones',
           valor: resumen.vacaciones,
-          color: 'text-blue-600',
+          color: 'text-brand-600',
         },
-        { etiqueta: 'Feriados', valor: resumen.feriados, color: 'text-slate-600' },
+        { etiqueta: 'Feriados', valor: resumen.feriados, color: 'text-gray-600' },
         {
           etiqueta: 'Incapacidades',
           valor: resumen.incapacidades,
-          color: 'text-slate-600',
+          color: 'text-gray-600',
         },
       ]
     : [];
@@ -545,7 +546,7 @@ export function AsistenciaPage() {
           </div>
           <div className="min-w-0">
             <h2 className="text-lg font-bold text-gray-900">Resumen de asistencia</h2>
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-gray-500">
               {tituloRangoResumen}
               {resumen
                 ? ` · ${resumen.total_empleados} marcación${
@@ -559,7 +560,7 @@ export function AsistenciaPage() {
             onClick={() => setModalResumen(false)}
             title="Cerrar"
             aria-label="Cerrar"
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -567,40 +568,40 @@ export function AsistenciaPage() {
 
         <div className="px-6 py-5">
           {cargandoResumen || !resumen ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-gray-500">
               <Loader2 className="h-4 w-4 animate-spin" />
               Cargando resumen…
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:grid-cols-3">
                 {resumenCampos.map((r) => (
                   <div
                     key={r.etiqueta}
-                    className="rounded-lg bg-slate-50 p-3"
+                    className="rounded-lg bg-gray-50 p-3"
                     title={r.titulo}
                   >
                     <div className={`text-2xl font-bold tabular-nums ${r.color}`}>
                       {r.valor}
                     </div>
-                    <div className="text-xs text-slate-500">{r.etiqueta}</div>
+                    <div className="text-xs text-gray-500">{r.etiqueta}</div>
                   </div>
                 ))}
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <div className="text-2xl font-bold tabular-nums text-slate-700">
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <div className="text-2xl font-bold tabular-nums text-gray-700">
                     {formatearMinutos(resumen.total_tardanza_minutos)}
                   </div>
-                  <div className="text-xs text-slate-500">Total tardanza (H:MM)</div>
+                  <div className="text-xs text-gray-500">Total tardanza (H:MM)</div>
                 </div>
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <div className="text-2xl font-bold tabular-nums text-slate-700">
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <div className="text-2xl font-bold tabular-nums text-gray-700">
                     {formatearMinutos(resumen.total_horas_extras_minutos)}
                   </div>
-                  <div className="text-xs text-slate-500">Total extras (H:MM)</div>
+                  <div className="text-xs text-gray-500">Total extras (H:MM)</div>
                 </div>
               </div>
               {resumen.total_empleados === 0 && (
-                <p className="mt-4 text-center text-sm text-slate-500">
+                <p className="mt-4 text-center text-sm text-gray-500">
                   No hay marcaciones con estos filtros.
                 </p>
               )}
@@ -613,8 +614,8 @@ export function AsistenciaPage() {
         <CardHeader className="pb-3">
           {/* Buscador arriba, filtros debajo */}
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[200px] flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Buscar por nombre o código del empleado..."
                 value={busqueda}
@@ -639,7 +640,7 @@ export function AsistenciaPage() {
             <select
               value={filtroEstado}
               onChange={(e) => setFiltroEstado(e.target.value as RrhhEstadoAsistencia | '')}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">Todos los estados</option>
               {RRHH_ESTADOS_ASISTENCIA.map((e) => (
@@ -651,7 +652,7 @@ export function AsistenciaPage() {
             <select
               value={filtroDepto}
               onChange={(e) => setFiltroDepto(e.target.value === '' ? '' : Number(e.target.value))}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">Todos los departamentos</option>
               {departamentos.map((d) => (
@@ -703,15 +704,15 @@ export function AsistenciaPage() {
                 {asistencias.map((fila) => (
                   <TableRow key={fila.id}>
                     <TableCell>
-                      <div className="font-medium text-slate-900">
+                      <div className="font-medium text-gray-900">
                         {fila.empleado_nombre ?? '—'}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-gray-500">
                         {fila.empleado_codigo ?? '—'}
                         {fila.departamento_nombre ? ` · ${fila.departamento_nombre}` : ''}
                       </div>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-slate-600">
+                    <TableCell className="whitespace-nowrap text-gray-600">
                       {fmtFecha(fila.fecha)}
                     </TableCell>
                     <TableCell className="tabular-nums">
@@ -738,10 +739,10 @@ export function AsistenciaPage() {
                           {formatearMinutos(fila.tardanza_minutos)}
                         </span>
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        <span className="text-gray-300">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-slate-600">
+                    <TableCell className="text-right tabular-nums text-gray-600">
                       {fila.horas_trabajadas_minutos > 0
                         ? formatearMinutos(fila.horas_trabajadas_minutos)
                         : '—'}
@@ -752,7 +753,7 @@ export function AsistenciaPage() {
                           {formatearMinutos(fila.horas_extras_minutos)}
                         </span>
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        <span className="text-gray-300">—</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -791,7 +792,7 @@ export function AsistenciaPage() {
             <h2 className="truncate text-lg font-bold text-gray-900">
               Marcar asistencia
             </h2>
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-gray-500">
               {empleadoElegido
                 ? `${empleadoElegido.apellido}, ${empleadoElegido.nombre}${
                     formMarcar.fecha ? ` · ${fmtFecha(formMarcar.fecha)}` : ''
@@ -804,7 +805,7 @@ export function AsistenciaPage() {
             onClick={() => setModalMarcar(false)}
             title="Cerrar"
             aria-label="Cerrar"
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -852,7 +853,7 @@ export function AsistenciaPage() {
                 className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                   formMarcar.tipo === 'entrada'
                     ? 'border-brand-500 bg-brand-50 text-brand-600 ring-1 ring-brand-500'
-                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 <LogIn className="h-4 w-4" />
@@ -866,7 +867,7 @@ export function AsistenciaPage() {
                 className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                   formMarcar.tipo === 'salida'
                     ? 'border-brand-500 bg-brand-50 text-brand-600 ring-1 ring-brand-500'
-                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 <LogOut className="h-4 w-4" />
@@ -874,7 +875,7 @@ export function AsistenciaPage() {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fecha-marcar">Fecha</Label>
               <DateInput
@@ -884,7 +885,7 @@ export function AsistenciaPage() {
               />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 gap-2">
                 <Label htmlFor="hora-marcar">Hora</Label>
                 <button
                   type="button"
@@ -960,7 +961,7 @@ export function AsistenciaPage() {
               Corregir marcación
             </h2>
             {modalCorregir && (
-              <p className="truncate text-xs text-slate-500">
+              <p className="truncate text-xs text-gray-500">
                 {modalCorregir.empleado_nombre ?? ''} ·{' '}
                 {fmtFecha(modalCorregir.fecha)}
               </p>
@@ -971,7 +972,7 @@ export function AsistenciaPage() {
             onClick={() => setModalCorregir(null)}
             title="Cerrar"
             aria-label="Cerrar"
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -983,7 +984,7 @@ export function AsistenciaPage() {
           }}
           className="space-y-4 px-6 py-5"
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="entrada">Hora de entrada</Label>
               <Input
@@ -1016,7 +1017,7 @@ export function AsistenciaPage() {
                   estado: e.target.value as RrhhEstadoAsistencia,
                 })
               }
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               {RRHH_ESTADOS_ASISTENCIA.map((e) => (
                 <option key={e.valor} value={e.valor}>
@@ -1025,7 +1026,7 @@ export function AsistenciaPage() {
               ))}
             </select>
             {requiereEntrada && (
-              <p className="flex items-center gap-1 text-xs text-slate-400">
+              <p className="flex items-center gap-1 text-xs text-gray-400">
                 <AlertCircle className="h-3 w-3" />
                 Este estado exige hora de entrada.
               </p>
@@ -1091,8 +1092,8 @@ function ActionButton({
       onClick={onClick}
       className={`rounded-md p-1.5 transition-colors ${
         danger
-          ? 'text-slate-400 hover:bg-red-50 hover:text-red-600'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+          ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
+          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
       }`}
     >
       {children}
@@ -1104,7 +1105,7 @@ function LoadingRows() {
   return (
     <div className="space-y-2 py-4">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-gray-100" />
       ))}
     </div>
   );
@@ -1113,8 +1114,8 @@ function LoadingRows() {
 function EmptyState({ mensaje }: { mensaje: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <LogIn className="h-10 w-10 text-slate-300" />
-      <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
+      <LogIn className="h-10 w-10 text-gray-300" />
+      <p className="max-w-sm text-sm text-gray-500">{mensaje}</p>
     </div>
   );
 }
@@ -1129,7 +1130,7 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-gray-600">
         {mensaje || 'No se pudieron cargar las marcaciones'}
       </p>
       <Button variant="outline" size="sm" onClick={onReintentar}>

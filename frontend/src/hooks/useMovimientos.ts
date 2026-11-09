@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { movimientosService } from '../services/api';
 import type { Movimiento } from '../types/index';
 import toast from 'react-hot-toast';
-import { useMemo } from 'react';
 import { useInfiniteList } from './useInfiniteList';
 
 export function useMovimientos(tipoFiltro?: 'todos') {
@@ -23,26 +22,15 @@ export function useMovimientos(tipoFiltro?: 'todos') {
     refresh,
   } = useInfiniteList<Movimiento>({
     queryKeyBase: 'movimientos',
-    queryFn: (skip, limit) => movimientosService.getMovimientos(skip, limit, tipo),
+    queryFn: (skip, limit, search, onTotal) =>
+      movimientosService.getMovimientos(skip, limit, tipo, search, onTotal),
     extraQueryKeyParams: [tipoFiltro],
     limit: 100,
   });
 
-  // Client-side filtering and sorting (fallback while backend doesn't support search)
-  const movimientos = useMemo(() => {
-    let filtered = items;
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = items.filter((m: any) =>
-        m.producto?.nombre?.toLowerCase().includes(term) ||
-        m.tipo_movimiento?.tipo?.toLowerCase().includes(term) ||
-        m.dependencia?.nombre?.toLowerCase().includes(term)
-      );
-    }
-    return [...filtered].sort((a, b) =>
-      new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-    );
-  }, [items, searchTerm]);
+  // El backend ya entrega los movimientos por fecha descendente
+  // (`order_by(Movimiento.fecha.desc())`); no se reordena en cliente.
+  const movimientos = items;
 
   const deleteMutation = useMutation({
     mutationFn: movimientosService.deleteMovimiento,

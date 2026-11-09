@@ -45,7 +45,8 @@ import { dependenciasService } from "../../services/administracion";
 import { monedaService } from "../../services/api";
 import type { Dependencia } from "../../types/dependencia";
 import type { Moneda } from "../../types/moneda";
-import { formatFecha } from "../../utils/fecha";
+import { formatFecha, toISODateLocal } from "../../utils/fecha";
+import { CHART_COLORS, PALETA } from "../../config/paleta";
 import { DateInput } from "../../components/ui";
 import { DependenciaTreeSelect } from "../../components/ui/DependenciaTreeSelect";
 
@@ -53,8 +54,8 @@ import { DependenciaTreeSelect } from "../../components/ui/DependenciaTreeSelect
 
 type ChartType = "bar" | "line" | "pie";
 
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+import { API_BASE_URL as BASE_URL } from "../../config/api";
+import { abrirBlob, descargarBlob } from '../../utils/archivos';
 
 interface ReportConfig {
   id: string;
@@ -108,8 +109,8 @@ function getDefaultFilters(userDepId?: number): FilterState {
   oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
   return {
     id_dependencia: userDepId ? String(userDepId) : "",
-    fecha_inicio: oneMonthAgo.toISOString().split("T")[0],
-    fecha_fin: now.toISOString().split("T")[0],
+    fecha_inicio: toISODateLocal(oneMonthAgo),
+    fecha_fin: toISODateLocal(now),
     notas: "",
     id_moneda: "",
   };
@@ -121,8 +122,8 @@ const REPORTS: ReportConfig[] = [
     title: "Existencias",
     description: "Stock actual de productos por dependencia con totales generales.",
     icon: <Boxes className="h-4 w-4" />,
-    color: "bg-blue-50",
-    colorHex: "#3b82f6",
+    color: "bg-brand-50",
+    colorHex: CHART_COLORS[0],
     module: "inventario",
     moduleLabel: "Inventario",
     previewEndpoint: "/reportes/existencias/preview",
@@ -159,7 +160,7 @@ const REPORTS: ReportConfig[] = [
     description: "Historial de movimientos filtrado por dependencia y período.",
     icon: <ArrowLeftRight className="h-4 w-4" />,
     color: "bg-green-50",
-    colorHex: "#10b981",
+    colorHex: CHART_COLORS[1],
     module: "inventario",
     moduleLabel: "Inventario",
     previewEndpoint: "/reportes/movimientos-dependencia/preview",
@@ -204,8 +205,8 @@ const REPORTS: ReportConfig[] = [
     title: "Registro de Clientes",
     description: "Listado de clientes registrados por provincia.",
     icon: <Users className="h-4 w-4" />,
-    color: "bg-cyan-50",
-    colorHex: "#06b6d4",
+    color: "bg-brand-50",
+    colorHex: CHART_COLORS[0],
     module: "tienda",
     moduleLabel: "Tienda",
     previewEndpoint: "/reportes/clientes/preview",
@@ -235,7 +236,7 @@ const REPORTS: ReportConfig[] = [
     description: "Listado de proveedores registrados por provincia.",
     icon: <UserCircle className="h-4 w-4" />,
     color: "bg-amber-50",
-    colorHex: "#f59e0b",
+    colorHex: CHART_COLORS[2],
     module: "compra",
     moduleLabel: "Compra",
     previewEndpoint: "/reportes/proveedores-dependencia/preview",
@@ -265,7 +266,7 @@ const REPORTS: ReportConfig[] = [
     description: "Pagado y pendiente por pagar por cliente.",
     icon: <Calculator className="h-4 w-4" />,
     color: "bg-pink-50",
-    colorHex: "#ec4899",
+    colorHex: CHART_COLORS[5],
     module: "compra",
     moduleLabel: "Compra",
     previewEndpoint: "/reportes/liquidaciones/preview",
@@ -290,8 +291,8 @@ const REPORTS: ReportConfig[] = [
     },
     computeStats: (data) => { const items = data?.items || []; return computeBasicStats(items.map((i: any) => Number(i.neto_pagar || 0))); },
     chartSeries: [
-      { key: "pagado", name: "Pagado", color: "#10b981" },
-      { key: "pendiente", name: "Falta por pagar", color: "#ef4444" },
+      { key: "pagado", name: "Pagado", color: CHART_COLORS[1] },
+      { key: "pendiente", name: "Falta por pagar", color: CHART_COLORS[3] },
     ],
     pdfEndpoint: "/reportes/liquidaciones",
     pdfFilename: "resumen_liquidaciones.pdf",
@@ -305,8 +306,8 @@ const REPORTS: ReportConfig[] = [
     title: "Registro de Proyectos",
     description: "Listado de proyectos con estado, fechas y montos.",
     icon: <Layers className="h-4 w-4" />,
-    color: "bg-indigo-50",
-    colorHex: "#6366f1",
+    color: "bg-brand-50",
+    colorHex: CHART_COLORS[4],
     module: "proyectos",
     moduleLabel: "Proyectos",
     previewEndpoint: "/reportes/proyectos/preview",
@@ -333,8 +334,8 @@ const REPORTS: ReportConfig[] = [
     title: "Registro de Realizadores",
     description: "Listado de realizadores asignados a etapas de proyecto.",
     icon: <Users className="h-4 w-4" />,
-    color: "bg-violet-50",
-    colorHex: "#8b5cf6",
+    color: "bg-brand-50",
+    colorHex: CHART_COLORS[4],
     module: "proyectos",
     moduleLabel: "Proyectos",
     previewEndpoint: "/reportes/personas",
@@ -364,7 +365,7 @@ const REPORTS: ReportConfig[] = [
     description: "Análisis de rendimiento y productividad por proyecto.",
     icon: <BarChart3 className="h-4 w-4" />,
     color: "bg-orange-50",
-    colorHex: "#f97316",
+    colorHex: CHART_COLORS[2],
     module: "proyectos",
     moduleLabel: "Proyectos",
     previewEndpoint: "/reportes/desempeno/preview",
@@ -386,7 +387,7 @@ const REPORTS: ReportConfig[] = [
     description: "Reporte de ingresos y retenciones para ONAT.",
     icon: <FileText className="h-4 w-4" />,
     color: "bg-red-50",
-    colorHex: "#ef4444",
+    colorHex: CHART_COLORS[3],
     module: "ministerios",
     moduleLabel: "Ministerios",
     previewEndpoint: "/reportes/onat/preview",
@@ -408,7 +409,7 @@ const REPORTS: ReportConfig[] = [
     description: "Escala de ingresos para el Ministerio de Cultura.",
     icon: <ClipboardList className="h-4 w-4" />,
     color: "bg-fuchsia-50",
-    colorHex: "#d946ef",
+    colorHex: CHART_COLORS[5],
     module: "ministerios",
     moduleLabel: "Ministerios",
     previewEndpoint: "/reportes/mincult/preview",
@@ -427,14 +428,29 @@ const REPORTS: ReportConfig[] = [
 ];
 
 const PIE_COLORS = [
-  "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
-  "#06b6d4", "#ec4899",
+  CHART_COLORS[0], CHART_COLORS[1], CHART_COLORS[2], CHART_COLORS[3], CHART_COLORS[4],
+  CHART_COLORS[0], CHART_COLORS[5],
 ];
 
 function computeBasicStats(values: number[]): ChartStats {
   if (values.length === 0) return { total: 0, promedio: 0, max: 0, min: 0, count: 0 };
-  const total = values.reduce((s, v) => s + v, 0);
-  return { total, promedio: Math.round(total / values.length), max: Math.max(...values), min: Math.min(...values), count: values.length };
+
+  let total = 0;
+  let max = -Infinity;
+  let min = Infinity;
+  for (const value of values) {
+    total += value;
+    if (value > max) max = value;
+    if (value < min) min = value;
+  }
+
+  return {
+    total,
+    promedio: Math.round(total / values.length),
+    max,
+    min,
+    count: values.length,
+  };
 }
 
 function buildQueryString(params: Record<string, string>): string {
@@ -598,10 +614,7 @@ export function ReportesHome() {
       const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
       const blob = await r.blob();
-      const a = document.createElement("a");
-      a.href = window.URL.createObjectURL(blob);
-      a.download = activeReport.pdfFilename ?? "reporte.pdf";
-      a.click();
+      descargarBlob(blob, activeReport.pdfFilename ?? "reporte.pdf");
       toast.success("Reporte descargado");
     } catch { toast.error("Error al descargar reporte"); }
   }, [activeReport, filters]);
@@ -615,7 +628,7 @@ export function ReportesHome() {
       const token = authHelpers.getToken() ?? "";
       const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
-      window.open(window.URL.createObjectURL(await r.blob()), "_blank");
+      abrirBlob(await r.blob());
     } catch { toast.error("Error al generar vista previa"); }
   }, [activeReport, filters]);
 
@@ -644,11 +657,11 @@ export function ReportesHome() {
                 <BarChart3 className="h-6 w-6" />
               </div>
               <h1 className="text-xl font-bold tracking-wide md:text-2xl">MÓDULO DE REPORTES</h1>
-              <p className="text-sm text-slate-200">Selecciona un reporte del menú lateral para comenzar</p>
+              <p className="text-sm text-gray-200">Selecciona un reporte del menú lateral para comenzar</p>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-100 bg-white p-6 text-center shadow-sm">
-            <p className="text-sm text-slate-600">Utiliza la barra lateral para elegir el reporte que deseas visualizar.</p>
+          <div className="rounded-xl border border-gray-100 bg-white p-4 md:p-6 text-center shadow-sm">
+            <p className="text-sm text-gray-600">Utiliza la barra lateral para elegir el reporte que deseas visualizar.</p>
           </div>
         </div>
       </div>
@@ -656,7 +669,7 @@ export function ReportesHome() {
   }
 
   const renderTable = () => {
-    if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+    if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-brand-500 animate-spin" /></div>;
     if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
     if (!tableData || tableData.length === 0) return <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">No hay datos para mostrar</div>;
 
@@ -700,7 +713,7 @@ export function ReportesHome() {
 
         {/* Paginación */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 pt-3 mt-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-3 mt-3">
             <p className="text-xs text-gray-500">
               Mostrando <span className="font-semibold text-gray-700">{from}</span>–<span className="font-semibold text-gray-700">{to}</span> de <span className="font-semibold text-gray-700">{totalRows}</span> registros
             </p>
@@ -732,16 +745,16 @@ export function ReportesHome() {
   };
 
   const renderChart = () => {
-    if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+    if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-brand-500 animate-spin" /></div>;
     if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
     if (!displayData || displayData.length === 0) return <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">No hay datos para mostrar</div>;
 
     const gridAndAxis = (
       <>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis dataKey="name" stroke="#6b7280" fontSize={11} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
-        <YAxis stroke="#6b7280" fontSize={12} tickLine={false} />
-        <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px rgba(0,0,0,0.07)" }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={PALETA.neutral.grid} />
+        <XAxis dataKey="name" stroke={PALETA.neutral.axis} fontSize={11} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
+        <YAxis stroke={PALETA.neutral.axis} fontSize={12} tickLine={false} />
+        <Tooltip contentStyle={{ borderRadius: "8px", border: `1px solid ${PALETA.neutral.grid}`, boxShadow: "0 4px 6px rgba(0,0,0,0.07)" }} />
         <Legend />
       </>
     );
@@ -754,7 +767,7 @@ export function ReportesHome() {
           <LineChart data={displayData}>
             {gridAndAxis}
             {hasMonto && <Line type="monotone" dataKey="monto" stroke={activeReport?.colorHex} strokeWidth={3} dot={{ fill: activeReport?.colorHex, r: 4 }} activeDot={{ r: 6 }} name="Monto" animationDuration={500} />}
-            <Line type="monotone" dataKey="cantidad" stroke="#10b981" strokeWidth={2} dot={{ fill: "#10b981", r: 3 }} name="Cantidad" animationDuration={500} />
+            <Line type="monotone" dataKey="cantidad" stroke={CHART_COLORS[1]} strokeWidth={2} dot={{ fill: CHART_COLORS[1], r: 3 }} name="Cantidad" animationDuration={500} />
           </LineChart>
         </ResponsiveContainer>
       );
@@ -766,7 +779,7 @@ export function ReportesHome() {
             <Pie data={displayData} cx="50%" cy="50%" innerRadius={60} outerRadius={120} paddingAngle={3} dataKey={hasMonto ? "monto" : "cantidad"} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} animationDuration={500}>
               {displayData.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
             </Pie>
-            <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb" }} />
+            <Tooltip contentStyle={{ borderRadius: "8px", border: `1px solid ${PALETA.neutral.grid}` }} />
           </PieChart>
         </ResponsiveContainer>
       );
@@ -782,7 +795,7 @@ export function ReportesHome() {
           ) : (
             <>
               {hasMonto && <Bar dataKey="monto" fill={activeReport?.colorHex} radius={[4, 4, 0, 0]} name="Monto" animationDuration={500} />}
-              <Bar dataKey="cantidad" fill="#10b981" radius={[4, 4, 0, 0]} name="Cantidad" animationDuration={500} />
+              <Bar dataKey="cantidad" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} name="Cantidad" animationDuration={500} />
             </>
           )}
         </BarChart>
@@ -797,10 +810,10 @@ export function ReportesHome() {
   ];
 
   return (
-    <div className="h-[calc(100vh-8rem)] overflow-auto p-6">
+    <div className="h-full min-h-0 overflow-auto p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Toolbar */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           {/* Left: Chart type icons (invisible spacer for table reports to keep filter centered) */}
           <div className={`flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm ${activeReport?.showTable ? 'invisible' : ''}`}>
             {chartButtons.map((btn) => (
@@ -819,8 +832,8 @@ export function ReportesHome() {
             </button>
 
             {filterOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[420px] bg-white rounded-2xl border border-gray-200 shadow-2xl p-5 z-50">
-                <div className="flex items-center justify-between mb-4">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[calc(100vw-2rem)] max-w-[420px] bg-white rounded-2xl border border-gray-200 shadow-2xl p-4 sm:p-5 z-50">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <h3 className="text-sm font-bold text-gray-900">Filtros — {activeReport?.title}</h3>
                   <button onClick={() => setFilterOpen(false)} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
                     <X className="w-4 h-4" />
@@ -857,14 +870,14 @@ export function ReportesHome() {
                     </div>
                   )}
                   {activeReport.needsFechas && (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Desde</label>
-                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-blue-500" value={filters.fecha_inicio} onChange={(fecha) => updateFilter("fecha_inicio", fecha)} />
+                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-brand-500" value={filters.fecha_inicio} onChange={(fecha) => updateFilter("fecha_inicio", fecha)} />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
-                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-blue-500" value={filters.fecha_fin} onChange={(fecha) => updateFilter("fecha_fin", fecha)} />
+                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-brand-500" value={filters.fecha_fin} onChange={(fecha) => updateFilter("fecha_fin", fecha)} />
                       </div>
                     </div>
                   )}
@@ -872,7 +885,7 @@ export function ReportesHome() {
                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notas / Observaciones</label>
                     <textarea rows={2} value={filters.notas} onChange={(e) => updateFilter("notas", e.target.value)}
                       placeholder="Agregue notas para el reporte..."
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none" />
                   </div>
                 </div>
               </div>
@@ -894,8 +907,8 @@ export function ReportesHome() {
         </div>
 
         {/* Chart card */}
-        <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5 transition-all duration-300 ease-in-out ${isTransitioning ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"}`}>
-          <div className="flex items-center justify-between mb-4">
+        <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm p-4 md:p-6 mb-5 transition-all duration-300 ease-in-out ${isTransitioning ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-3">
               <div className={`w-9 h-9 rounded-xl ${activeReport?.color} flex items-center justify-center`} style={{ color: activeReport?.colorHex }}>
                 {activeReport?.icon}

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
+import { contarAsistencias } from './reportesUtils';
 import {
   COLOR_ESTADO_SOLICITUD,
   ESTADOS_SOLICITUD,
@@ -36,6 +37,7 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui';
+import { getCachedNumberFormat } from '../../utils/formato';
 
 type Pestana = 'evaluaciones' | 'nomina' | 'asistencia' | 'solicitudes';
 
@@ -67,7 +69,7 @@ const ultimoDiaMesISO = () => {
 const fmtMoneda = (v: number | string | null | undefined) =>
   v === null || v === undefined || v === ''
     ? '—'
-    : new Intl.NumberFormat('es-CU', {
+    : getCachedNumberFormat('es-CU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(Number(v));
@@ -164,7 +166,7 @@ export function ReportesPage() {
       <TarjetasDashboard />
 
       {/* Pestañas */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-200">
+      <div className="flex flex-wrap gap-1 border-b border-gray-200">
         {PESTANAS.map(([id, etiqueta, Icono]) => (
           <button
             key={id}
@@ -173,7 +175,7 @@ export function ReportesPage() {
             className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               pestana === id
                 ? 'border-orange-600 text-orange-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             <Icono className="h-4 w-4" />
@@ -227,7 +229,7 @@ function TarjetasDashboard() {
   ) => (q.isLoading ? '…' : q.isError ? '—' : f());
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       <TarjetaStat
         titulo="Empleados activos"
         icono={<Users className="h-5 w-5" />}
@@ -273,16 +275,16 @@ function TarjetaStat({
   icono: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="rounded-lg bg-orange-50 p-2 text-orange-600">
           {icono}
         </div>
         <div className="min-w-0">
-          <p className="truncate text-xs font-medium text-slate-500">
+          <p className="truncate text-xs font-medium text-gray-500">
             {titulo}
           </p>
-          <p className="truncate text-xl font-bold tabular-nums text-slate-900">
+          <p className="truncate text-xl font-bold tabular-nums text-gray-900">
             {valor}
           </p>
         </div>
@@ -364,7 +366,7 @@ function PestanaEvaluaciones() {
             onChange={(e) =>
               setDepartamentoId(e.target.value === '' ? '' : Number(e.target.value))
             }
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Todos los departamentos</option>
             {departamentos.map((d) => (
@@ -378,7 +380,7 @@ function PestanaEvaluaciones() {
             onChange={(e) =>
               setEmpleadoId(e.target.value === '' ? '' : Number(e.target.value))
             }
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Todos los empleados</option>
             {empleados.map((emp) => (
@@ -423,7 +425,7 @@ function PestanaEvaluaciones() {
           <EmptyState mensaje="No hay evaluaciones en el rango seleccionado." />
         ) : (
           <>
-            <div className="mb-4 grid grid-cols-2 gap-3">
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Resumen titulo="Evaluaciones" valor={String(data.cantidad_evaluaciones)} />
               <Resumen
                 titulo="Prom. objetivos (/ 5)"
@@ -444,14 +446,14 @@ function PestanaEvaluaciones() {
                 {data.empleados.map((e) => (
                   <TableRow key={e.empleado_id} className="hover:bg-gray-50 transition-colors">
                     <TableCell>
-                      <div className="font-medium text-slate-900">
+                      <div className="font-medium text-gray-900">
                         {e.empleado_nombre ?? '—'}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-gray-500">
                         {e.empleado_codigo ?? '—'}
                       </div>
                     </TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="text-gray-600">
                       {e.departamento_nombre ?? '—'}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -545,7 +547,7 @@ function PestanaNomina() {
             onChange={(e) =>
               setDepartamentoId(e.target.value === '' ? '' : Number(e.target.value))
             }
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Todos los departamentos</option>
             {departamentos.map((d) => (
@@ -554,7 +556,7 @@ function PestanaNomina() {
               </option>
             ))}
           </select>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-gray-400">
             Excluye las nóminas anuladas. Sin fechas se incluye todo.
           </p>
           <Button
@@ -581,7 +583,7 @@ function PestanaNomina() {
           <EmptyState mensaje="No hay nóminas en el rango seleccionado." />
         ) : (
           <>
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-6">
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:grid-cols-6">
               <Resumen titulo="Nóminas" valor={String(data.cantidad_nominas)} />
               <Resumen titulo="Salario base" valor={fmtMoneda(data.total_salario_base)} />
               <Resumen titulo="Horas extras" valor={fmtMoneda(data.total_horas_extras)} />
@@ -604,7 +606,7 @@ function PestanaNomina() {
               <TableBody>
                 {data.departamentos.map((d, i) => (
                   <TableRow key={d.departamento_id ?? `sin-${i}`} className="hover:bg-gray-50 transition-colors">
-                    <TableCell className="font-medium text-slate-900">
+                    <TableCell className="font-medium text-gray-900">
                       {d.departamento_nombre ?? 'Sin departamento'}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -677,18 +679,7 @@ function PestanaAsistencia() {
   });
 
   // Totales calculados en cliente sobre las filas del rango.
-  const stats = useMemo(() => {
-    const contar = (e: RrhhEstadoAsistencia) =>
-      filas.filter((f) => f.estado === e).length;
-    return {
-      total: filas.length,
-      presentes: contar('presente'),
-      ausentes: contar('ausente'),
-      tardanzas: contar('tardanza'),
-      permisos: contar('permiso'),
-      vacaciones: contar('vacaciones'),
-    };
-  }, [filas]);
+  const stats = useMemo(() => contarAsistencias(filas), [filas]);
 
   const exportar = () => {
     exportarCSV(
@@ -727,7 +718,7 @@ function PestanaAsistencia() {
             onChange={(e) =>
               setEstado(e.target.value as RrhhEstadoAsistencia | '')
             }
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Todos los estados</option>
             {RRHH_ESTADOS_ASISTENCIA.map((op) => (
@@ -741,7 +732,7 @@ function PestanaAsistencia() {
             onChange={(e) =>
               setDepartamentoId(e.target.value === '' ? '' : Number(e.target.value))
             }
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Todos los departamentos</option>
             {departamentos.map((d) => (
@@ -774,7 +765,7 @@ function PestanaAsistencia() {
           <EmptyState mensaje="No hay asistencias en el rango seleccionado." />
         ) : (
           <>
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-6">
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:grid-cols-6">
               <Resumen titulo="Registros" valor={String(stats.total)} />
               <Resumen titulo="Presentes" valor={String(stats.presentes)} />
               <Resumen titulo="Ausentes" valor={String(stats.ausentes)} />
@@ -805,14 +796,14 @@ function PestanaAsistencia() {
               <TableBody>
                 {filas.map((f) => (
                   <TableRow key={f.id} className="hover:bg-gray-50 transition-colors">
-                    <TableCell className="whitespace-nowrap text-slate-600">
+                    <TableCell className="whitespace-nowrap text-gray-600">
                       {fmtFecha(f.fecha)}
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium text-slate-900">
+                      <div className="font-medium text-gray-900">
                         {f.empleado_nombre ?? '—'}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-gray-500">
                         {f.departamento_nombre ?? '—'}
                       </div>
                     </TableCell>
@@ -825,10 +816,10 @@ function PestanaAsistencia() {
                         {capital(f.estado)}
                       </span>
                     </TableCell>
-                    <TableCell className="tabular-nums text-slate-600">
+                    <TableCell className="tabular-nums text-gray-600">
                       {fmtHora(f.hora_entrada)}
                     </TableCell>
-                    <TableCell className="tabular-nums text-slate-600">
+                    <TableCell className="tabular-nums text-gray-600">
                       {fmtHora(f.hora_salida)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -903,10 +894,10 @@ function PestanaSolicitudes() {
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-sm font-semibold text-slate-700">
+            <h2 className="text-sm font-semibold text-gray-700">
               Resumen por estado
             </h2>
-            <p className="text-xs text-slate-400">Global, sin filtros de fecha</p>
+            <p className="text-xs text-gray-400">Global, sin filtros de fecha</p>
           </div>
         </CardHeader>
         <CardContent>
@@ -948,7 +939,7 @@ function PestanaSolicitudes() {
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-sm font-semibold text-slate-700">
+            <h2 className="text-sm font-semibold text-gray-700">
               Últimas solicitudes
             </h2>
             <select
@@ -956,7 +947,7 @@ function PestanaSolicitudes() {
               onChange={(e) =>
                 setEstado(e.target.value as RrhhEstadoSolicitud | '')
               }
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">Todos los estados</option>
               {ESTADOS_SOLICITUD.map((e) => (
@@ -1014,14 +1005,14 @@ function PestanaSolicitudes() {
                 {filas.map((s) => (
                   <TableRow key={s.id} className="hover:bg-gray-50 transition-colors">
                     <TableCell>
-                      <div className="font-medium text-slate-900">
+                      <div className="font-medium text-gray-900">
                         {s.empleado_nombre ?? '—'}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-gray-500">
                         {s.departamento_nombre ?? '—'}
                       </div>
                     </TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="text-gray-600">
                       {capital(s.tipo)}
                     </TableCell>
                     <TableCell>
@@ -1033,7 +1024,7 @@ function PestanaSolicitudes() {
                         {capital(s.estado)}
                       </span>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-slate-500">
+                    <TableCell className="whitespace-nowrap text-xs text-gray-500">
                       {fmtFecha(s.fecha_inicio)} – {fmtFecha(s.fecha_fin)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -1064,17 +1055,17 @@ function Resumen({
   return (
     <div
       className={`rounded-lg p-3 ${
-        destacado ? 'bg-orange-50 ring-1 ring-orange-100' : 'bg-slate-50'
+        destacado ? 'bg-orange-50 ring-1 ring-orange-100' : 'bg-gray-50'
       }`}
     >
       <div
         className={`text-xl font-bold tabular-nums ${
-          destacado ? 'text-orange-700' : 'text-slate-700'
+          destacado ? 'text-orange-700' : 'text-gray-700'
         }`}
       >
         {valor}
       </div>
-      <div className="text-xs text-slate-500">{titulo}</div>
+      <div className="text-xs text-gray-500">{titulo}</div>
     </div>
   );
 }
@@ -1083,7 +1074,7 @@ function LoadingRows() {
   return (
     <div className="space-y-2 py-4">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-gray-100" />
       ))}
     </div>
   );
@@ -1092,10 +1083,10 @@ function LoadingRows() {
 function EmptyState({ mensaje }: { mensaje: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <div className="p-4 bg-slate-50 rounded-full mb-2">
-        <Search className="h-10 w-10 text-slate-300" />
+      <div className="p-4 bg-gray-50 rounded-full mb-2">
+        <Search className="h-10 w-10 text-gray-300" />
       </div>
-      <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
+      <p className="max-w-sm text-sm text-gray-500">{mensaje}</p>
     </div>
   );
 }
@@ -1110,7 +1101,7 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-gray-600">
         {mensaje || 'No se pudieron cargar los datos'}
       </p>
       <Button variant="outline" size="sm" onClick={onReintentar}>

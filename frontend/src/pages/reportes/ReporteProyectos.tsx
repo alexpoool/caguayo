@@ -4,8 +4,8 @@ import { authHelpers } from "../../lib/api";
 import { Layers, Download, Eye, Loader2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+import { API_BASE_URL as BASE_URL } from "../../config/api";
+import { abrirBlob, descargarBlob } from '../../utils/archivos';
 
 const ReporteProyectos: React.FC = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -32,7 +32,7 @@ const ReporteProyectos: React.FC = () => {
       const token = authHelpers.getToken() ?? "";
       const r = await fetch(`${BASE_URL}/reportes/proyectos?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
-      window.open(window.URL.createObjectURL(await r.blob()), "_blank");
+      abrirBlob(await r.blob());
     } catch { toast.error("Error al generar vista previa"); } finally { setPreviewLoading(false); }
   };
 
@@ -44,20 +44,17 @@ const ReporteProyectos: React.FC = () => {
       const r = await fetch(`${BASE_URL}/reportes/proyectos?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
       const blob = await r.blob();
-      const a = document.createElement("a");
-      a.href = window.URL.createObjectURL(blob);
-      a.download = `proyectos_${fechaInicio}_${fechaFin}.pdf`;
-      a.click();
+      descargarBlob(blob, `proyectos_${fechaInicio}_${fechaFin}.pdf`);
       toast.success("Reporte generado");
     } catch { toast.error("Error al generar reporte"); } finally { setPdfLoading(false); }
   };
 
   return (
     <div className="flex flex-col p-4">
-      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 flex-shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
-            <Layers className="w-4 h-4 text-teal-600" />
+          <div className="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center">
+            <Layers className="w-4 h-4 text-brand-600" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-gray-900 leading-tight">Registro de Proyectos</h1>
@@ -65,10 +62,10 @@ const ReporteProyectos: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={handlePreview} disabled={!isFormValid || previewLoading} className="p-2 rounded-lg text-teal-600 hover:bg-teal-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
+          <button type="button" onClick={handlePreview} disabled={!isFormValid || previewLoading} className="p-2 rounded-lg text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
             {previewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
           </button>
-          <button type="button" onClick={handleSubmit} disabled={!isFormValid || pdfLoading} className="p-2 rounded-lg text-teal-600 hover:bg-teal-50 disabled:opacity-50 transition-colors" title="Exportar PDF">
+          <button type="button" onClick={handleSubmit} disabled={!isFormValid || pdfLoading} className="p-2 rounded-lg text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors" title="Exportar PDF">
             {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           </button>
         </div>
@@ -82,11 +79,11 @@ const ReporteProyectos: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Desde <span className="text-red-500">*</span></label>
-                  <DateInput className="h-8 focus:ring-2 focus:ring-teal-500" value={fechaInicio} onChange={(fecha) => setFechaInicio(fecha)} />
+                  <DateInput className="h-8 focus:ring-2 focus:ring-brand-500" value={fechaInicio} onChange={(fecha) => setFechaInicio(fecha)} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Hasta <span className="text-red-500">*</span></label>
-                  <DateInput className="h-8 focus:ring-2 focus:ring-teal-500" value={fechaFin} onChange={(fecha) => setFechaFin(fecha)} />
+                  <DateInput className="h-8 focus:ring-2 focus:ring-brand-500" value={fechaFin} onChange={(fecha) => setFechaFin(fecha)} />
                 </div>
               </div>
             </div>

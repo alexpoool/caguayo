@@ -31,7 +31,7 @@ export function ConvertirOfertaModal({
   return (
     <ModalOverlay isOpen={true} onClose={onClose} ariaLabel="Confirmar oferta">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+        <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
           <h3 className="text-xl font-bold text-gray-900">Confirmar oferta</h3>
           <p className="text-sm text-gray-500 mt-1">
             Oferta <span className="font-mono">{codigo}</span> ·{" "}
@@ -42,7 +42,7 @@ export function ConvertirOfertaModal({
           </p>
         </div>
 
-        <div className="p-6 flex flex-col gap-3">
+        <div className="p-4 md:p-6 flex flex-col gap-3">
           <button
             type="button"
             onClick={() => onConfirm("FACTURA")}
@@ -56,7 +56,7 @@ export function ConvertirOfertaModal({
             type="button"
             onClick={() => onConfirm("PREFACTURA")}
             disabled={isConverting}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-semibold hover:from-blue-600 hover:to-cyan-700 transition-colors disabled:opacity-60 disabled:pointer-events-none"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 text-white font-semibold hover:from-brand-600 hover:to-brand-700 transition-colors disabled:opacity-60 disabled:pointer-events-none"
           >
             <FileText className="h-5 w-5" />
             Pre-factura

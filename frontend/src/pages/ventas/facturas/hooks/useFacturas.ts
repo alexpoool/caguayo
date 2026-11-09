@@ -3,6 +3,7 @@ import { facturasService, existenciaService } from '../../../../services/api';
 import type { FacturaWithDetails } from '../../../../types/contrato';
 import { useInfiniteList } from '../../../../hooks/useInfiniteList';
 import { prepararFacturaParaAPI, validarFactura } from '../utils/facturasUtils';
+import { toISODateLocal } from '../../../../utils/fecha';
 
 export type TipoFactura = 'FACTURA' | 'PREFACTURA';
 
@@ -137,7 +138,7 @@ export function useFacturas(
    * Resetea el formulario
    */
   const resetForm = () => {
-    setFormData({ fecha: new Date().toISOString().split('T')[0] });
+    setFormData({ fecha: toISODateLocal() });
     setEditingId(null);
   };
 

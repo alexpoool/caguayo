@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { movimientosService } from "../services/api";
 import { Input } from "../components/ui";
+import { coincideBusqueda, normalizarBusqueda } from "../utils/busqueda";
 import {
   ArrowLeft,
   Search,
@@ -36,6 +37,7 @@ export function RecepcionesPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
 
   const { data: recepciones = [], isLoading } = useQuery({
     queryKey: ["recepciones-stock"],
@@ -44,18 +46,19 @@ export function RecepcionesPage() {
     refetchOnMount: true,
   });
 
-  const filteredRecepciones = recepciones.filter((r: RecepcionStock) => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      r.nombre_producto?.toLowerCase().includes(search) ||
-      r.proveedor_nombre?.toLowerCase().includes(search) ||
-      r.nombre_dependencia?.toLowerCase().includes(search) ||
-      r.convenio_nombre?.toLowerCase().includes(search) ||
-      r.anexo_nombre?.toLowerCase().includes(search) ||
-      r.codigo?.toLowerCase().includes(search)
+  const filteredRecepciones = useMemo(() => {
+    const termino = normalizarBusqueda(deferredSearchTerm).trim();
+    if (!termino) return recepciones;
+    return recepciones.filter(
+      (r: RecepcionStock) =>
+        coincideBusqueda(r.nombre_producto, termino) ||
+        coincideBusqueda(r.proveedor_nombre, termino) ||
+        coincideBusqueda(r.nombre_dependencia, termino) ||
+        coincideBusqueda(r.convenio_nombre, termino) ||
+        coincideBusqueda(r.anexo_nombre, termino) ||
+        coincideBusqueda(r.codigo, termino),
     );
-  });
+  }, [recepciones, deferredSearchTerm]);
 
   const handleSelectRecepcion = (recepcion: RecepcionStock) => {
     const returnTo = location.state?.returnTo || "/movimientos/ajuste";
@@ -75,11 +78,11 @@ export function RecepcionesPage() {
   return (
     <div className="max-w-7xl mx-auto animate-fade-in-up">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <button
             onClick={handleGoBack}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-slate-50 rounded-lg transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
             title="Volver"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -161,7 +164,7 @@ export function RecepcionesPage() {
                     className="px-6 py-12 text-center text-gray-500"
                   >
                     <div className="flex justify-center items-center gap-2">
-                      <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                      <div className="animate-spin h-6 w-6 border-2 border-brand-500 border-t-transparent rounded-full"></div>
                       Cargando recepciones...
                     </div>
                   </td>
@@ -181,17 +184,17 @@ export function RecepcionesPage() {
                 filteredRecepciones.map((recepcion: RecepcionStock) => (
                   <tr
                     key={recepcion.id_movimiento}
-                    className="hover:bg-blue-50 cursor-pointer transition-colors"
+                    className="hover:bg-brand-50 cursor-pointer transition-colors"
                     onClick={() => handleSelectRecepcion(recepcion)}
                   >
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm font-mono text-gray-600 bg-slate-50 px-2 py-1 rounded">
+                      <span className="text-sm font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded">
                         {recepcion.codigo || recepcion.id_movimiento}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4 text-blue-500" />
+                        <Package className="h-4 w-4 text-brand-500" />
                         <span className="text-sm font-medium text-gray-900">
                           {recepcion.nombre_producto}
                         </span>

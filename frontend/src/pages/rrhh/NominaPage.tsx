@@ -48,15 +48,17 @@ import {
   TableCell,
   ConfirmModal,
   Modal,
+  CreateButton,
 } from '../../components/ui';
 import { ModalNuevoPeriodo } from '../../components/rrhh/ModalNuevoPeriodo';
+import { getCachedNumberFormat } from '../../utils/formato';
 
 type Pestana = 'nominas' | 'costo';
 
 const fmtMoneda = (v: number | string | null | undefined) =>
   v === null || v === undefined || v === ''
     ? '—'
-    : new Intl.NumberFormat('es-CU', {
+    : getCachedNumberFormat('es-CU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(Number(v));
@@ -107,16 +109,10 @@ export function NominaPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setModalNueva(true)}
-          className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg transition-all duration-300 hover:from-brand-600 hover:to-brand-500 hover:shadow-xl"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva nómina
-        </Button>
+        <CreateButton label="Nueva nómina" onClick={() => setModalNueva(true)} />
       </div>
 
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="flex gap-1 border-b border-gray-200">
         {(
           [
             ['nominas', 'Nóminas', Banknote],
@@ -130,7 +126,7 @@ export function NominaPage() {
             className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               pestana === clave
                 ? 'border-brand-600 text-brand-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             <Icono className="h-4 w-4" />
@@ -331,8 +327,8 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[220px] flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Buscar por descripción o periodo..."
                 value={buscar}
@@ -345,7 +341,7 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
               onChange={(e) =>
                 setEstado(e.target.value as RrhhEstadoNomina | '')
               }
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">Todos los estados</option>
               {ESTADOS_NOMINA.map((valor) => (
@@ -401,18 +397,18 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                 {filas.map((fila) => (
                   <TableRow key={fila.id}>
                     <TableCell>
-                      <div className="font-medium text-slate-900">
+                      <div className="font-medium text-gray-900">
                         {fila.descripcion}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-gray-500">
                         {fila.cantidad_empleados} empleado
                         {fila.cantidad_empleados === 1 ? '' : 's'}
                       </div>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-slate-600">
+                    <TableCell className="whitespace-nowrap text-gray-600">
                       {fila.periodo_nombre || '—'}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-slate-600">
+                    <TableCell className="whitespace-nowrap text-gray-600">
                       {fmtFecha(fila.inicio_periodo)} –{' '}
                       {fmtFecha(fila.fin_periodo)}
                     </TableCell>
@@ -425,7 +421,7 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                         {ETIQUETA_ESTADO_NOMINA[fila.estado]}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums text-slate-700">
+                    <TableCell className="text-right text-sm tabular-nums text-gray-700">
                       {fmtMoneda(fila.total_impuesto)}
                     </TableCell>
                     <TableCell className="text-right">
@@ -467,7 +463,7 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                                     }
                               );
                             }}
-                            className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50"
+                            className="h-8 w-8 p-0 text-brand-600 hover:bg-brand-50"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
@@ -587,9 +583,9 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                 setMenuPagos(null);
                 navigate(`/rrhh/nomina/${menuPagos.id}/pagos`);
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent disabled:hover:text-gray-400"
             >
-              <Banknote className="h-4 w-4 text-sky-600" />
+              <Banknote className="h-4 w-4 text-brand-600" />
               <span className="flex-1 text-left">Salario</span>
               {menuPagos.cantidadPagos > 0 && (
                 <span className="text-xs font-semibold tabular-nums text-gray-500">
@@ -782,7 +778,7 @@ export function NominaFormModal({
           <h2 className="truncate text-lg font-bold text-gray-900">
             {esEdicion ? 'Editar datos de la nómina' : 'Nueva nómina'}
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-gray-500">
             {esEdicion
               ? 'Solo se puede editar mientras esté en pre-nómina.'
               : 'La nómina nace en pre-nómina: después podrás elegir a los empleados.'}
@@ -793,7 +789,7 @@ export function NominaFormModal({
           onClick={onClose}
           title="Cerrar"
           aria-label="Cerrar"
-          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
         >
           <X className="h-5 w-5" />
         </button>
@@ -825,7 +821,7 @@ export function NominaFormModal({
                   )
                 }
                 className={`w-full flex-1 rounded-md border px-3 py-2 text-sm ${
-                  errores.periodo_id ? 'border-red-500' : 'border-slate-300'
+                  errores.periodo_id ? 'border-red-500' : 'border-gray-300'
                 }`}
               >
                 <option value="">Elegir periodo...</option>
@@ -864,7 +860,7 @@ export function NominaFormModal({
                   e.target.value === '' ? '' : Number(e.target.value)
                 )
               }
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">Elegir moneda...</option>
               {monedas.map((moneda) => (
@@ -890,7 +886,7 @@ export function NominaFormModal({
                 e.target.value === '' ? '' : Number(e.target.value)
               )
             }
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Sin método por defecto</option>
             {metodosPago.map((metodo) => (
@@ -899,7 +895,7 @@ export function NominaFormModal({
               </option>
             ))}
           </select>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-gray-400">
             Se propondrá al registrar los pagos; cada empleado puede cambiarlo.
           </p>
         </div>
@@ -951,7 +947,7 @@ export function NominaFormModal({
               onChange={(e) => set('porcentaje_impuesto', e.target.value)}
               error={errores.porcentaje_impuesto}
             />
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-gray-400">
               Solo se grava el exceso del devengado sobre el salario promedio.
             </p>
           </div>
@@ -1027,7 +1023,7 @@ function VistaCosto() {
                 e.target.value === '' ? '' : Number(e.target.value)
               )
             }
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Todos los departamentos</option>
             {departamentos.map((departamento) => (
@@ -1050,7 +1046,7 @@ function VistaCosto() {
               className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
             />
           </Button>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-gray-400">
             Solo incluye nóminas confirmadas. Sin fechas se incluye todo.
           </p>
         </div>
@@ -1067,7 +1063,7 @@ function VistaCosto() {
           <EmptyState mensaje="No hay nóminas confirmadas en el rango seleccionado." />
         ) : (
           <>
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:grid-cols-5">
               <Resumen
                 titulo="Salario base"
                 valor={fmtMoneda(data.total_salario_base)}
@@ -1105,7 +1101,7 @@ function VistaCosto() {
               <TableBody>
                 {data.departamentos.map((d, i) => (
                   <TableRow key={d.departamento_id ?? `sin-${i}`}>
-                    <TableCell className="font-medium text-slate-900">
+                    <TableCell className="font-medium text-gray-900">
                       {d.departamento_nombre ?? 'Sin departamento'}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -1130,7 +1126,7 @@ function VistaCosto() {
                 ))}
               </TableBody>
             </Table>
-            <p className="mt-3 text-xs text-slate-400">
+            <p className="mt-3 text-xs text-gray-400">
               {data.cantidad_nominas} nómina
               {data.cantidad_nominas === 1 ? '' : 's'} confirmada
               {data.cantidad_nominas === 1 ? '' : 's'} en el rango.
@@ -1156,17 +1152,17 @@ function Resumen({
   return (
     <div
       className={`rounded-lg p-3 ${
-        destacado ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-slate-50'
+        destacado ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-gray-50'
       }`}
     >
       <div
         className={`text-xl font-bold tabular-nums ${
-          destacado ? 'text-brand-600' : 'text-slate-700'
+          destacado ? 'text-brand-600' : 'text-gray-700'
         }`}
       >
         {valor}
       </div>
-      <div className="text-xs text-slate-500">{titulo}</div>
+      <div className="text-xs text-gray-500">{titulo}</div>
     </div>
   );
 }
@@ -1192,8 +1188,8 @@ function ActionButton({
       disabled={disabled}
       className={`rounded-md p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         danger
-          ? 'text-slate-400 hover:bg-red-50 hover:text-red-600'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+          ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
+          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
       }`}
     >
       {children}
@@ -1205,7 +1201,7 @@ function LoadingRows() {
   return (
     <div className="space-y-2 py-4">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-gray-100" />
       ))}
     </div>
   );
@@ -1220,13 +1216,10 @@ function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <Banknote className="h-10 w-10 text-slate-300" />
-      <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
+      <Banknote className="h-10 w-10 text-gray-300" />
+      <p className="max-w-sm text-sm text-gray-500">{mensaje}</p>
       {onNueva && (
-        <Button size="sm" onClick={onNueva} className="mt-2">
-          <Plus className="h-4 w-4" />
-          Nueva nómina
-        </Button>
+        <CreateButton label="Nueva nómina" onClick={onNueva} size="sm" />
       )}
     </div>
   );
@@ -1242,7 +1235,7 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-gray-600">
         {mensaje || 'No se pudieron cargar los datos'}
       </p>
       <Button variant="outline" size="sm" onClick={onReintentar}>

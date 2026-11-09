@@ -45,7 +45,7 @@ export function ModalOverlay({
       }}
       onWheel={handleWheel}
       className={cn(
-        "fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in focus:outline-none",
+        "fixed inset-0 z-[100] flex items-stretch justify-stretch bg-black/60 animate-fade-in focus:outline-none sm:items-center sm:justify-center sm:p-4",
         className,
       )}
     >

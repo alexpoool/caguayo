@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState, useDeferredValue } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { coincideBusqueda, normalizarBusqueda } from "../utils/busqueda";
 import {
   Shield,
   Edit,
   Trash2,
   X,
-  Plus,
   Search,
   FileText,
   Check,
@@ -25,6 +25,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  CreateButton,
 } from "../components/ui";
 import { administracionService } from "../services/administracion";
 import type { Grupo, GrupoCreate, GrupoUpdate } from "../types/usuario";
@@ -119,6 +120,7 @@ export function GruposPage() {
   const [view, setView] = useState<"list" | "form">("list");
   const [editingGrupo, setEditingGrupo] = useState<Grupo | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [grupoForm, setGrupoForm] = useState<GrupoCreate>({
     nombre: "",
     descripcion: "",
@@ -151,19 +153,26 @@ export function GruposPage() {
     queryFn: () => administracionService.getUsuarios(),
   });
 
-  const filteredGrupos = searchTerm.trim()
-    ? grupos.filter(
-        (g) =>
-          g.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (g.descripcion?.toLowerCase() || "").includes(
-            searchTerm.toLowerCase(),
-          ),
-      )
-    : grupos;
+  const filteredGrupos = useMemo(() => {
+    const termino = normalizarBusqueda(deferredSearchTerm).trim();
+    if (!termino) return grupos;
+    return grupos.filter(
+      (g) =>
+        coincideBusqueda(g.nombre, termino) ||
+        coincideBusqueda(g.descripcion, termino),
+    );
+  }, [grupos, deferredSearchTerm]);
 
-  const getUsuariosCountByGrupo = (grupoId: number) => {
-    return usuarios.filter((u) => u.id_grupo === grupoId).length;
-  };
+  const usuariosPorGrupo = useMemo(() => {
+    const conteo = new Map<number, number>();
+    for (const usuario of usuarios) {
+      conteo.set(usuario.id_grupo, (conteo.get(usuario.id_grupo) ?? 0) + 1);
+    }
+    return conteo;
+  }, [usuarios]);
+
+  const getUsuariosCountByGrupo = (grupoId: number) =>
+    usuariosPorGrupo.get(grupoId) ?? 0;
 
   const createGrupo = useMutation({
     mutationFn: administracionService.createGrupo,
@@ -286,9 +295,9 @@ export function GruposPage() {
 
   const content = (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <Shield className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -313,23 +322,13 @@ export function GruposPage() {
             className="pl-10"
           />
         </div>
-        <Button
-          onClick={() => {
-            setEditingGrupo(null);
-            resetGrupoForm();
-            setView("form");
-          }}
-          className="ml-auto gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Grupo
-        </Button>
+        <CreateButton label="Nuevo Grupo" onClick={() => { setEditingGrupo(null); resetGrupoForm(); setView("form"); }} className="ml-auto" />
       </div>
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-pink-50">
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Nombre</TableHead>
@@ -358,13 +357,13 @@ export function GruposPage() {
                     onClick={() => setDetailModal({ isOpen: true, grupo })}
                   >
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-medium">
                         #{grupo.id_grupo}
                       </span>
                     </TableCell>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-purple-500" />
+                        <Shield className="h-4 w-4 text-brand-500" />
                         {grupo.nombre}
                       </div>
                     </TableCell>
@@ -383,7 +382,7 @@ export function GruposPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(grupo)}
-                          className="text-blue-600 hover:bg-blue-50 h-8 w-8"
+                          className="text-brand-600 hover:bg-brand-50 h-8 w-8"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -440,7 +439,7 @@ export function GruposPage() {
               form={GRUPO_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 shadow-lg hover:shadow-xl transition-all duration-300"
             >
               {editingGrupo ? "Actualizar" : "Guardar"}
             </Button>
@@ -450,7 +449,7 @@ export function GruposPage() {
         <form id={GRUPO_FORM_ID} onSubmit={handleGrupoSubmit} className="p-4 md:p-6 space-y-4">
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-gray-700">
-              <Shield className="h-5 w-5 text-purple-500" />
+              <Shield className="h-5 w-5 text-brand-500" />
               Nombre *
             </Label>
             <Input
@@ -459,12 +458,12 @@ export function GruposPage() {
                 setGrupoForm({ ...grupoForm, nombre: e.target.value })
               }
               placeholder="Nombre del grupo"
-              className="transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             />
           </div>
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-gray-700">
-              <FileText className="h-5 w-5 text-blue-500" />
+              <FileText className="h-5 w-5 text-brand-500" />
               Descripción
             </Label>
             <Input
@@ -473,7 +472,7 @@ export function GruposPage() {
                 setGrupoForm({ ...grupoForm, descripcion: e.target.value })
               }
               placeholder="Descripción opcional"
-              className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             />
           </div>
           <div className="space-y-3">
@@ -592,9 +591,9 @@ export function GruposPage() {
   const ModalDetalle = () =>
     createPortal(
       detailModal.isOpen && detailModal.grupo && (
-        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
-            <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b">
               <h2 className="text-lg font-semibold">Detalles del Grupo</h2>
               <Button
                 variant="ghost"
@@ -606,9 +605,9 @@ export function GruposPage() {
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white">
                   <Shield className="h-8 w-8" />
                 </div>
                 <div>

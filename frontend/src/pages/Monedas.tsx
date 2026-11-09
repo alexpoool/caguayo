@@ -4,7 +4,6 @@ import { monedaService } from "../services/api";
 import type { Moneda, MonedaCreate, MonedaUpdate } from "../types/moneda";
 import { useInfiniteList } from "../hooks/useInfiniteList";
 import {
-  Plus,
   Edit,
   Trash2,
   Coins,
@@ -33,6 +32,7 @@ import {
   TableCell,
   ConfirmModal,
   FormModal,
+  CreateButton,
 } from "../components/ui";
 
 const MONEDA_FORM_ID = "moneda-form";
@@ -264,7 +264,7 @@ export function MonedasPage() {
   return (
     <div className="space-y-4 animate-fade-in-up">
       {/* Header con icono animado */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded shadow-lg animate-bounce-subtle">
             <Coins className="h-5 w-5 text-white" />
@@ -276,17 +276,7 @@ export function MonedasPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setEditingMoneda(null);
-            setView("form");
-          }}
-          className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Moneda
-        </Button>
+        <CreateButton label="Nueva Moneda" onClick={() => { resetForm(); setEditingMoneda(null); setView("form"); }} />
       </div>
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -300,7 +290,7 @@ export function MonedasPage() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Type className="h-4 w-4 text-blue-500" />
+                    <Type className="h-4 w-4 text-brand-500" />
                     Nombre
                   </div>
                 </TableHead>
@@ -312,7 +302,7 @@ export function MonedasPage() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <CircleDollarSign className="h-4 w-4 text-purple-500" />
+                    <CircleDollarSign className="h-4 w-4 text-brand-500" />
                     Símbolo
                   </div>
                 </TableHead>
@@ -324,7 +314,7 @@ export function MonedasPage() {
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-12">
                     <div className="flex flex-col items-center justify-center text-gray-400">
-                      <div className="p-4 bg-slate-50 rounded-full mb-4">
+                      <div className="p-4 bg-gray-50 rounded-full mb-4">
                         <Coins className="h-12 w-12 text-gray-300" />
                       </div>
                       <p className="text-lg font-medium mb-2">
@@ -333,17 +323,7 @@ export function MonedasPage() {
                       <p className="text-sm mb-4">
                         Comience creando una nueva moneda
                       </p>
-                      <Button
-                        onClick={() => {
-                          resetForm();
-                          setEditingMoneda(null);
-                          setView("form");
-                        }}
-                        className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Crear Moneda
-                      </Button>
+                      <CreateButton label="Crear Moneda" onClick={() => { resetForm(); setEditingMoneda(null); setView("form"); }} />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -363,7 +343,7 @@ export function MonedasPage() {
                     </TableCell>
                     <TableCell>{moneda.denominacion}</TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm font-bold">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-sm font-bold">
                         <CircleDollarSign className="h-3 w-3" />
                         {moneda.simbolo}
                       </span>
@@ -374,7 +354,7 @@ export function MonedasPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(moneda)}
-                          className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                          className="text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
@@ -462,7 +442,7 @@ export function MonedasPage() {
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
               <div className="md:col-span-2 space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Type className="h-5 w-5 text-blue-500" />
+                  <Type className="h-5 w-5 text-brand-500" />
                   Nombre *
                 </Label>
                 <Input
@@ -471,7 +451,7 @@ export function MonedasPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, nombre: e.target.value })
                   }
-                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.nombre ? "border-red-500" : ""}`}
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 ${formErrors.nombre ? "border-red-500" : ""}`}
                   placeholder="Ej. Dólar"
                 />
                 {formErrors.nombre && (
@@ -504,7 +484,7 @@ export function MonedasPage() {
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Wallet className="h-5 w-5 text-purple-500" />
+                  <Wallet className="h-5 w-5 text-brand-500" />
                   Símbolo *
                 </Label>
                 <Input
@@ -513,7 +493,7 @@ export function MonedasPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, simbolo: e.target.value })
                   }
-                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${formErrors.simbolo ? "border-red-500" : ""}`}
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 ${formErrors.simbolo ? "border-red-500" : ""}`}
                   placeholder="Ej. $"
                   maxLength={5}
                 />

@@ -117,10 +117,10 @@ export function ProductForm({ formId, initialData, onSubmit }: ProductFormProps)
   return (
     <form id={formId} onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4">
       {!initialData && codigoGenerado && (
-        <div className="flex items-center gap-2 text-sm text-teal-700">
+        <div className="flex items-center gap-2 text-sm text-brand-700">
           <Package className="h-4 w-4" />
           Código generado:{' '}
-          <span className="px-2 py-0.5 font-mono text-teal-700 bg-teal-50 border border-teal-200 rounded-md">
+          <span className="px-2 py-0.5 font-mono text-brand-700 bg-brand-50 border border-brand-200 rounded-md">
             {codigoGenerado}
           </span>
         </div>
@@ -147,7 +147,7 @@ export function ProductForm({ formId, initialData, onSubmit }: ProductFormProps)
             value={selectedCategoria || ''}
             onChange={(e) => handleCategoriaChange(parseInt(e.target.value) || 0)}
             disabled={isLoadingCategorias}
-            className="w-full px-3 py-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all bg-white"
+            className="w-full px-3 py-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all bg-white"
           >
             <option value="">{isLoadingCategorias ? 'Cargando...' : 'Seleccione una categoría'}</option>
             {categorias.map((categoria) => (
@@ -165,7 +165,7 @@ export function ProductForm({ formId, initialData, onSubmit }: ProductFormProps)
             value={formData.id_subcategoria || ''}
             onChange={(e) => setFormData({ ...formData, id_subcategoria: parseInt(e.target.value) || 0 })}
             disabled={!selectedCategoria || isLoadingSubcategorias}
-            className="w-full px-3 py-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all bg-white disabled:bg-slate-50"
+            className="w-full px-3 py-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all bg-white disabled:bg-gray-50"
           >
             <option value="">{!selectedCategoria ? 'Primero seleccione una categoría' : 'Seleccione una subcategoría'}</option>
             {subcategoriasFiltradas.map((subcategoria) => (
@@ -196,7 +196,7 @@ export function ProductForm({ formId, initialData, onSubmit }: ProductFormProps)
               value={formData.moneda_compra}
               onChange={(e) => setFormData({ ...formData, moneda_compra: parseInt(e.target.value) || 1 })}
               disabled={isLoadingMonedas}
-              className="w-24 px-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+              className="w-24 px-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white text-sm"
             >
               {isLoadingMonedas ? (
                 <option value="1">...</option>
@@ -228,7 +228,7 @@ export function ProductForm({ formId, initialData, onSubmit }: ProductFormProps)
               value={formData.moneda_venta}
               onChange={(e) => setFormData({ ...formData, moneda_venta: parseInt(e.target.value) || 1 })}
               disabled={isLoadingMonedas}
-              className="w-24 px-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+              className="w-24 px-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white text-sm"
             >
               {isLoadingMonedas ? (
                 <option value="1">...</option>
@@ -265,7 +265,7 @@ export function ProductForm({ formId, initialData, onSubmit }: ProductFormProps)
           value={formData.descripcion}
           onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
           rows={2}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all resize-none"
           placeholder="Detalles adicionales del producto..."
         />
       </div>

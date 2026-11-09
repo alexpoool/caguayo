@@ -1,49 +1,47 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { dependenciasService } from "../services/administracion";
+import type { Dependencia } from "../types/dependencia";
 
-async function loadAllDescendientes(padreId: number): Promise<any[]> {
-  try {
-    const hijos = await dependenciasService.getDependenciasJerarquia(padreId);
-    let descendientes: any[] = [...hijos];
-    
-    for (const hijo of hijos) {
-      const nietas = await loadAllDescendientes(hijo.id_dependencia);
-      descendientes = [...descendientes, ...nietas];
-    }
-    
-    return descendientes;
-  } catch (error) {
-    console.error("Error cargando descendientes:", error);
-    return [];
+export function descendientesDe(raiz: number, todas: Dependencia[]): Dependencia[] {
+  const hijosPorPadre = new Map<number, Dependencia[]>();
+  for (const dependencia of todas) {
+    if (dependencia.codigo_padre === undefined || dependencia.codigo_padre === null) continue;
+    const hijos = hijosPorPadre.get(dependencia.codigo_padre) ?? [];
+    hijos.push(dependencia);
+    hijosPorPadre.set(dependencia.codigo_padre, hijos);
   }
+
+  const resultado: Dependencia[] = [];
+  const pendientes = [raiz];
+  const visitados = new Set<number>([raiz]);
+
+  for (let cursor = 0; cursor < pendientes.length; cursor += 1) {
+    const padreId = pendientes[cursor];
+    for (const hijo of hijosPorPadre.get(padreId) ?? []) {
+      if (visitados.has(hijo.id_dependencia)) continue;
+      visitados.add(hijo.id_dependencia);
+      resultado.push(hijo);
+      pendientes.push(hijo.id_dependencia);
+    }
+  }
+
+  return resultado;
 }
 
 export function useDependenciasFiltradas() {
   const { user } = useAuth();
   const userDepId = user?.dependencia?.id_dependencia;
-  
-  console.log("useDependenciasFiltradas - user:", user);
-  console.log("useDependenciasFiltradas - userDepId:", userDepId);
 
   return useQuery({
     queryKey: ["dependencias-filtradas", userDepId],
     queryFn: async () => {
-      if (!userDepId) {
-        console.log("useDependenciasFiltradas - Sin userDepId, retornando []");
-        return [];
-      }
+      if (!userDepId) return [];
 
-      try {
-        const actual = await dependenciasService.getDependencia(userDepId);
-        const descendientes = await loadAllDescendientes(userDepId);
-        console.log("useDependenciasFiltradas - actual:", actual);
-        console.log("useDependenciasFiltradas - descendientes:", descendientes);
-        return [actual, ...descendientes];
-      } catch (error) {
-        console.error("useDependenciasFiltradas - Error:", error);
-        return [];
-      }
+      const todas = await dependenciasService.getDependencias(true);
+      const actual = todas.find((d) => d.id_dependencia === userDepId);
+      if (!actual) return [];
+      return [actual, ...descendientesDe(userDepId, todas)];
     },
     enabled: !!userDepId,
   });

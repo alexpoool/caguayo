@@ -210,8 +210,8 @@ export function EvaluacionDetallePage() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 w-64 animate-pulse rounded-md bg-slate-100" />
-        <div className="h-72 animate-pulse rounded-xl bg-slate-100" />
+        <div className="h-8 w-64 animate-pulse rounded-md bg-gray-100" />
+        <div className="h-72 animate-pulse rounded-xl bg-gray-100" />
       </div>
     );
   }
@@ -220,7 +220,7 @@ export function EvaluacionDetallePage() {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <AlertCircle className="h-10 w-10 text-red-400" />
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-gray-600">
           {(error as any)?.message || 'No se pudo cargar la evaluación'}
         </p>
         <div className="flex gap-2">
@@ -244,16 +244,16 @@ export function EvaluacionDetallePage() {
             type="button"
             title="Volver al listado"
             onClick={() => navigate('/rrhh/evaluaciones')}
-            className="mt-1 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="mt-1 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-              <ClipboardCheck className="h-6 w-6 text-sky-600" />
+            <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+              <ClipboardCheck className="h-6 w-6 text-brand-600" />
               {evaluacion.empleado_nombre || 'Evaluación'}
             </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-slate-500">
+            <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-gray-500">
               <span>
                 {evaluacion.empleado_codigo} · {evaluacion.tipo_evaluacion ?? '—'} ·
                 Periodo {evaluacion.periodo} · {evaluacion.inicio_periodo} → {evaluacion.fin_periodo}
@@ -263,7 +263,7 @@ export function EvaluacionDetallePage() {
                 title="Editar periodo, tipo y fechas"
                 aria-label="Editar periodo, tipo y fechas"
                 onClick={abrirEditar}
-                className="rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-sky-600"
+                className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-brand-600"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
@@ -275,8 +275,8 @@ export function EvaluacionDetallePage() {
           <span
             className={`inline-flex items-baseline gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold tabular-nums shadow-sm ${
               evaluacion.promedio_objetivos === null
-                ? 'bg-slate-100 text-slate-500'
-                : 'bg-sky-100 text-sky-700 ring-1 ring-sky-200'
+                ? 'bg-gray-100 text-gray-500'
+                : 'bg-brand-100 text-brand-700 ring-1 ring-brand-200'
             }`}
             title="Promedio ponderado de los objetivos puntuados (0–5)"
           >
@@ -285,7 +285,7 @@ export function EvaluacionDetallePage() {
             ) : (
               <>
                 {fmtPromedio5(evaluacion.promedio_objetivos)}
-                <span className="text-xs font-semibold text-sky-500">/ 5</span>
+                <span className="text-xs font-semibold text-brand-500">/ 5</span>
               </>
             )}
           </span>
@@ -313,14 +313,14 @@ export function EvaluacionDetallePage() {
       <Card>
         <CardHeader className="pb-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-700">
+            <h2 className="text-sm font-semibold text-gray-700">
               Objetivos del periodo
             </h2>
-            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">
+            <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100">
               Estrellas 0–5 · promedio ponderado
             </span>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-gray-500">
             Marca un objetivo para añadirlo a la evaluación y puntúalo con
             estrellas; el peso y los textos se guardan al salir del campo.
           </p>
@@ -328,8 +328,8 @@ export function EvaluacionDetallePage() {
         <CardContent>
           {evaluacion.objetivos.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8 text-center">
-              <Target className="h-8 w-8 text-slate-300" />
-              <p className="max-w-md text-sm text-slate-500">
+              <Target className="h-8 w-8 text-gray-300" />
+              <p className="max-w-md text-sm text-gray-500">
                 Este empleado no tiene objetivos cuyo periodo solape el de la
                 evaluación ({evaluacion.inicio_periodo} → {evaluacion.fin_periodo}).
                 Defínelos desde su ficha con su periodo y peso.
@@ -346,9 +346,9 @@ export function EvaluacionDetallePage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-lg border border-slate-200">
+            <div className="overflow-hidden rounded-lg border border-gray-200">
               {/* Cabecera de columnas (solo pantallas medianas+) */}
-              <div className="hidden gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_2.5rem_2.5rem] md:items-center">
+              <div className="hidden gap-3 border-b border-gray-200 bg-gray-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_2.5rem_2.5rem] md:items-center">
                 <span className="w-4" />
                 <span>Objetivo</span>
                 <span>Puntuación</span>
@@ -356,7 +356,7 @@ export function EvaluacionDetallePage() {
                 <span className="text-center md:col-span-2">Acciones</span>
               </div>
 
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-gray-100">
                 {evaluacion.objetivos.map((obj) => (
                   <FilaObjetivo
                     key={obj.id_objetivo}
@@ -410,29 +410,29 @@ export function EvaluacionDetallePage() {
         {/* Resumen: promedio y conteos */}
         <Card>
           <CardHeader className="pb-2">
-            <h2 className="text-sm font-semibold text-slate-700">Resumen</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="text-sm font-semibold text-gray-700">Resumen</h2>
+            <p className="text-xs text-gray-500">
               Promedio ponderado por el peso de cada objetivo puntuado (0–5)
             </p>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Promedio (0–5)</p>
-                <p className="text-2xl font-bold tabular-nums text-slate-900">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-lg bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">Promedio (0–5)</p>
+                <p className="text-2xl font-bold tabular-nums text-gray-900">
                   {evaluacion.promedio_objetivos === null ? (
-                    <span className="text-base font-medium text-slate-400">Sin puntuar</span>
+                    <span className="text-base font-medium text-gray-400">Sin puntuar</span>
                   ) : (
                     <>
                       {fmtPromedio5(evaluacion.promedio_objetivos)}
-                      <span className="text-sm font-semibold text-slate-400"> / 5</span>
+                      <span className="text-sm font-semibold text-gray-400"> / 5</span>
                     </>
                   )}
                 </p>
               </div>
-              <div className="rounded-lg bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Objetivos (sel. / alcance)</p>
-                <p className="text-2xl font-bold tabular-nums text-slate-900">
+              <div className="rounded-lg bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">Objetivos (sel. / alcance)</p>
+                <p className="text-2xl font-bold tabular-nums text-gray-900">
                   {evaluacion.cantidad_seleccionados} / {evaluacion.cantidad_objetivos}
                 </p>
               </div>
@@ -443,13 +443,13 @@ export function EvaluacionDetallePage() {
         {/* Comentarios y recomendaciones de la evaluación */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                <MessageSquare className="h-4 w-4 text-sky-500" />
+            <div className="flex flex-wrap items-center justify-between gap-3 gap-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <MessageSquare className="h-4 w-4 text-brand-500" />
                 Comentarios y recomendaciones
               </h2>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-gray-500">
               Se guardan al salir del campo.
             </p>
           </CardHeader>
@@ -469,8 +469,8 @@ export function EvaluacionDetallePage() {
         onClose={() => setEditarOpen(false)}
         className="overflow-hidden !rounded-none"
       >
-        <div className="sticky top-0 flex items-center gap-3 border-b bg-gradient-to-r from-sky-50 to-sky-100 px-6 py-4">
-          <div className="rounded-lg bg-gradient-to-br from-sky-500 to-sky-600 p-2">
+        <div className="sticky top-0 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4">
+          <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
             <Pencil className="h-5 w-5 text-white" />
           </div>
           <h2 className="text-lg font-bold text-gray-900">Editar evaluación</h2>
@@ -510,10 +510,10 @@ export function EvaluacionDetallePage() {
                   tipo_evaluacion_id: Number(e.target.value),
                 })
               }
-              className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 ${
+              className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500 ${
                 cabeceraErrores.tipo_evaluacion_id
                   ? 'border-red-500'
-                  : 'border-slate-300'
+                  : 'border-gray-300'
               }`}
             >
               <option value={0} disabled>
@@ -648,14 +648,14 @@ function CabeceraTexto({
   };
 
   const comun =
-    'w-full rounded-md border border-slate-300 px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-slate-50 disabled:text-slate-600';
+    'w-full rounded-md border border-gray-300 px-3 py-2 text-sm transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-600';
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div className="space-y-1.5">
         <label
           htmlFor="ev-comentarios"
-          className="text-xs font-semibold text-slate-500"
+          className="text-xs font-semibold text-gray-500"
         >
           Comentarios
         </label>
@@ -673,7 +673,7 @@ function CabeceraTexto({
       <div className="space-y-1.5">
         <label
           htmlFor="ev-recomendaciones"
-          className="text-xs font-semibold text-slate-500"
+          className="text-xs font-semibold text-gray-500"
         >
           Recomendaciones
         </label>
@@ -757,7 +757,7 @@ function FilaObjetivo({
 
   return (
     <>
-      <div className="flex flex-wrap items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50/70 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_2.5rem_2.5rem] md:items-center md:gap-3">
+      <div className="flex flex-wrap items-start gap-3 px-4 py-3 transition-colors hover:bg-gray-50/70 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_2.5rem_2.5rem] md:items-center md:gap-3">
         {/* Selección (único control activo también en filas no seleccionadas) */}
         <input
           type="checkbox"
@@ -765,21 +765,21 @@ function FilaObjetivo({
           disabled={seleccionando || quitando}
           onChange={(e) => (e.target.checked ? onSeleccionar() : onQuitar())}
           title={obj.seleccionado ? 'Quitar de la evaluación' : 'Añadir a la evaluación'}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-600 accent-brand-600 focus:ring-brand-500 disabled:cursor-not-allowed"
         />
 
         {/* Nombre + periodo (se ve el filtro por fecha de la evaluación) */}
         <div className="min-w-0 flex-1 md:flex-none">
           <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-medium text-slate-800">{obj.nombre}</p>
+            <p className="truncate text-sm font-medium text-gray-800">{obj.nombre}</p>
             {seleccionando || quitando ? (
-              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-slate-400" />
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gray-400" />
             ) : null}
             {guardado && (
               <Check className="h-3.5 w-3.5 shrink-0 animate-fade-in-up text-emerald-500" aria-hidden />
             )}
           </div>
-          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-400">
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-gray-400">
             <span className="tabular-nums" title="Periodo del objetivo">
               {obj.periodo_inicio} → {obj.periodo_fin}
             </span>
@@ -793,7 +793,7 @@ function FilaObjetivo({
             )}
           </p>
           {!obj.seleccionado && (
-            <p className="mt-1 text-xs italic text-slate-400">
+            <p className="mt-1 text-xs italic text-gray-400">
               Selecciona el objetivo para evaluarlo
             </p>
           )}
@@ -808,7 +808,7 @@ function FilaObjetivo({
             disabled={!editables}
             onCambiar={onPuntuar}
           />
-          <span className="text-xs tabular-nums text-slate-500">
+          <span className="text-xs tabular-nums text-gray-500">
             {obj.resultado !== null ? `${obj.resultado}/5` : ''}
           </span>
         </div>
@@ -826,7 +826,7 @@ function FilaObjetivo({
             onBlur={guardarPeso}
             aria-label="Peso de este objetivo en la evaluación"
             title="Peso de la fila (entero 1–100; se guarda al salir del campo)"
-            className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-sm tabular-nums transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed"
+            className="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-sm tabular-nums transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:cursor-not-allowed"
           />
           {pesoDifiere && (
             <span
@@ -862,8 +862,8 @@ function FilaObjetivo({
             }
             className={`h-8 w-8 ${
               obj.valoracion || obj.recomendaciones
-                ? 'text-sky-600 hover:bg-sky-50'
-                : 'text-slate-400 hover:bg-slate-50'
+                ? 'text-brand-600 hover:bg-brand-50'
+                : 'text-gray-400 hover:bg-gray-50'
             }`}
           >
             <MessageSquare className="h-4 w-4" />
@@ -879,7 +879,7 @@ function FilaObjetivo({
               title="Quitar de la evaluación"
               onClick={onQuitar}
               disabled={quitando}
-              className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+              className="h-8 w-8 text-gray-400 hover:bg-red-50 hover:text-red-600"
             >
               {quitando ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -977,7 +977,7 @@ function ModalNotasFila({
   };
 
   const areaClass =
-    'w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500';
+    'w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
   return (
     <Modal
@@ -985,15 +985,15 @@ function ModalNotasFila({
       onClose={onCerrar}
       className="!max-w-2xl !rounded-none overflow-hidden [&>button.absolute]:hidden"
     >
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-sky-50 to-sky-100 px-6 py-4 pr-14">
-        <div className="rounded-lg bg-gradient-to-br from-sky-500 to-sky-600 p-2">
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-14">
+        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
           <MessageSquare className="h-5 w-5 text-white" />
         </div>
         <div className="min-w-0">
           <h2 className="text-lg font-bold text-gray-900">
             Valoración y recomendaciones
           </h2>
-          <p className="truncate text-xs text-slate-500" title={objetivo}>
+          <p className="truncate text-xs text-gray-500" title={objetivo}>
             {objetivo}
           </p>
         </div>
@@ -1002,7 +1002,7 @@ function ModalNotasFila({
           onClick={onCerrar}
           title="Cerrar"
           aria-label="Cerrar"
-          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-sky-100 hover:text-slate-600"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
         >
           <X className="h-5 w-5" />
         </button>
@@ -1101,7 +1101,7 @@ function Estrellas0a5({
             className={`h-5 w-5 transition-colors ${
               n <= visibles
                 ? 'fill-amber-400 text-amber-400'
-                : 'fill-transparent text-slate-300'
+                : 'fill-transparent text-gray-300'
             }`}
           />
         </button>
@@ -1112,7 +1112,7 @@ function Estrellas0a5({
           title="Quitar puntuación (0)"
           aria-label="Quitar puntuación"
           onClick={() => onCambiar(0)}
-          className="ml-1 rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+          className="ml-1 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
         >
           <X className="h-3.5 w-3.5" />
         </button>

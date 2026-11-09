@@ -285,9 +285,9 @@ export const RRHH_ESTADO_ASISTENCIA_BADGE: Record<RrhhEstadoAsistencia, string> 
   presente: 'bg-green-100 text-green-700',
   ausente: 'bg-red-100 text-red-700',
   tardanza: 'bg-amber-100 text-amber-700',
-  permiso: 'bg-purple-100 text-purple-700',
-  vacaciones: 'bg-blue-100 text-blue-700',
-  feriado: 'bg-slate-200 text-slate-600',
+  permiso: 'bg-brand-100 text-brand-700',
+  vacaciones: 'bg-brand-100 text-brand-700',
+  feriado: 'bg-gray-200 text-gray-600',
   incapacidad: 'bg-orange-100 text-orange-700',
 };
 
@@ -796,13 +796,13 @@ export const COLOR_ESTADO_SOLICITUD: Record<RrhhEstadoSolicitud, string> = {
   pendiente: 'bg-amber-100 text-amber-700',
   aprobada: 'bg-green-100 text-green-700',
   rechazada: 'bg-red-100 text-red-700',
-  cancelada: 'bg-slate-200 text-slate-600',
+  cancelada: 'bg-gray-200 text-gray-600',
 };
 
 /** Colores por tipo, para el calendario. */
 export const COLOR_TIPO_SOLICITUD: Record<RrhhTipoSolicitud, string> = {
-  vacaciones: 'bg-blue-500',
-  permiso: 'bg-violet-500',
+  vacaciones: 'bg-brand-500',
+  permiso: 'bg-brand-500',
 };
 
 export interface RrhhSolicitud {

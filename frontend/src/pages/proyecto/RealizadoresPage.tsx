@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useDeferredValue } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
@@ -14,6 +14,7 @@ import {
   ConfirmModal,
   ModalOverlay,
   FormModal,
+  CreateButton,
 } from "../../components/ui";
 import { ClienteForm } from "../clientes/components/form/ClienteForm";
 import {
@@ -53,6 +54,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatCifra } from "../../utils/decimal";
+import { mapConcurrent } from "../../utils/async";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMonedaContratoDeEtapa } from "../../hooks/useMonedaContrato";
 
@@ -112,6 +114,7 @@ export function RealizadoresPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
 
   // Moneda del contrato de la etapa: fija, no se puede cambiar
   const { data: monedaContrato } = useMonedaContratoDeEtapa(
@@ -150,25 +153,52 @@ export function RealizadoresPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const personasNaturalesPorId = useMemo(
+    () => new Map(personasNaturales.map((p) => [p.id_cliente, p])),
+    [personasNaturales],
+  );
+  const personasTCPPorId = useMemo(
+    () => new Map(personasTCP.map((p) => [p.id_cliente, p])),
+    [personasTCP],
+  );
+  const personasJuridicasPorId = useMemo(
+    () => new Map(personasJuridicas.map((p) => [p.id_cliente, p])),
+    [personasJuridicas],
+  );
+  const todosClientesPorId = useMemo(
+    () => new Map(todosClientes.map((p) => [p.id_cliente, p])),
+    [todosClientes],
+  );
+  const tiposEntidadPorId = useMemo(
+    () => new Map(tiposEntidad.map((t) => [t.id_tipo_entidad, t])),
+    [tiposEntidad],
+  );
+  const monedasPorId = useMemo(
+    () => new Map(monedas.map((m) => [m.id_moneda, m])),
+    [monedas],
+  );
+  const etapasPorId = useMemo(
+    () => new Map(etapas.map((e) => [e.id_etapa, e])),
+    [etapas],
+  );
+
   const getTipoPersona = (idPersona: number): string => {
-    if (personasNaturales.find((p) => p.id_cliente === idPersona))
-      return "natural";
-    if (personasTCP.find((p) => p.id_cliente === idPersona)) return "tcp";
-    if (personasJuridicas.find((p) => p.id_cliente === idPersona))
-      return "juridica";
+    if (personasNaturalesPorId.has(idPersona)) return "natural";
+    if (personasTCPPorId.has(idPersona)) return "tcp";
+    if (personasJuridicasPorId.has(idPersona)) return "juridica";
     return "natural";
   };
 
   const getLabelTipo = (idPersona: number): string => {
     const tipo = getTipoPersona(idPersona);
     if (tipo === "juridica") {
-      const juridica = personasJuridicas.find(
-        (p) => p.id_cliente === idPersona,
+      const juridica = personasJuridicasPorId.get(
+        idPersona,
       ) as unknown as Cliente | undefined;
       const idTipoEntidad = juridica?.cliente_juridica?.id_tipo_entidad;
-      const tipoEntidad = tiposEntidad.find(
-        (t) => t.id_tipo_entidad === idTipoEntidad,
-      );
+      const tipoEntidad = idTipoEntidad
+        ? tiposEntidadPorId.get(idTipoEntidad)
+        : undefined;
       if (tipoEntidad?.nombre) return tipoEntidad.nombre;
     }
     const labels: Record<string, string> = {
@@ -183,9 +213,9 @@ export function RealizadoresPage() {
     idPersona: number,
   ): ClienteNatural | ClienteTCP | ClienteJuridica | undefined => {
     return (
-      personasNaturales.find((p) => p.id_cliente === idPersona) ||
-      personasTCP.find((p) => p.id_cliente === idPersona) ||
-      personasJuridicas.find((p) => p.id_cliente === idPersona)
+      personasNaturalesPorId.get(idPersona) ||
+      personasTCPPorId.get(idPersona) ||
+      personasJuridicasPorId.get(idPersona)
     );
   };
 
@@ -239,18 +269,18 @@ export function RealizadoresPage() {
         allPersonas = data.map((p) => ({ ...p }));
       } else {
         const solicitudes = await solicitudesService.getSolicitudes(0, 1000);
-        const allEtapas: Etapa[] = [];
-        for (const sol of solicitudes) {
-          const etapasData = await etapasProyectoService
-            .getEtapasBySolicitud(sol.id_solicitud_servicio)
-            .catch(() => []);
-          allEtapas.push(...etapasData);
-        }
+        const etapasPorSolicitud = await mapConcurrent(
+          solicitudes,
+          8,
+          (sol) =>
+            etapasProyectoService
+              .getEtapasBySolicitud(sol.id_solicitud_servicio)
+              .catch(() => []),
+        );
+        const allEtapas = etapasPorSolicitud.flat();
         setEtapas(allEtapas);
-        const results = await Promise.all(
-          allEtapas.map((e) =>
-            personaEtapaService.getPersonasByEtapa(e.id_etapa).catch(() => []),
-          ),
+        const results = await mapConcurrent(allEtapas, 20, (e) =>
+          personaEtapaService.getPersonasByEtapa(e.id_etapa).catch(() => []),
         );
         allPersonas = results.flat().map((p) => ({ ...p }));
       }
@@ -339,7 +369,7 @@ export function RealizadoresPage() {
       .join(" ");
 
   const getPersonaName = (id: number): string => {
-    const p = personasNaturales.find((pn) => pn.id_cliente === id);
+    const p = personasNaturalesPorId.get(id);
     if (p) {
       const nombre = componerNombre(
         p.nombre,
@@ -352,9 +382,7 @@ export function RealizadoresPage() {
     // getClientes(..., "TCP"|"JURIDICA") devuelve objetos Cliente con los
     // datos anidados en cliente_tcp / cliente_juridica (no tipos planos),
     // por eso no existen primer_apellido/segundo_apellido en el nivel raíz.
-    const tcp = personasTCP.find(
-      (t) => t.id_cliente === id,
-    ) as unknown as Cliente;
+    const tcp = personasTCPPorId.get(id) as unknown as Cliente | undefined;
     if (tcp) {
       const anidado = tcp.cliente_tcp
         ? componerNombre(
@@ -366,9 +394,9 @@ export function RealizadoresPage() {
       return anidado || tcp.nombre || `Persona #${id}`;
     }
 
-    const jur = personasJuridicas.find(
-      (j) => j.id_cliente === id,
-    ) as unknown as Cliente;
+    const jur = personasJuridicasPorId.get(id) as unknown as
+      | Cliente
+      | undefined;
     if (jur) {
       return (
         jur.nombre ||
@@ -378,34 +406,34 @@ export function RealizadoresPage() {
       );
     }
 
-    const cli = todosClientes.find((c) => c.id_cliente === id);
+    const cli = todosClientesPorId.get(id);
     if (cli) return cli.nombre || `Persona #${id}`;
     return `Persona #${id}`;
   };
 
   const getPersonaCI = (id: number) => {
-    const p = personasNaturales.find((pn) => pn.id_cliente === id);
+    const p = personasNaturalesPorId.get(id);
     if (p?.carnet_identidad) return p.carnet_identidad;
-    const t = personasTCP.find((tcp) => tcp.id_cliente === id) as any;
+    const t = personasTCPPorId.get(id) as any;
     if (t?.carnet_identidad) return t.carnet_identidad;
     return "N/A";
   };
 
   const getMonedaSymbol = (id?: number) => {
     if (!id) return "";
-    const m = monedas.find((mo) => mo.id_moneda === id);
-    return m?.simbolo || "";
+    return monedasPorId.get(id)?.simbolo || "";
   };
 
   const getMonedaDenominacion = (id?: number) => {
     if (!id) return "";
-    const m = monedas.find((mo) => mo.id_moneda === id);
-    return m?.denominacion || "";
+    return monedasPorId.get(id)?.denominacion || "";
   };
 
   const getSolicitudByEtapa = (idEtapa: number): number | undefined => {
-    const etapa = etapas.find((e) => e.id_etapa === idEtapa);
-    return etapa?.id_solicitud_servicio ?? currentEtapa?.id_solicitud_servicio;
+    return (
+      etapasPorId.get(idEtapa)?.id_solicitud_servicio ??
+      currentEtapa?.id_solicitud_servicio
+    );
   };
 
   const filteredPersonas = useMemo(() => {
@@ -422,13 +450,13 @@ export function RealizadoresPage() {
       (p) =>
         getPersonaName(p.id_persona)
           .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
+          .includes(deferredSearchTerm.toLowerCase()) ||
         getPersonaCI(p.id_persona)
           .toLowerCase()
-          .includes(searchTerm.toLowerCase()),
+          .includes(deferredSearchTerm.toLowerCase()),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personasEtapa, searchTerm, personasNaturales]);
+  }, [personasEtapa, deferredSearchTerm, personasNaturales]);
 
   const totalesPagado = useMemo(() => {
     const map = new Map<string, number>();
@@ -521,13 +549,13 @@ export function RealizadoresPage() {
           {etapaParam && (
             <Button
               variant="outline"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/proyectos/etapas')}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
             <Users className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -540,13 +568,7 @@ export function RealizadoresPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Realizador
-        </Button>
+        <CreateButton label="Nuevo Realizador" onClick={() => openForm()} />
       </div>
 
       <div className="flex gap-2">
@@ -564,24 +586,24 @@ export function RealizadoresPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-teal-600" />
+                    <Users className="h-4 w-4 text-brand-600" />
                     Nombre
                   </div>
                 </TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Cobro
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Pagado
                   </div>
                 </TableHead>
@@ -624,9 +646,9 @@ export function RealizadoresPage() {
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             getTipoPersona(item.id_persona) === "natural"
-                              ? "bg-blue-100 text-blue-800"
+                              ? "bg-brand-100 text-brand-800"
                               : getTipoPersona(item.id_persona) === "tcp"
-                                ? "bg-purple-100 text-purple-800"
+                                ? "bg-brand-100 text-brand-800"
                                 : "bg-green-100 text-green-800"
                           }`}
                         >
@@ -648,7 +670,7 @@ export function RealizadoresPage() {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="font-medium text-teal-700">
+                      <TableCell className="font-medium text-brand-700">
                         {getMonedaSymbol(item.id_moneda)}{" "}
                         {formatCifra(
                           totalesPagado.get(
@@ -685,7 +707,7 @@ export function RealizadoresPage() {
                               `/proyectos/liquidaciones?solicitud=${getSolicitudByEtapa(item.id_etapa) || ""}&etapa=${item.id_etapa}&persona=${item.id_persona}`,
                             )
                           }
-                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                          className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                         >
                           <DollarSign className="h-3.5 w-3.5" />
                           Liquidaciones
@@ -749,7 +771,7 @@ export function RealizadoresPage() {
                       setPersonaSeleccionada(null);
                     }}
                     onFocus={() => setShowDropdownPersona(true)}
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
                   />
                   {personaSeleccionada && (
                     <button
@@ -782,7 +804,7 @@ export function RealizadoresPage() {
                           key={p.id_cliente}
                           type="button"
                           onClick={() => handleSeleccionarPersona(p)}
-                          className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                          className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
                         >
                           <span className="font-medium text-gray-900">
                             {nombreCompleto}
@@ -812,7 +834,7 @@ export function RealizadoresPage() {
                 <button
                   type="button"
                   onClick={() => setShowNuevoClienteModal(true)}
-                  className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                  className="py-2 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
                 >
                   <Plus className="h-4 w-4" />
                   Nuevo Realizador
@@ -837,7 +859,7 @@ export function RealizadoresPage() {
                         setSolicitudSeleccionada(null);
                       }}
                       onFocus={() => setShowDropdownSolicitud(true)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                     />
                   </div>
                   {showDropdownSolicitud && solicitudesFiltradas.length > 0 && (
@@ -847,7 +869,7 @@ export function RealizadoresPage() {
                           key={s.id_solicitud_servicio}
                           type="button"
                           onClick={() => handleSeleccionarSolicitud(s)}
-                          className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                          className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
                         >
                           <span className="font-medium text-gray-900">
                             {s.numero || s.codigo_solicitud}
@@ -872,7 +894,7 @@ export function RealizadoresPage() {
                 <div className="flex-1">
                   <Label className="text-sm font-medium">Etapa *</Label>
                   <select
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                     value={formData.id_etapa || ""}
                     onChange={(e: any) => {
                       const etapaId = Number(e.target.value);
@@ -920,7 +942,7 @@ export function RealizadoresPage() {
               <div className="flex-1">
                 <Label className="text-sm font-medium">Moneda</Label>
                 <select
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
                   value={formData.id_moneda || currentEtapa?.id_moneda || ""}
                   disabled={!!monedaContrato}
                   onChange={(e: any) =>
@@ -947,7 +969,7 @@ export function RealizadoresPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {renderList()}
 
       <FormModal
@@ -974,7 +996,7 @@ export function RealizadoresPage() {
               form={REALIZADOR_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -1000,10 +1022,10 @@ export function RealizadoresPage() {
             onClose={() => setDetailModal({ isOpen: false, item: null })}
           >
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-                <div className="flex items-center justify-between">
+              <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                       <Users className="h-7 w-7" />
                     </div>
                     <div>
@@ -1031,13 +1053,13 @@ export function RealizadoresPage() {
                   </button>
                 </div>
               </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">
+              <div className="p-4 md:p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                    <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">
                       Cobro
                     </p>
-                    <p className="font-bold text-teal-900 text-xl">
+                    <p className="font-bold text-brand-900 text-xl">
                       {getMonedaSymbol(detailModal.item.id_moneda)}{" "}
                       {formatCifra(detailModal.item.cobro)}
                     </p>
@@ -1085,7 +1107,7 @@ export function RealizadoresPage() {
                   </div>
                 </div>
               </div>
-              <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
+              <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() =>
@@ -1094,7 +1116,7 @@ export function RealizadoresPage() {
                       `/proyectos/liquidaciones?persona=${detailModal.item.id_persona}`,
                     )
                   }
-                  className="gap-2 text-teal-600 border-teal-200 hover:bg-teal-50"
+                  className="gap-2 text-brand-600 border-brand-200 hover:bg-brand-50"
                 >
                   <Eye className="h-4 w-4" />
                   Ver Liquidaciones
@@ -1116,10 +1138,10 @@ export function RealizadoresPage() {
         ariaLabel="Nuevo Cliente"
       >
             <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
-              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-                <div className="flex items-center justify-between">
+              <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                       <Users className="h-7 w-7" />
                     </div>
                     <div>
@@ -1139,7 +1161,7 @@ export function RealizadoresPage() {
                   </button>
                 </div>
               </div>
-              <div className="p-6">
+              <div className="p-4 md:p-6">
                 <ClienteForm
                   editingCliente={null}
                   isProveedorView={false}

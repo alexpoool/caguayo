@@ -6,6 +6,7 @@ import type { SelectedProduct } from '../../facturas/hooks/useProductSelection';
 import type { Productos } from '../../../../types';
 import type { ContratoWithDetails } from '../../../../types/contrato';
 import type { Cliente } from '../../../../types/ventas';
+import { toISODateLocal } from '../../../../utils/fecha';
 
 interface OfertaFormProps {
   formId: string;
@@ -18,6 +19,7 @@ interface OfertaFormProps {
   selectedContratoId: number | null;
   contratos: ContratoWithDetails[];
   clientes: Cliente[];
+  onClienteSearch?: (term: string) => void;
   onFormDataChange: (data: Record<string, any>) => void;
   onProductSearchChange: (search: string) => void;
   onAddProduct: (id: number) => void;
@@ -39,6 +41,7 @@ export function OfertaForm({
   selectedContratoId,
   contratos,
   clientes,
+  onClienteSearch,
   onFormDataChange,
   onProductSearchChange,
   onAddProduct,
@@ -122,6 +125,7 @@ export function OfertaForm({
                 value={selectedCliente ? selectedCliente.nombre : clienteSearch}
                 onChange={(e) => {
                   setClienteSearch(e.target.value);
+                  onClienteSearch?.(e.target.value);
                   if (selectedCliente) {
                     setSelectedClienteId(null);
                     onSelectedContratoChange(null);
@@ -130,7 +134,7 @@ export function OfertaForm({
                 }}
                 onFocus={() => setShowClienteDropdown(true)}
                 placeholder="Buscar cliente..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none bg-white"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none bg-white"
               />
             </div>
             {showClienteDropdown && (
@@ -157,9 +161,9 @@ export function OfertaForm({
                     <button
                       key={c.id_cliente}
                       type="button"
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors ${
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-brand-50 transition-colors ${
                         selectedClienteId === c.id_cliente
-                          ? 'bg-violet-100 font-medium'
+                          ? 'bg-brand-100 font-medium'
                           : ''
                       }`}
                       onClick={() => {
@@ -193,7 +197,7 @@ export function OfertaForm({
                 }}
                 onFocus={() => setShowContratoDropdown(true)}
                 placeholder="Buscar contrato..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
               />
             </div>
             {showContratoDropdown && (
@@ -205,7 +209,7 @@ export function OfertaForm({
                     <button
                       key={c.id_contrato}
                       type="button"
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-brand-50 transition-colors"
                       onClick={() => {
                         onSelectedContratoChange(c.id_contrato);
                         setSelectedClienteId(c.id_cliente);
@@ -229,16 +233,16 @@ export function OfertaForm({
             <div className="flex gap-2 mt-1">
               <DateInput
                 id="fecha"
-                className="flex-1 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                value={formData.fecha || new Date().toISOString().split('T')[0]}
+                className="flex-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                value={formData.fecha || toISODateLocal()}
                 onChange={(fecha: string) =>
                   onFormDataChange({ ...formData, fecha })
                 }
               />
               <button
                 type="button"
-                onClick={() => onFormDataChange({ ...formData, fecha: new Date().toISOString().split('T')[0] })}
-                className="px-3 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
+                onClick={() => onFormDataChange({ ...formData, fecha: toISODateLocal() })}
+                className="px-3 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors text-sm font-medium whitespace-nowrap"
               >
                 Hoy
               </button>

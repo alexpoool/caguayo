@@ -44,35 +44,35 @@ export function FacturasTable({
   return (
     <div className="overflow-x-auto">
       <Table>
-        <TableHeader className={`bg-gradient-to-r ${esPreFactura ? 'from-blue-50 to-indigo-50' : 'from-teal-50 to-cyan-50'}`}>
+        <TableHeader className={`bg-gradient-to-r ${esPreFactura ? 'from-brand-50 to-brand-50' : 'from-brand-50 to-brand-50'}`}>
           <TableRow>
             <TableHead>
               <div className="flex items-center gap-2">
-                <Receipt className={`h-4 w-4 ${esPreFactura ? 'text-blue-600' : 'text-teal-600'}`} />
+                <Receipt className={`h-4 w-4 ${esPreFactura ? 'text-brand-600' : 'text-brand-600'}`} />
                 Código
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <DollarSign className={`h-4 w-4 ${esPreFactura ? 'text-blue-600' : 'text-teal-600'}`} />
+                <DollarSign className={`h-4 w-4 ${esPreFactura ? 'text-brand-600' : 'text-brand-600'}`} />
                 Monto
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <DollarSign className={`h-4 w-4 ${esPreFactura ? 'text-blue-600' : 'text-teal-600'}`} />
+                <DollarSign className={`h-4 w-4 ${esPreFactura ? 'text-brand-600' : 'text-brand-600'}`} />
                 Pago Actual
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <Calendar className={`h-4 w-4 ${esPreFactura ? 'text-blue-600' : 'text-teal-600'}`} />
+                <Calendar className={`h-4 w-4 ${esPreFactura ? 'text-brand-600' : 'text-brand-600'}`} />
                 Fecha
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <CreditCard className={`h-4 w-4 ${esPreFactura ? 'text-blue-600' : 'text-teal-600'}`} />
+                <CreditCard className={`h-4 w-4 ${esPreFactura ? 'text-brand-600' : 'text-brand-600'}`} />
                 Pago
               </div>
             </TableHead>
@@ -94,7 +94,7 @@ export function FacturasTable({
                 onClick={() => onViewDetails(item)}
               >
                 <TableCell>
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-sm font-mono font-medium ${esPreFactura ? 'bg-blue-50 text-blue-700' : 'bg-teal-50 text-teal-700'}`}>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-sm font-mono font-medium ${esPreFactura ? 'bg-brand-50 text-brand-700' : 'bg-brand-50 text-brand-700'}`}>
                     <Receipt className="h-3 w-3" />
                     {item.codigo_factura || 'N/A'}
                   </span>
@@ -146,7 +146,7 @@ export function FacturasTable({
                       variant="ghost"
                       size="icon"
                       onClick={() => onViewDocument?.(item)}
-                      className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 h-8 w-8 transition-colors"
+                      className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8 transition-colors"
                       title="Visualizar documento"
                     >
                       <Eye className="h-4 w-4" />
@@ -157,7 +157,7 @@ export function FacturasTable({
                       variant="ghost"
                       size="icon"
                       onClick={() => onPrintDocument?.(item)}
-                      className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8 w-8 transition-colors"
+                      className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8 transition-colors"
                       title="Imprimir documento"
                     >
                       <Printer className="h-4 w-4" />

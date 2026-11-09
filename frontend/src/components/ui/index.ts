@@ -1,4 +1,7 @@
 export * from './Button';
+export * from './CreateButton';
+export * from './BackButton';
+export * from './PageHeader';
 export * from './Input';
 export * from './DateInput';
 export * from './Label';

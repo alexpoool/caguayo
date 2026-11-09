@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Check, Loader2, Search } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { normalizarBusqueda } from "../../utils/busqueda";
 
 export interface SearchSelectOption {
   value: number;
@@ -54,31 +55,70 @@ export function SearchSelect({
   const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const seleccionada = options.find((o) => o.value === value) ?? null;
+  const porValor = useMemo(
+    () => new Map(options.map((o) => [o.value, o])),
+    [options],
+  );
+  const seleccionada = (value === null || value === undefined ? null : porValor.get(value)) ?? null;
+
+  // Normalizar cada opción una vez por cambio de `options`, no en cada tecla.
+  const indice = useMemo(
+    () =>
+      options.map((o) => ({
+        opcion: o,
+        texto: normalizarBusqueda(`${o.label} ${o.description ?? ""}`),
+      })),
+    [options],
+  );
 
   const filtradas = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
+    const q = normalizarBusqueda(busqueda).trim();
     if (!q) return options;
-    return options.filter(
-      (o) =>
-        o.label.toLowerCase().includes(q) ||
-        o.description?.toLowerCase().includes(q)
-    );
-  }, [options, busqueda]);
+    return indice
+      .filter((entrada) => entrada.texto.includes(q))
+      .map((entrada) => entrada.opcion);
+  }, [indice, options, busqueda]);
 
-  // Posicionar el panel bajo el control
+  // Posicionar el panel bajo el control, sin salirse del viewport.
+  // Se recalcula al redimensionar y cuando el teclado virtual cambia el
+  // visualViewport (iOS/Android).
   useLayoutEffect(() => {
     if (!open || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUp = spaceBelow < 260 && rect.top > 260;
-    setCoords({
-      top: openUp ? rect.top - 8 : rect.bottom + 6,
-      left: rect.left,
-      width: rect.width,
-    });
-    // Marca de posición para transform del panel (hacia arriba o hacia abajo)
-    panelRef.current?.setAttribute("data-open-up", openUp ? "true" : "false");
+
+    const updatePosition = () => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const vv = window.visualViewport;
+      const viewportWidth = vv?.width ?? document.documentElement.clientWidth;
+      const viewportHeight = vv?.height ?? window.innerHeight;
+      const offsetTop = vv?.offsetTop ?? 0;
+      const margin = 8;
+      const width = Math.min(Math.max(rect.width, 240), viewportWidth - margin * 2);
+      const left = Math.max(
+        margin,
+        Math.min(rect.left, viewportWidth - width - margin),
+      );
+      const spaceBelow = viewportHeight + offsetTop - rect.bottom;
+      const openUp = spaceBelow < 260 && rect.top - offsetTop > 260;
+
+      setCoords({
+        top: openUp ? rect.top - 8 : rect.bottom + 6,
+        left,
+        width,
+      });
+      // Marca de posición para transform del panel (hacia arriba o hacia abajo)
+      panelRef.current?.setAttribute("data-open-up", openUp ? "true" : "false");
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("scroll", updatePosition);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("scroll", updatePosition);
+    };
   }, [open]);
 
   // Cerrar al hacer clic fuera, con Escape o al hacer scroll de la página
@@ -161,10 +201,10 @@ export function SearchSelect({
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "w-full flex items-center justify-between gap-2 px-3 py-2 border border-gray-300 rounded-md text-sm bg-white text-left transition-colors",
-          "focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500",
+          "w-full flex flex-wrap items-center justify-between gap-3 gap-2 px-3 py-2 border border-gray-300 rounded-md text-sm bg-white text-left transition-colors",
+          "focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500",
           "hover:border-gray-400 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed",
-          open && "border-teal-500 ring-2 ring-teal-500"
+          open && "border-brand-500 ring-2 ring-brand-500"
         )}
       >
         <span className={cn("truncate", !seleccionada && "text-gray-400")}>
@@ -173,7 +213,7 @@ export function SearchSelect({
         <ChevronDown
           className={cn(
             "h-4 w-4 text-gray-400 shrink-0 transition-transform duration-200",
-            open && "rotate-180 text-teal-600"
+            open && "rotate-180 text-brand-600"
           )}
         />
       </button>
@@ -200,11 +240,11 @@ export function SearchSelect({
                   }}
                   onKeyDown={onInputKey}
                   placeholder="Buscar…"
-                  className="w-full pl-7 pr-8 py-1.5 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full pl-7 pr-8 py-1.5 border border-gray-200 rounded-md text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 />
                 {loading && (
                   <Loader2
-                    className="absolute right-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-teal-500 pointer-events-none"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-brand-500 pointer-events-none"
                     aria-label="Buscando"
                   />
                 )}
@@ -231,19 +271,19 @@ export function SearchSelect({
                         onClick={() => elegir(o)}
                         className={cn(
                           "w-full text-left px-3 py-2 border-b border-gray-50 last:border-b-0 transition-colors",
-                          idx === resaltado && "bg-teal-50",
-                          activa && "bg-teal-100/70",
+                          idx === resaltado && "bg-brand-50",
+                          activa && "bg-brand-100/70",
                           o.disabled && "opacity-40 cursor-not-allowed"
                         )}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className={cn("text-sm truncate", activa ? "font-semibold text-teal-800" : "text-gray-800")}>
+                        <div className="flex flex-wrap items-center justify-between gap-3 gap-2">
+                          <span className={cn("text-sm truncate", activa ? "font-semibold text-brand-800" : "text-gray-800")}>
                             {o.label}
                           </span>
-                          {activa && <Check className="h-4 w-4 text-teal-600 shrink-0" />}
+                          {activa && <Check className="h-4 w-4 text-brand-600 shrink-0" />}
                         </div>
                         {o.description && (
-                          <span className="block text-[11px] text-gray-400 truncate">{o.description}</span>
+                          <span className="block text-xs text-gray-400 truncate">{o.description}</span>
                         )}
                       </button>
                     );

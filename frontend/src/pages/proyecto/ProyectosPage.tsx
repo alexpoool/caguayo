@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
+  CreateButton,
+} from '../../components/ui';
 import { ClienteForm } from '../clientes/components/form/ClienteForm';
 import { solicitudesService, contratosService, clientesService, monedaService, suplementosService, configuracionService } from '../../services/api';
 import type { SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdate } from '../../types/servicio';
@@ -11,7 +13,7 @@ import { Plus, Trash2, Edit, Search, ClipboardList, Tag, X, Layers, CheckCircle,
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
-import { formatFecha } from '../../utils/fecha';
+import { formatFecha, toISODateLocal} from '../../utils/fecha';
 
 type View = 'list' | 'form';
 
@@ -119,7 +121,7 @@ export function ProyectosPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [pendingClientData, setPendingClientData] = useState<any>(null);
 
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = toISODateLocal();
 
   const addDays = (dateStr: string, days: number) => {
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -388,8 +390,8 @@ export function ProyectosPage() {
           id_estado: Number(formContrato.id_estado) || (estadosContrato[0]?.id_estado_contrato ?? 0),
           id_tipo_contrato: Number(formContrato.id_tipo_contrato) || 1,
           id_moneda: Number(formContrato.id_moneda) || monedas[0]?.id_moneda,
-          fecha: formContrato.fecha || new Date().toISOString().split('T')[0],
-          vigencia: formContrato.vigencia || new Date().toISOString().split('T')[0],
+          fecha: formContrato.fecha || toISODateLocal(),
+          vigencia: formContrato.vigencia || toISODateLocal(),
           proforma: formContrato.proforma,
           documento_final: formContrato.documento_final,
           monto: Number(formContrato.valor_contrato) || 0,
@@ -410,8 +412,8 @@ export function ProyectosPage() {
         const data: SuplementoCreate = {
           id_contrato: Number(formContrato.id_contrato_suplemento),
           nombre: formContrato.nombre_suplemento || `Suplemento-${Date.now()}`,
-          fecha: formContrato.fecha_suplemento || new Date().toISOString().split('T')[0],
-          fecha_vigencia: formContrato.fecha_vigencia_suplemento || new Date().toISOString().split('T')[0],
+          fecha: formContrato.fecha_suplemento || toISODateLocal(),
+          fecha_vigencia: formContrato.fecha_vigencia_suplemento || toISODateLocal(),
           monto: Number(formContrato.valor_suplemento) || 0,
           documento: formContrato.documento_suplemento,
         };
@@ -557,7 +559,7 @@ export function ProyectosPage() {
       )}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
             <ClipboardList className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -568,13 +570,7 @@ export function ProyectosPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Proyecto
-        </Button>
+        <CreateButton label="Nuevo Proyecto" onClick={() => openForm()} />
       </div>
 
       <div className="flex gap-2 mb-4">
@@ -584,7 +580,7 @@ export function ProyectosPage() {
             onClick={() => setEstadoFiltro(estado)}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
               estadoFiltro === estado
-                ? 'bg-teal-600 text-white'
+                ? 'bg-brand-600 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -608,11 +604,11 @@ export function ProyectosPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-teal-600" />
+                    <Tag className="h-4 w-4 text-brand-600" />
                     Código
                   </div>
                 </TableHead>
@@ -634,7 +630,7 @@ export function ProyectosPage() {
                 solicitudes.map((item) => (
                   <TableRow key={item.id_solicitud_servicio} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
                         {item.codigo_proyecto || 'N/A'}
                       </span>
@@ -653,8 +649,8 @@ export function ProyectosPage() {
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           item.estado === 'TERMINADA' ? 'bg-green-100 text-green-800' :
                           item.estado === 'CANCELADA' ? 'bg-red-100 text-red-800' :
-                          item.estado === 'EN PROCESO' ? 'bg-blue-100 text-blue-800' :
-                          item.estado === 'EN NEGOCIACION' ? 'bg-purple-100 text-purple-800' :
+                          item.estado === 'EN PROCESO' ? 'bg-brand-100 text-brand-800' :
+                          item.estado === 'EN NEGOCIACION' ? 'bg-brand-100 text-brand-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
                           {item.estado}
@@ -670,7 +666,7 @@ export function ProyectosPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => item.id_suplemento && openSuplementoModal(item.id_suplemento)}
-                            className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                            className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                           >
                             <FilePlus className="h-3.5 w-3.5" />
                             Suplemento
@@ -680,7 +676,7 @@ export function ProyectosPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => item.id_contrato && openContratoModal(item.id_contrato)}
-                            className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                            className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                           >
                             <FileText className="h-3.5 w-3.5" />
                             Contrato
@@ -693,7 +689,7 @@ export function ProyectosPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/proyectos/etapas?solicitud=${item.id_solicitud_servicio}`)}
-                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                        className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                       >
                         <Layers className="h-3.5 w-3.5" />
                         Etapas
@@ -717,7 +713,7 @@ export function ProyectosPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleAsignarContrato(item)}
-                            className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
+                            className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8"
                             title="Asignar contrato"
                           >
                             <FileText className="h-4 w-4" />
@@ -805,7 +801,7 @@ export function ProyectosPage() {
             <div>
               <Label className="text-sm font-medium">Fecha Solicitud</Label>
               <DateInput
-                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha_solicitud || ''}
                 min={hoy}
                 onChange={(fecha_solicitud) => handleFechaSolicitudChange(fecha_solicitud)}
@@ -814,7 +810,7 @@ export function ProyectosPage() {
             <div>
               <Label className="text-sm font-medium">Fecha Entrega</Label>
               <DateInput
-                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha_entrega || ''}
                 min={formData.fecha_solicitud ? addDays(formData.fecha_solicitud, 1) : hoy}
                 onChange={(fecha_entrega) => setFormData({...formData, fecha_entrega})}
@@ -842,7 +838,7 @@ export function ProyectosPage() {
                       setShowClienteDropdown(true);
                     }}
                     onFocus={() => setShowClienteDropdown(true)}
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
                   />
                   {(formData.id_cliente || clienteSearch) && (
                     <button
@@ -863,7 +859,7 @@ export function ProyectosPage() {
                         <button
                           key={c.id_cliente}
                           type="button"
-                          className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                          className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
                           onClick={() => {
                             setFormData({ ...formData, id_cliente: c.id_cliente });
                             setClienteSearch('');
@@ -882,7 +878,7 @@ export function ProyectosPage() {
                 <button
                   type="button"
                   onClick={() => { setNuevoClienteTarget('form'); setShowNuevoClienteModal(true); }}
-                  className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                  className="py-2 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
                 >
                   <Plus className="h-4 w-4" />
                   Nuevo Cliente
@@ -902,7 +898,7 @@ export function ProyectosPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {renderList()}
 
       <FormModal
@@ -927,7 +923,7 @@ export function ProyectosPage() {
               form={PROYECTO_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -949,10 +945,10 @@ export function ProyectosPage() {
       {detailModal.isOpen && detailModal.item && (
         <ModalOverlay isOpen={true} onClose={() => setDetailModal({ isOpen: false, item: null })} ariaLabel="Detalle de proyecto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <ClipboardList className="h-7 w-7" />
                   </div>
                   <div>
@@ -965,15 +961,15 @@ export function ProyectosPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-<div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Estado</p>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Estado</p>
                   {detailModal.item.estado && detailModal.item.estado !== 'EN NEGOCIACION' ? (
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       detailModal.item.estado === 'TERMINADA' ? 'bg-green-100 text-green-800' :
                       detailModal.item.estado === 'CANCELADA' ? 'bg-red-100 text-red-800' :
-                      detailModal.item.estado === 'EN PROCESO' ? 'bg-blue-100 text-blue-800' :
+                      detailModal.item.estado === 'EN PROCESO' ? 'bg-brand-100 text-brand-800' :
                       'bg-yellow-100 text-yellow-800'
                     }`}>
                       {detailModal.item.estado}
@@ -996,8 +992,8 @@ export function ProyectosPage() {
                 </div>
               </div>
               {(detailModal.item.id_cliente) && (
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Cliente</p>
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Cliente</p>
                   <p className="font-bold text-gray-900">{clientes.find(c => c.id_cliente === detailModal.item?.id_cliente)?.nombre || 'N/A'}</p>
                 </div>
               )}
@@ -1014,8 +1010,8 @@ export function ProyectosPage() {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => navigate(`/proyectos/etapas?solicitud=${detailModal.item!.id_solicitud_servicio}`)} className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-colors font-medium">Ver Etapas</button>
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => navigate(`/proyectos/etapas?solicitud=${detailModal.item!.id_solicitud_servicio}`)} className="px-6 py-3 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 transition-colors font-medium">Ver Etapas</button>
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
@@ -1024,10 +1020,10 @@ export function ProyectosPage() {
 
       <ModalOverlay isOpen={contratoModal.isOpen} onClose={() => setContratoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Contrato">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <FileText className="h-7 w-7" />
                   </div>
                     <div>
@@ -1043,8 +1039,8 @@ export function ProyectosPage() {
             {contratoModal.loading ? (
               <div className="p-12 text-center text-gray-500">Cargando...</div>
             ) : contratoModal.item ? (
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 md:p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Nombre</p>
                     <p className="font-bold text-gray-900">{contratoModal.item.nombre}</p>
@@ -1072,7 +1068,7 @@ export function ProyectosPage() {
                 </div>
               </div>
             ) : null}
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setContratoModal({ isOpen: false, item: null, loading: false })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
@@ -1080,10 +1076,10 @@ export function ProyectosPage() {
 
       <ModalOverlay isOpen={suplementoModal.isOpen} onClose={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Suplemento">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <FilePlus className="h-7 w-7" />
                   </div>
                     <div>
@@ -1099,8 +1095,8 @@ export function ProyectosPage() {
             {suplementoModal.loading ? (
               <div className="p-12 text-center text-gray-500">Cargando...</div>
             ) : suplementoModal.item ? (
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 md:p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Nombre</p>
                     <p className="font-bold text-gray-900">{suplementoModal.item.nombre}</p>
@@ -1120,7 +1116,7 @@ export function ProyectosPage() {
                 </div>
               </div>
             ) : null}
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
@@ -1128,10 +1124,10 @@ export function ProyectosPage() {
 
       <ModalOverlay isOpen={aprobarModal.isOpen} onClose={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setCreacionPendiente(null); setPendingClientData(null); setView('list'); }} ariaLabel="Aprobar Proyecto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <CheckCircle className="h-7 w-7" />
                   </div>
                   <div>
@@ -1144,11 +1140,11 @@ export function ProyectosPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
                 <button
                   onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'seleccionar' }))}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   <FileText className="h-4 w-4" />
                   Contrato
@@ -1156,24 +1152,24 @@ export function ProyectosPage() {
                 <button
                   onClick={() => {
                     setAprobarModal(prev => ({ ...prev, modo: 'crear' }));
-                    setFormContrato({ fecha: new Date().toISOString().split('T')[0], id_cliente: aprobarModal.solicitud?.id_cliente });
+                    setFormContrato({ fecha: toISODateLocal(), id_cliente: aprobarModal.solicitud?.id_cliente });
                     setClienteSearch('');
                   }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   <Plus className="h-4 w-4" />
                   Nuevo Contrato
                 </button>
                 <button
                   onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'seleccionar-suplemento' }))}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar-suplemento' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar-suplemento' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   <Layers className="h-4 w-4" />
                   Suplemento
                 </button>
                 <button
                   onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'crear-suplemento' }))}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear-suplemento' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear-suplemento' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   <Plus className="h-4 w-4" />
                   Nuevo Suplemento
@@ -1190,7 +1186,7 @@ export function ProyectosPage() {
                     <div>
                       <Label className="text-sm font-medium">Seleccionar Contrato</Label>
                       <select
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                         value={formContrato.id_contrato_seleccionado || ''}
                         onChange={(e: any) => setFormContrato({ ...formContrato, id_contrato_seleccionado: e.target.value })}
                       >
@@ -1236,7 +1232,7 @@ export function ProyectosPage() {
                               setShowClienteDropdown(true);
                             }}
                             onFocus={() => setShowClienteDropdown(true)}
-                            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
+                            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
                           />
                           {(aprobarModal.modo === 'crear' ? formContrato.id_cliente : (formContrato.id_cliente || clienteSearch)) && (
                             <button
@@ -1257,7 +1253,7 @@ export function ProyectosPage() {
                                 <button
                                   key={c.id_cliente}
                                   type="button"
-                                  className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                  className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
                                   onClick={() => {
                                     setFormContrato({ ...formContrato, id_cliente: c.id_cliente });
                                     setClienteSearch('');
@@ -1277,7 +1273,7 @@ export function ProyectosPage() {
                           <button
                             type="button"
                             onClick={() => { setNuevoClienteTarget('contrato'); setShowNuevoClienteModal(true); }}
-                            className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                            className="py-2 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
                           >
                             <Plus className="h-4 w-4" />
                             Nuevo Cliente
@@ -1288,7 +1284,7 @@ export function ProyectosPage() {
                     <div>
                       <Label className="text-sm font-medium">Tipo</Label>
                       <select
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                         value={formContrato.id_tipo_contrato || ''}
                         onChange={(e: any) => setFormContrato({ ...formContrato, id_tipo_contrato: e.target.value })}
                       >
@@ -1298,7 +1294,7 @@ export function ProyectosPage() {
                     <div>
                       <Label className="text-sm font-medium">Estado</Label>
                       <select
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                         value={formContrato.id_estado || ''}
                         onChange={(e: any) => setFormContrato({ ...formContrato, id_estado: e.target.value })}
                       >
@@ -1308,7 +1304,7 @@ export function ProyectosPage() {
                     <div>
                       <Label className="text-sm font-medium">Moneda</Label>
                       <select
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                         value={formContrato.id_moneda || ''}
                         onChange={(e: any) => setFormContrato({ ...formContrato, id_moneda: e.target.value })}
                       >
@@ -1475,19 +1471,19 @@ export function ProyectosPage() {
                 </div>
               ) : null}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
               <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setCreacionPendiente(null); setPendingClientData(null); setView('list'); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
-              <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium">Confirmar Aprobación</button>
+              <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 shadow-lg hover:shadow-xl transition-all font-medium">Confirmar Aprobación</button>
             </div>
           </div>
       </ModalOverlay>
 
       <ModalOverlay isOpen={showNuevoClienteModal} onClose={() => setShowNuevoClienteModal(false)} ariaLabel="Nuevo Cliente">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <User className="h-7 w-7" />
                   </div>
                   <div>
@@ -1500,7 +1496,7 @@ export function ProyectosPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <ClienteForm
                 editingCliente={null}
                 isProveedorView={false}

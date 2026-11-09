@@ -87,6 +87,19 @@ la instalación de Caguayo (el primer cliente); cada cliente usa los suyos.
 - **React Query**: Gestión de estado del servidor en aplicaciones React.
 - **pnPM**: Gestor de paquetes eficiente.
 
+Verificación del frontend:
+
+```bash
+cd frontend
+pnpm check          # tipos, lint, arquitectura, paleta, UI, tests, build y tamaño
+pnpm test:coverage  # cobertura con umbrales por capa
+pnpm e2e            # Playwright + axe (requiere Chromium instalado)
+```
+
+Guías: [`docs/presupuesto-bundle.md`](frontend/docs/presupuesto-bundle.md),
+[`docs/checklist-responsive.md`](frontend/docs/checklist-responsive.md) y
+[`docs/acciones-modulos.md`](frontend/docs/acciones-modulos.md).
+
 ## Prerrequisitos
 
 - Python 3.13+

@@ -134,7 +134,7 @@ function SearchableSelect<T extends Record<string, any>>({
       >
         {isLoading ? (
           <div className="p-4 text-center text-gray-500">
-            <div className="animate-spin inline-block w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full mr-2"></div>
+            <div className="animate-spin inline-block w-5 h-5 border-2 border-gray-300 border-t-brand-600 rounded-full mr-2"></div>
             Cargando...
           </div>
         ) : filteredOptions.length === 0 ? (
@@ -150,9 +150,9 @@ function SearchableSelect<T extends Record<string, any>>({
                 key={item[idField]}
                 type="button"
                 onClick={() => handleSelect(item)}
-                className={`w-full px-4 py-2 text-left text-sm hover:bg-blue-50 transition-colors ${
+                className={`w-full px-4 py-2 text-left text-sm hover:bg-brand-50 transition-colors ${
                   value === getOptionValue(item)
-                    ? "bg-blue-50 text-blue-700 font-medium"
+                    ? "bg-brand-50 text-brand-700 font-medium"
                     : "text-gray-700"
                 }`}
               >
@@ -181,8 +181,8 @@ function SearchableSelect<T extends Record<string, any>>({
         <div
           className={`flex items-center border rounded-lg transition-all duration-200 ${
             disabled
-              ? "bg-slate-50 cursor-not-allowed border-gray-200"
-              : "bg-white border-gray-300 hover:border-gray-400 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+              ? "bg-gray-50 cursor-not-allowed border-gray-200"
+              : "bg-white border-gray-300 hover:border-gray-400 focus-within:ring-2 focus-within:ring-brand-500 focus-within:border-brand-500"
           }`}
           onClick={() => !disabled && setIsOpen(true)}
         >
@@ -410,15 +410,15 @@ export function MovimientoAjusteForm({
           {/* Producto y Dependencia de Origen */}
           <div>
             <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center gap-2 text-lg font-semibold text-gray-900">
-              <Package className="h-5 w-5 text-blue-600" />
+              <Package className="h-5 w-5 text-brand-600" />
               Producto y Origen
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SearchableSelect
                   label="Seleccionar Producto"
                   required
-                  icon={<Package className="h-4 w-4 text-blue-500" />}
+                  icon={<Package className="h-4 w-4 text-brand-500" />}
                   value={
                     productoSeleccionado
                       ? Number(productoSeleccionado.id_producto)
@@ -445,7 +445,7 @@ export function MovimientoAjusteForm({
                 <SearchableSelect
                   label="Seleccionar Dependencia"
                   required
-                  icon={<MapPin className="h-4 w-4 text-blue-500" />}
+                  icon={<MapPin className="h-4 w-4 text-brand-500" />}
                   value={dependenciaOrigen?.id || null}
                   onChange={(value, item) =>
                     setDependenciaOrigen(
@@ -471,7 +471,7 @@ export function MovimientoAjusteForm({
               <ArrowRight className="h-5 w-5 text-green-600" />
               Destinos
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <div className="space-y-4">
                 {destinos.map((destino) => {
                   const depsMostrar = dependencias.filter((d) => !dependenciaOrigen || d.id_dependencia !== dependenciaOrigen.id);
@@ -547,7 +547,7 @@ export function MovimientoAjusteForm({
               </div>
 
               <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-green-600" />
                     <span className="text-sm font-medium text-gray-700">
@@ -595,12 +595,12 @@ export function MovimientoAjusteForm({
               <ClipboardList className="h-5 w-5 text-gray-600" />
               Observación
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <textarea
                 value={observacion}
                 onChange={(e) => setObservacion(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none"
                 placeholder="Describe el motivo del ajuste..."
               />
             </div>

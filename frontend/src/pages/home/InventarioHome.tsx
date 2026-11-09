@@ -11,13 +11,13 @@ export function InventarioHome() {
           <h1 className="text-xl font-bold tracking-wide md:text-2xl">
             MÓDULO DE INVENTARIO
           </h1>
-          <p className="mt-1 text-sm text-slate-200 md:text-base">
+          <p className="mt-1 text-sm text-gray-200 md:text-base">
             Control y gestión de productos en el sistema
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-          <p className="mb-5 text-sm leading-relaxed text-slate-700">
+        <div className="rounded-xl border border-gray-100 bg-white p-4 md:p-6 shadow-sm">
+          <p className="mb-5 text-sm leading-relaxed text-gray-700">
             El módulo de Inventario permite gestionar todos los movimientos de
             productos dentro del sistema. Controla las entradas mediante
             recepciones, realiza transferencias entre dependencias y mantiene el
@@ -25,60 +25,60 @@ export function InventarioHome() {
           </p>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
               <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Truck className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-gray-900">
                   Recepciones
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                   Registro de productos que ingresan al sistema, aumentando el
                   stock en la dependencia destino.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
               <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <ArrowRightLeft className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-gray-900">
                   Ajustes
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                   Transferencia de productos entre dependencias con generación
                   automática de salida y entrada.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
               <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Clock className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-gray-900">
                   Movimientos Pendientes
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                   Movimientos que requieren confirmación para afectar el
                   inventario.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
               <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Package className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-gray-900">
                   Productos
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                   Catálogo con precios, categorías y stock actual por
                   dependencia.
                 </p>

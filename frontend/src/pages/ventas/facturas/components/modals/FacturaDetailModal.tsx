@@ -73,10 +73,10 @@ export function FacturaDetailModal({
     <ModalOverlay isOpen={true} onClose={onClose} ariaLabel={`Detalle de ${etiqueta.toLowerCase()}`}>
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto animate-scale-in">
         {/* Header */}
-        <div className={`p-6 border-b border-gray-200 bg-gradient-to-r ${esPreFactura ? 'from-blue-50 to-indigo-50' : 'from-violet-50 to-purple-50'}`}>
-          <div className="flex items-center justify-between gap-4">
+        <div className={`p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r ${esPreFactura ? 'from-brand-50 to-brand-50' : 'from-brand-50 to-brand-50'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 gap-4">
             <div className="flex items-center gap-4 min-w-0">
-              <div className={`p-3 rounded-xl text-white shadow-lg bg-gradient-to-br ${esPreFactura ? 'from-blue-500 to-indigo-600' : 'from-violet-500 to-purple-600'}`}>
+              <div className={`p-3 rounded-xl text-white shadow-lg bg-gradient-to-br ${esPreFactura ? 'from-brand-500 to-brand-600' : 'from-brand-500 to-brand-600'}`}>
                 <Receipt className="h-7 w-7" />
               </div>
               <div className="min-w-0">
@@ -99,13 +99,13 @@ export function FacturaDetailModal({
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-4">
+        <div className="p-4 md:p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-violet-50 to-purple-50 p-4 rounded-xl border border-violet-100">
-              <p className="text-xs text-violet-600 uppercase tracking-wider mb-1">
+            <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+              <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">
                 Monto total
               </p>
-              <p className="font-bold text-violet-900 text-xl">
+              <p className="font-bold text-brand-900 text-xl">
                 {moneda} {formatCifra(monto)}
               </p>
             </div>
@@ -171,7 +171,7 @@ export function FacturaDetailModal({
           )}
 
           {/* Items */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <div className="border border-gray-200 rounded-xl overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
@@ -232,7 +232,7 @@ export function FacturaDetailModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50 flex flex-wrap justify-end gap-2">
+        <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex flex-wrap justify-end gap-2">
           {esPreFactura && onAprobar && (
             <Button
               onClick={() => onAprobar(factura)}
@@ -246,7 +246,7 @@ export function FacturaDetailModal({
             <Button
               variant="outline"
               onClick={() => onViewDocument(factura)}
-              className="gap-2 text-teal-600 border-teal-200 hover:bg-teal-50"
+              className="gap-2 text-brand-600 border-brand-200 hover:bg-brand-50"
             >
               <Eye className="h-4 w-4" />
               Ver Documento

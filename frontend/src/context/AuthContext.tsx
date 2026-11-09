@@ -1,21 +1,12 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
-import {
-  authService,
-  LoginResponse,
-  FuncionalidadInfo,
-  UsuarioInfo,
-} from "../services/auth";
-import { authHelpers } from "../lib/api";
+import { createContext, useContext } from "react";
+import type {
+  FuncionalidadSesion,
+  UsuarioSesion,
+} from "../features/auth/domain/sesion";
 
-interface AuthContextType {
-  user: UsuarioInfo | null;
-  funcionalidades: FuncionalidadInfo[];
+export interface AuthContextType {
+  user: UsuarioSesion | null;
+  funcionalidades: FuncionalidadSesion[];
   baseDatos: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -29,104 +20,7 @@ interface AuthContextType {
   hasFuncionalidad: (nombre: string) => boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-export { AuthContext };
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UsuarioInfo | null>(null);
-  const [funcionalidades, setFuncionalidades] = useState<FuncionalidadInfo[]>([]);
-  const [baseDatos, setBaseDatos] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const refreshUser = async () => {
-    try {
-      const response = await authService.getCurrentUser();
-      setUser(response.usuario);
-      setFuncionalidades(response.funcionalidades);
-      setBaseDatos(response.base_datos);
-      authHelpers.setUser(response.usuario);
-      authHelpers.setBaseDatos(response.base_datos);
-    } catch (error) {
-      console.error("Error refreshing user:", error);
-      authHelpers.clearAuth();
-      setUser(null);
-      setFuncionalidades([]);
-      setBaseDatos(null);
-    }
-  };
-
-  const login = async (
-    alias: string,
-    contrasenia: string,
-    baseDatos: string,
-  ) => {
-    const response = await authService.login({
-      alias,
-      contrasenia,
-      base_datos: baseDatos,
-    });
-    setUser(response.usuario);
-    setFuncionalidades(response.funcionalidades);
-    setBaseDatos(response.base_datos);
-  };
-
-  const logout = async () => {
-    await authService.logout();
-    setUser(null);
-    setFuncionalidades([]);
-    setBaseDatos(null);
-  };
-
-  const hasFuncionalidad = (nombre: string): boolean => {
-    return funcionalidades.some((f) => f.nombre === nombre);
-  };
-
-  useEffect(() => {
-    const initAuth = async () => {
-      const token = authHelpers.getToken();
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          if (payload.exp * 1000 < Date.now()) {
-            authHelpers.clearAuth();
-            setIsLoading(false);
-            return;
-          }
-        } catch {
-          authHelpers.clearAuth();
-          setIsLoading(false);
-          return;
-        }
-        try {
-          await refreshUser();
-        } catch {
-          authHelpers.clearAuth();
-        }
-      }
-      setIsLoading(false);
-    };
-
-    initAuth();
-  }, []);
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        funcionalidades,
-        baseDatos,
-        isAuthenticated: !!user,
-        isLoading,
-        login,
-        logout,
-        refreshUser,
-        hasFuncionalidad,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-}
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function useAuth() {
   const context = useContext(AuthContext);

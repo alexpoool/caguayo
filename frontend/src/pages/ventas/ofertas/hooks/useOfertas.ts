@@ -6,6 +6,7 @@ import type {
   OfertaTiendaWithDetails,
 } from '../../../../types/contrato';
 import { useInfiniteList } from '../../../../hooks/useInfiniteList';
+import { toISODateLocal } from '../../../../utils/fecha';
 
 export type EstadoOfertaFiltro = 'ACTIVA' | 'CONVERTIDA' | 'ANULADA' | 'TODAS';
 
@@ -18,7 +19,7 @@ export function useOfertas(
     initialContratoId ? Number(initialContratoId) : null
   );
   const [formData, setFormData] = useState<Record<string, any>>({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: toISODateLocal(),
   });
 
   /**
@@ -178,7 +179,7 @@ export function useOfertas(
    * Resetea el formulario
    */
   const resetForm = () => {
-    setFormData({ fecha: new Date().toISOString().split('T')[0] });
+    setFormData({ fecha: toISODateLocal() });
     setEditingId(null);
   };
 

@@ -16,6 +16,7 @@ import type { Productos } from "../../../types";
 import type { Dependencia } from "../../../types/dependencia";
 import type { Cliente } from "../../../types/ventas";
 import toast from "react-hot-toast";
+import { useDebounce } from "../../../hooks/useDebounce";
 import { useAuth } from "../../../context/AuthContext";
 import { Button, FormModal } from "../../../components/ui";
 import { ShoppingBag } from "lucide-react";
@@ -42,6 +43,7 @@ const OFERTA_FORM_ID = "oferta-form";
  * Documento HTML de la oferta de tienda (vista previa / impresión).
  * Misma estructura del documento de factura adaptada a una oferta.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function getOfertaDocumento(
   oferta: any,
   contratos: any[],
@@ -234,6 +236,23 @@ export function OfertasTiendaPage() {
   // Datos maestros
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clienteSearchRemoto, setClienteSearchRemoto] = useState("");
+  const debouncedClienteSearch = useDebounce(clienteSearchRemoto, 300);
+
+  useEffect(() => {
+    let activo = true;
+    clientesService
+      .getClientes(0, 50, "CLIENTE,AMBAS", debouncedClienteSearch)
+      .then((res) => {
+        if (activo) setClientes(res);
+      })
+      .catch(() => {
+        if (activo) setClientes([]);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [debouncedClienteSearch]);
   const [itemsAnexo, setItemsAnexo] = useState<any[]>([]);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
 
@@ -282,22 +301,19 @@ export function OfertasTiendaPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [contratosRes, depsRes, itemsRes, clientesRes] = await Promise.all([
+        const [contratosRes, depsRes, itemsRes] = await Promise.all([
           contratosService.getContratos(0, 1000),
           dependenciasService.getDependencias(undefined, 0, 1000),
           productosService.getProductosConStockItemAnexo(),
-          clientesService.getClientes(0, 10000, "CLIENTE,AMBAS"),
         ]);
         setContratos(contratosRes);
         setDependencias(depsRes);
         setItemsAnexo(itemsRes);
-        setClientes(clientesRes);
       } catch (error) {
         console.error("Error loading initial data:", error);
         toast.error("Error al cargar datos iniciales");
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -480,8 +496,21 @@ export function OfertasTiendaPage() {
     productSelectionHook.resetSelection();
   };
 
+  // El selector remoto no conoce al cliente del contrato ya elegido; se fusiona.
+  const clientesParaFormulario = useMemo(() => {
+    const contrato = contratos.find(
+      (c) => c.id_contrato === ofertasHook.selectedContratoId,
+    );
+    const clienteContrato = contrato?.cliente as Cliente | undefined;
+    if (!clienteContrato) return clientes;
+    if (clientes.some((c) => c.id_cliente === clienteContrato.id_cliente)) {
+      return clientes;
+    }
+    return [clienteContrato, ...clientes];
+  }, [clientes, contratos, ofertasHook.selectedContratoId]);
+
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <OfertasListView
         ofertas={ofertasHook.ofertas}
         isLoading={ofertasHook.isLoading}
@@ -551,7 +580,7 @@ export function OfertasTiendaPage() {
               form={OFERTA_FORM_ID}
               disabled={isSavingOferta || isConverting}
               isLoading={isSavingOferta}
-              className="gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -568,7 +597,8 @@ export function OfertasTiendaPage() {
           productos={productosSource as Productos[]}
           selectedContratoId={ofertasHook.selectedContratoId}
           contratos={contratos}
-          clientes={clientes}
+          clientes={clientesParaFormulario}
+          onClienteSearch={setClienteSearchRemoto}
           onFormDataChange={(data: Record<string, any>) =>
             ofertasHook.setFormData(data)
           }

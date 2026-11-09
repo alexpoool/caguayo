@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
+  CreateButton,
+} from '../../components/ui';
 import { tareasEtapaService, etapasProyectoService, serviciosProyectoService, monedaService } from '../../services/api';
 import type { TareaEtapa, TareaEtapaCreate, TareaEtapaUpdate, Etapa, Servicio, ServicioCreate } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
@@ -253,10 +255,10 @@ export function TareasEtapaPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">
+          <Button variant="outline" onClick={() => navigate('/proyectos/etapas')} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
             <ListChecks className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -267,13 +269,7 @@ export function TareasEtapaPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Tarea
-        </Button>
+        <CreateButton label="Nueva Tarea" onClick={() => openForm()} />
       </div>
 
       <div className="flex gap-2">
@@ -291,24 +287,24 @@ export function TareasEtapaPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-teal-600" />
+                    <Hash className="h-4 w-4 text-brand-600" />
                     Código Extendido
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-teal-600" />
+                    <FileText className="h-4 w-4 text-brand-600" />
                     Concepto (modificado)
                   </div>
                 </TableHead>
                 <TableHead>Cantidad</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Precio Ajustado
                   </div>
                 </TableHead>
@@ -327,7 +323,7 @@ export function TareasEtapaPage() {
                 filteredTareas.map((item) => (
                   <TableRow key={item.id_tarea_etapa} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
                         <Hash className="h-3 w-3" />
                         {item.codigo_extendido || 'N/A'}
                       </span>
@@ -393,7 +389,7 @@ export function TareasEtapaPage() {
                     disabled={!!servicioSeleccionado}
                     onChange={(e) => { setBusquedaServicio(e.target.value); setShowDropdownServicio(true); setServicioSeleccionado(null); }}
                     onFocus={() => setShowDropdownServicio(true)}
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
                   />
                   {servicioSeleccionado && (
                     <button
@@ -412,7 +408,7 @@ export function TareasEtapaPage() {
                         key={s.id_servicio}
                         type="button"
                         onClick={() => handleSeleccionarServicio(s)}
-                        className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                        className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
                       >
                         <span className="font-medium text-gray-900">{s.concepto || 'Sin concepto'}</span>
                         <span className="text-gray-500 text-sm ml-2">{s.codigo_servicio}</span>
@@ -431,7 +427,7 @@ export function TareasEtapaPage() {
                 <button
                   type="button"
                   onClick={() => setShowNuevoServicioModal(true)}
-                  className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                  className="py-2 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
                 >
                   <Plus className="h-4 w-4" />
                   Nuevo Servicio
@@ -457,7 +453,7 @@ export function TareasEtapaPage() {
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
               <select
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
                 value={formData.id_moneda || ''}
                 disabled={!!monedaContrato}
                 onChange={(e: any) => setFormData({ ...formData, id_moneda: e.target.value })}
@@ -478,7 +474,7 @@ export function TareasEtapaPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {renderList()}
 
       <FormModal
@@ -503,7 +499,7 @@ export function TareasEtapaPage() {
               form={TAREA_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -525,10 +521,10 @@ export function TareasEtapaPage() {
       {detailModal.isOpen && detailModal.item && (
         <ModalOverlay isOpen={true} onClose={() => setDetailModal({ isOpen: false, item: null })} ariaLabel="Detalle de tarea">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <ListChecks className="h-7 w-7" />
                   </div>
                   <div>
@@ -541,14 +537,14 @@ export function TareasEtapaPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Precio Ajustado</p>
-                  <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.precio_ajustado).toFixed(2)}</p>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Precio Ajustado</p>
+                  <p className="font-bold text-brand-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.precio_ajustado).toFixed(2)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Cantidad</p>
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Cantidad</p>
                   <p className="font-bold text-gray-900 text-xl">{detailModal.item.cantidad}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
@@ -560,8 +556,8 @@ export function TareasEtapaPage() {
                   <p className="font-bold text-gray-900">{getMonedaDenominacion(detailModal.item.id_moneda) || 'N/A'}</p>
                 </div>
               </div>
-              <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Servicio</p>
+              <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Servicio</p>
                 <p className="font-bold text-gray-900">{getServicioName(detailModal.item.id_servicio)}</p>
               </div>
               {detailModal.item.observaciones_ajustadas && (
@@ -571,7 +567,7 @@ export function TareasEtapaPage() {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
@@ -579,10 +575,10 @@ export function TareasEtapaPage() {
       )}
       <ModalOverlay isOpen={showNuevoServicioModal} onClose={() => setShowNuevoServicioModal(false)} ariaLabel="Nuevo Servicio">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <Wrench className="h-7 w-7" />
                   </div>
                   <div>
@@ -595,7 +591,7 @@ export function TareasEtapaPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
                   <Label className="text-sm font-medium">Concepto</Label>
@@ -611,7 +607,7 @@ export function TareasEtapaPage() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Moneda</Label>
-                  <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={servicioFormData.id_moneda || ''} onChange={(e: any) => setServicioFormData({...servicioFormData, id_moneda: e.target.value})}>
+                  <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white" value={servicioFormData.id_moneda || ''} onChange={(e: any) => setServicioFormData({...servicioFormData, id_moneda: e.target.value})}>
                     <option value="">Seleccionar moneda</option>
                     {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
                   </select>
@@ -622,7 +618,7 @@ export function TareasEtapaPage() {
                 </div>
               </div>
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
               <button
                 onClick={() => setShowNuevoServicioModal(false)}
                 className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
@@ -646,7 +642,7 @@ export function TareasEtapaPage() {
                     setGuardandoServicio(false);
                   }
                 }}
-                className="px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50"
+                className="px-6 py-3 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50"
               >
                 {guardandoServicio ? 'Guardando...' : 'Guardar Servicio'}
               </button>

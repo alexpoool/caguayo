@@ -7,19 +7,19 @@ import type { Productos } from "../../types/index";
 import { Package, Download, Eye, Loader2, Search, AlertCircle } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 import { ReportPreviewTable } from "../../components/ui/ReportPreviewTable";
-import { formatFecha } from "../../utils/fecha";
+import { formatFecha, toISODateLocal} from "../../utils/fecha";
 import { DateInput } from "../../components/ui";
 
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+import { API_BASE_URL as BASE_URL } from "../../config/api";
+import { abrirBlob, descargarBlob } from '../../utils/archivos';
 
 // Fecha por defecto: último mes (mismo criterio que ReportesHome)
 const FECHA_INICIO_DEFECTO = (() => {
   const d = new Date();
   d.setMonth(d.getMonth() - 1);
-  return d.toISOString().split("T")[0];
+  return toISODateLocal(d);
 })();
-const FECHA_FIN_DEFECTO = new Date().toISOString().split("T")[0];
+const FECHA_FIN_DEFECTO = toISODateLocal();
 
 const ReporteMovimientosProducto: React.FC = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -210,7 +210,7 @@ const ReporteMovimientosProducto: React.FC = () => {
       const token = authHelpers.getToken() ?? "";
       const r = await fetch(`${BASE_URL}/reportes/movimientos-producto?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
-      window.open(window.URL.createObjectURL(await r.blob()), "_blank");
+      abrirBlob(await r.blob());
     } catch { toast.error("Error al generar vista previa"); } finally { setPreviewLoading(false); }
   };
 
@@ -222,10 +222,7 @@ const ReporteMovimientosProducto: React.FC = () => {
       const r = await fetch(`${BASE_URL}/reportes/movimientos-producto?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
       const blob = await r.blob();
-      const a = document.createElement("a");
-      a.href = window.URL.createObjectURL(blob);
-      a.download = `movimientos_producto_${idProducto}.pdf`;
-      a.click();
+      descargarBlob(blob, `movimientos_producto_${idProducto}.pdf`);
       toast.success("Reporte generado");
     } catch { toast.error("Error al generar reporte"); } finally { setPdfLoading(false); }
   };
@@ -278,7 +275,7 @@ const ReporteMovimientosProducto: React.FC = () => {
 
   return (
     <div className="flex flex-col p-4">
-      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
             <Package className="w-4 h-4 text-amber-600" />
@@ -306,7 +303,7 @@ const ReporteMovimientosProducto: React.FC = () => {
               <div className="space-y-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Dependencia <span className="text-red-500">*</span></label>
-                  <select value={idDependencia ?? ""} onChange={e => { setIdDependencia(e.target.value ? Number(e.target.value) : null); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 bg-white">
+                  <select value={idDependencia ?? ""} onChange={e => { setIdDependencia(e.target.value ? Number(e.target.value) : null); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-amber-500 bg-white">
                     <option value="">Seleccionar…</option>
                     {dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
                     {dependencias.length > 0 && idDependencia && !dependencias.some(d => d.id_dependencia === idDependencia) && (

@@ -7,6 +7,7 @@ import type { SelectedProduct } from '../hooks/useProductSelection';
 import { useStock } from '../../../../hooks/useStock';
 import { authHelpers } from '../../../../lib/api';
 import { mul, toNumber } from '../../../../utils/decimal';
+import { PALETA } from '../../../../config/paleta';
 
 interface ProductSelectorProps {
   selectedProducts: SelectedProduct[];
@@ -31,7 +32,6 @@ export function ProductSelector({
   onAddProduct,
   onUpdateCantidad,
   onUpdatePrecio,
-  onUpdatePrecioCompra,
   onRemoveProduct,
   productos,
   total,
@@ -40,7 +40,7 @@ export function ProductSelector({
   const [showAllModal, setShowAllModal] = useState(false);
   const user = authHelpers.getUser() ?? {};
   const currentDependenciaId = user.dependencia?.id_dependencia ?? null;
-  const { data: stockData = [], isLoading: isStockLoading } = useStock({ 
+  const { data: stockData = [] } = useStock({ 
     idDependencia: currentDependenciaId 
   });
 
@@ -97,7 +97,7 @@ export function ProductSelector({
                           className="w-16 h-8 text-center text-sm"
                           placeholder="Cant"
                           style={{ 
-                            borderColor: !tieneStockSuficiente && stock > 0 ? '#fca5a5' : undefined
+                            borderColor: !tieneStockSuficiente && stock > 0 ? PALETA.danger[300] : undefined
                           }}
                         />
                       </div>
@@ -190,7 +190,7 @@ export function ProductSelector({
                     onAddProduct(p.id_producto);
                     onProductSearchChange('');
                   }}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 flex items-center gap-3 transition-colors"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors"
                 >
                   <span className="truncate text-sm font-medium text-gray-800 min-w-0 flex-1">{p.nombre}</span>
                   <span className="text-xs text-gray-400 w-16 truncate">{p.codigo || '-'}</span>
@@ -216,14 +216,14 @@ export function ProductSelector({
       {/* Modal de todos los productos */}
       {showAllModal && createPortal(
         <div
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-[110] flex items-start sm:items-center justify-center bg-black/40 overflow-y-auto"
           onClick={() => setShowAllModal(false)}
         >
           <div
             className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Todos los productos disponibles</h3>
               <button
                 onClick={() => setShowAllModal(false)}
@@ -250,7 +250,7 @@ export function ProductSelector({
                         onProductSearchChange('');
                         setShowAllModal(false);
                       }}
-                      className="w-full px-4 py-3 text-left hover:bg-violet-50 flex items-center gap-3 transition-colors rounded-lg"
+                      className="w-full px-4 py-3 text-left hover:bg-brand-50 flex items-center gap-3 transition-colors rounded-lg"
                     >
                       <span className="truncate text-sm font-medium text-gray-800 min-w-0 flex-1">{p.nombre}</span>
                       <span className="text-xs text-gray-400 w-16 truncate">{p.codigo || '-'}</span>

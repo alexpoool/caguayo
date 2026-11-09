@@ -1,12 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import ReactDOM from 'react-dom';
 import { 
   Search, 
   RefreshCw, 
   AlertCircle, 
-  Info, 
-  AlertTriangle, 
   Bug,
   Clock,
   User,
@@ -52,58 +50,9 @@ interface LogStats {
 }
 
 export function LoggerPage() {
-  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [nivelFilter, setNivelFilter] = useState('');
-  const [tipoFilter, setTipoFilter] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
-
-  // SSE for real-time logs
-  useEffect(() => {
-    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-    const baseReconnectDelay = 1000;
-
-    const connectSSE = () => {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-      const eventSource = new EventSource(`${apiUrl}/logs/stream`);
-      eventSourceRef.current = eventSource;
-
-      eventSource.onmessage = (event) => {
-        try {
-          const newLog = JSON.parse(event.data);
-          queryClient.setQueryData(['logs', nivelFilter, tipoFilter, searchTerm], (old: LogEntry[] | undefined) => {
-            if (old) {
-              return [newLog, ...old].slice(0, 100);
-            }
-            return [newLog];
-          });
-          queryClient.invalidateQueries({ queryKey: ['log-stats'] });
-        } catch (e) {
-          console.error('Error parsing SSE log:', e);
-        }
-      };
-
-      eventSource.onerror = () => {
-        eventSource.close();
-        if (reconnectAttempts < maxReconnectAttempts) {
-          const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts);
-          reconnectAttempts++;
-          reconnectTimeout = setTimeout(connectSSE, delay);
-        }
-      };
-    };
-
-    connectSSE();
-
-    return () => {
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      if (eventSourceRef.current) eventSourceRef.current.close();
-    };
-  }, [queryClient, nivelFilter, tipoFilter, searchTerm]);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -127,11 +76,9 @@ export function LoggerPage() {
   });
 
   const { data: logs = [], isLoading, refetch } = useQuery<LogEntry[]>({
-    queryKey: ['logs', nivelFilter, tipoFilter, searchTerm],
+    queryKey: ['logs', searchTerm],
     queryFn: () => {
       const params: Record<string, string> = {};
-      if (nivelFilter) params.nivel = nivelFilter;
-      if (tipoFilter) params.tipo = tipoFilter;
       if (searchTerm) params.busqueda = searchTerm;
       params.limit = '100';
       return apiClient.get('/logs', params);
@@ -139,20 +86,11 @@ export function LoggerPage() {
     refetchInterval: autoRefresh ? 10000 : false,
   });
 
-  const getNivelIcon = (nivel: string) => {
-    switch (nivel) {
-      case 'ERROR': return <AlertCircle className="h-4 w-4" />;
-      case 'WARNING': return <AlertTriangle className="h-4 w-4" />;
-      case 'INFO': return <Info className="h-4 w-4" />;
-      default: return <Bug className="h-4 w-4" />;
-    }
-  };
-
   const getNivelColor = (nivel: string) => {
     switch (nivel) {
       case 'ERROR': return 'bg-red-100 text-red-800 border-red-200';
       case 'WARNING': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'INFO': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'INFO': return 'bg-brand-100 text-brand-800 border-brand-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -161,7 +99,7 @@ export function LoggerPage() {
     switch (nivel) {
       case 'ERROR': return 'text-red-600';
       case 'WARNING': return 'text-yellow-600';
-      case 'INFO': return 'text-blue-600';
+      case 'INFO': return 'text-brand-600';
       default: return 'text-gray-600';
     }
   };
@@ -170,7 +108,7 @@ export function LoggerPage() {
     const colorClass = {
       'ERROR': 'bg-red-500',
       'WARNING': 'bg-yellow-500',
-      'INFO': 'bg-blue-500',
+      'INFO': 'bg-brand-500',
     }[nivel] || 'bg-gray-400';
     
     return <span className={`inline-block w-3 h-3 rounded-full ${colorClass} shadow-sm`} />;
@@ -180,7 +118,7 @@ export function LoggerPage() {
     if (!status) return 'bg-gray-100 text-gray-600';
     if (status >= 500) return 'bg-red-100 text-red-700 border-red-200';
     if (status >= 400) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-    if (status >= 300) return 'bg-purple-100 text-purple-700 border-purple-200';
+    if (status >= 300) return 'bg-brand-100 text-brand-700 border-brand-200';
     return 'bg-green-100 text-green-700 border-green-200';
   };
 
@@ -189,14 +127,14 @@ export function LoggerPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
         <div className="text-gray-500">Cargando logs...</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-6 max-w-7xl mx-auto">
+    <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
       {/* Header without icon */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">
@@ -216,7 +154,7 @@ export function LoggerPage() {
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded text-purple-600 focus:ring-purple-500"
+              className="rounded text-brand-600 focus:ring-brand-500"
             />
             Auto-refresh
           </label>
@@ -231,7 +169,7 @@ export function LoggerPage() {
       {stats && (
         <div className="flex flex-wrap gap-6 text-sm">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+            <span className="w-2 h-2 rounded-full bg-brand-500"></span>
             <span className="text-gray-600">Total:</span>
             <span className="font-semibold text-gray-900">{stats.total}</span>
           </div>
@@ -246,9 +184,9 @@ export function LoggerPage() {
             <span className="font-semibold text-yellow-600">{stats.por_nivel?.WARNING || 0}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+            <span className="w-2 h-2 rounded-full bg-brand-500"></span>
             <span className="text-gray-600">Requests:</span>
-            <span className="font-semibold text-purple-600">{stats.por_nivel?.INFO || 0}</span>
+            <span className="font-semibold text-brand-600">{stats.por_nivel?.INFO || 0}</span>
           </div>
         </div>
       )}
@@ -262,7 +200,7 @@ export function LoggerPage() {
             placeholder="Buscar por mensaje, nivel, tipo o usuario..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
       </Card>
@@ -271,47 +209,47 @@ export function LoggerPage() {
       <Card className="overflow-hidden border-gray-200">
         <div className="overflow-x-auto">
           <Table className="border-collapse">
-            <TableHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-pink-50">
               <TableRow>
                 <TableHead className="w-[120px] border-r border-gray-200">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-purple-600" />
+                    <Clock className="h-4 w-4 text-brand-600" />
                     Tiempo
                   </div>
                 </TableHead>
                 <TableHead className="w-[100px] border-r border-gray-200">
                   <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-purple-600" />
+                    <Globe className="h-4 w-4 text-brand-600" />
                     IP
                   </div>
                 </TableHead>
                 <TableHead className="w-[80px] border-r border-gray-200">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-purple-600" />
+                    <AlertCircle className="h-4 w-4 text-brand-600" />
                     Estado
                   </div>
                 </TableHead>
                 <TableHead className="w-[100px] border-r border-gray-200">
                   <div className="flex items-center gap-2">
-                    <Bug className="h-4 w-4 text-purple-600" />
+                    <Bug className="h-4 w-4 text-brand-600" />
                     Tipo
                   </div>
                 </TableHead>
                 <TableHead className="w-[250px] border-r border-gray-200">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-purple-600" />
+                    <FileText className="h-4 w-4 text-brand-600" />
                     Mensaje
                   </div>
                 </TableHead>
                 <TableHead className="w-[150px] border-r border-gray-200">
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-purple-600" />
+                    <User className="h-4 w-4 text-brand-600" />
                     Usuario
                   </div>
                 </TableHead>
                 <TableHead className="w-[180px]">
                   <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-purple-600" />
+                    <Globe className="h-4 w-4 text-brand-600" />
                     Endpoint
                   </div>
                 </TableHead>
@@ -321,8 +259,8 @@ export function LoggerPage() {
               {logs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-gray-500">
-                    {searchTerm || nivelFilter || tipoFilter 
-                      ? 'No se encontraron logs que coincidan con los filtros' 
+                    {searchTerm 
+                      ? 'No se encontraron logs que coincidan con la búsqueda' 
                       : 'No hay logs disponibles'
                     }
                   </TableCell>
@@ -345,7 +283,7 @@ export function LoggerPage() {
                       {log.tipo === 'FRONTEND' ? (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
-                            <Monitor className="h-3 w-3 text-purple-500" />
+                            <Monitor className="h-3 w-3 text-brand-500" />
                             <span className="text-xs text-gray-700 truncate max-w-[90px]" title={log.navegador || undefined}>
                               {log.navegador?.split(' ')[0] || '-'}
                             </span>
@@ -357,7 +295,7 @@ export function LoggerPage() {
                           <span className="text-xs text-gray-600">{log.ip}</span>
                           {log.navegador && (
                             <div className="flex items-center gap-1">
-                              <Monitor className="h-3 w-3 text-purple-400" />
+                              <Monitor className="h-3 w-3 text-brand-400" />
                               <span className="text-xs text-gray-500 truncate max-w-[90px]" title={log.navegador || undefined}>
                                 {log.navegador?.split(' ')[0]}...
                               </span>
@@ -390,7 +328,7 @@ export function LoggerPage() {
                     <TableCell className="border-r border-gray-200">
                       {log.usuario_nombre ? (
                         <div className="flex items-center gap-1">
-                          <User className="h-3 w-3 text-purple-500" />
+                          <User className="h-3 w-3 text-brand-500" />
                           <span className="text-sm text-gray-700">{log.usuario_nombre}</span>
                         </div>
                       ) : (
@@ -407,7 +345,7 @@ export function LoggerPage() {
                         </div>
                       ) : log.tipo === 'FRONTEND' && log.navegador ? (
                         <div className="flex items-center gap-1">
-                          <Monitor className="h-3 w-3 text-purple-500" />
+                          <Monitor className="h-3 w-3 text-brand-500" />
                           <span className="text-xs text-gray-500 truncate max-w-[160px]" title={log.navegador || undefined}>
                             {log.navegador}
                           </span>
@@ -434,7 +372,7 @@ export function LoggerPage() {
           <div className="space-y-2">
             {stats.ultimos_errores.map((error) => (
               <div key={error.id} className="bg-red-50 rounded p-3 text-sm border border-red-100">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="font-medium text-red-800">{error.mensaje}</span>
                   <span className="text-xs text-gray-500">
                     {formatTimestamp(error.timestamp)}
@@ -454,14 +392,14 @@ export function LoggerPage() {
       {/* Modal with React Portal */}
       {selectedLog && ReactDOM.createPortal(
         <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto"
           onClick={() => setSelectedLog(null)}
         >
           <div 
             className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-gray-200 bg-gray-50">
               <h2 className="text-lg font-bold text-gray-800">Detalles del Log #{selectedLog.id}</h2>
               <button 
                 onClick={() => setSelectedLog(null)}
@@ -471,7 +409,7 @@ export function LoggerPage() {
               </button>
             </div>
             <div className="p-4 overflow-y-auto space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <div className="text-xs text-gray-500 uppercase">Timestamp</div>
                   <div className="text-sm font-medium">{formatTimestamp(selectedLog.timestamp)}</div>
@@ -498,11 +436,11 @@ export function LoggerPage() {
                     ) : '-'}
                   </div>
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1">
                   <div className="text-xs text-gray-500 uppercase">Mensaje</div>
                   <div className="text-sm bg-gray-50 p-2 rounded border">{selectedLog.mensaje}</div>
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1">
                   <div className="text-xs text-gray-500 uppercase">Detalle</div>
                   <pre className="text-xs bg-gray-50 p-2 rounded border whitespace-pre-wrap max-h-32 overflow-y-auto">
                     {selectedLog.detalle || '-'}
@@ -516,17 +454,17 @@ export function LoggerPage() {
                   <div className="text-xs text-gray-500 uppercase">Usuario</div>
                   <div className="text-sm">{selectedLog.usuario_nombre || '-'}</div>
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1">
                   <div className="text-xs text-gray-500 uppercase">Endpoint</div>
                   <div className="text-sm">
                     {selectedLog.endpoint ? (
-                      <span className="bg-blue-50 px-2 py-1 rounded border text-blue-700">
+                      <span className="bg-brand-50 px-2 py-1 rounded border text-brand-700">
                         {selectedLog.method} {selectedLog.endpoint}
                       </span>
                     ) : '-'}
                   </div>
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1">
                   <div className="text-xs text-gray-500 uppercase">Navegador</div>
                   <div className="text-xs bg-gray-50 p-2 rounded border break-all">{selectedLog.navegador || '-'}</div>
                 </div>

@@ -35,9 +35,9 @@ export function ConfirmModal({
       button: 'bg-yellow-600 hover:bg-yellow-700',
     },
     info: {
-      icon: 'text-blue-600',
-      bg: 'bg-blue-50',
-      button: 'bg-blue-600 hover:bg-blue-700',
+      icon: 'text-brand-600',
+      bg: 'bg-brand-50',
+      button: 'bg-brand-600 hover:bg-brand-700',
     },
     success: {
       icon: 'text-green-600',
@@ -50,8 +50,8 @@ export function ConfirmModal({
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose} ariaLabel={title}>
-      <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl animate-in fade-in zoom-in duration-200">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="relative w-full max-w-md bg-white rounded-none sm:rounded-lg shadow-xl animate-in fade-in zoom-in duration-200 max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-full ${styles.bg}`}>
               <AlertTriangle className={`h-5 w-5 ${styles.icon}`} />

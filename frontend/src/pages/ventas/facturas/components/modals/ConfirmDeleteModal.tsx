@@ -35,9 +35,9 @@ export function ConfirmDeleteModal({
     },
     info: {
       Icon: Info,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-      border: "border-blue-100",
+      color: "text-brand-600",
+      bg: "bg-brand-50",
+      border: "border-brand-100",
     },
     success: {
       Icon: CheckCircle,
@@ -55,7 +55,7 @@ export function ConfirmDeleteModal({
       text: "Confirmar",
       className: "bg-yellow-600 hover:bg-yellow-700",
     },
-    info: { text: "Aceptar", className: "bg-blue-600 hover:bg-blue-700" },
+    info: { text: "Aceptar", className: "bg-brand-600 hover:bg-brand-700" },
     success: {
       text: "Confirmar",
       className: "bg-green-600 hover:bg-green-700",
@@ -69,7 +69,7 @@ export function ConfirmDeleteModal({
       <div
         className={`bg-white rounded-2xl shadow-2xl max-w-md w-full ${bg} border ${border} animate-scale-in`}
       >
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <div className="flex items-start gap-4">
             <div className={`p-3 rounded-lg ${bg}`}>
               <Icon className={`h-6 w-6 ${color}`} />

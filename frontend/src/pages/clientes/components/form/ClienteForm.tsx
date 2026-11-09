@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "../../../../components/ui";
 import {
@@ -33,6 +33,7 @@ import type {
 } from "../../../../types/ventas";
 import { dependenciasService } from "../../../../services/administracion";
 import { tipoEntidadService } from "../../../../services/api";
+import { toISODateLocal } from '../../../../utils/fecha';
 
 export interface ClienteFormProps {
   formId?: string;
@@ -64,8 +65,8 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   const [localTiposEntidad, setLocalTiposEntidad] = useState<any[]>(
     tiposEntidad || [],
   );
-  const [loadingProvincias, setLoadingProvincias] = useState(false);
-  const [loadingTiposEntidad, setLoadingTiposEntidad] = useState(false);
+  const fetchedProvinciasRef = useRef(false);
+  const fetchedTiposEntidadRef = useRef(false);
 
   useEffect(() => {
     if (provincias && Array.isArray(provincias) && provincias.length > 0) {
@@ -75,21 +76,17 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
   // Fetch provincias from API when not provided as prop
   useEffect(() => {
-    if (localProvincias.length === 0 && !loadingProvincias) {
-      setLoadingProvincias(true);
-      dependenciasService
-        .getProvincias()
-        .then((data: any[]) => {
-          setLocalProvincias(Array.isArray(data) ? data : []);
-        })
-        .catch((error: any) => {
-          console.error("Error loading provincias:", error);
-        })
-        .finally(() => {
-          setLoadingProvincias(false);
-        });
-    }
-  }, []);
+    if (fetchedProvinciasRef.current || localProvincias.length > 0) return;
+    fetchedProvinciasRef.current = true;
+    dependenciasService
+      .getProvincias()
+      .then((data: any[]) => {
+        setLocalProvincias(Array.isArray(data) ? data : []);
+      })
+      .catch((error: any) => {
+        console.error("Error loading provincias:", error);
+      });
+  }, [localProvincias.length]);
 
   useEffect(() => {
     if (
@@ -103,21 +100,17 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
   // Fetch tiposEntidad from API when not provided as prop
   useEffect(() => {
-    if (localTiposEntidad.length === 0 && !loadingTiposEntidad) {
-      setLoadingTiposEntidad(true);
-      tipoEntidadService
-        .getTiposEntidad()
-        .then((data: any[]) => {
-          setLocalTiposEntidad(Array.isArray(data) ? data : []);
-        })
-        .catch((error: any) => {
-          console.error("Error loading tiposEntidad:", error);
-        })
-        .finally(() => {
-          setLoadingTiposEntidad(false);
-        });
-    }
-  }, []);
+    if (fetchedTiposEntidadRef.current || localTiposEntidad.length > 0) return;
+    fetchedTiposEntidadRef.current = true;
+    tipoEntidadService
+      .getTiposEntidad()
+      .then((data: any[]) => {
+        setLocalTiposEntidad(Array.isArray(data) ? data : []);
+      })
+      .catch((error: any) => {
+        console.error("Error loading tiposEntidad:", error);
+      });
+  }, [localTiposEntidad.length]);
 
   const [tipoPersona, setTipoPersona] = useState<TipoPersona | null>(
     editingCliente?.tipo_persona || null,
@@ -172,7 +165,9 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     if (formData.id_provincia) {
       handleProvinciaChange(formData.id_provincia);
     }
-  }, []);
+    // handleProvinciaChange se recrea en cada render; solo debe ejecutarse al
+    // cambiar la provincia inicial del formulario.
+  }, [formData.id_provincia]);
 
   useEffect(() => {
     if (
@@ -213,7 +208,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [editingCliente, localProvincias]);
+  }, [editingCliente, formData.id_provincia, localProvincias]);
 
   const [datosNatural, setDatosNatural] = useState<ClienteNatural | null>(
     editingCliente?.cliente_natural || null,
@@ -254,11 +249,11 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
       setDatosJuridica(editingCliente.cliente_juridica || null);
       setDatosTCP(editingCliente.cliente_tcp || null);
     }
-  }, [editingCliente]);
+  }, [editingCliente, isProveedorView]);
 
   const abrirModalTipo = (tipo: TipoPersona) => {
     setModalTipo(tipo);
-    const today = new Date().toISOString().split("T")[0];
+    const today = toISODateLocal();
     setDatosDraft(
       tipo === "NATURAL"
         ? { ...(datosNatural || {}) }
@@ -487,7 +482,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                 }
                 className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                   opcion.checked
-                    ? "border-teal-500 bg-teal-50 text-teal-800"
+                    ? "border-brand-500 bg-brand-50 text-brand-800"
                     : "border-gray-300 text-gray-600 hover:border-gray-400"
                 } ${opcion.disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
               >
@@ -517,7 +512,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
         <Card className="mb-6 shadow-sm border-gray-200">
           <CardHeader className="border-b bg-gray-50/50">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <User className="h-5 w-5 text-teal-600" />
+              <User className="h-5 w-5 text-brand-600" />
               Información del Cliente
             </CardTitle>
           </CardHeader>
@@ -596,7 +591,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                     e.target.value ? parseInt(e.target.value) : undefined,
                   )
                 }
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
               >
                 <option value="">Seleccione provincia</option>
                 {localProvincias.map((p: any) => (
@@ -619,7 +614,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                   })
                 }
                 disabled={!formData.id_provincia || loadingMunicipios}
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-slate-50 disabled:cursor-not-allowed"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
               >
                 <option value="">
                   {loadingMunicipios
@@ -697,7 +692,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                       estado: e.target.value,
                     })
                   }
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                 >
                   <option value="ACTIVO">Activo</option>
                   <option value="INACTIVO">Inactivo</option>
@@ -712,7 +707,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
           <CardHeader className="border-b bg-gray-50/50">
             <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-lg">
               <span className="flex items-center gap-2">
-                <User className="h-5 w-5 text-teal-600" />
+                <User className="h-5 w-5 text-brand-600" />
                 Tipo de Persona
               </span>
               <div className="flex flex-wrap gap-2">
@@ -721,7 +716,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                     value: "NATURAL" as TipoPersona,
                     label: "Creador",
                     color:
-                      "bg-teal-100 text-teal-700 hover:bg-teal-200 ring-teal-500",
+                      "bg-brand-100 text-brand-700 hover:bg-brand-200 ring-brand-500",
                   },
                   {
                     value: "JURIDICA" as TipoPersona,
@@ -733,7 +728,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                     value: "TCP" as TipoPersona,
                     label: "TCP",
                     color:
-                      "bg-violet-100 text-violet-700 hover:bg-violet-200 ring-violet-500",
+                      "bg-brand-100 text-brand-700 hover:bg-brand-200 ring-brand-500",
                   },
                 ].map((tipo) => (
                   <button
@@ -756,15 +751,15 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
         {/* Resumen tipo de persona */}
         {tipoPersona && (
-          <div className="mb-6 rounded-xl border border-teal-200 bg-teal-50/50 p-4">
-            <div className="flex items-center justify-between gap-4">
+          <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50/50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 gap-4">
               <div className="flex items-start gap-3 min-w-0">
                 {tipoPersona === "NATURAL" ? (
-                  <User className="h-5 w-5 text-teal-600 shrink-0 mt-0.5" />
+                  <User className="h-5 w-5 text-brand-600 shrink-0 mt-0.5" />
                 ) : tipoPersona === "JURIDICA" ? (
-                  <Building2 className="h-5 w-5 text-teal-600 shrink-0 mt-0.5" />
+                  <Building2 className="h-5 w-5 text-brand-600 shrink-0 mt-0.5" />
                 ) : (
-                  <Briefcase className="h-5 w-5 text-teal-600 shrink-0 mt-0.5" />
+                  <Briefcase className="h-5 w-5 text-brand-600 shrink-0 mt-0.5" />
                 )}
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-800">
@@ -807,15 +802,15 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
         {/* Modal formulario tipo de persona */}
         <Modal className="max-w-2xl" isOpen={modalAbierto} onClose={cerrarModalTipo}>
-          <div className="p-6 pb-5 border-b">
+          <div className="p-4 md:p-6 pb-5 border-b">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-teal-50 flex items-center justify-center shrink-0">
+              <div className="h-10 w-10 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
                 {modalTipo === "NATURAL" ? (
-                  <User className="h-5 w-5 text-teal-600" />
+                  <User className="h-5 w-5 text-brand-600" />
                 ) : modalTipo === "JURIDICA" ? (
-                  <Building2 className="h-5 w-5 text-teal-600" />
+                  <Building2 className="h-5 w-5 text-brand-600" />
                 ) : (
-                  <Briefcase className="h-5 w-5 text-teal-600" />
+                  <Briefcase className="h-5 w-5 text-brand-600" />
                 )}
               </div>
               <div>
@@ -836,7 +831,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               </div>
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {modalTipo === "NATURAL" && (
               <NaturalForm
                 datos={datosDraft}
@@ -863,7 +858,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
             <Button
               type="button"
               onClick={confirmarModalTipo}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
             >
               <Check className="h-4 w-4" />
               Guardar
@@ -876,7 +871,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
             <Button
               type="submit"
               disabled={!tipoPersona || !personaCompleta}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
             >
               <Save className="h-4 w-4" />
               {editingCliente ? "Actualizar" : "Crear"}

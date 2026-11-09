@@ -13,7 +13,6 @@ import {
   Hash,
   Loader2,
   Pencil,
-  Plus,
   RefreshCw,
   Save,
   Target,
@@ -37,6 +36,7 @@ import {
   TableCell,
   ConfirmModal,
   Modal,
+  CreateButton,
 } from '../../components/ui';
 
 /** Rango del periodo (inicio – fin) en formato legible. */
@@ -187,10 +187,10 @@ export function ObjetivosPage() {
   if (!empleadoId) {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center animate-fade-in-up">
-        <div className="p-4 bg-slate-50 rounded-full">
+        <div className="p-4 bg-gray-50 rounded-full">
           <Target className="h-10 w-10 text-emerald-300" />
         </div>
-        <p className="max-w-sm text-sm text-slate-500">
+        <p className="max-w-sm text-sm text-gray-500">
           Esta página muestra los objetivos de un empleado concreto. Elige un
           empleado desde su listado para verlos.
         </p>
@@ -286,10 +286,7 @@ export function ObjetivosPage() {
             <ClipboardCheck className="h-4 w-4" />
             Ir a evaluaciones
           </Button>
-          <Button onClick={() => abrir()} className={`gap-2 ${GRADIENTE}`}>
-            <Plus className="h-4 w-4" />
-            Nuevo objetivo
-          </Button>
+          <CreateButton label="Nuevo objetivo" onClick={() => abrir()} />
         </div>
       </div>
 
@@ -297,7 +294,7 @@ export function ObjetivosPage() {
         <CardContent>
           {objetivos.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-gray-400">
-              <div className="p-4 bg-slate-50 rounded-full mb-2">
+              <div className="p-4 bg-gray-50 rounded-full mb-2">
                 <Target className="h-12 w-12 text-gray-300" />
               </div>
               <p className="text-lg font-medium mb-1">No se encontraron objetivos</p>
@@ -305,10 +302,7 @@ export function ObjetivosPage() {
                 Define aquí los objetivos del periodo con su peso; después
                 selecciónalos y puntúalos en la evaluación del empleado
               </p>
-              <Button onClick={() => abrir()} className={`gap-2 ${GRADIENTE}`}>
-                <Plus className="h-4 w-4" />
-                Nuevo objetivo
-              </Button>
+              <CreateButton label="Nuevo objetivo" onClick={() => abrir()} />
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -323,19 +317,19 @@ export function ObjetivosPage() {
                     </TableHead>
                     <TableHead>
                       <div className="flex items-center gap-2">
-                        <ClipboardCheck className="h-4 w-4 text-sky-500" />
+                        <ClipboardCheck className="h-4 w-4 text-brand-500" />
                         Empleado
                       </div>
                     </TableHead>
                     <TableHead>
                       <div className="flex items-center gap-2">
-                        <CalendarRange className="h-4 w-4 text-sky-500" />
+                        <CalendarRange className="h-4 w-4 text-brand-500" />
                         Periodo
                       </div>
                     </TableHead>
                     <TableHead className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Hash className="h-4 w-4 text-purple-500" />
+                        <Hash className="h-4 w-4 text-brand-500" />
                         Peso
                       </div>
                     </TableHead>
@@ -349,26 +343,26 @@ export function ObjetivosPage() {
                       className="hover:bg-gray-50 transition-colors"
                     >
                       <TableCell>
-                        <p className="font-medium text-slate-900">{obj.nombre}</p>
+                        <p className="font-medium text-gray-900">{obj.nombre}</p>
                         {obj.observaciones && (
-                          <p className="mt-0.5 max-w-xl truncate text-xs text-slate-400">
+                          <p className="mt-0.5 max-w-xl truncate text-xs text-gray-400">
                             {obj.observaciones}
                           </p>
                         )}
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-gray-600">
                         {nombreEmpleado}
                         {empleado?.codigo_empleado
                           ? ` · ${empleado.codigo_empleado}`
                           : ''}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-slate-500">
+                      <TableCell className="whitespace-nowrap text-xs text-gray-500">
                         <span className="inline-flex items-center gap-1">
-                          <CalendarRange className="h-3.5 w-3.5 text-slate-400" />
+                          <CalendarRange className="h-3.5 w-3.5 text-gray-400" />
                           {rangoFechas(obj.periodo_inicio, obj.periodo_fin)}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums text-slate-700">
+                      <TableCell className="text-right font-semibold tabular-nums text-gray-700">
                         {fmtPeso(obj.peso)}
                       </TableCell>
                       <TableCell className="text-right">
@@ -378,7 +372,7 @@ export function ObjetivosPage() {
                             size="icon"
                             title="Editar objetivo"
                             onClick={() => abrir(obj)}
-                            className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                            className="text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -421,7 +415,7 @@ export function ObjetivosPage() {
             onClick={() => setFormAbierto(null)}
             title="Cerrar"
             aria-label="Cerrar"
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-emerald-100 hover:text-slate-600"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-emerald-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -432,7 +426,7 @@ export function ObjetivosPage() {
                 htmlFor="obj-nombre"
                 className="flex items-center gap-2 text-gray-700"
               >
-                <Type className="h-4 w-4 text-blue-500" />
+                <Type className="h-4 w-4 text-brand-500" />
                 Nombre *
               </Label>
               <Input
@@ -455,7 +449,7 @@ export function ObjetivosPage() {
                   htmlFor="obj-inicio"
                   className="flex items-center gap-2 text-gray-700"
                 >
-                  <Calendar className="h-4 w-4 text-sky-500" />
+                  <Calendar className="h-4 w-4 text-brand-500" />
                   Periodo inicio *
                 </Label>
                 <DateInput
@@ -500,7 +494,7 @@ export function ObjetivosPage() {
                 htmlFor="obj-peso"
                 className="flex items-center gap-2 text-gray-700"
               >
-                <Hash className="h-4 w-4 text-purple-500" />
+                <Hash className="h-4 w-4 text-brand-500" />
                 Peso *
               </Label>
               <Input
@@ -533,7 +527,7 @@ export function ObjetivosPage() {
                 rows={3}
                 value={objForm.observaciones}
                 onChange={(e) => setObjForm({ ...objForm, observaciones: e.target.value })}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all duration-200"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all duration-200"
               />
             </div>
             {/* Pie fijo: siempre visible aunque el formulario haga scroll */}

@@ -11,6 +11,24 @@ const MESES_CORTOS = [
 const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 
 /**
+ * Fecha de hoy en la zona horaria local. Devuelve un `Date` local, no UTC.
+ * Úsala para valores de calendario que se envían al backend.
+ */
+export const hoyLocal = (): Date => new Date();
+
+/**
+ * Convierte una fecha a `YYYY-MM-DD` usando la zona horaria local.
+ * No uses `toISOString()` para fechas de calendario: en UTC-4 devuelve el día
+ * anterior durante la noche.
+ */
+export const toISODateLocal = (valor: Date = new Date()): string => {
+  const anio = valor.getFullYear();
+  const mes = dosDigitos(valor.getMonth() + 1);
+  const dia = dosDigitos(valor.getDate());
+  return `${anio}-${mes}-${dia}`;
+};
+
+/**
  * Extrae [año, mes, día] de un valor de fecha sin aplicar desplazamiento por
  * zona horaria.
  *

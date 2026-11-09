@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rrhhService } from '../../services/rrhh';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { toISODateLocal } from '../../utils/fecha';
 import {
   COLOR_ESTADO_SOLICITUD,
   COLOR_TIPO_SOLICITUD,
@@ -37,6 +38,7 @@ import {
   TableCell,
   ConfirmModal,
   Modal,
+  CreateButton,
 } from '../../components/ui';
 
 type Pestana = 'solicitudes' | 'calendario';
@@ -52,16 +54,7 @@ const fmtFecha = (v: string) => {
 };
 
 /** Fecha ISO local (sin desfase de UTC) para los inputs tipo date. */
-const hoyISO = () => {
-  const d = new Date();
-  const mes = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mes}-${dia}`;
-};
-
-/** Botón de alta con el mismo patrón que «Nueva evaluación» (paleta brand). */
-const GRADIENTE =
-  'bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300';
+const hoyISO = () => toISODateLocal();
 
 export function SolicitudesPage() {
   const [pestana, setPestana] = useState<Pestana>('solicitudes');
@@ -71,27 +64,24 @@ export function SolicitudesPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
             <ClipboardList className="h-6 w-6 text-brand-600" />
             Solicitudes
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-gray-500">
             Vacaciones y permisos: solicitud, aprobación y calendario de equipo
           </p>
         </div>
         {pestana === 'solicitudes' && (
-          <Button
-            size="sm"
+          <CreateButton
+            label="Nueva solicitud"
             onClick={() => setModalCrear(true)}
-            className={`gap-2 ${GRADIENTE}`}
-          >
-            <Plus className="h-4 w-4" />
-            Nueva solicitud
-          </Button>
+            size="sm"
+          />
         )}
       </div>
 
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="flex gap-1 border-b border-gray-200">
         {(
           [
             ['solicitudes', 'Solicitudes', ClipboardList],
@@ -108,7 +98,7 @@ export function SolicitudesPage() {
             className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               pestana === clave
                 ? 'border-brand-600 text-brand-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             <Icono className="h-4 w-4" />
@@ -203,7 +193,7 @@ function ListaSolicitudes({
       <Card>
         <CardHeader className="pb-3">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Buscar por nombre, apellido o código..."
               value={searchTerm}
@@ -245,18 +235,18 @@ function ListaSolicitudes({
                 {filas.map((fila) => (
                   <TableRow key={fila.id}>
                     <TableCell>
-                      <div className="font-medium text-slate-900">
+                      <div className="font-medium text-gray-900">
                         {fila.empleado_nombre ?? '—'}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-gray-500">
                         {fila.empleado_codigo ?? '—'}
                         {fila.departamento_nombre ? ` · ${fila.departamento_nombre}` : ''}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-slate-700">{TIPO_ETIQUETA[fila.tipo]}</span>
+                      <span className="text-gray-700">{TIPO_ETIQUETA[fila.tipo]}</span>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-slate-600">
+                    <TableCell className="whitespace-nowrap text-gray-600">
                       {fmtFecha(fila.fecha_inicio)} – {fmtFecha(fila.fecha_fin)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{fila.dias}</TableCell>
@@ -269,7 +259,7 @@ function ListaSolicitudes({
                         {fila.estado}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm text-slate-600">
+                    <TableCell className="text-sm text-gray-600">
                       {fila.aprobador_nombre ?? fila.supervisor_nombre ?? '—'}
                     </TableCell>
                     <TableCell>
@@ -438,7 +428,7 @@ function ModalCrear({
           <h2 className="truncate text-lg font-bold text-gray-900">
             Nueva solicitud
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-gray-500">
             Queda «pendiente» hasta que el supervisor o RRHH la decidan.
           </p>
         </div>
@@ -447,7 +437,7 @@ function ModalCrear({
           onClick={onClose}
           title="Cerrar"
           aria-label="Cerrar"
-          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
         >
           <X className="h-5 w-5" />
         </button>
@@ -458,7 +448,7 @@ function ModalCrear({
           <select
             value={empleadoId}
             onChange={(e) => setEmpleadoId(e.target.value === '' ? '' : Number(e.target.value))}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Elegir empleado...</option>
             {empleados.map((e) => (
@@ -474,14 +464,14 @@ function ModalCrear({
           <select
             value={tipo}
             onChange={(e) => setTipo(e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="vacaciones">Vacaciones</option>
             <option value="permiso">Permiso</option>
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="ini">Inicio</Label>
             <DateInput id="ini" value={inicio} onChange={(iso) => setInicio(iso)} />
@@ -499,7 +489,7 @@ function ModalCrear({
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             rows={2}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             placeholder="Opcional"
           />
         </div>
@@ -600,7 +590,7 @@ function ModalDecision({
             {accion === 'aprobar' ? 'Aprobar solicitud' : 'Rechazar solicitud'}
           </h2>
           {solicitud && (
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-gray-500">
               {solicitud.empleado_nombre} · {TIPO_ETIQUETA[solicitud.tipo]} ·{' '}
               {fmtFecha(solicitud.fecha_inicio)} – {fmtFecha(solicitud.fecha_fin)}{' '}
               ({solicitud.dias} días)
@@ -612,7 +602,7 @@ function ModalDecision({
           onClick={onClose}
           title="Cerrar"
           aria-label="Cerrar"
-          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
         >
           <X className="h-5 w-5" />
         </button>
@@ -625,7 +615,7 @@ function ModalDecision({
           <select
             value={decisorElegido}
             onChange={(e) => setDecisorId(e.target.value === '' ? '' : Number(e.target.value))}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Elegir decisor...</option>
             {empleados.map((e) => (
@@ -636,7 +626,7 @@ function ModalDecision({
             ))}
           </select>
           {solicitud?.supervisor_nombre && (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-gray-400">
               Supervisor del solicitante: {solicitud.supervisor_nombre}
             </p>
           )}
@@ -649,7 +639,7 @@ function ModalDecision({
             value={observaciones}
             onChange={(e) => setObservaciones(e.target.value)}
             rows={2}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             placeholder={accion === 'aprobar' ? 'Opcional' : 'Motivo del rechazo'}
           />
         </div>
@@ -705,7 +695,7 @@ function ModalDetalle({
             Solicitud {data ? `#${data.id}` : ''}
           </h2>
           {data && (
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-gray-500">
               {TIPO_ETIQUETA[data.tipo]} · {fmtFecha(data.fecha_inicio)} –{' '}
               {fmtFecha(data.fecha_fin)} ({data.dias} días)
             </p>
@@ -716,7 +706,7 @@ function ModalDetalle({
           onClick={onClose}
           title="Cerrar"
           aria-label="Cerrar"
-          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
         >
           <X className="h-5 w-5" />
         </button>
@@ -757,8 +747,8 @@ function ModalDetalle({
 function Fila({ label, valor }: { label: string; valor: string }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="text-right font-medium text-slate-800">{valor}</dd>
+      <dt className="text-gray-500">{label}</dt>
+      <dd className="text-right font-medium text-gray-800">{valor}</dd>
     </div>
   );
 }
@@ -833,7 +823,7 @@ function VistaCalendario() {
           <Button variant="outline" size="sm" onClick={() => cambiarMes(-1)}>
             ‹
           </Button>
-          <span className="min-w-40 text-center text-sm font-semibold capitalize text-slate-800">
+          <span className="min-w-40 text-center text-sm font-semibold capitalize text-gray-800">
             {nombreMes}
           </span>
           <Button variant="outline" size="sm" onClick={() => cambiarMes(1)}>
@@ -844,7 +834,7 @@ function VistaCalendario() {
             onChange={(e) =>
               setDepartamentoId(e.target.value === '' ? '' : Number(e.target.value))
             }
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="">Todos los departamentos</option>
             {departamentos.map((d) => (
@@ -856,10 +846,10 @@ function VistaCalendario() {
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
+          <div className="ml-auto flex items-center gap-3 text-xs text-gray-500">
             <Leyenda color={COLOR_TIPO_SOLICITUD.vacaciones} etiqueta="Vacaciones" />
             <Leyenda color={COLOR_TIPO_SOLICITUD.permiso} etiqueta="Permiso" />
-            <span className="text-slate-400">
+            <span className="text-gray-400">
               (relleno = aprobada, contorno = pendiente)
             </span>
           </div>
@@ -872,7 +862,7 @@ function VistaCalendario() {
           <ErrorState mensaje="No se pudo cargar el calendario" onReintentar={refetch} />
         ) : (
           <>
-            <div className="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-400">
+            <div className="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-400">
               {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => (
                 <div key={d} className="py-1">
                   {d}
@@ -885,9 +875,9 @@ function VistaCalendario() {
                 return (
                   <div
                     key={dia}
-                    className="min-h-20 rounded-md border border-slate-100 bg-slate-50 p-1"
+                    className="min-h-20 rounded-md border border-gray-100 bg-gray-50 p-1"
                   >
-                    <div className="text-xs font-medium text-slate-500">{dia}</div>
+                    <div className="text-xs font-medium text-gray-500">{dia}</div>
                     <div className="mt-1 space-y-0.5">
                       {delDia.slice(0, 3).map((a) => (
                         <div
@@ -895,13 +885,13 @@ function VistaCalendario() {
                           title={`${a.empleado_nombre} · ${TIPO_ETIQUETA[a.tipo]} (${a.estado}) · ${a.dias} días`}
                           className={`truncate rounded px-1 py-0.5 text-[10px] leading-tight text-white ${
                             COLOR_TIPO_SOLICITUD[a.tipo]
-                          } ${a.estado === 'pendiente' ? 'ring-1 ring-slate-400 ring-offset-1 opacity-70' : ''}`}
+                          } ${a.estado === 'pendiente' ? 'ring-1 ring-gray-400 ring-offset-1 opacity-70' : ''}`}
                         >
                           {a.empleado_nombre}
                         </div>
                       ))}
                       {delDia.length > 3 && (
-                        <div className="text-[10px] text-slate-400">
+                        <div className="text-[10px] text-gray-400">
                           +{delDia.length - 3} más
                         </div>
                       )}
@@ -911,20 +901,20 @@ function VistaCalendario() {
               })}
             </div>
 
-            <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+            <div className="mt-4 flex items-center gap-4 border-t border-gray-100 pt-3 text-xs text-gray-500">
               <span>
-                <strong className="text-slate-700">{ausencias.length}</strong> solicitudes en el
+                <strong className="text-gray-700">{ausencias.length}</strong> solicitudes en el
                 mes
               </span>
               <span>
-                <strong className="text-slate-700">{totalDias}</strong> días de ausencia
+                <strong className="text-gray-700">{totalDias}</strong> días de ausencia
               </span>
             </div>
 
             {ausencias.length === 0 && (
               <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-                <CalendarOff className="h-8 w-8 text-slate-300" />
-                <p className="text-sm text-slate-500">
+                <CalendarOff className="h-8 w-8 text-gray-300" />
+                <p className="text-sm text-gray-500">
                   No hay ausencias aprobadas ni pendientes en este mes.
                 </p>
               </div>
@@ -965,8 +955,8 @@ function ActionButton({
       onClick={onClick}
       className={`rounded-md p-1.5 transition-colors ${
         danger
-          ? 'text-slate-400 hover:bg-red-50 hover:text-red-600'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+          ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
+          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
       }`}
     >
       {children}
@@ -978,7 +968,7 @@ function LoadingRows() {
   return (
     <div className="space-y-2 py-4">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-gray-100" />
       ))}
     </div>
   );
@@ -987,8 +977,8 @@ function LoadingRows() {
 function EmptyState({ mensaje }: { mensaje: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <ClipboardList className="h-10 w-10 text-slate-300" />
-      <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
+      <ClipboardList className="h-10 w-10 text-gray-300" />
+      <p className="max-w-sm text-sm text-gray-500">{mensaje}</p>
     </div>
   );
 }
@@ -1003,7 +993,7 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">{mensaje || 'No se pudieron cargar los datos'}</p>
+      <p className="text-sm text-gray-600">{mensaje || 'No se pudieron cargar los datos'}</p>
       <Button variant="outline" size="sm" onClick={onReintentar}>
         <Search className="h-4 w-4" />
         Reintentar

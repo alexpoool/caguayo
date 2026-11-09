@@ -17,7 +17,7 @@ import type {
 import type { Cuenta, CuentaCreate, CuentaUpdate, CuentaDependencia, CuentaDependenciaCreate, CuentaDependenciaUpdate } from '../types/cuenta';
 import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
 import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate, ConexionDatabase } from '../types/dependencia';
-import type { BackupInfo, BackupListado, BackupJob, BackupJobIniciado } from '../types/backup';
+import type { BackupListado, BackupJob, BackupJobIniciado } from '../types/backup';
 import type { Provincia, Municipio } from '../types/ubicacion';
 import type { Moneda } from '../types/moneda';
 

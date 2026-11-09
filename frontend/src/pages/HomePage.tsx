@@ -189,17 +189,17 @@ export function HomePage() {
 
   return (
     <div className="min-h-full w-full bg-surface">
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         <div className="rounded-2xl bg-gradient-to-r from-brand-500 via-panel-800 to-panel-900 text-white shadow-lg">
           <div className="flex flex-col items-center gap-6 px-8 py-8 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-2xl font-semibold md:text-3xl">
                 Bienvenido, <span className="text-brand-100">{user?.nombre || 'Usuario'}</span> 👋
               </h1>
-              <p className="mt-2 text-sm text-slate-200 md:text-base">
+              <p className="mt-2 text-sm text-gray-200 md:text-base">
                 Has iniciado sesión como <strong>{user?.grupo?.nombre || 'Usuario'}</strong> en {empresa.nombre}.
               </p>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-slate-300 md:justify-start md:text-sm">
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-gray-300 md:justify-start md:text-sm">
                 <span>📅 {formatDate()}</span>
                 <span>🕐 {formatTime()}</span>
                 <span>💻 Sesión activa</span>
@@ -223,13 +223,13 @@ export function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-xl border border-slate-100 bg-white shadow-sm">
+          <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
             <div className="px-6 py-5">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-brand-500" />
-                <h2 className="text-base font-semibold text-slate-900">Tus Accesos Habilitados</h2>
+                <h2 className="text-base font-semibold text-gray-900">Tus Accesos Habilitados</h2>
               </div>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-gray-500">
                 Módulos y funcionalidades asignados a tu grupo. Módulos habilitados: {enabledCount} de {totalModules}
               </p>
             </div>
@@ -237,7 +237,7 @@ export function HomePage() {
             <div className="max-h-[560px] overflow-y-auto px-6 pb-6">
               <ul className="space-y-2">
                 {modules.map(mod => (
-                  <li key={mod.key} className="rounded-lg border border-slate-100 bg-slate-50/40">
+                  <li key={mod.key} className="rounded-lg border border-gray-100 bg-gray-50/40">
                     <button
                       onClick={() => mod.enabled && toggle(mod.key)}
                       className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
@@ -246,16 +246,16 @@ export function HomePage() {
                       <div className="flex items-center gap-3">
                         {mod.enabled ? (
                           expanded[mod.key] ? (
-                            <ChevronDown className="h-4 w-4 text-slate-600" />
+                            <ChevronDown className="h-4 w-4 text-gray-600" />
                           ) : (
-                            <ChevronRight className="h-4 w-4 text-slate-600" />
+                            <ChevronRight className="h-4 w-4 text-gray-600" />
                           )
                         ) : (
-                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                          <ChevronRight className="h-4 w-4 text-gray-300" />
                         )}
                         <span
                           className={`text-sm font-medium ${
-                            mod.enabled ? 'text-slate-900' : 'text-slate-400'
+                            mod.enabled ? 'text-gray-900' : 'text-gray-400'
                           }`}
                         >
                           {mod.label}
@@ -273,11 +273,11 @@ export function HomePage() {
                     </button>
 
                     {mod.enabled && expanded[mod.key] && mod.funcs.length > 0 && (
-                      <ul className="space-y-1 border-t border-slate-100 bg-white px-6 py-3">
+                      <ul className="space-y-1 border-t border-gray-100 bg-white px-6 py-3">
                         {mod.funcs.map(f => (
                           <li key={f.key} className="flex items-center gap-2 py-1">
                             <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                            <span className="text-sm text-slate-700">{f.label}</span>
+                            <span className="text-sm text-gray-700">{f.label}</span>
                             <span className="ml-auto text-xs text-green-600">Habilitado</span>
                           </li>
                         ))}
@@ -289,11 +289,11 @@ export function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-100 bg-white shadow-sm">
+          <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
             <div className="px-6 py-5">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-brand-500" />
-                <h2 className="text-base font-semibold text-slate-900">Guía Rápida</h2>
+                <h2 className="text-base font-semibold text-gray-900">Guía Rápida</h2>
               </div>
             </div>
             <div className="px-6 pb-6">
@@ -304,8 +304,8 @@ export function HomePage() {
                       {step.step}
                     </span>
                     <div>
-                      <p className="text-sm font-medium text-slate-900">{step.title}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{step.desc}</p>
+                      <p className="text-sm font-medium text-gray-900">{step.title}</p>
+                      <p className="mt-0.5 text-xs text-gray-500">{step.desc}</p>
                     </div>
                   </li>
                 ))}

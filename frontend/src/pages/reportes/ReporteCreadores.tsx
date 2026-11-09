@@ -6,8 +6,8 @@ import { UserCircle, Download, Eye, Loader2, AlertTriangle } from "lucide-react"
 import ReportNotes from "../../components/ui/ReportNotes";
 import type { Provincia, Municipio } from "../../types/ubicacion";
 
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+import { API_BASE_URL as BASE_URL } from "../../config/api";
+import { abrirBlob, descargarBlob } from '../../utils/archivos';
 
 const ReporteCreadores: React.FC = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -47,7 +47,7 @@ const ReporteCreadores: React.FC = () => {
       const token = authHelpers.getToken() ?? "";
       const r = await fetch(`${BASE_URL}/proyecto/?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
-      window.open(window.URL.createObjectURL(await r.blob()), "_blank");
+      abrirBlob(await r.blob());
     } catch { toast.error("Error al generar vista previa"); } finally { setPreviewLoading(false); }
   };
 
@@ -58,20 +58,17 @@ const ReporteCreadores: React.FC = () => {
       const r = await fetch(`${BASE_URL}/proyecto/?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
       const blob = await r.blob();
-      const a = document.createElement("a");
-      a.href = window.URL.createObjectURL(blob);
-      a.download = "creadores.pdf";
-      a.click();
+      descargarBlob(blob, "creadores.pdf");
       toast.success("Reporte generado");
     } catch { toast.error("Error al generar reporte"); } finally { setPdfLoading(false); }
   };
 
   return (
     <div className="flex flex-col p-4">
-      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 flex-shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
-            <UserCircle className="w-4 h-4 text-teal-600" />
+          <div className="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center">
+            <UserCircle className="w-4 h-4 text-brand-600" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-gray-900 leading-tight">Registro de Realizadores</h1>
@@ -79,10 +76,10 @@ const ReporteCreadores: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={handlePreview} disabled={previewLoading} className="p-2 rounded-lg text-teal-600 hover:bg-teal-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
+          <button type="button" onClick={handlePreview} disabled={previewLoading} className="p-2 rounded-lg text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
             {previewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
           </button>
-          <button type="button" onClick={handleSubmit} disabled={pdfLoading} className="p-2 rounded-lg text-teal-600 hover:bg-teal-50 disabled:opacity-50 transition-colors" title="Exportar PDF">
+          <button type="button" onClick={handleSubmit} disabled={pdfLoading} className="p-2 rounded-lg text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors" title="Exportar PDF">
             {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           </button>
         </div>
@@ -109,19 +106,19 @@ const ReporteCreadores: React.FC = () => {
               <div className="space-y-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Búsqueda</label>
-                  <input type="text" value={textoBusqueda} onChange={e => setTextoBusqueda(e.target.value)} placeholder="Nombre, CI, código..." className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500" />
+                  <input type="text" value={textoBusqueda} onChange={e => setTextoBusqueda(e.target.value)} placeholder="Nombre, CI, código..." className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Provincia</label>
-                    <select value={idProvincia ?? ""} onChange={e => { setIdProvincia(e.target.value ? Number(e.target.value) : null); setIdMunicipio(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+                    <select value={idProvincia ?? ""} onChange={e => { setIdProvincia(e.target.value ? Number(e.target.value) : null); setIdMunicipio(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-brand-500 bg-white">
                       <option value="">Todas</option>
                       {provincias.map(p => <option key={p.id_provincia} value={p.id_provincia}>{p.nombre}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Municipio</label>
-                    <select value={idMunicipio ?? ""} onChange={e => setIdMunicipio(e.target.value ? Number(e.target.value) : null)} disabled={!idProvincia} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 bg-white disabled:bg-gray-50">
+                    <select value={idMunicipio ?? ""} onChange={e => setIdMunicipio(e.target.value ? Number(e.target.value) : null)} disabled={!idProvincia} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-brand-500 bg-white disabled:bg-gray-50">
                       <option value="">{idProvincia ? "Todos" : "Primero provincia"}</option>
                       {municipios.map(m => <option key={m.id_municipio} value={m.id_municipio}>{m.nombre}</option>)}
                     </select>
@@ -131,7 +128,7 @@ const ReporteCreadores: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-0.5">Vigencia</label>
-                <select value={vigencia} onChange={e => setVigencia(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+                <select value={vigencia} onChange={e => setVigencia(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-brand-500 bg-white">
                   <option value="">Todos</option>
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>

@@ -70,14 +70,14 @@ export function UsuariosCredencialesPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4 animate-fade-in-up">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded shadow-lg animate-bounce-subtle">
             <Key className="h-5 w-5 text-white" />
@@ -150,7 +150,7 @@ export function UsuariosCredencialesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                        <span className="font-mono font-medium text-brand-700 bg-brand-50 px-2 py-1 rounded">
                           {usuario.alias}
                         </span>
                         <Button
@@ -198,7 +198,7 @@ export function UsuariosCredencialesPage() {
                     </TableCell>
                     <TableCell>{usuario.cargo || "-"}</TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-medium">
                         <Shield className="h-3 w-3" />
                         {usuario.grupo_nombre || "-"}
                       </span>

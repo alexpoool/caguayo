@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
+  CreateButton,
+} from '../../components/ui';
 import { SignToggle } from '../../components/ui/SignToggle';
 import { facturasServicioService, etapasProyectoService, monedaService, solicitudesService, tareasEtapaService, dependenciasService, cuentasService, clientesService, certificacionesService, contratosService } from '../../services/api';
 import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, ItemFacturaServicio, Certificacion } from '../../types/servicio';
-import type { Cuenta } from '../../types/ventas';
+import type { Cuenta, Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, FileText, ChevronDown, Printer, ListChecks, List, Loader2 } from 'lucide-react';
+import { Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, FileText, ChevronDown, Printer, ListChecks, List, Loader2 } from 'lucide-react';
 import { getFacturaServicioDocument, getCertificacionFacturaDocument } from './facturaDocumento';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -14,7 +15,7 @@ import { authService } from '../../services/auth';
 import { formatCifra } from '../../utils/decimal';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useMonedaContratoDeEtapa } from '../../hooks/useMonedaContrato';
-import { formatFecha } from '../../utils/fecha';
+import { formatFecha, toISODateLocal} from '../../utils/fecha';
 
 type View = 'list' | 'form';
 
@@ -61,17 +62,17 @@ function SearchSelect({
     <div className="relative" ref={ref}>
       <Label className="text-sm font-medium">{label}</Label>
       {selectedItem ? (
-        <div className="mt-1 flex items-center gap-2 px-3 py-2 bg-teal-50 border border-teal-200 rounded-lg">
-          <span className="flex-1 text-sm text-teal-800 font-medium truncate">{getLabel(selectedItem)}</span>
-          <button onClick={() => { onSelect(null); setSearch(''); }} className="p-0.5 hover:bg-teal-200 rounded">
-            <X className="h-3.5 w-3.5 text-teal-600" />
+        <div className="mt-1 flex items-center gap-2 px-3 py-2 bg-brand-50 border border-brand-200 rounded-lg">
+          <span className="flex-1 text-sm text-brand-800 font-medium truncate">{getLabel(selectedItem)}</span>
+          <button onClick={() => { onSelect(null); setSearch(''); }} className="p-0.5 hover:bg-brand-200 rounded">
+            <X className="h-3.5 w-3.5 text-brand-600" />
           </button>
         </div>
       ) : (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
           <input
-            className="w-full mt-1 pl-9 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none text-sm bg-white"
+            className="w-full mt-1 pl-9 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white"
             placeholder={placeholder}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
@@ -86,7 +87,7 @@ function SearchSelect({
           {filtered.slice(0, 20).map(item => (
             <button
               key={getId(item)}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-teal-50 flex items-center gap-2"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 flex items-center gap-2"
               onClick={() => { onSelect(getId(item)); setSearch(''); setOpen(false); }}
             >
               <span className="truncate">{getLabel(item)}</span>
@@ -109,6 +110,10 @@ export function FacturasServicioPage() {
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
+  const monedasPorId = useMemo(
+    () => new Map(monedas.map((m) => [m.id_moneda, m])),
+    [monedas],
+  );
   const [currentEtapa, setCurrentEtapa] = useState<Etapa | null>(null);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -120,9 +125,13 @@ export function FacturasServicioPage() {
     refresh,
     hasMore,
     loadMore,
+    searchTerm,
+    setSearch: setSearchTerm,
   } = useInfiniteList<FacturaServicio>({
     queryKeyBase: 'facturas-servicio',
-    queryFn: (skip, limit) => facturasServicioService.getFacturasServicio(skip, limit),
+    extraQueryKeyParams: [etapaParam, solicitudParam],
+    queryFn: (skip, limit, search, onTotal) =>
+      facturasServicioService.getFacturasServicio(skip, limit, onTotal, search),
   });
 
   useEffect(() => {
@@ -152,7 +161,6 @@ export function FacturasServicioPage() {
     if (monedaContrato) setFormData(prev => ({ ...prev, id_moneda: monedaContrato }));
   }, [monedaContrato]);
 
-  const [searchTerm, setSearchTerm] = useState('');
   const [filtroEtapa] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: FacturaServicio | null }>({ isOpen: false, item: null });
 
@@ -206,11 +214,6 @@ export function FacturasServicioPage() {
   }, [dependenciaId]);
 
 
-
-  const { data: clientesData = [] } = useQuery({
-    queryKey: ['clientes-all'],
-    queryFn: () => clientesService.getClientes(0, 10000)
-  });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadInitialData(); }, []);
@@ -361,7 +364,7 @@ export function FacturasServicioPage() {
           id_certificacion: selectedCertificacion || undefined,
           alcance: 'TOTAL',
           id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
-          fecha: formData.fecha || new Date().toISOString().split('T')[0],
+          fecha: formData.fecha || toISODateLocal(),
           descripcion: formData.descripcion,
           observaciones: formData.observaciones,
           cuenta_factura: formData.cuenta_factura || undefined,
@@ -395,7 +398,7 @@ export function FacturasServicioPage() {
   };
 
   const resetForm = () => {
-    setFormData({ fecha: new Date().toISOString().split('T')[0] });
+    setFormData({ fecha: toISODateLocal() });
     setEditingId(null);
     setTareasDeEtapa([]);
     setSelectedTareas([]);
@@ -490,16 +493,8 @@ export function FacturasServicioPage() {
       result = result.filter(f => f.id_etapa && etapaIds.includes(f.id_etapa));
     }
 
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(f =>
-        f.codigo_factura?.toLowerCase().includes(term)
-      );
-    }
-
     return result;
-  }, [facturasInfinitas, searchTerm, filtroEtapa, solicitudParam, etapas]);
+  }, [facturasInfinitas, filtroEtapa, solicitudParam, etapas]);
 
   const getMonedaSymbol = (id?: number) => {
     if (!id) return '';
@@ -536,6 +531,15 @@ export function FacturasServicioPage() {
     const etapaFactura = etapas.find(e => e.id_etapa === factura.id_etapa);
     const solicitudFactura = solicitudes.find(s => s.id_solicitud_servicio === etapaFactura?.id_solicitud_servicio);
     const clienteId = solicitudFactura?.id_cliente;
+
+    let clientesData: Cliente[] = [];
+    if (clienteId) {
+      try {
+        clientesData = [await clientesService.getCliente(clienteId)];
+      } catch (e) {
+        console.error('Error loading cliente:', e);
+      }
+    }
 
     let cuentasCliente: Cuenta[] = [];
     if (clienteId) {
@@ -602,6 +606,15 @@ export function FacturasServicioPage() {
     const solicitudFactura = solicitudes.find(s => s.id_solicitud_servicio === etapaFactura?.id_solicitud_servicio);
     const clienteId = solicitudFactura?.id_cliente;
 
+    let clientesData: Cliente[] = [];
+    if (clienteId) {
+      try {
+        clientesData = [await clientesService.getCliente(clienteId)];
+      } catch (e) {
+        console.error('Error loading cliente:', e);
+      }
+    }
+
     let cuentasCliente: Cuenta[] = [];
     if (clienteId) {
       try {
@@ -657,11 +670,11 @@ export function FacturasServicioPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           {etapaParam && (
-            <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">
+            <Button variant="outline" onClick={() => navigate('/proyectos/etapas')} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
             <Receipt className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -682,14 +695,12 @@ export function FacturasServicioPage() {
             const algunaPagada = filteredDocs.some(f => Number(f.pagado || 0) >= Number(f.importe || 0) && Number(f.importe || 0) > 0 && f.id_etapa === etapaActual);
             const botonDeshabilitado = facturaPagada || algunaPagada;
             return (
-              <Button
+              <CreateButton
+                label={botonDeshabilitado ? 'Factura Pagada' : 'Nueva Factura'}
                 onClick={() => openForm()}
                 disabled={!!botonDeshabilitado}
-                className={`gap-2 shadow-lg hover:shadow-xl transition-all duration-300 ${botonDeshabilitado ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 hover:scale-105 active:scale-95'}`}
-              >
-                <Plus className="h-4 w-4" />
-                {botonDeshabilitado ? 'Factura Pagada' : 'Nueva Factura'}
-              </Button>
+                className="shadow-lg hover:shadow-xl"
+              />
             );
           })()}
         </div>
@@ -708,23 +719,23 @@ export function FacturasServicioPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-teal-600" />
+                    <Hash className="h-4 w-4 text-brand-600" />
                     Código
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-teal-600" />
+                    <ListChecks className="h-4 w-4 text-brand-600" />
                     Etapa
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Importe
                   </div>
                 </TableHead>
@@ -742,7 +753,7 @@ export function FacturasServicioPage() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Pagos
                   </div>
                 </TableHead>
@@ -772,7 +783,7 @@ export function FacturasServicioPage() {
                   return (
                     <TableRow key={item.id_factura_servicio} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
                           <Hash className="h-3 w-3" />
                           {item.codigo_factura || 'N/A'}
                         </span>
@@ -801,7 +812,7 @@ export function FacturasServicioPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => navigate(`/proyectos/pagos-factura-servicio?factura=${item.id_factura_servicio}`)}
-                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                          className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                         >
                           <DollarSign className="h-3.5 w-3.5" />
                           Pagos
@@ -813,7 +824,7 @@ export function FacturasServicioPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleViewDocument(item)}
-                            className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
+                            className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8"
                             title="Ver documento"
                           >
                             <Eye className="h-4 w-4" />
@@ -900,10 +911,10 @@ export function FacturasServicioPage() {
           {(tareasDeEtapa.length > 0) && (
             <div className="mt-6 border-t pt-6">
               <Label className="text-base font-semibold flex items-center gap-2 mb-3">
-                <ListChecks className="h-5 w-5 text-teal-600" />
+                <ListChecks className="h-5 w-5 text-brand-600" />
                 Tareas de la Etapa
               </Label>
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="border border-gray-200 rounded-lg overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
@@ -953,7 +964,7 @@ export function FacturasServicioPage() {
                                   });
                                 }
                               }}
-                              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                              className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                             />
                           </td>
                           <td className="px-3 py-2">
@@ -966,7 +977,7 @@ export function FacturasServicioPage() {
                               <input
                                 type="number"
                                 step="0.01"
-                                className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 outline-none"
+                                className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                 value={cant}
                                 onChange={(e) => setTareaModifiers(prev => ({
                                   ...prev,
@@ -982,7 +993,7 @@ export function FacturasServicioPage() {
                               <input
                                 type="number"
                                 step="0.01"
-                                className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 outline-none"
+                                className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                 value={prec}
                                 onChange={(e) => setTareaModifiers(prev => ({
                                   ...prev,
@@ -1007,7 +1018,7 @@ export function FacturasServicioPage() {
                                     type="number"
                                     step="0.01"
                                     placeholder="0.00"
-                                    className="w-16 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 outline-none"
+                                    className="w-16 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                     value={mod?.ajuste_porciento ? Math.abs(mod.ajuste_porciento) : ''}
                                     onChange={(e) => {
                                       const val = e.target.value;
@@ -1037,7 +1048,7 @@ export function FacturasServicioPage() {
                                   type="number"
                                   step="0.01"
                                   placeholder="0.00"
-                                  className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 outline-none"
+                                  className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                   value={mod?.ajuste_valor ? Math.abs(mod.ajuste_valor) : ''}
                                   onChange={(e) => {
                                     const val = e.target.value;
@@ -1061,9 +1072,9 @@ export function FacturasServicioPage() {
                 </table>
               </div>
               <div className="flex justify-end mt-3">
-                <div className="bg-teal-50 border border-teal-200 rounded-lg px-5 py-3 text-right">
-                  <span className="text-sm text-teal-700 font-medium">Total seleccionado: </span>
-                  <span className="text-lg font-bold text-teal-900">
+                <div className="bg-brand-50 border border-brand-200 rounded-lg px-5 py-3 text-right">
+                  <span className="text-sm text-brand-700 font-medium">Total seleccionado: </span>
+                  <span className="text-lg font-bold text-brand-900">
                     {getMonedaSymbol(formData.id_moneda)} {formatCifra(tareasDeEtapa
                       .filter(t => selectedTareas.includes(t.id_tarea_etapa))
                       .reduce((sum, t) => {
@@ -1081,10 +1092,10 @@ export function FacturasServicioPage() {
           {(certificacionesDeEtapa.length > 0) && (
             <div className="mt-6 border-t pt-6">
               <Label className="text-base font-semibold flex items-center gap-2 mb-3">
-                <FileText className="h-5 w-5 text-teal-600" />
+                <FileText className="h-5 w-5 text-brand-600" />
                 Certificación a Facturar
               </Label>
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="border border-gray-200 rounded-lg overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
@@ -1113,7 +1124,7 @@ export function FacturasServicioPage() {
                                   setCertAjusteValor(isSelected ? 0 : (cert.ajuste_valor || 0));
                                 }
                               }}
-                              className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
+                              className="h-4 w-4 text-brand-600 border-gray-300 focus:ring-brand-500"
                             />
                           </td>
                           <td className="px-3 py-2">
@@ -1137,7 +1148,7 @@ export function FacturasServicioPage() {
                                   type="number"
                                   step="0.01"
                                   placeholder="0.00"
-                                  className="w-16 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 outline-none"
+                                  className="w-16 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                   value={certAjustePorciento ? Math.abs(certAjustePorciento) : ''}
                                   onChange={(e) => {
                                     const val = e.target.value;
@@ -1161,7 +1172,7 @@ export function FacturasServicioPage() {
                                   type="number"
                                   step="0.01"
                                   placeholder="0.00"
-                                  className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 outline-none"
+                                  className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                   value={certAjusteValor ? Math.abs(certAjusteValor) : ''}
                                   onChange={(e) => {
                                     const val = e.target.value;
@@ -1193,14 +1204,14 @@ export function FacturasServicioPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <Label className="text-sm font-medium">Cuenta</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.cuenta_factura || ''} onChange={(e: any) => {
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white" value={formData.cuenta_factura || ''} onChange={(e: any) => {
                 setFormData({
                   ...formData,
                   cuenta_factura: e.target.value
                 });
               }}>
                 <option value="">Seleccionar cuenta</option>
-                {cuentasDependencia.map(c => <option key={c.id_cuenta} value={c.numero_cuenta}>{c.numero_cuenta} - {c.banco} ({monedas.find(m => m.id_moneda === c.id_moneda)?.denominacion || 'N/A'})</option>)}
+                {cuentasDependencia.map(c => <option key={c.id_cuenta} value={c.numero_cuenta}>{c.numero_cuenta} - {c.banco} ({monedasPorId.get(c.id_moneda)?.denominacion || 'N/A'})</option>)}
               </select>
             </div>
             <div>
@@ -1208,7 +1219,7 @@ export function FacturasServicioPage() {
               <Input
                 readOnly
                 className="mt-1 bg-gray-50 cursor-not-allowed"
-                value={monedas.find(m => m.id_moneda === Number(formData.id_moneda))?.denominacion || ''}
+                value={monedasPorId.get(Number(formData.id_moneda))?.denominacion || ''}
                 placeholder="Se define por la etapa"
               />
               {monedaContrato && (
@@ -1234,7 +1245,7 @@ export function FacturasServicioPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {renderList()}
 
       <FormModal
@@ -1259,7 +1270,7 @@ export function FacturasServicioPage() {
               form={FACTURA_SERVICIO_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -1284,10 +1295,10 @@ export function FacturasServicioPage() {
           onClose={() => setDetailModal({ isOpen: false, item: null })}
         >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <Receipt className="h-7 w-7" />
                   </div>
                   <div>
@@ -1300,20 +1311,20 @@ export function FacturasServicioPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               {(() => {
                 const importe = Number(detailModal.item.importe || 0);
                 const pagado = Number(detailModal.item.pagado || 0);
                 const saldo = importe - pagado;
                 return (
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                      <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Importe Total</p>
-                      <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(importe)}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                      <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Importe Total</p>
+                      <p className="font-bold text-brand-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(importe)}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                      <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Pagado</p>
-                      <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(pagado)}</p>
+                    <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                      <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Pagado</p>
+                      <p className="font-bold text-brand-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(pagado)}</p>
                     </div>
                     <div className={`p-4 rounded-xl border ${saldo > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
                       <p className={`text-xs uppercase tracking-wider mb-1 ${saldo > 0 ? 'text-red-600' : 'text-gray-500'}`}>Saldo Pendiente</p>
@@ -1323,14 +1334,14 @@ export function FacturasServicioPage() {
                 );
               })()}
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-gray-50 p-4 rounded-xl">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Alcance</p>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.item.alcance === 'TOTAL' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.item.alcance === 'TOTAL' ? 'bg-brand-100 text-brand-800' : 'bg-orange-100 text-orange-800'}`}>
                   {detailModal.item.alcance || 'N/A'}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
@@ -1349,11 +1360,11 @@ export function FacturasServicioPage() {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => navigate(`/proyectos/pagos-factura-servicio?factura=${detailModal.item?.id_factura_servicio}`)}
-                className="gap-2 text-teal-600 border-teal-200 hover:bg-teal-50"
+                className="gap-2 text-brand-600 border-brand-200 hover:bg-brand-50"
               >
                 <DollarSign className="h-4 w-4" />
                 Pagos
@@ -1371,10 +1382,10 @@ export function FacturasServicioPage() {
           ariaLabel="Items de Factura"
         >
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <List className="h-7 w-7" />
                   </div>
                   <div>
@@ -1387,7 +1398,7 @@ export function FacturasServicioPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               {itemsModal.items.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <List className="h-12 w-12 mx-auto mb-2 text-gray-300" />
@@ -1432,16 +1443,16 @@ export function FacturasServicioPage() {
               )}
               {itemsModal.items.length > 0 && (
                 <div className="flex justify-end mt-4">
-                  <div className="bg-teal-50 border border-teal-200 rounded-lg px-5 py-3 text-right">
-                    <span className="text-sm text-teal-700 font-medium">Total: </span>
-                    <span className="text-lg font-bold text-teal-900">
+                  <div className="bg-brand-50 border border-brand-200 rounded-lg px-5 py-3 text-right">
+                    <span className="text-sm text-brand-700 font-medium">Total: </span>
+                    <span className="text-lg font-bold text-brand-900">
                       {getMonedaSymbol(itemsModal.factura?.id_moneda)} {formatCifra(itemsModal.items.reduce((sum, item) => sum + (Number(item.cantidad || 0) * Number(item.precio || 0)), 0))}
                     </span>
                   </div>
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-between gap-2">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-between gap-2">
               <button onClick={() => setItemsModal({ isOpen: false, factura: null, items: [] })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => handleViewDocument(itemsModal.factura!)} className="gap-2">

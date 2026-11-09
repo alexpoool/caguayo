@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal,
+  CreateButton,
+} from '../../components/ui';
 import { ClienteForm } from '../clientes/components/form/ClienteForm';
 import { contratosService, clientesService, monedaService, solicitudesService, configuracionService } from '../../services/api';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
@@ -10,7 +12,7 @@ import type { ContratoWithDetails, ContratoCreate } from '../../types/contrato';
 import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, User, Tag, X, Layers, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { formatFecha } from '../../utils/fecha';
+import { formatFecha, toISODateLocal} from '../../utils/fecha';
 import { DateInput } from '../../components/ui';
 
 type View = 'list' | 'form';
@@ -38,7 +40,7 @@ export function ContratosPage() {
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
   const clienteRef = useRef<HTMLDivElement | null>(null);
 
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = toISODateLocal();
 
   const addDays = (dateStr: string, days: number) => {
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -241,9 +243,9 @@ export function ContratosPage() {
 
   const renderList = () => (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <FileText className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -253,13 +255,7 @@ export function ContratosPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Contrato
-        </Button>
+        <CreateButton label="Nuevo Contrato" onClick={() => openForm()} />
       </div>
 
       <div className="flex gap-2">
@@ -277,30 +273,30 @@ export function ContratosPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-teal-600" />
+                    <Tag className="h-4 w-4 text-brand-600" />
                     Código
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-teal-600" />
+                    <FileText className="h-4 w-4 text-brand-600" />
                     Nombre
                   </div>
                 </TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-teal-600" />
+                    <User className="h-4 w-4 text-brand-600" />
                     Cliente
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Receipt className="h-4 w-4 text-teal-600" />
+                    <Receipt className="h-4 w-4 text-brand-600" />
                     Facturas
                   </div>
                 </TableHead>
@@ -313,7 +309,7 @@ export function ContratosPage() {
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="h-5 w-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                      <div className="h-5 w-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                       Cargando contratos...
                     </div>
                   </TableCell>
@@ -334,7 +330,7 @@ export function ContratosPage() {
                 contratos.map((item) => (
                   <TableRow key={item.id_contrato} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
                         {item.codigo || 'N/A'}
                       </span>
@@ -354,7 +350,7 @@ export function ContratosPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/ventas/facturas?contrato=${item.id_contrato}`)}
-                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                        className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                       >
                         <Receipt className="h-3.5 w-3.5" />
                         Ver
@@ -365,7 +361,7 @@ export function ContratosPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/ventas/suplementos?contrato=${item.id_contrato}`)}
-                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                        className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                       >
                         <Layers className="h-3.5 w-3.5" />
                         Suplemento
@@ -403,8 +399,8 @@ export function ContratosPage() {
         {!isLoading && contratos.length > 0 && (hasMore || isFetchingMore) && (
           <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
             {isFetchingMore ? (
-              <span className="text-sm text-teal-600 flex items-center gap-2">
-                <div className="h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-brand-600 flex items-center gap-2">
+                <div className="h-4 w-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                 Cargando más...
               </span>
             ) : (
@@ -430,7 +426,7 @@ export function ContratosPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Tipo</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_tipo_contrato || ''} onChange={(e: any) => setFormData({...formData, id_tipo_contrato: e.target.value})}>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white" value={formData.id_tipo_contrato || ''} onChange={(e: any) => setFormData({...formData, id_tipo_contrato: e.target.value})}>
                 <option value="">Seleccionar tipo</option>
                 {tiposContrato.map(t => <option key={t.id_tipo_contrato} value={t.id_tipo_contrato}>{t.nombre}</option>)}
               </select>
@@ -463,7 +459,7 @@ export function ContratosPage() {
                           setShowClienteDropdown(true);
                         }}
                         onFocus={() => setShowClienteDropdown(true)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
                       />
                       {(formData.id_cliente || clienteSearch) && (
                         <button
@@ -484,7 +480,7 @@ export function ContratosPage() {
                             <button
                               key={c.id_cliente}
                               type="button"
-                              className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                              className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
                               onClick={() => {
                                 setFormData({ ...formData, id_cliente: c.id_cliente });
                                 setClienteSearch('');
@@ -505,7 +501,7 @@ export function ContratosPage() {
                 <button
                   type="button"
                   onClick={() => setShowNuevoClienteModal(true)}
-                  className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                  className="py-2 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
                 >
                   <Plus className="h-4 w-4" />
                   Nuevo Cliente
@@ -520,7 +516,7 @@ export function ContratosPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
                 <option value="">Seleccionar moneda</option>
                 {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
               </select>
@@ -530,7 +526,7 @@ export function ContratosPage() {
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
               <DateInput
-                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha || ''}
                 min={hoy}
                 onChange={(fecha) => handleFechaChange(fecha)}
@@ -539,7 +535,7 @@ export function ContratosPage() {
             <div>
               <Label className="text-sm font-medium">Fecha Vigencia</Label>
               <DateInput
-                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.vigencia || ''}
                 min={formData.fecha ? addDays(formData.fecha, 1) : hoy}
                 onChange={(vigencia) => setFormData({...formData, vigencia})}
@@ -560,7 +556,7 @@ export function ContratosPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {renderList()}
       <FormModal
         isOpen={view === 'form'}
@@ -596,7 +592,7 @@ export function ContratosPage() {
               form={CONTRATO_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               {editingId ? 'Actualizar' : 'Guardar'}
             </Button>
@@ -616,12 +612,12 @@ export function ContratosPage() {
       />
 
       {showNuevoClienteModal && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <User className="h-7 w-7" />
                   </div>
                   <div>
@@ -634,7 +630,7 @@ export function ContratosPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <ClienteForm
                 editingCliente={null}
                 isProveedorView={false}
@@ -661,12 +657,12 @@ export function ContratosPage() {
       )}
 
       {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <FileText className="h-7 w-7" />
                   </div>
                   <div>
@@ -679,10 +675,10 @@ export function ContratosPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Cliente</p>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Cliente</p>
                   <p className="font-bold text-gray-900">{detailModal.item.cliente?.nombre || 'N/A'}</p>
                 </div>
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
@@ -698,16 +694,16 @@ export function ContratosPage() {
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     detailModal.item.estado?.nombre === 'ACTIVO' ? 'bg-green-100 text-green-800' :
                     detailModal.item.estado?.nombre === 'CANCELADO' ? 'bg-red-100 text-red-800' :
-                    detailModal.item.estado?.nombre === 'FINALIZADO' ? 'bg-blue-100 text-blue-800' :
+                    detailModal.item.estado?.nombre === 'FINALIZADO' ? 'bg-brand-100 text-brand-800' :
                     'bg-yellow-100 text-yellow-800'
                   }`}>
                     {detailModal.item.estado?.nombre || 'N/A'}
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-pink-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
                 </div>
                 <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
@@ -722,7 +718,7 @@ export function ContratosPage() {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>

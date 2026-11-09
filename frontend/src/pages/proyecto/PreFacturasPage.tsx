@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
+  CreateButton,
+} from '../../components/ui';
 import { SignToggle } from '../../components/ui/SignToggle';
 import { facturasServicioService, etapasProyectoService, monedaService, solicitudesService, tareasEtapaService, dependenciasService, cuentasService, clientesService, certificacionesService, contratosService } from '../../services/api';
 import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, ItemFacturaServicio, Certificacion } from '../../types/servicio';
-import type { Cuenta } from '../../types/ventas';
+import type { Cuenta, Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, X, Eye, DollarSign, Hash, Tag, ChevronDown, Printer, ListChecks, Loader2, CheckCircle2 } from 'lucide-react';
+import { Trash2, Edit, ArrowLeft, Search, FileText, X, Eye, DollarSign, Hash, Tag, ChevronDown, Printer, ListChecks, Loader2, CheckCircle2 } from 'lucide-react';
 import { getFacturaServicioDocument, getCertificacionFacturaDocument } from './facturaDocumento';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -14,7 +15,7 @@ import { authService } from '../../services/auth';
 import { formatCifra } from '../../utils/decimal';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useMonedaContratoDeEtapa } from '../../hooks/useMonedaContrato';
-import { formatFecha } from '../../utils/fecha';
+import { formatFecha, toISODateLocal} from '../../utils/fecha';
 
 type View = 'list' | 'form';
 
@@ -61,17 +62,17 @@ function SearchSelect({
     <div className="relative" ref={ref}>
       <Label className="text-sm font-medium">{label}</Label>
       {selectedItem ? (
-        <div className="mt-1 flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-          <span className="flex-1 text-sm text-blue-800 font-medium truncate">{getLabel(selectedItem)}</span>
-          <button onClick={() => { onSelect(null); setSearch(''); }} className="p-0.5 hover:bg-blue-200 rounded">
-            <X className="h-3.5 w-3.5 text-blue-600" />
+        <div className="mt-1 flex items-center gap-2 px-3 py-2 bg-brand-50 border border-brand-200 rounded-lg">
+          <span className="flex-1 text-sm text-brand-800 font-medium truncate">{getLabel(selectedItem)}</span>
+          <button onClick={() => { onSelect(null); setSearch(''); }} className="p-0.5 hover:bg-brand-200 rounded">
+            <X className="h-3.5 w-3.5 text-brand-600" />
           </button>
         </div>
       ) : (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
           <input
-            className="w-full mt-1 pl-9 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+            className="w-full mt-1 pl-9 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white"
             placeholder={placeholder}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
@@ -86,7 +87,7 @@ function SearchSelect({
           {filtered.slice(0, 20).map(item => (
             <button
               key={getId(item)}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center gap-2"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 flex items-center gap-2"
               onClick={() => { onSelect(getId(item)); setSearch(''); setOpen(false); }}
             >
               <span className="truncate">{getLabel(item)}</span>
@@ -109,6 +110,10 @@ export function PreFacturasPage() {
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
+  const monedasPorId = useMemo(
+    () => new Map(monedas.map((m) => [m.id_moneda, m])),
+    [monedas],
+  );
   const [currentEtapa, setCurrentEtapa] = useState<Etapa | null>(null);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -120,9 +125,13 @@ export function PreFacturasPage() {
     refresh,
     hasMore,
     loadMore,
+    searchTerm,
+    setSearch: setSearchTerm,
   } = useInfiniteList<FacturaServicio>({
     queryKeyBase: 'facturas-servicio',
-    queryFn: (skip, limit) => facturasServicioService.getFacturasServicio(skip, limit),
+    queryFn: (skip, limit, search, onTotal) =>
+      facturasServicioService.getFacturasServicio(skip, limit, onTotal, search),
+    extraQueryKeyParams: [etapaParam, solicitudParam],
   });
 
   useEffect(() => {
@@ -152,7 +161,6 @@ export function PreFacturasPage() {
     if (monedaContrato) setFormData(prev => ({ ...prev, id_moneda: monedaContrato }));
   }, [monedaContrato]);
 
-  const [searchTerm, setSearchTerm] = useState('');
   const [filtroEtapa] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: FacturaServicio | null }>({ isOpen: false, item: null });
 
@@ -202,11 +210,6 @@ export function PreFacturasPage() {
         });
     }
   }, [dependenciaId]);
-
-  const { data: clientesData = [] } = useQuery({
-    queryKey: ['clientes-all'],
-    queryFn: () => clientesService.getClientes(0, 10000)
-  });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadInitialData(); }, []);
@@ -356,7 +359,7 @@ export function PreFacturasPage() {
           id_certificacion: selectedCertificacion || undefined,
           alcance: 'TOTAL',
           id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
-          fecha: formData.fecha || new Date().toISOString().split('T')[0],
+          fecha: formData.fecha || toISODateLocal(),
           descripcion: formData.descripcion,
           observaciones: formData.observaciones,
           cuenta_factura: formData.cuenta_factura || undefined,
@@ -408,7 +411,7 @@ export function PreFacturasPage() {
   };
 
   const resetForm = () => {
-    setFormData({ fecha: new Date().toISOString().split('T')[0] });
+    setFormData({ fecha: toISODateLocal() });
     setEditingId(null);
     setTareasDeEtapa([]);
     setSelectedTareas([]);
@@ -504,15 +507,8 @@ export function PreFacturasPage() {
       result = result.filter(f => f.id_etapa && etapaIds.includes(f.id_etapa));
     }
 
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(f =>
-        f.codigo_factura?.toLowerCase().includes(term)
-      );
-    }
-
     return result;
-  }, [facturasInfinitas, searchTerm, filtroEtapa, solicitudParam, etapas]);
+  }, [facturasInfinitas, filtroEtapa, solicitudParam, etapas]);
 
   const getMonedaSymbol = (id?: number) => {
     if (!id) return '';
@@ -545,6 +541,15 @@ export function PreFacturasPage() {
     const etapaFactura = etapas.find(e => e.id_etapa === item.id_etapa);
     const solicitudFactura = solicitudes.find(s => s.id_solicitud_servicio === etapaFactura?.id_solicitud_servicio);
     const clienteId = solicitudFactura?.id_cliente;
+
+    let clientesData: Cliente[] = [];
+    if (clienteId) {
+      try {
+        clientesData = [await clientesService.getCliente(clienteId)];
+      } catch (e) {
+        console.error('Error loading cliente:', e);
+      }
+    }
 
     let cuentasCliente: Cuenta[] = [];
     if (clienteId) {
@@ -605,11 +610,11 @@ export function PreFacturasPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           {etapaParam && (
-            <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">
+            <Button variant="outline" onClick={() => navigate('/proyectos/etapas')} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
             <FileText className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -620,13 +625,7 @@ export function PreFacturasPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Pre-factura
-        </Button>
+        <CreateButton label="Nueva Pre-factura" onClick={() => openForm()} />
       </div>
 
       <div className="relative max-w-md">
@@ -642,29 +641,29 @@ export function PreFacturasPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-blue-600" />
+                    <Hash className="h-4 w-4 text-brand-600" />
                     Código
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-blue-600" />
+                    <ListChecks className="h-4 w-4 text-brand-600" />
                     Etapa
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-blue-600" />
+                    <Tag className="h-4 w-4 text-brand-600" />
                     Tipo
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-blue-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Importe
                   </div>
                 </TableHead>
@@ -694,7 +693,7 @@ export function PreFacturasPage() {
                   return (
                     <TableRow key={item.id_factura_servicio} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded text-sm font-mono font-medium">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
                           <Hash className="h-3 w-3" />
                           {item.codigo_factura || 'N/A'}
                         </span>
@@ -703,7 +702,7 @@ export function PreFacturasPage() {
                         {getEtapaName(item.id_etapa)}
                       </TableCell>
                       <TableCell>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-brand-100 text-brand-700">
                           Pre-factura
                         </span>
                       </TableCell>
@@ -725,7 +724,7 @@ export function PreFacturasPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => openDocument(item, false)}
-                            className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
+                            className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8"
                             title="Ver documento"
                           >
                             <Eye className="h-4 w-4" />
@@ -812,10 +811,10 @@ export function PreFacturasPage() {
           {(tareasDeEtapa.length > 0) && (
             <div className="mt-6 border-t pt-6">
               <Label className="text-base font-semibold flex items-center gap-2 mb-3">
-                <ListChecks className="h-5 w-5 text-blue-600" />
+                <ListChecks className="h-5 w-5 text-brand-600" />
                 Tareas de la Etapa
               </Label>
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="border border-gray-200 rounded-lg overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
@@ -865,7 +864,7 @@ export function PreFacturasPage() {
                                   });
                                 }
                               }}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                             />
                           </td>
                           <td className="px-3 py-2">
@@ -878,7 +877,7 @@ export function PreFacturasPage() {
                               <input
                                 type="number"
                                 step="0.01"
-                                className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                 value={cant}
                                 onChange={(e) => setTareaModifiers(prev => ({
                                   ...prev,
@@ -894,7 +893,7 @@ export function PreFacturasPage() {
                               <input
                                 type="number"
                                 step="0.01"
-                                className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                 value={prec}
                                 onChange={(e) => setTareaModifiers(prev => ({
                                   ...prev,
@@ -919,7 +918,7 @@ export function PreFacturasPage() {
                                     type="number"
                                     step="0.01"
                                     placeholder="0.00"
-                                    className="w-16 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-16 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                     value={mod?.ajuste_porciento ? Math.abs(mod.ajuste_porciento) : ''}
                                     onChange={(e) => {
                                       const val = e.target.value;
@@ -949,7 +948,7 @@ export function PreFacturasPage() {
                                   type="number"
                                   step="0.01"
                                   placeholder="0.00"
-                                  className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                  className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                   value={mod?.ajuste_valor ? Math.abs(mod.ajuste_valor) : ''}
                                   onChange={(e) => {
                                     const val = e.target.value;
@@ -973,9 +972,9 @@ export function PreFacturasPage() {
                 </table>
               </div>
               <div className="flex justify-end mt-3">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-5 py-3 text-right">
-                  <span className="text-sm text-blue-700 font-medium">Total seleccionado: </span>
-                  <span className="text-lg font-bold text-blue-900">
+                <div className="bg-brand-50 border border-brand-200 rounded-lg px-5 py-3 text-right">
+                  <span className="text-sm text-brand-700 font-medium">Total seleccionado: </span>
+                  <span className="text-lg font-bold text-brand-900">
                     {getMonedaSymbol(formData.id_moneda)} {formatCifra(tareasDeEtapa
                       .filter(t => selectedTareas.includes(t.id_tarea_etapa))
                       .reduce((sum, t) => {
@@ -993,10 +992,10 @@ export function PreFacturasPage() {
           {(certificacionesDeEtapa.length > 0) && (
             <div className="mt-6 border-t pt-6">
               <Label className="text-base font-semibold flex items-center gap-2 mb-3">
-                <FileText className="h-5 w-5 text-blue-600" />
+                <FileText className="h-5 w-5 text-brand-600" />
                 Certificación a Facturar
               </Label>
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="border border-gray-200 rounded-lg overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
@@ -1025,7 +1024,7 @@ export function PreFacturasPage() {
                                   setCertAjusteValor(isSelected ? 0 : (cert.ajuste_valor || 0));
                                 }
                               }}
-                              className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                              className="h-4 w-4 text-brand-600 border-gray-300 focus:ring-brand-500"
                             />
                           </td>
                           <td className="px-3 py-2">
@@ -1049,7 +1048,7 @@ export function PreFacturasPage() {
                                   type="number"
                                   step="0.01"
                                   placeholder="0.00"
-                                  className="w-16 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                  className="w-16 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                   value={certAjustePorciento ? Math.abs(certAjustePorciento) : ''}
                                   onChange={(e) => {
                                     const val = e.target.value;
@@ -1073,7 +1072,7 @@ export function PreFacturasPage() {
                                   type="number"
                                   step="0.01"
                                   placeholder="0.00"
-                                  className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                  className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-brand-500 outline-none"
                                   value={certAjusteValor ? Math.abs(certAjusteValor) : ''}
                                   onChange={(e) => {
                                     const val = e.target.value;
@@ -1105,14 +1104,14 @@ export function PreFacturasPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <Label className="text-sm font-medium">Cuenta</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" value={formData.cuenta_factura || ''} onChange={(e: any) => {
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white" value={formData.cuenta_factura || ''} onChange={(e: any) => {
                 setFormData({
                   ...formData,
                   cuenta_factura: e.target.value
                 });
               }}>
                 <option value="">Seleccionar cuenta</option>
-                {cuentasDependencia.map(c => <option key={c.id_cuenta} value={c.numero_cuenta}>{c.numero_cuenta} - {c.banco} ({monedas.find(m => m.id_moneda === c.id_moneda)?.denominacion || 'N/A'})</option>)}
+                {cuentasDependencia.map(c => <option key={c.id_cuenta} value={c.numero_cuenta}>{c.numero_cuenta} - {c.banco} ({monedasPorId.get(c.id_moneda)?.denominacion || 'N/A'})</option>)}
               </select>
             </div>
             <div>
@@ -1120,7 +1119,7 @@ export function PreFacturasPage() {
               <Input
                 readOnly
                 className="mt-1 bg-gray-50 cursor-not-allowed"
-                value={monedas.find(m => m.id_moneda === Number(formData.id_moneda))?.denominacion || ''}
+                value={monedasPorId.get(Number(formData.id_moneda))?.denominacion || ''}
                 placeholder="Se define por la etapa"
               />
               {monedaContrato && (
@@ -1146,7 +1145,7 @@ export function PreFacturasPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {renderList()}
 
       <FormModal
@@ -1171,7 +1170,7 @@ export function PreFacturasPage() {
               form={PREFACTURA_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -1197,10 +1196,10 @@ export function PreFacturasPage() {
           onClose={() => setDetailModal({ isOpen: false, item: null })}
         >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <FileText className="h-7 w-7" />
                   </div>
                   <div>
@@ -1213,34 +1212,34 @@ export function PreFacturasPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Importe Total</p>
-                  <p className="font-bold text-blue-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(detailModal.item.importe)}</p>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Importe Total</p>
+                  <p className="font-bold text-brand-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(detailModal.item.importe)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Pagado</p>
-                  <p className="font-bold text-blue-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(detailModal.item.pagado)}</p>
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Pagado</p>
+                  <p className="font-bold text-brand-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(detailModal.item.pagado)}</p>
                 </div>
                 <div className="p-4 rounded-xl border bg-amber-50 border-amber-100">
                   <p className="text-xs uppercase tracking-wider mb-1 text-amber-600">Estado</p>
                   <p className="font-bold text-xl text-amber-700">Pendiente</p>
                 </div>
-                <div className="p-4 rounded-xl border bg-blue-50 border-blue-100">
-                  <p className="text-xs uppercase tracking-wider mb-1 text-blue-600">Tipo</p>
-                  <p className="font-bold text-xl text-blue-700">{detailModal.item.tipo === 'FACTURA' ? 'Factura' : 'Pre-factura'}</p>
+                <div className="p-4 rounded-xl border bg-brand-50 border-brand-100">
+                  <p className="text-xs uppercase tracking-wider mb-1 text-brand-600">Tipo</p>
+                  <p className="font-bold text-xl text-brand-700">{detailModal.item.tipo === 'FACTURA' ? 'Factura' : 'Pre-factura'}</p>
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-gray-50 p-4 rounded-xl">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Alcance</p>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.item.alcance === 'TOTAL' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.item.alcance === 'TOTAL' ? 'bg-brand-100 text-brand-800' : 'bg-orange-100 text-orange-800'}`}>
                   {detailModal.item.alcance || 'N/A'}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
@@ -1259,11 +1258,11 @@ export function PreFacturasPage() {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => openDocument(detailModal.item!, false)}
-                className="gap-2 text-teal-600 border-teal-200 hover:bg-teal-50"
+                className="gap-2 text-brand-600 border-brand-200 hover:bg-brand-50"
               >
                 <Eye className="h-4 w-4" />
                 Ver Documento

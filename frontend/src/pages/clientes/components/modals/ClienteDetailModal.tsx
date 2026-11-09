@@ -120,7 +120,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
     value?: React.ReactNode;
   }) => (
     <div>
-      <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
         {label}
       </p>
       <p className="font-medium text-gray-900 break-words">{value ?? "N/A"}</p>
@@ -128,8 +128,8 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
   );
 
   const TituloSeccion = ({ titulo }: { titulo: string }) => (
-    <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">
-      <span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-teal-500 to-cyan-500 shrink-0" />
+    <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-4">
+      <span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-brand-500 to-brand-500 shrink-0" />
       {titulo}
     </h4>
   );
@@ -150,17 +150,17 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
         : "Cliente";
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-          <div className="flex items-center justify-between gap-4">
+        <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+          <div className="flex flex-wrap items-center justify-between gap-3 gap-4">
             <div className="flex items-center gap-4 min-w-0">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 text-lg font-bold tracking-wide text-white shadow-lg shadow-teal-500/20">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 text-lg font-bold tracking-wide text-white shadow-lg shadow-brand-500/20">
                 {iniciales || <User className="h-7 w-7" />}
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-teal-700/70">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-700/70">
                   {etiquetaRelacion}
                 </p>
                 <h3 className="truncate text-2xl font-bold tracking-tight text-gray-900">
@@ -184,7 +184,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
               <button
                 onClick={onClose}
                 aria-label="Cerrar"
-                className="p-2 rounded-full text-gray-400 transition-colors hover:bg-white/70 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                className="p-2 rounded-full text-gray-400 transition-colors hover:bg-white/70 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -192,7 +192,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
           </div>
         </div>
 
-        <div className="p-6 space-y-7">
+        <div className="p-4 md:p-6 space-y-7">
           {/* Información del Cliente */}
           <section>
             <TituloSeccion titulo="Información del Cliente" />
@@ -236,8 +236,8 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
               }
             />
             {loading ? (
-              <div className="flex items-center gap-2 text-slate-500 py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-teal-600" />
+              <div className="flex items-center gap-2 text-gray-500 py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-brand-600" />
                 <span className="text-sm">Cargando datos...</span>
               </div>
             ) : cliente.tipo_persona === "NATURAL" && datosNatural ? (
@@ -347,7 +347,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
                 />
               </div>
             ) : (
-              <p className="text-sm text-slate-500 py-2">
+              <p className="text-sm text-gray-500 py-2">
                 No hay datos registrados de tipo de persona.
               </p>
             )}
@@ -361,7 +361,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
               />
               <div className="overflow-auto border border-gray-200 rounded-xl">
                 <Table>
-                  <TableHeader className="bg-teal-50/60">
+                  <TableHeader className="bg-brand-50/60">
                     <TableRow>
                       <TableHead>Titular</TableHead>
                       <TableHead>Banco</TableHead>
@@ -390,7 +390,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
         <div className="sticky bottom-0 flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-600 bg-white border border-gray-300 transition-colors hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
+            className="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-600 bg-white border border-gray-300 transition-colors hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
           >
             Cerrar
           </button>

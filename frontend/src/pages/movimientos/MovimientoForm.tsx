@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   movimientosService,
   productosService,
@@ -37,6 +38,7 @@ import {
   Plus,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { toISODateLocal } from '../../utils/fecha';
 
 type MovimientoFormData = MovimientoCreate;
 
@@ -204,7 +206,7 @@ function SearchableSelect<T extends Record<string, any>>({
       >
         {isLoading ? (
           <div className="p-4 text-center text-gray-500">
-            <div className="animate-spin inline-block w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full mr-2"></div>
+            <div className="animate-spin inline-block w-5 h-5 border-2 border-gray-300 border-t-brand-600 rounded-full mr-2"></div>
             Cargando...
           </div>
         ) : filteredOptions.length === 0 ? (
@@ -220,9 +222,9 @@ function SearchableSelect<T extends Record<string, any>>({
                 key={item[idField]}
                 type="button"
                 onClick={() => handleSelect(item)}
-                className={`w-full px-4 py-2 text-left text-sm hover:bg-blue-50 transition-colors ${
+                className={`w-full px-4 py-2 text-left text-sm hover:bg-brand-50 transition-colors ${
                   value === getOptionValue(item)
-                    ? "bg-blue-50 text-blue-700 font-medium"
+                    ? "bg-brand-50 text-brand-700 font-medium"
                     : "text-gray-700"
                 }`}
               >
@@ -252,8 +254,8 @@ function SearchableSelect<T extends Record<string, any>>({
         <div
           className={`flex items-center border rounded-lg transition-all duration-200 ${
             disabled
-              ? "bg-slate-50 cursor-not-allowed border-gray-200"
-              : "bg-white border-gray-300 hover:border-gray-400 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+              ? "bg-gray-50 cursor-not-allowed border-gray-200"
+              : "bg-white border-gray-300 hover:border-gray-400 focus-within:ring-2 focus-within:ring-brand-500 focus-within:border-brand-500"
           }`}
           onClick={handleInputClick}
         >
@@ -319,7 +321,7 @@ export function MovimientoRecepcionForm({
 }: MovimientoRecepcionFormProps) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<MovimientoFormData>>({
-    fecha: new Date().toISOString().split("T")[0],
+    fecha: toISODateLocal(),
     estado: "pendiente",
   });
   const [codigoGenerado, setCodigoGenerado] = useState<string>("");
@@ -385,7 +387,7 @@ export function MovimientoRecepcionForm({
       queryClient.invalidateQueries({ queryKey: ["movimientos-pendientes"] });
       toast.success(`${tipoMovimiento} creada exitosamente`);
       setFormData({
-        fecha: new Date().toISOString().split("T")[0],
+        fecha: toISODateLocal(),
         estado: "pendiente",
       });
       setCodigoGenerado("");
@@ -446,10 +448,11 @@ export function MovimientoRecepcionForm({
   });
 
   // RECEPCION: todos los productos de la tabla
+  const debouncedBusquedaProducto = useDebounce(busquedaProducto, 300);
   const { data: todosProductos = [], isLoading: isLoadingTodosProductos } =
     useQuery({
-      queryKey: ["productos"],
-      queryFn: () => productosService.getProductos(0, 500),
+      queryKey: ["productos", debouncedBusquedaProducto],
+      queryFn: () => productosService.getProductos(0, 50, debouncedBusquedaProducto),
       enabled: tipoMovimiento === "RECEPCION",
     });
 
@@ -460,6 +463,22 @@ export function MovimientoRecepcionForm({
       queryFn: () => productosService.getProductosConStockItemAnexo(),
       enabled: tipoMovimiento !== "RECEPCION",
     });
+
+  const productosFiltrados = useMemo(() => {
+    const termino = busquedaProducto.trim().toLowerCase();
+    if (!termino) return todosProductos;
+    return todosProductos.filter((p) =>
+      p.nombre.toLowerCase().includes(termino),
+    );
+  }, [todosProductos, busquedaProducto]);
+
+  const productosConStockFiltrados = useMemo(() => {
+    const termino = busquedaProducto.trim().toLowerCase();
+    if (!termino) return productosConStock;
+    return productosConStock.filter((p: any) =>
+      p.nombre.toLowerCase().includes(termino),
+    );
+  }, [productosConStock, busquedaProducto]);
 
   const { data: subcategorias = [] } = useQuery({
     queryKey: ["subcategorias"],
@@ -475,7 +494,8 @@ export function MovimientoRecepcionForm({
   // Producto seleccionado según el tipo de movimiento
   const selectedProduct =
     tipoMovimiento === "RECEPCION"
-      ? todosProductos.find(
+      ? productoSeleccionado ??
+        todosProductos.find(
           (p) => Number(p.id_producto) === Number(formData.id_producto),
         )
       : selectedItemAnexo;
@@ -666,17 +686,17 @@ export function MovimientoRecepcionForm({
       case "DONACION":
         return {
           icon: Gift,
-          gradient: "from-purple-500 to-violet-600",
-          bgColor: "bg-purple-50",
-          borderColor: "border-purple-200",
-          textColor: "text-purple-700",
-          shadowColor: "shadow-purple-200",
+          gradient: "from-brand-500 to-brand-600",
+          bgColor: "bg-brand-50",
+          borderColor: "border-brand-200",
+          textColor: "text-brand-700",
+          shadowColor: "shadow-brand-200",
           impacto: "Salida",
           impactoIcon: TrendingDown,
           impactoColor: "text-red-600",
           descripcion: "Registro de donaciones de productos",
-          sectionColor: "border-l-purple-500",
-          priceSectionColor: "border-l-purple-500",
+          sectionColor: "border-l-brand-500",
+          priceSectionColor: "border-l-brand-500",
         };
       case "DEVOLUCION":
         return {
@@ -729,13 +749,13 @@ export function MovimientoRecepcionForm({
               <Package className={`h-5 w-5 ${config.textColor}`} />
               Producto y Cantidad
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               {tipoMovimiento === "RECEPCION" ? (
                 <div>
                   <div className="grid grid-cols-[4fr_1fr_4fr] gap-4 items-start">
                     <div ref={dropdownProductoRef} className="relative">
                       <Label className="text-sm font-semibold mb-1.5 text-gray-700 flex items-center gap-2">
-                        <Package className="h-4 w-4 text-blue-500" />
+                        <Package className="h-4 w-4 text-brand-500" />
                         Producto *
                       </Label>
                       <div className="relative mt-1">
@@ -759,7 +779,7 @@ export function MovimientoRecepcionForm({
                             }));
                           }}
                           onFocus={() => setShowDropdownProducto(true)}
-                          className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"
+                          className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
                         />
                         {productoSeleccionado && (
                           <button
@@ -787,17 +807,8 @@ export function MovimientoRecepcionForm({
                             <div className="p-4 text-center text-gray-500">
                               Cargando...
                             </div>
-                          ) : todosProductos.filter((p) =>
-                              p.nombre
-                                .toLowerCase()
-                                .includes(busquedaProducto.toLowerCase()),
-                            ).length > 0 ? (
-                            todosProductos
-                              .filter((p) =>
-                                p.nombre
-                                  .toLowerCase()
-                                  .includes(busquedaProducto.toLowerCase()),
-                              )
+                          ) : productosFiltrados.length > 0 ? (
+                            productosFiltrados
                               .map((p) => (
                                 <button
                                   key={p.id_producto}
@@ -811,7 +822,7 @@ export function MovimientoRecepcionForm({
                                       id_producto: p.id_producto,
                                     }));
                                   }}
-                                  className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                  className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
                                 >
                                   <div className="flex justify-between items-center">
                                     <span className="font-medium text-gray-900">
@@ -846,7 +857,7 @@ export function MovimientoRecepcionForm({
                         type="number"
                         min="1"
                         required
-                        className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="mt-1 focus:ring-2 focus:ring-brand-500 outline-none"
                         value={formData.cantidad || ""}
                         onChange={(e) =>
                           setFormData({
@@ -891,7 +902,7 @@ export function MovimientoRecepcionForm({
                             Precios Base
                           </span>
                         </div>
-                        <div className="rounded-lg border border-gray-200 overflow-hidden">
+                        <div className="rounded-lg border border-gray-200 overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="bg-gray-50 border-b border-gray-200">
@@ -975,7 +986,7 @@ export function MovimientoRecepcionForm({
                       </div>
                       {/* Precios Adicionales */}
                       <div className="mt-4 pt-4 border-t border-green-200">
-                        <div className="flex items-center justify-between mb-1">
+                        <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
                           <div className="flex items-center gap-2">
                             <svg
                               className="h-4 w-4 text-green-600"
@@ -1023,7 +1034,7 @@ export function MovimientoRecepcionForm({
                         )}
                         {preciosExtra.length > 0 && (
                           <div className="mt-4">
-                            <div className="rounded-lg border border-gray-200 overflow-hidden">
+                            <div className="rounded-lg border border-gray-200 overflow-x-auto">
                               <table className="w-full text-sm">
                                 <thead>
                                   <tr className="bg-gray-50 border-b border-gray-200">
@@ -1052,7 +1063,7 @@ export function MovimientoRecepcionForm({
                                         className="hover:bg-green-50/50 transition-colors group"
                                       >
                                         <td className="px-4 py-2.5">
-                                          <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
+                                          <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-brand-50 text-brand-700 rounded-md text-xs font-medium">
                                             {moneda?.denominacion || "?"}
                                           </span>
                                         </td>
@@ -1073,7 +1084,7 @@ export function MovimientoRecepcionForm({
                                                 setEditingPrecioIndex(i);
                                                 setShowPreciosModal(true);
                                               }}
-                                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                              className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-md transition-colors"
                                               title="Editar"
                                             >
                                               <svg
@@ -1141,7 +1152,7 @@ export function MovimientoRecepcionForm({
                   <div className="grid grid-cols-[4fr_1fr_4fr] gap-4 items-start">
                     <div ref={dropdownProductoRef} className="relative">
                       <Label className="text-sm font-semibold mb-1.5 text-gray-700 flex items-center gap-2">
-                        <Package className="h-4 w-4 text-blue-500" />
+                        <Package className="h-4 w-4 text-brand-500" />
                         Producto *
                       </Label>
                       <div className="relative mt-1">
@@ -1168,7 +1179,7 @@ export function MovimientoRecepcionForm({
                             }));
                           }}
                           onFocus={() => setShowDropdownProducto(true)}
-                          className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"
+                          className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
                         />
                         {selectedItemAnexo && (
                           <button
@@ -1196,17 +1207,8 @@ export function MovimientoRecepcionForm({
                             <div className="p-4 text-center text-gray-500">
                               Cargando...
                             </div>
-                          ) : productosConStock.filter((p) =>
-                              p.nombre
-                                .toLowerCase()
-                                .includes(busquedaProducto.toLowerCase()),
-                            ).length > 0 ? (
-                            productosConStock
-                              .filter((p) =>
-                                p.nombre
-                                  .toLowerCase()
-                                  .includes(busquedaProducto.toLowerCase()),
-                              )
+                          ) : productosConStockFiltrados.length > 0 ? (
+                            productosConStockFiltrados
                               .map((p, idx) => (
                                 <button
                                   key={`${p.id_item_anexo}-${idx}`}
@@ -1216,7 +1218,7 @@ export function MovimientoRecepcionForm({
                                     setShowDropdownProducto(false);
                                     setBusquedaProducto("");
                                   }}
-                                  className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                  className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
                                 >
                                   <div className="flex justify-between items-center">
                                     <span className="font-medium text-gray-900">
@@ -1233,7 +1235,7 @@ export function MovimientoRecepcionForm({
                                         </span>
                                       )}
                                       {p.precio_venta && (
-                                        <span className="text-blue-600 text-xs font-medium">
+                                        <span className="text-brand-600 text-xs font-medium">
                                           Venta: $
                                           {Number(p.precio_venta).toFixed(2)}
                                         </span>
@@ -1276,7 +1278,7 @@ export function MovimientoRecepcionForm({
                         min="1"
                         max={selectedItemAnexo?.cantidad || undefined}
                         required
-                        className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="mt-1 focus:ring-2 focus:ring-brand-500 outline-none"
                         value={formData.cantidad || ""}
                         onChange={(e) =>
                           setFormData({
@@ -1310,7 +1312,7 @@ export function MovimientoRecepcionForm({
                           Precios del Producto
                         </span>
                       </div>
-                      <div className="rounded-lg border border-gray-200 overflow-hidden">
+                      <div className="rounded-lg border border-gray-200 overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="bg-gray-50 border-b border-gray-200">
@@ -1328,7 +1330,7 @@ export function MovimientoRecepcionForm({
                           <tbody>
                             <tr className="bg-gray-50/30">
                               <td className="px-4 py-2.5">
-                                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
+                                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-brand-50 text-brand-700 rounded-md text-xs font-medium">
                                   {selectedItemAnexo.moneda_nombre || "?"}
                                 </span>
                               </td>
@@ -1360,13 +1362,13 @@ export function MovimientoRecepcionForm({
               <MapPin className={`h-5 w-5 ${config.textColor}`} />
               Detalles del Movimiento
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Fecha *</Label>
                   <DateInput
                     required
-                    className="mt-1 focus:ring-2 focus:ring-blue-500"
+                    className="mt-1 focus:ring-2 focus:ring-brand-500"
                     value={formData.fecha || ""}
                     onChange={(fecha) => setFormData({ ...formData, fecha })}
                   />
@@ -1399,7 +1401,7 @@ export function MovimientoRecepcionForm({
                       setFormData({ ...formData, observacion: e.target.value })
                     }
                     rows={2}
-                    className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                    className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none"
                     placeholder={`Describa detalles de la ${tipoMovimiento.toLowerCase()}...`}
                   />
                 </div>
@@ -1412,13 +1414,13 @@ export function MovimientoRecepcionForm({
       {/* Modal Nuevo Producto */}
       {showNuevoProductoModal &&
         createPortal(
-          <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   Nuevo Producto
                   {nextCodigoData?.codigo && (
-                    <span className="px-2 py-0.5 text-sm font-mono text-teal-700 bg-teal-50 border border-teal-200 rounded-md">
+                    <span className="px-2 py-0.5 text-sm font-mono text-brand-700 bg-brand-50 border border-brand-200 rounded-md">
                       {nextCodigoData.codigo}
                     </span>
                   )}
@@ -1431,7 +1433,7 @@ export function MovimientoRecepcionForm({
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="p-4 md:p-6 space-y-4">
                 <div>
                   <Label className="text-sm font-medium">Nombre *</Label>
                   <Input
@@ -1484,7 +1486,7 @@ export function MovimientoRecepcionForm({
                     placeholder="Descripción del producto"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">
                       Precio Compra *
@@ -1581,7 +1583,7 @@ export function MovimientoRecepcionForm({
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
+              <div className="flex justify-end gap-3 p-4 md:p-6 border-t bg-gray-50">
                 <Button
                   type="button"
                   variant="outline"
@@ -1620,9 +1622,9 @@ export function MovimientoRecepcionForm({
       {/* Modal Precios Adicionales */}
       {showPreciosModal &&
         createPortal(
-          <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-              <div className="flex items-center justify-between p-6 border-b">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b">
                 <h3 className="text-lg font-bold text-gray-900">
                   {editingPrecioIndex !== null ? "Editar" : "Agregar"} Precio
                   Adicional
@@ -1635,7 +1637,7 @@ export function MovimientoRecepcionForm({
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="p-4 md:p-6 space-y-4">
                 <div>
                   <Label className="text-sm font-medium">Moneda *</Label>
                   <select
@@ -1696,7 +1698,7 @@ export function MovimientoRecepcionForm({
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
+              <div className="flex justify-end gap-3 p-4 md:p-6 border-t bg-gray-50">
                 <Button
                   type="button"
                   variant="outline"

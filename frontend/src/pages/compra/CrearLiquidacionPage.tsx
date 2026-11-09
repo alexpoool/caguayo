@@ -6,6 +6,7 @@ import type { Cliente, Moneda, LiquidacionCreate, ProductosEnLiquidacion } from 
 import { X, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { esPorcentaje } from '../../utils/validacionFormularios';
+import { useDebounce } from '../../hooks/useDebounce';
 import { Decimal } from 'decimal.js';
 import { mul, add, sub, percentToMultiplier, toNumber } from '../../utils/decimal';
 import { DEFAULTS } from '../../config/defaults';
@@ -28,6 +29,46 @@ export function CrearLiquidacionForm({ formId, initialProveedorId, onExit, onPen
   const [selectedProductos, setSelectedProductos] = useState<number[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+
+  const debouncedProveedorSearch = useDebounce(proveedorSearch, 300);
+
+  useEffect(() => {
+    let activo = true;
+    clientesService
+      .getClientes(0, 50, undefined, debouncedProveedorSearch)
+      .then((res) => {
+        if (activo) setClientes(res);
+      })
+      .catch(() => {
+        if (activo) setClientes([]);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [debouncedProveedorSearch]);
+
+  // Mantener disponible el proveedor ya elegido aunque no esté en la búsqueda.
+  useEffect(() => {
+    if (!filtroCliente) return;
+    if (clientes.some((c) => c.id_cliente === filtroCliente)) return;
+
+    let activo = true;
+    clientesService
+      .getCliente(filtroCliente)
+      .then((cliente) => {
+        if (!activo) return;
+        setClientes((prev) =>
+          prev.some((c) => c.id_cliente === cliente.id_cliente)
+            ? prev
+            : [cliente, ...prev],
+        );
+      })
+      .catch(() => undefined);
+
+    return () => {
+      activo = false;
+    };
+  }, [filtroCliente, clientes]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -97,12 +138,7 @@ export function CrearLiquidacionForm({ formId, initialProveedorId, onExit, onPen
 
   const loadInitialData = async () => {
     try {
-      const [clientesData, monedasData] = await Promise.all([
-        clientesService.getClientes(0, 1000),
-        monedaService.getMonedas()
-      ]);
-      
-      setClientes(clientesData);
+      const monedasData = await monedaService.getMonedas();
       setMonedas(monedasData);
     } catch (error) {
       console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido');
@@ -293,7 +329,6 @@ if (!filtroCliente) {
   // Elevar estado de guardar al padre (para el footer del FormModal)
   useEffect(() => {
     onPendingChange?.(isLoading);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, onPendingChange]);
 
   return (
@@ -308,8 +343,8 @@ if (!filtroCliente) {
               <Label className="text-sm font-medium">Proveedor *</Label>
               <div className="relative mt-1">
                 {filtroCliente ? (
-                  <div className="flex items-center gap-2 px-3 py-2 border border-teal-300 rounded-lg bg-teal-50">
-                    <span className="flex-1 font-medium text-teal-900">
+                  <div className="flex items-center gap-2 px-3 py-2 border border-brand-300 rounded-lg bg-brand-50">
+                    <span className="flex-1 font-medium text-brand-900">
                       {clientes.find((c: Cliente) => c.id_cliente === filtroCliente)?.nombre}
                     </span>
                     <button
@@ -349,7 +384,7 @@ if (!filtroCliente) {
                                 setProveedorSearch("");
                                 setShowProveedorDropdown(false);
                               }}
-                              className="px-3 py-2 hover:bg-teal-50 cursor-pointer text-sm transition-colors border-b border-gray-100 last:border-b-0"
+                              className="px-3 py-2 hover:bg-brand-50 cursor-pointer text-sm transition-colors border-b border-gray-100 last:border-b-0"
                             >
                               <div className="font-medium text-gray-900">{cliente.nombre}</div>
                               <div className="text-xs text-gray-500">{cliente.codigo} · {cliente.nit}</div>
@@ -370,7 +405,7 @@ if (!filtroCliente) {
             <div>
               <Label className="text-sm font-medium">Moneda *</Label>
               <select 
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                 value={formData.id_moneda}
                 onChange={(e: any) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
               >
@@ -385,7 +420,7 @@ if (!filtroCliente) {
             <div>
               <Label className="text-sm font-medium">Tipo de Pago</Label>
               <select 
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                 value={formData.tipo_pago}
                 onChange={(e: any) => setFormData(prev => ({ ...prev, tipo_pago: e.target.value }))}
               >
@@ -405,7 +440,7 @@ if (!filtroCliente) {
                   <button
                     type="button"
                     onClick={handleSelectAll}
-                    className="text-sm text-teal-600 hover:underline"
+                    className="text-sm text-brand-600 hover:underline"
                   >
                     Seleccionar todos
                   </button>
@@ -413,7 +448,7 @@ if (!filtroCliente) {
                   <button
                     type="button"
                     onClick={handleDeselectAll}
-                    className="text-sm text-teal-600 hover:underline"
+                    className="text-sm text-brand-600 hover:underline"
                   >
                     Deseleccionar todos
                   </button>
@@ -425,7 +460,7 @@ if (!filtroCliente) {
               ) : productosPendientes.length === 0 ? (
                 <p className="text-gray-500 py-4">No hay productos pendientes para este proveedor</p>
               ) : (
-                <div className="border rounded-lg max-h-96 overflow-y-auto">
+                <div className="border rounded-lg max-h-96 overflow-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 sticky top-0">
                       <tr>
@@ -477,6 +512,7 @@ if (!filtroCliente) {
                   <span>Total: <strong className="text-green-600">${resumen.totalMonto.toFixed(2)}</strong></span>
                 </div>
                 
+                <div className="w-full overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-100">
                     <tr>
@@ -500,6 +536,7 @@ if (!filtroCliente) {
                     </tr>
                   </tbody>
                 </table>
+                </div>
               </div>
             );
           })()}
@@ -600,7 +637,7 @@ if (!filtroCliente) {
               value={formData.observaciones}
               onChange={(e: any) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
               rows={3}
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
               />
           </div>
 

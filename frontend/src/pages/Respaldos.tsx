@@ -74,13 +74,13 @@ function PanelJob({ job }: { job: BackupJob }) {
       ? "bg-green-50 border-green-300"
       : job.estado === "fallido"
         ? "bg-red-50 border-red-300"
-        : "bg-blue-50 border-blue-300";
+        : "bg-brand-50 border-brand-300";
 
   return (
     <div className={`mb-4 p-4 border rounded-lg ${colorEstado}`}>
       <div className="flex items-center gap-2 mb-3">
         {esJobActivo ? (
-          <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+          <Loader2 className="h-5 w-5 text-brand-600 animate-spin" />
         ) : job.estado === "completado" ? (
           <CheckCircle2 className="h-5 w-5 text-green-600" />
         ) : (
@@ -102,7 +102,7 @@ function PanelJob({ job }: { job: BackupJob }) {
         {job.pasos.map((paso) => (
           <li key={paso.paso} className="flex items-start gap-2">
             {paso.estado === "en_curso" ? (
-              <Loader2 className="h-4 w-4 text-blue-500 animate-spin mt-0.5" />
+              <Loader2 className="h-4 w-4 text-brand-500 animate-spin mt-0.5" />
             ) : paso.estado === "ok" ? (
               <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
             ) : paso.estado === "advertencia" ? (
@@ -246,9 +246,9 @@ export function RespaldosPage() {
   return (
     <div className="space-y-4">
       {/* Cabecera (patrón MonedasPage): título + botón Nuevo Respaldo arriba */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-slate-500 to-slate-600 rounded shadow-lg">
+          <div className="p-2 bg-gradient-to-br from-gray-500 to-gray-600 rounded shadow-lg">
             <DatabaseBackup className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -263,7 +263,7 @@ export function RespaldosPage() {
           onClick={() => lanzarBackup.mutate()}
           disabled={!baseDatosActual || lanzarBackup.isPending}
           isLoading={lanzarBackup.isPending}
-          className="gap-2 bg-gradient-to-r from-blue-500 to-slate-600 hover:from-blue-600 hover:to-slate-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+          className="gap-2 bg-gradient-to-r from-brand-500 to-gray-600 hover:from-brand-600 hover:to-gray-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <HardDriveDownload className="h-4 w-4" />
           Nuevo Respaldo
@@ -303,17 +303,17 @@ export function RespaldosPage() {
 
       {/* Copias de rollback (_prev_) dejadas por restores anteriores */}
       {bdsPrevias.length > 0 && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm">
-          <p className="font-medium text-blue-900 flex items-center gap-2">
+        <div className="p-4 bg-brand-50 border border-brand-200 rounded-lg text-sm">
+          <p className="font-medium text-brand-900 flex items-center gap-2">
             <Archive className="h-4 w-4" />
             Copias de rollback disponibles ({bdsPrevias.length})
           </p>
-          <p className="mt-1 text-blue-800">
+          <p className="mt-1 text-brand-800">
             Tras cada restauración la BD activa anterior queda como copia
             genérica <span className="font-mono">_prev_&lt;fecha&gt;</span>. El
             rollback no se hace desde la UI: un administrador debe decidirlo y
             ejecutarlo — por ejemplo con{" "}
-            <code className="font-mono text-xs bg-blue-100 px-1 rounded">
+            <code className="font-mono text-xs bg-brand-100 px-1 rounded">
               ALTER DATABASE {baseDatosActual} RENAME TO {baseDatosActual}_cancelar; ALTER
               DATABASE {bdsPrevias[0]?.nombre} RENAME TO {baseDatosActual};
             </code>{" "}
@@ -321,10 +321,10 @@ export function RespaldosPage() {
           </p>
           <ul className="mt-2 space-y-1">
             {bdsPrevias.map((p) => (
-              <li key={p.nombre} className="text-blue-700">
+              <li key={p.nombre} className="text-brand-700">
                 <span className="font-mono">{p.nombre}</span>
                 {p.fecha && (
-                  <span className="text-blue-500 ml-2">
+                  <span className="text-brand-500 ml-2">
                     (del restore de {p.fecha})
                   </span>
                 )}
@@ -338,7 +338,7 @@ export function RespaldosPage() {
       <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <DatabaseBackup className="h-5 w-5 text-blue-600" />
+            <DatabaseBackup className="h-5 w-5 text-brand-600" />
             Backups disponibles
           </CardTitle>
         </CardHeader>
@@ -358,7 +358,7 @@ export function RespaldosPage() {
             </div>
           ) : (
             <Table>
-              <TableHeader className="bg-gradient-to-r from-blue-50 to-slate-50">
+              <TableHeader className="bg-gradient-to-r from-brand-50 to-gray-50">
                 <TableRow>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Archivo</TableHead>
@@ -369,7 +369,7 @@ export function RespaldosPage() {
               </TableHeader>
               <TableBody>
                 {backups.map((backup) => (
-                  <TableRow key={backup.archivo} className="hover:bg-blue-50/50">
+                  <TableRow key={backup.archivo} className="hover:bg-brand-50/50">
                     <TableCell className="whitespace-nowrap">
                       {backup.fecha}
                     </TableCell>
@@ -398,7 +398,7 @@ export function RespaldosPage() {
                             setTextoConfirmacion("");
                             setRestaurarModal({ isOpen: true, backup });
                           }}
-                          className="text-blue-600"
+                          className="text-brand-600"
                         >
                           <RotateCcw className="h-4 w-4 mr-1" />
                           Restaurar
@@ -423,9 +423,9 @@ export function RespaldosPage() {
 
       {/* Modal de restauración con confirmación exigente */}
       {restaurarModal.isOpen && restaurarModal.backup && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-[100] p-4 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full animate-scale-in">
-            <div className="flex items-start justify-between p-6 border-b rounded-t-2xl bg-gradient-to-r from-red-50 to-rose-50">
+            <div className="flex items-start justify-between p-4 md:p-6 border-b rounded-t-2xl bg-gradient-to-r from-red-50 to-rose-50">
               <div>
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <RotateCcw className="h-5 w-5 text-red-600" />
@@ -445,7 +445,7 @@ export function RespaldosPage() {
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
                 <p>
                   <span className="text-gray-500">Archivo:</span>{" "}
@@ -487,7 +487,7 @@ export function RespaldosPage() {
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50 rounded-b-2xl">
+            <div className="flex justify-end gap-3 p-4 md:p-6 border-t bg-gray-50 rounded-b-2xl">
               <Button
                 variant="outline"
                 onClick={() => setRestaurarModal({ isOpen: false, backup: null })}

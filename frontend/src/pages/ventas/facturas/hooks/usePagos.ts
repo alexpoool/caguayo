@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { pagosService } from '../../../../services/api';
 import type { Pago, PagoCreate } from '../../../../types/pago';
 import type { FacturaWithDetails } from '../../../../types/contrato';
+import { toISODateLocal } from '../../../../utils/fecha';
 
 interface PagoFormData {
   fecha: string;
@@ -14,7 +15,7 @@ interface PagoFormData {
 export function usePagos() {
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [pagoForm, setPagoForm] = useState<PagoFormData>({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: toISODateLocal(),
     monto: '',
     id_moneda: '',
     tipo_pago: 'TRANSFERENCIA',
@@ -82,7 +83,7 @@ export function usePagos() {
   const openPagoForm = (factura: FacturaWithDetails) => {
     resetPagoForm();
     setPagoForm({
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: toISODateLocal(),
       monto: '',
       id_moneda: String(factura.id_moneda || ''),
       tipo_pago: 'TRANSFERENCIA',
@@ -95,7 +96,7 @@ export function usePagos() {
    */
   const resetPagoForm = () => {
     setPagoForm({
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: toISODateLocal(),
       monto: '',
       id_moneda: '',
       tipo_pago: 'TRANSFERENCIA',

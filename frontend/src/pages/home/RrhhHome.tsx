@@ -135,13 +135,13 @@ export function RrhhHome() {
           <h1 className="text-xl font-bold tracking-wide md:text-2xl">
             MÓDULO DE RECURSOS HUMANOS
           </h1>
-          <p className="mt-1 text-sm text-slate-200 md:text-base">
+          <p className="mt-1 text-sm text-gray-200 md:text-base">
             Gestión de personal, asistencia, nómina y evaluaciones
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-          <p className="mb-5 text-sm leading-relaxed text-slate-700">
+        <div className="rounded-xl border border-gray-100 bg-white p-4 md:p-6 shadow-sm">
+          <p className="mb-5 text-sm leading-relaxed text-gray-700">
             El módulo de Recursos Humanos gestiona el ciclo completo del
             personal: desde la estructura de departamentos y puestos hasta la
             asistencia diaria, las solicitudes de vacaciones, la generación de
@@ -156,17 +156,17 @@ export function RrhhHome() {
                     {sub.icon}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-sm font-semibold text-slate-900">
+                    <h3 className="text-sm font-semibold text-gray-900">
                       {sub.nombre}
                     </h3>
-                    <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                    <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                       {sub.descripcion}
                     </p>
                     <span
                       className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                         sub.ruta
                           ? 'bg-green-100 text-green-700'
-                          : 'bg-slate-200 text-slate-600'
+                          : 'bg-gray-200 text-gray-600'
                       }`}
                     >
                       {sub.ruta ? 'Disponible' : `Fase ${sub.fase} · próximamente`}
@@ -176,7 +176,7 @@ export function RrhhHome() {
               );
 
               const clases =
-                'flex w-full items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 text-left transition-shadow hover:shadow-sm';
+                'flex w-full items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 text-left transition-shadow hover:shadow-sm';
 
               return sub.ruta ? (
                 <Link key={sub.id} to={sub.ruta} className={clases}>

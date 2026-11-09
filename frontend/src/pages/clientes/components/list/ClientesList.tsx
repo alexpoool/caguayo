@@ -2,7 +2,6 @@ import { useState, RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   User,
-  Plus,
   Search,
   ScrollText,
   DollarSign,
@@ -26,6 +25,7 @@ import {
   TableHead,
   TableCell,
   Select,
+  CreateButton,
 } from "../../../../components/ui";
 import { ClienteDetailModal } from "../modals/ClienteDetailModal";
 import type { Cliente, TipoEntidad } from "../../../../types/ventas";
@@ -95,9 +95,9 @@ export function ClientesList({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <User className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -111,21 +111,19 @@ export function ClientesList({
             </p>
           </div>
         </div>
-        <Button
+        <CreateButton
+          label={isProveedorView ? "Nuevo Proveedor" : "Nuevo Cliente"}
           onClick={onNew}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          {isProveedorView ? "Nuevo Proveedor" : "Nuevo Cliente"}
-        </Button>
+          className="shadow-lg hover:shadow-xl"
+        />
       </div>
 
       {/* Filtros */}
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-col gap-3 p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <SlidersHorizontal className="h-3.5 w-3.5" />
               </span>
               <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
@@ -166,7 +164,7 @@ export function ClientesList({
             </div>
 
             <div className="relative w-full md:w-64">
-              <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-teal-600" />
+              <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-600" />
               <Select
                 value={filtroTipo}
                 onChange={(e) =>
@@ -174,7 +172,7 @@ export function ClientesList({
                 }
                 aria-label="Filtrar por tipo de persona"
                 title="Filtrar por tipo de persona"
-                className="h-10 cursor-pointer appearance-none !border-gray-200 bg-gray-50 !pl-9 !pr-9 text-sm font-medium text-gray-700 hover:!border-teal-300 focus:bg-white"
+                className="h-10 cursor-pointer appearance-none !border-gray-200 bg-gray-50 !pl-9 !pr-9 text-sm font-medium text-gray-700 hover:!border-brand-300 focus:bg-white"
               >
                 <option value="TODOS">Todos los tipos</option>
                 <optgroup label="Tipo de persona">
@@ -205,11 +203,11 @@ export function ClientesList({
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-teal-600" />
+                    <User className="h-4 w-4 text-brand-600" />
                     Nombre
                   </div>
                 </TableHead>
@@ -231,7 +229,7 @@ export function ClientesList({
                     className="text-center py-12 text-gray-500"
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <Loader2 className="h-5 w-5 animate-spin text-teal-500" />
+                      <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
                       Cargando {isProveedorView ? "proveedores" : "clientes"}...
                     </div>
                   </TableCell>
@@ -262,7 +260,7 @@ export function ClientesList({
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
+                        <div className="p-2 bg-brand-50 rounded-lg text-brand-600">
                           <User className="h-4 w-4" />
                         </div>
                         {cliente.valido === false && (
@@ -294,9 +292,9 @@ export function ClientesList({
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           cliente.tipo_persona === "NATURAL"
-                            ? "bg-blue-100 text-blue-800"
+                            ? "bg-brand-100 text-brand-800"
                             : cliente.tipo_persona === "JURIDICA"
-                              ? "bg-purple-100 text-purple-800"
+                              ? "bg-brand-100 text-brand-800"
                               : "bg-orange-100 text-orange-800"
                         }`}
                       >
@@ -314,7 +312,7 @@ export function ClientesList({
                               : `/ventas/cuentas?cliente=${cliente.id_cliente}`,
                           )
                         }
-                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                        className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                       >
                         <CreditCard className="h-3.5 w-3.5" />
                         Cuentas
@@ -335,7 +333,7 @@ export function ClientesList({
                         }
                         className={`gap-1 ${
                           isProveedorView
-                            ? "text-sky-600 border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                            ? "text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                             : "text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                         }`}
                       >
@@ -353,7 +351,7 @@ export function ClientesList({
                               `/compra/liquidaciones?proveedor=${cliente.id_cliente}`,
                             )
                           }
-                          className="gap-1 text-purple-600 border-purple-200 hover:bg-purple-50 hover:text-purple-700"
+                          className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                         >
                           <DollarSign className="h-3.5 w-3.5" />
                           Liquidación

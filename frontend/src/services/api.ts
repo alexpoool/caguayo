@@ -1,6 +1,6 @@
 import { apiClient } from '../lib/api';
+import { API_BASE_URL } from '../config/api';
 import { configuracionService as configService } from './administracion';
-import { authHelpers } from '../lib/api';
 
 // Extrae el header X-Total-Count que mandan los GET de lista (total real de
 // la BD con los mismos filtros) y lo entrega al callback onTotal.
@@ -388,20 +388,34 @@ export const movimientosService = {
     return apiClient.get<TipoMovimiento[]>('/movimientos/tipos');
   },
 
-  async getMovimientos(skip = 0, limit = 100, tipo?: string): Promise<Movimiento[]> {
+  async getMovimientos(
+    skip = 0,
+    limit = 100,
+    tipo?: string,
+    search?: string,
+    onTotal?: (t: number | null) => void,
+  ): Promise<Movimiento[]> {
     const params = new URLSearchParams();
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
     if (tipo) {
       params.append('tipo', tipo);
     }
-    return apiClient.get<Movimiento[]>(`/movimientos?${params.toString()}`);
+    if (search) {
+      params.append('search', search);
+    }
+    return apiClient.get<Movimiento[]>(
+      `/movimientos?${params.toString()}`,
+      undefined,
+      captureTotal(onTotal),
+    );
   },
 
-  async getMovimientosPendientes(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<Movimiento[]> {
+  async getMovimientosPendientes(skip = 0, limit = 100, onTotal?: (t: number | null) => void, search?: string): Promise<Movimiento[]> {
     const params = new URLSearchParams();
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
+    if (search) params.append('search', search);
     return apiClient.get<Movimiento[]>(`/movimientos/pendientes?${params.toString()}`, undefined, captureTotal(onTotal));
   },
 
@@ -581,12 +595,16 @@ export const contratosService = {
 };
 
 export const suplementosService = {
-  async getSuplementos(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<SuplementoWithDetails[]> {
-    return apiClient.get<SuplementoWithDetails[]>(`/suplementos?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
+  async getSuplementos(skip = 0, limit = 100, onTotal?: (t: number | null) => void, search?: string): Promise<SuplementoWithDetails[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (search) params.set('search', search);
+    return apiClient.get<SuplementoWithDetails[]>(`/suplementos?${params}`, undefined, captureTotal(onTotal));
   },
 
-  async getSuplementosByContrato(contratoId: number, skip = 0, limit = 100): Promise<SuplementoWithDetails[]> {
-    return apiClient.get<SuplementoWithDetails[]>(`/suplementos/contrato/${contratoId}?skip=${skip}&limit=${limit}`);
+  async getSuplementosByContrato(contratoId: number, skip = 0, limit = 100, search?: string): Promise<SuplementoWithDetails[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (search) params.set('search', search);
+    return apiClient.get<SuplementoWithDetails[]>(`/suplementos/contrato/${contratoId}?${params}`);
   },
 
   async getSuplemento(id: number): Promise<SuplementoWithDetails> {
@@ -718,8 +736,10 @@ export const pagosService = {
 };
 
 export const serviciosProyectoService = {
-  async getServicios(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<Servicio[]> {
-    return apiClient.get<Servicio[]>(`/servicios?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
+  async getServicios(skip = 0, limit = 100, onTotal?: (t: number | null) => void, search?: string): Promise<Servicio[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (search) params.set('search', search);
+    return apiClient.get<Servicio[]>(`/servicios?${params}`, undefined, captureTotal(onTotal));
   },
   async createServicio(data: ServicioCreate): Promise<Servicio> {
     return apiClient.post<Servicio>('/servicios', data);
@@ -817,8 +837,10 @@ export const personaEtapaService = {
 };
 
 export const facturasServicioService = {
-  async getFacturasServicio(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<FacturaServicio[]> {
-    return apiClient.get<FacturaServicio[]>(`/facturas-servicio?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
+  async getFacturasServicio(skip = 0, limit = 100, onTotal?: (t: number | null) => void, search?: string): Promise<FacturaServicio[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (search) params.set('search', search);
+    return apiClient.get<FacturaServicio[]>(`/facturas-servicio?${params}`, undefined, captureTotal(onTotal));
   },
   async getFacturaServicio(id: number): Promise<FacturaServicio> {
     return apiClient.get<FacturaServicio>(`/facturas-servicio/${id}`);
@@ -850,9 +872,10 @@ export const facturasServicioService = {
 };
 
 export const ofertasService = {
-  async getOfertas(skip = 0, limit = 100, estado?: string, onTotal?: (t: number | null) => void): Promise<Oferta[]> {
+  async getOfertas(skip = 0, limit = 100, estado?: string, onTotal?: (t: number | null) => void, search?: string): Promise<Oferta[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (estado) params.append('estado', estado);
+    if (search) params.append('search', search);
     return apiClient.get<Oferta[]>(`/ofertas?${params.toString()}`, undefined, captureTotal(onTotal));
   },
   async getOferta(id: number): Promise<Oferta> {
@@ -917,8 +940,10 @@ export const certificacionesService = {
 };
 
 export const personaLiquidacionService = {
-  async getLiquidaciones(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<PersonaLiquidacion[]> {
-    return apiClient.get<PersonaLiquidacion[]>(`/persona-liquidacion?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
+  async getLiquidaciones(skip = 0, limit = 100, onTotal?: (t: number | null) => void, search?: string): Promise<PersonaLiquidacion[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (search) params.set('search', search);
+    return apiClient.get<PersonaLiquidacion[]>(`/persona-liquidacion?${params}`, undefined, captureTotal(onTotal));
   },
   async getLiquidacion(id: number): Promise<PersonaLiquidacion> {
     return apiClient.get<PersonaLiquidacion>(`/persona-liquidacion/${id}`);
@@ -969,8 +994,10 @@ export const personaLiquidacionService = {
 };
 
 export const ventasEfectivoService = {
-  async getVentasEfectivo(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<VentaEfectivoWithDetails[]> {
-    return apiClient.get<VentaEfectivoWithDetails[]>(`/ventas-efectivo?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
+  async getVentasEfectivo(skip = 0, limit = 100, onTotal?: (t: number | null) => void, search?: string): Promise<VentaEfectivoWithDetails[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (search) params.set('search', search);
+    return apiClient.get<VentaEfectivoWithDetails[]>(`/ventas-efectivo?${params}`, undefined, captureTotal(onTotal));
   },
 
   async getVentaEfectivo(id: number): Promise<VentaEfectivoWithDetails> {
@@ -1062,21 +1089,24 @@ export interface ProductosEnLiquidacionCreate {
 }
 
 export const productosEnLiquidacionService = {
-  async getProductosEnLiquidacion(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<ProductosEnLiquidacion[]> {
+  async getProductosEnLiquidacion(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void, search?: string): Promise<ProductosEnLiquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
+    if (search) params.set('search', search);
     return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion?${params}`, undefined, captureTotal(onTotal));
   },
 
-  async getProductosEnLiquidacionPendientes(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<ProductosEnLiquidacion[]> {
+  async getProductosEnLiquidacionPendientes(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void, search?: string): Promise<ProductosEnLiquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
+    if (search) params.set('search', search);
     return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/pendientes?${params}`, undefined, captureTotal(onTotal));
   },
 
-  async getProductosEnLiquidacionLiquidadas(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<ProductosEnLiquidacion[]> {
+  async getProductosEnLiquidacionLiquidadas(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void, search?: string): Promise<ProductosEnLiquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
+    if (search) params.set('search', search);
     return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/liquidadas?${params}`, undefined, captureTotal(onTotal));
   },
 
@@ -1155,21 +1185,24 @@ export interface LiquidacionConfirmar {
 }
 
 export const liquidacionService = {
-  async getLiquidaciones(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<Liquidacion[]> {
+  async getLiquidaciones(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void, search?: string): Promise<Liquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
+    if (search) params.set('search', search);
     return apiClient.get<Liquidacion[]>(`/liquidaciones?${params}`, undefined, captureTotal(onTotal));
   },
 
-  async getLiquidacionesPendientes(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<Liquidacion[]> {
+  async getLiquidacionesPendientes(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void, search?: string): Promise<Liquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
+    if (search) params.set('search', search);
     return apiClient.get<Liquidacion[]>(`/liquidaciones/pendientes?${params}`, undefined, captureTotal(onTotal));
   },
 
-  async getLiquidacionesLiquidadas(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<Liquidacion[]> {
+  async getLiquidacionesLiquidadas(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void, search?: string): Promise<Liquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
+    if (search) params.set('search', search);
     return apiClient.get<Liquidacion[]>(`/liquidaciones/liquidadas?${params}`, undefined, captureTotal(onTotal));
   },
 
@@ -1379,7 +1412,7 @@ export const fichasCostoService = {
     firmas: { elaborado_por?: string | null; aprobado_por?: string | null; fecha_aprobacion?: string | null }
   ): Promise<{ blob: Blob; nombre: string }> {
     const token = localStorage.getItem('auth_token');
-    const base = (import.meta as any).env.VITE_API_BASE_URL;
+    const base = API_BASE_URL;
     const resp = await fetch(`${base}/fichas-costo/${id}/exportar`, {
       method: 'POST',
       headers: {
@@ -1402,7 +1435,7 @@ export const fichasCostoService = {
     firmas: { elaborado_por?: string | null; aprobado_por?: string | null; fecha_aprobacion?: string | null }
   ): Promise<{ blob: Blob; nombre: string }> {
     const token = localStorage.getItem('auth_token');
-    const base = (import.meta as any).env.VITE_API_BASE_URL;
+    const base = API_BASE_URL;
     const resp = await fetch(`${base}/fichas-costo/${id}/exportar-pdf`, {
       method: 'POST',
       headers: {
@@ -1477,7 +1510,7 @@ export const dj08Service = {
   // Descarga el PDF de la declaración (blob autenticado), mismo patrón que fichasCostoService
   async exportarPdf(entrada: DJ08Input): Promise<{ blob: Blob; nombre: string }> {
     const token = localStorage.getItem('auth_token');
-    const base = (import.meta as any).env.VITE_API_BASE_URL;
+    const base = API_BASE_URL;
     const resp = await fetch(`${base}/dj08/exportar-pdf`, {
       method: 'POST',
       headers: {
@@ -1497,7 +1530,7 @@ export const dj08Service = {
   // Re-exporta el PDF de una declaración guardada (desde el snapshot)
   async exportarDeclaracionPdf(id: number): Promise<{ blob: Blob; nombre: string }> {
     const token = localStorage.getItem('auth_token');
-    const base = (import.meta as any).env.VITE_API_BASE_URL;
+    const base = API_BASE_URL;
     const resp = await fetch(`${base}/dj08/declaraciones/${id}/exportar-pdf`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},

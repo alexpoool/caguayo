@@ -39,8 +39,8 @@ export function PagoModal({
     <ModalOverlay isOpen={isOpen} onClose={onClose} ariaLabel="Pagos">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
-          <div className="flex items-center justify-between">
+        <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg">
                 <CreditCard className="h-7 w-7" />
@@ -62,9 +62,9 @@ export function PagoModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-4 md:p-6 space-y-4">
           {/* Formulario de nuevo pago */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
               <DateInput
@@ -176,7 +176,7 @@ export function PagoModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+        <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
           <button
             onClick={onClose}
             className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"

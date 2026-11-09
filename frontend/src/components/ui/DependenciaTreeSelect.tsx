@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Building2, ChevronDown, ChevronRight } from "lucide-react";
 import type { Dependencia } from "../../types/dependencia";
+import {
+  collectIds,
+  construirBosque,
+  type TreeNode,
+} from "./dependenciaArbol";
 
 interface DependenciaTreeSelectProps {
   dependencias: Dependencia[];
@@ -12,40 +17,7 @@ interface DependenciaTreeSelectProps {
   disabled?: boolean;
 }
 
-interface TreeNode {
-  dep: Dependencia;
-  children: TreeNode[];
-}
-
 /** Construye el bosque a partir de `codigo_padre`. Los padres ausentes crean raíces. */
-function buildForest(dependencias: Dependencia[]): TreeNode[] {
-  const byId = new Map<number, TreeNode>();
-  dependencias.forEach((d) => byId.set(d.id_dependencia, { dep: d, children: [] }));
-
-  const roots: TreeNode[] = [];
-  dependencias.forEach((d) => {
-    const node = byId.get(d.id_dependencia)!;
-    const parent = d.codigo_padre != null ? byId.get(d.codigo_padre) : undefined;
-    if (parent) parent.children.push(node);
-    else roots.push(node);
-  });
-
-  const sort = (nodes: TreeNode[]) => {
-    nodes.sort((a, b) => a.dep.nombre.localeCompare(b.dep.nombre, "es"));
-    nodes.forEach((n) => sort(n.children));
-  };
-  sort(roots);
-  return roots;
-}
-
-function collectIds(nodes: TreeNode[], out: number[] = []): number[] {
-  nodes.forEach((n) => {
-    out.push(n.dep.id_dependencia);
-    collectIds(n.children, out);
-  });
-  return out;
-}
-
 export const DependenciaTreeSelect: React.FC<DependenciaTreeSelectProps> = ({
   dependencias,
   value,
@@ -58,24 +30,18 @@ export const DependenciaTreeSelect: React.FC<DependenciaTreeSelectProps> = ({
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const roots = useMemo(() => {
-    const forest = buildForest(dependencias);
-    if (rootId == null) return forest;
-    const find = (nodes: TreeNode[]): TreeNode | null => {
-      for (const n of nodes) {
-        if (n.dep.id_dependencia === rootId) return n;
-        const hit = find(n.children);
-        if (hit) return hit;
-      }
-      return null;
-    };
-    return find(forest) ? [find(forest)!] : forest;
-  }, [dependencias, rootId]);
+  const bosque = useMemo(() => construirBosque(dependencias), [dependencias]);
 
-  const selected = useMemo(
-    () => dependencias.find((d) => String(d.id_dependencia) === value) ?? null,
-    [dependencias, value]
-  );
+  const roots = useMemo(() => {
+    if (rootId == null) return bosque.roots;
+    const encontrado = bosque.byId.get(rootId);
+    return encontrado ? [encontrado] : bosque.roots;
+  }, [bosque, rootId]);
+
+  const selected = useMemo(() => {
+    if (!value) return null;
+    return bosque.byId.get(Number(value))?.dep ?? null;
+  }, [bosque, value]);
 
   // Al abrir por primera vez, despliega toda la familia del nodo enraízado.
   useEffect(() => {
@@ -140,13 +106,13 @@ export const DependenciaTreeSelect: React.FC<DependenciaTreeSelectProps> = ({
               onClick={() => { onChange(String(id)); setOpen(false); }}
               className={`flex-1 flex items-center gap-2 text-left px-2 py-1.5 rounded-lg text-sm transition-colors ${
                 isSelected
-                  ? "bg-blue-50 text-blue-700 font-semibold"
+                  ? "bg-brand-50 text-brand-700 font-semibold"
                   : "text-gray-700 hover:bg-gray-50"
               }`}
             >
-              <Building2 className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-blue-600" : "text-gray-400"}`} />
+              <Building2 className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-brand-600" : "text-gray-400"}`} />
               <span className="truncate">{node.dep.nombre}</span>
-              {isSelected && <span className="ml-auto text-[10px] text-blue-500">seleccionada</span>}
+              {isSelected && <span className="ml-auto text-xs text-brand-500">seleccionada</span>}
             </button>
           </div>
           {hasChildren && isOpen && renderNodes(node.children, depth + 1)}
@@ -160,7 +126,7 @@ export const DependenciaTreeSelect: React.FC<DependenciaTreeSelectProps> = ({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((p) => !p)}
-        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white text-left flex items-center justify-between gap-2 focus:ring-2 focus:ring-brand-500 outline-none disabled:opacity-50"
+        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white text-left flex flex-wrap items-center justify-between gap-3 gap-2 focus:ring-2 focus:ring-brand-500 outline-none disabled:opacity-50"
       >
         <span className={`flex items-center gap-2 truncate ${selected ? "text-gray-900" : "text-gray-400"}`}>
           <Building2 className="w-4 h-4 shrink-0 text-gray-400" />

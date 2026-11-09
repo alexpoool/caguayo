@@ -28,11 +28,12 @@ import {
   DateInput,
   Input,
 } from '../../components/ui';
+import { getCachedNumberFormat } from '../../utils/formato';
 
 const fmtMoneda = (v: number | string | null | undefined) =>
   v === null || v === undefined || v === ''
     ? '—'
-    : new Intl.NumberFormat('es-CU', {
+    : getCachedNumberFormat('es-CU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(Number(v));
@@ -316,8 +317,8 @@ export function NominaPagosPage() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 w-64 animate-pulse rounded-md bg-slate-100" />
-        <div className="h-72 animate-pulse rounded-xl bg-slate-100" />
+        <div className="h-8 w-64 animate-pulse rounded-md bg-gray-100" />
+        <div className="h-72 animate-pulse rounded-xl bg-gray-100" />
       </div>
     );
   }
@@ -326,7 +327,7 @@ export function NominaPagosPage() {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <AlertCircle className="h-10 w-10 text-red-400" />
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-gray-600">
           {error instanceof Error
             ? error.message
             : 'No se pudo cargar la nómina'}
@@ -356,12 +357,12 @@ export function NominaPagosPage() {
             type="button"
             title="Volver al detalle de la nómina"
             onClick={() => navigate(`/rrhh/nomina/${nominaId}`)}
-            className="mt-1 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="mt-1 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="flex flex-wrap items-center gap-2 text-xl font-bold text-slate-900">
+            <h1 className="flex flex-wrap items-center gap-2 text-xl font-bold text-gray-900">
               <Banknote className="h-6 w-6 text-brand-600" />
               Pagos de la nómina
               <span
@@ -372,11 +373,11 @@ export function NominaPagosPage() {
                 {ETIQUETA_ESTADO_NOMINA[detalle.estado]}
               </span>
             </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-slate-500">
-              <span className="font-medium text-slate-700">
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-500">
+              <span className="font-medium text-gray-700">
                 {detalle.descripcion}
               </span>
-              <span className="text-slate-300">·</span>
+              <span className="text-gray-300">·</span>
               <span>
                 {fmtFecha(detalle.inicio_periodo)} –{' '}
                 {fmtFecha(detalle.fin_periodo)}
@@ -416,7 +417,7 @@ export function NominaPagosPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:grid-cols-4">
         <Resumen
           titulo="Empleados"
           valor={String(empleadosVisibles.length)}
@@ -437,7 +438,7 @@ export function NominaPagosPage() {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-slate-700">
+              <h2 className="text-sm font-semibold text-gray-700">
                 Pago por empleado
               </h2>
               <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-600 ring-1 ring-brand-100">
@@ -445,7 +446,7 @@ export function NominaPagosPage() {
                 {empleadosVisibles.length === 1 ? '' : 's'}
               </span>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-gray-500">
               Solo se muestran los empleados con neto a cobrar mayor que cero.
               El monto viene prellenado con ese neto, pero puedes cambiarlo.
               Deja la fecha y el método vacíos para mantener un empleado
@@ -461,8 +462,8 @@ export function NominaPagosPage() {
           <CardContent>
             {empleadosVisibles.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-10 text-center">
-                <Users className="h-8 w-8 text-slate-300" />
-                <p className="text-sm text-slate-500">
+                <Users className="h-8 w-8 text-gray-300" />
+                <p className="text-sm text-gray-500">
                   Esta nómina no tiene empleados con neto a cobrar mayor que
                   cero.
                 </p>
@@ -472,10 +473,10 @@ export function NominaPagosPage() {
                 {grupos.map((grupo) => (
                   <div
                     key={grupo.clave}
-                    className="overflow-hidden rounded-lg border border-slate-200"
+                    className="overflow-hidden rounded-lg border border-gray-200"
                   >
-                    <div className="flex items-center gap-3 bg-slate-50 px-4 py-3">
-                      <Building2 className="h-4 w-4 text-slate-400" />
+                    <div className="flex items-center gap-3 bg-gray-50 px-4 py-3">
+                      <Building2 className="h-4 w-4 text-gray-400" />
                       <span className="flex-1 font-semibold text-gray-800">
                         {grupo.nombre}
                       </span>
@@ -490,13 +491,13 @@ export function NominaPagosPage() {
                       return (
                         <div
                           key={empleado.empleado_id}
-                          className={`grid grid-cols-1 items-start gap-2 border-t border-slate-100 px-4 py-3 md:items-center md:gap-3 ${COLUMNAS}`}
+                          className={`grid grid-cols-1 items-start gap-2 border-t border-gray-100 px-4 py-3 md:items-center md:gap-3 ${COLUMNAS}`}
                         >
                           <div className="min-w-0">
-                            <p className="truncate font-medium text-slate-800">
+                            <p className="truncate font-medium text-gray-800">
                               {empleado.empleado_nombre ?? '—'}
                             </p>
-                            <p className="truncate text-xs text-slate-500">
+                            <p className="truncate text-xs text-gray-500">
                               {empleado.empleado_codigo ?? '—'}
                               {empleado.puesto_nombre
                                 ? ` · ${empleado.puesto_nombre}`
@@ -570,7 +571,7 @@ export function NominaPagosPage() {
                             title="Quitar el pago de este empleado"
                             onClick={() => limpiar(empleado.empleado_id)}
                             disabled={!esEditable}
-                            className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <Eraser className="h-4 w-4" />
                           </button>
@@ -585,7 +586,7 @@ export function NominaPagosPage() {
         </Card>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand-100 bg-brand-50/60 px-4 py-3">
-          <div className="text-sm text-slate-600">
+          <div className="text-sm text-gray-600">
             <span className="font-semibold text-brand-600">
               {fmtMoneda(resumen.totalPagado)}
             </span>{' '}
@@ -613,7 +614,7 @@ export function NominaPagosPage() {
 function Columnas() {
   return (
     <div
-      className={`hidden border-t border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:gap-3 ${COLUMNAS}`}
+      className={`hidden border-t border-gray-200 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 md:grid md:gap-3 ${COLUMNAS}`}
     >
       <span>Empleado</span>
       <span>Fecha de pago</span>
@@ -637,13 +638,13 @@ function Resumen({
   return (
     <div
       className={`rounded-lg p-3 ${
-        destacado ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-slate-50'
+        destacado ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-gray-50'
       }`}
     >
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
         {titulo}
       </p>
-      <p className="mt-0.5 text-lg font-bold tabular-nums text-slate-900">
+      <p className="mt-0.5 text-lg font-bold tabular-nums text-gray-900">
         {valor}
       </p>
     </div>

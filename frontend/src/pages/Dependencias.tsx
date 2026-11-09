@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -16,7 +16,7 @@ import {
   Phone,
   Mail,
   Globe,
-  Map,
+  Map as MapIcon,
   Locate,
   FileText,
   Wallet,
@@ -46,23 +46,27 @@ import {
   TableCell,
   ConfirmModal,
   FormModal,
+  CreateButton,
 } from "../components/ui";
 import { dependenciasService } from "../services/administracion";
 import type { Dependencia, DependenciaCreate, DependenciaConCuentasCreate } from "../types/dependencia";
+import { coincideBusqueda, normalizarBusqueda } from "../utils/busqueda";
 
 const DEPENDENCIA_FORM_ID = "dependencia-form";
 
 interface ArbolDependenciaProps {
-  dependencias: Dependencia[];
   dependenciasPadre: Dependencia[];
+  hijosPorPadre: Map<number, Dependencia[]>;
   nivel: number;
   onSelect: (dep: Dependencia) => void;
   selectedId?: number;
 }
 
+const SIN_HIJOS: Dependencia[] = [];
+
 function ArbolDependencia({
-  dependencias,
   dependenciasPadre,
+  hijosPorPadre,
   nivel,
   onSelect,
   selectedId,
@@ -83,9 +87,7 @@ function ArbolDependencia({
   return (
     <div className="space-y-1">
       {dependenciasPadre.map((dep) => {
-        const hijos = dependencias.filter(
-          (d) => d.codigo_padre === dep.id_dependencia,
-        );
+        const hijos = hijosPorPadre.get(dep.id_dependencia) ?? SIN_HIJOS;
         const isExpanded = expandidos.has(dep.id_dependencia);
         const isSelected = selectedId === dep.id_dependencia;
 
@@ -93,7 +95,7 @@ function ArbolDependencia({
           <div key={dep.id_dependencia}>
             <div
               className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
-                isSelected ? "bg-blue-100 text-blue-800" : "hover:bg-slate-50"
+                isSelected ? "bg-brand-100 text-brand-800" : "hover:bg-gray-50"
               }`}
               style={{ paddingLeft: `${nivel * 20 + 8}px` }}
               onClick={() => onSelect(dep)}
@@ -112,7 +114,7 @@ function ArbolDependencia({
               )}
               {hijos.length === 0 && <span className="w-6" />}
               {nivel === 0 ? (
-                <Building2 className="h-4 w-4 text-blue-600" />
+                <Building2 className="h-4 w-4 text-brand-600" />
               ) : (
                 <Building className="h-4 w-4 text-gray-500" />
               )}
@@ -120,8 +122,8 @@ function ArbolDependencia({
             </div>
             {isExpanded && hijos.length > 0 && (
               <ArbolDependencia
-                dependencias={dependencias}
                 dependenciasPadre={hijos}
+                hijosPorPadre={hijosPorPadre}
                 nivel={nivel + 1}
                 onSelect={onSelect}
                 selectedId={selectedId}
@@ -263,9 +265,11 @@ export function DependenciasPage() {
 
 
 
-  const dependenciasPadreFiltradas = dependencias.filter((d) =>
-    d.nombre.toLowerCase().includes(busquedaPadre.toLowerCase()),
-  );
+  const dependenciasPadreFiltradas = useMemo(() => {
+    const termino = normalizarBusqueda(busquedaPadre).trim();
+    if (!termino) return dependencias;
+    return dependencias.filter((d) => coincideBusqueda(d.nombre, termino));
+  }, [dependencias, busquedaPadre]);
 
   const createDependencia = useMutation({
     mutationFn: dependenciasService.createDependencia,
@@ -519,7 +523,22 @@ export function DependenciasPage() {
     setCuentaDetailModal({ isOpen: false, cuenta: null });
   };
 
-  const dependenciasRaiz = dependencias.filter((d) => !d.codigo_padre);
+  const { dependenciasRaiz, hijosPorDependencia } = useMemo(() => {
+    const hijos = new Map<number, Dependencia[]>();
+    const raiz: Dependencia[] = [];
+
+    for (const dependencia of dependencias) {
+      if (!dependencia.codigo_padre) {
+        raiz.push(dependencia);
+        continue;
+      }
+      const lista = hijos.get(dependencia.codigo_padre) ?? [];
+      lista.push(dependencia);
+      hijos.set(dependencia.codigo_padre, lista);
+    }
+
+    return { dependenciasRaiz: raiz, hijosPorDependencia: hijos };
+  }, [dependencias]);
 
   const formModal = (
     <FormModal
@@ -548,7 +567,7 @@ export function DependenciasPage() {
             form={DEPENDENCIA_FORM_ID}
             disabled={isSaving}
             isLoading={isSaving}
-            className="gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300"
+            className="gap-2 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 shadow-lg hover:shadow-xl transition-all duration-300"
           >
             {editingDependencia ? "Actualizar" : "Guardar"}
           </Button>
@@ -557,10 +576,10 @@ export function DependenciasPage() {
     >
       <div className="p-4 md:p-6 space-y-4">
         {selectedPadre && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-4 animate-fade-in">
+          <div className="bg-gradient-to-r from-brand-50 to-brand-50 border-l-4 border-brand-500 rounded-lg p-4 animate-fade-in">
             <div className="flex items-center gap-2">
-              <Network className="h-5 w-5 text-blue-600" />
-              <p className="text-sm text-blue-800">
+              <Network className="h-5 w-5 text-brand-600" />
+              <p className="text-sm text-brand-800">
                 <span className="font-semibold">Dependencia Padre:</span>{" "}
                 {selectedPadre.nombre}
               </p>
@@ -571,26 +590,26 @@ export function DependenciasPage() {
         <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-white">
             <div className="flex items-center gap-2">
-              <Building className="h-6 w-6 text-blue-600" />
+              <Building className="h-6 w-6 text-brand-600" />
               <CardTitle>Información de la Dependencia</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <form id={DEPENDENCIA_FORM_ID} onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+            <form id={DEPENDENCIA_FORM_ID} onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* ===== INFORMACIÓN GENERAL ===== */}
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <div className="flex items-center gap-2 pt-2 pb-3">
-                  <FileText className="h-4 w-4 text-blue-500" />
+                  <FileText className="h-4 w-4 text-brand-500" />
                   <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Información General</span>
                   <div className="flex-1 border-t border-gray-200" />
                 </div>
               </div>
 
               {/* Nombre, Denominación, NIT, REEUP */}
-              <div className="col-span-2 grid grid-cols-4 gap-4">
+              <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-gray-700">
-                    <Building className="h-5 w-5 text-blue-500" />
+                    <Building className="h-5 w-5 text-brand-500" />
                     Nombre 
                   </Label>
                   <Input
@@ -599,12 +618,12 @@ export function DependenciasPage() {
                       setFormData({ ...formData, nombre: e.target.value })
                     }
                     placeholder="Nombre de la dependencia"
-                    className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-gray-700">
-                    <FileText className="h-5 w-5 text-indigo-500" />
+                    <FileText className="h-5 w-5 text-brand-500" />
                     Denominación
                   </Label>
                   <Input
@@ -614,7 +633,7 @@ export function DependenciasPage() {
                     }
                     maxLength={3}
                     placeholder="Máx 3 caracteres"
-                    className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 uppercase"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 uppercase"
                   />
                 </div>
                 <div className="space-y-2">
@@ -633,7 +652,7 @@ export function DependenciasPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-gray-700">
-                    <Hash className="h-5 w-5 text-cyan-500" />
+                    <Hash className="h-5 w-5 text-brand-500" />
                     REEUP
                   </Label>
                   <Input
@@ -643,13 +662,13 @@ export function DependenciasPage() {
                     }
                     maxLength={15}
                     placeholder="Código REEUP"
-                    className="transition-all duration-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
               </div>
 
               {/* Descripción */}
-              <div className="col-span-2 space-y-2">
+              <div className="sm:col-span-2 space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <FileText className="h-5 w-5 text-gray-500" />
                   Descripción
@@ -740,11 +759,11 @@ export function DependenciasPage() {
               {/* Tipo de Dependencia */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Tag className="h-5 w-5 text-purple-500" />
+                  <Tag className="h-5 w-5 text-brand-500" />
                   Tipo de Dependencia *
                 </Label>
                 <select
-                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   value={formData.id_tipo_dependencia}
                   onChange={(e) =>
                     setFormData({
@@ -766,7 +785,7 @@ export function DependenciasPage() {
               </div>
 
               {/* ===== CONTACTO & UBICACIÓN ===== */}
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <div className="flex items-center gap-2 pt-4 pb-3">
                   <Phone className="h-4 w-4 text-green-500" />
                   <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Contacto &amp; Ubicación</span>
@@ -809,7 +828,7 @@ export function DependenciasPage() {
               {/* Provincia */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Map className="h-5 w-5 text-orange-500" />
+                  <MapIcon className="h-5 w-5 text-orange-500" />
                   Provincia
                 </Label>
                 <select
@@ -847,7 +866,7 @@ export function DependenciasPage() {
                   Municipio
                 </Label>
                 <select
-                  className="w-full border rounded-md px-3 py-2 disabled:bg-slate-50 disabled:text-gray-500 transition-all duration-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                  className="w-full border rounded-md px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500 transition-all duration-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                   value={formData.id_municipio || ""}
                   onChange={(e) =>
                     setFormData({
@@ -875,7 +894,7 @@ export function DependenciasPage() {
               {/* Email */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Mail className="h-5 w-5 text-blue-500" />
+                  <Mail className="h-5 w-5 text-brand-500" />
                   Email
                 </Label>
                 <Input
@@ -884,14 +903,14 @@ export function DependenciasPage() {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   placeholder="Email (opcional)"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 />
               </div>
 
               {/* Web */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Globe className="h-5 w-5 text-indigo-500" />
+                  <Globe className="h-5 w-5 text-brand-500" />
                   Web
                 </Label>
                 <Input
@@ -900,7 +919,7 @@ export function DependenciasPage() {
                     setFormData({ ...formData, web: e.target.value })
                   }
                   placeholder="Sitio web (opcional)"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 />
               </div>
             </form>
@@ -912,9 +931,9 @@ export function DependenciasPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <Building className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -924,17 +943,7 @@ export function DependenciasPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => {
-            setView("form");
-            setEditingDependencia(null);
-            resetForm(true);
-          }}
-          className="gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Dependencia
-        </Button>
+        <CreateButton label="Nueva Dependencia" onClick={() => { setView("form"); setEditingDependencia(null); resetForm(true); }} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -945,8 +954,8 @@ export function DependenciasPage() {
           <CardContent className="max-h-[600px] overflow-auto">
             {dependenciasRaiz.length > 0 ? (
               <ArbolDependencia
-                dependencias={dependencias}
                 dependenciasPadre={dependenciasRaiz}
+                hijosPorPadre={hijosPorDependencia}
                 nivel={0}
                 onSelect={handleSelectDependencia}
               />
@@ -960,11 +969,11 @@ export function DependenciasPage() {
 
         <Card className="lg:col-span-2 overflow-hidden hover:shadow-lg transition-shadow duration-300">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2">
                 {dependenciaSeleccionadaArbol ? (
                   <>
-                    <Network className="h-5 w-5 text-blue-600" />
+                    <Network className="h-5 w-5 text-brand-600" />
                     <span>{dependenciaSeleccionadaArbol.nombre}</span>
                     <span className="text-sm font-normal text-gray-500">
                       (y sus subdependencias)
@@ -972,7 +981,7 @@ export function DependenciasPage() {
                   </>
                 ) : (
                   <>
-                    <Building2 className="h-5 w-5 text-blue-600" />
+                    <Building2 className="h-5 w-5 text-brand-600" />
                     Listado de Dependencias
                   </>
                 )}
@@ -992,15 +1001,15 @@ export function DependenciasPage() {
           </CardHeader>
           <CardContent>
             {dependenciaSeleccionadaArbol && (
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Building className="h-5 w-5 text-blue-600" />
+              <div className="mb-4 p-3 bg-brand-50 border border-brand-200 rounded-lg flex items-center gap-3">
+                <div className="p-2 bg-brand-100 rounded-lg">
+                  <Building className="h-5 w-5 text-brand-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-900">
+                  <p className="text-sm font-medium text-brand-900">
                     {dependenciaSeleccionadaArbol.nombre}
                   </p>
-                  <p className="text-xs text-blue-700">
+                  <p className="text-xs text-brand-700">
                     Selecciona una fila para ver detalles
                   </p>
                 </div>
@@ -1010,7 +1019,7 @@ export function DependenciasPage() {
                   onClick={() =>
                     handleVerDetalleDesdeTabla(dependenciaSeleccionadaArbol)
                   }
-                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                  className="text-brand-600 hover:text-brand-800 hover:bg-brand-100"
                 >
                   <FileText className="h-4 w-4 mr-1" />
                   Detalles
@@ -1018,7 +1027,7 @@ export function DependenciasPage() {
               </div>
             )}
             <Table>
-              <TableHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+              <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Den.</TableHead>
@@ -1054,7 +1063,7 @@ export function DependenciasPage() {
                   return depsFiltradas.map((dep) => (
                     <TableRow
                       key={dep.id_dependencia}
-                      className="cursor-pointer hover:bg-blue-50 transition-colors"
+                      className="cursor-pointer hover:bg-brand-50 transition-colors"
                       onClick={() => handleVerDetalleDesdeTabla(dep)}
                     >
                       <TableCell className="font-medium">
@@ -1092,7 +1101,7 @@ export function DependenciasPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(dep)}
-                            className="text-blue-600"
+                            className="text-brand-600"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -1129,7 +1138,7 @@ export function DependenciasPage() {
         databaseCreatedModal.dependencia &&
         createPortal(
           <div
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in"
+            className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setDatabaseCreatedModal({
@@ -1142,7 +1151,7 @@ export function DependenciasPage() {
             }}
           >
             <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl animate-scale-in max-h-[90vh] flex flex-col">
-              <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-2xl">
+              <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-2xl">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-md shadow-lg">
                     <CheckCircle2 className="h-7 w-7 text-white" />
@@ -1172,14 +1181,14 @@ export function DependenciasPage() {
                   <X className="h-6 w-6" />
                 </Button>
               </div>
-              <div className="flex-1 overflow-auto p-6">
+              <div className="flex-1 overflow-auto p-4 md:p-6">
                 <div className="space-y-4">
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-md p-5">
                     <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Building className="h-5 w-5 text-green-500" />
                       Dependencia Creada
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <Label className="flex items-center gap-2 text-gray-500 text-sm">
                           Nombre
@@ -1192,7 +1201,7 @@ export function DependenciasPage() {
                         <Label className="flex items-center gap-2 text-gray-500 text-sm">
                           Tipo
                         </Label>
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-brand-100 text-brand-700 rounded-full text-sm font-medium">
                           {databaseCreatedModal.dependencia.tipo_dependencia
                             ?.nombre || "-"}
                         </span>
@@ -1203,7 +1212,7 @@ export function DependenciasPage() {
 
                 </div>
               </div>
-              <div className="flex-shrink-0 p-6 border-t bg-gray-50 rounded-b-2xl">
+              <div className="flex-shrink-0 p-4 md:p-6 border-t bg-gray-50 rounded-b-2xl">
                 <div className="flex justify-end gap-3">
                   <Button
                     variant="outline"
@@ -1230,15 +1239,15 @@ export function DependenciasPage() {
         dependenciaDetalle &&
         createPortal(
           <div
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in"
+            className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-[100] p-4 animate-fade-in overflow-y-auto"
             onClick={(e) => {
               if (e.target === e.currentTarget) handleCloseDetailModal();
             }}
           >
             <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in">
-              <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
+              <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-brand-50 to-brand-50 rounded-t-2xl">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md shadow-lg">
+                  <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-md shadow-lg">
                     <Building className="h-7 w-7 text-white" />
                   </div>
                   <div>
@@ -1259,15 +1268,15 @@ export function DependenciasPage() {
                   <X className="h-6 w-6" />
                 </Button>
               </div>
-              <div className="flex-1 overflow-auto p-6">
+              <div className="flex-1 overflow-auto p-4 md:p-6">
                 <div className="space-y-8">
                   {/* Información básica */}
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-md p-5">
                     <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Building className="h-5 w-5 text-blue-500" />
+                      <Building className="h-5 w-5 text-brand-500" />
                       Información General
                     </h3>
-                    <div className="grid grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div className="space-y-1">
                         <Label className="flex items-center gap-2 text-gray-500 text-sm">
                           <Building className="h-4 w-4" />
@@ -1282,7 +1291,7 @@ export function DependenciasPage() {
                           <Tag className="h-4 w-4" />
                           Tipo
                         </Label>
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-brand-100 text-brand-700 rounded-full text-sm font-medium">
                           {dependenciaDetalle.tipo_dependencia?.nombre || "-"}
                         </span>
                       </div>
@@ -1304,7 +1313,7 @@ export function DependenciasPage() {
                           {dependenciaDetalle.reeup || "-"}
                         </p>
                       </div>
-                      <div className="col-span-2 space-y-1">
+                      <div className="sm:col-span-2 space-y-1">
                         <Label className="flex items-center gap-2 text-gray-500 text-sm">
                           <MapPin className="h-4 w-4" />
                           Dirección
@@ -1342,7 +1351,7 @@ export function DependenciasPage() {
                       </div>
                       <div className="space-y-1">
                         <Label className="flex items-center gap-2 text-gray-500 text-sm">
-                          <Map className="h-4 w-4" />
+                          <MapIcon className="h-4 w-4" />
                           Ubicación
                         </Label>
                         <p className="font-medium text-gray-900">
@@ -1369,18 +1378,18 @@ export function DependenciasPage() {
                             <TableHeader className="bg-green-100/50">
                               <TableRow>
                                 <TableHead className="flex items-center gap-2">
-                                  <User className="h-4 w-4 text-blue-500" />
+                                  <User className="h-4 w-4 text-brand-500" />
                                   Titular
                                 </TableHead>
                                 <TableHead>
                                   <div className="flex items-center gap-2">
-                                    <Landmark className="h-4 w-4 text-purple-500" />
+                                    <Landmark className="h-4 w-4 text-brand-500" />
                                     Banco
                                   </div>
                                 </TableHead>
                                 <TableHead>
                                   <div className="flex items-center gap-2">
-                                    <CreditCard className="h-4 w-4 text-indigo-500" />
+                                    <CreditCard className="h-4 w-4 text-brand-500" />
                                     Tipo
                                   </div>
                                 </TableHead>
@@ -1402,7 +1411,7 @@ export function DependenciasPage() {
                                       </TableCell>
                                       <TableCell>{cuenta.banco}</TableCell>
                                       <TableCell>
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs">
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded-full text-xs">
                                           <CreditCard className="h-3 w-3" />
                                           -
                                         </span>
@@ -1414,7 +1423,7 @@ export function DependenciasPage() {
                                           onClick={() =>
                                             handleShowCuentaDetail(cuenta)
                                           }
-                                          className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                                          className="text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all"
                                         >
                                           <Building className="h-4 w-4" />
                                         </Button>
@@ -1437,11 +1446,11 @@ export function DependenciasPage() {
                     );
                     if (hijos.length === 0) return null;
                     return (
-                      <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-md p-5">
+                      <div className="bg-gradient-to-br from-brand-50 to-brand-50 rounded-md p-5">
                         <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                          <Network className="h-5 w-5 text-indigo-600" />
+                          <Network className="h-5 w-5 text-brand-600" />
                           Subdependencias
-                          <span className="ml-2 px-2 py-0.5 bg-indigo-200 text-indigo-800 rounded-full text-xs">
+                          <span className="ml-2 px-2 py-0.5 bg-brand-200 text-brand-800 rounded-full text-xs">
                             {hijos.length}
                           </span>
                         </h3>
@@ -1451,8 +1460,8 @@ export function DependenciasPage() {
                               key={hijo.id_dependencia}
                               className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
                             >
-                              <div className="p-2 bg-blue-100 rounded-lg">
-                                <Building2 className="h-4 w-4 text-blue-600" />
+                              <div className="p-2 bg-brand-100 rounded-lg">
+                                <Building2 className="h-4 w-4 text-brand-600" />
                               </div>
                               <span className="font-medium text-gray-900">
                                 {hijo.nombre}
@@ -1522,13 +1531,13 @@ export function DependenciasPage() {
         cuentaDetailModal.cuenta &&
         createPortal(
           <div
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in"
+            className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-[100] p-4 animate-fade-in overflow-y-auto"
             onClick={(e) => {
               if (e.target === e.currentTarget) handleCloseCuentaDetailModal();
             }}
           >
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
-              <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-2xl">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-2xl">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-md shadow-lg">
                     <CreditCard className="h-7 w-7 text-white" />
@@ -1551,9 +1560,9 @@ export function DependenciasPage() {
                   <X className="h-6 w-6" />
                 </Button>
               </div>
-              <div className="p-6 space-y-5">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-md p-4 space-y-1">
-                  <Label className="flex items-center gap-2 text-blue-600 text-sm font-medium">
+              <div className="p-4 md:p-6 space-y-5">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 rounded-md p-4 space-y-1">
+                  <Label className="flex items-center gap-2 text-brand-600 text-sm font-medium">
                     <User className="h-4 w-4" />
                     Titular
                   </Label>
@@ -1561,9 +1570,9 @@ export function DependenciasPage() {
                     {cuentaDetailModal.cuenta.titular}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-md p-4 space-y-1">
-                    <Label className="flex items-center gap-2 text-purple-600 text-sm font-medium">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-brand-50 to-pink-50 rounded-md p-4 space-y-1">
+                    <Label className="flex items-center gap-2 text-brand-600 text-sm font-medium">
                       <Landmark className="h-4 w-4" />
                       Banco
                     </Label>

@@ -1,13 +1,15 @@
-import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Input, Label, DateInput, Card, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
+  CreateButton,
+} from '../../components/ui';
 import { etapasProyectoService, solicitudesService, monedaService } from '../../services/api';
 import type { Etapa, EtapaCreate, EtapaUpdate } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Trash2, Edit, ArrowLeft, Search, Layers, DollarSign, Tag, X, FileText, Users, CheckSquare, MoreVertical, ChevronDown } from 'lucide-react';
+import { Trash2, Edit, ArrowLeft, Search, Layers, DollarSign, Tag, X, FileText, Users, CheckSquare, MoreVertical, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { formatFecha } from '../../utils/fecha';
+import { formatFecha, toISODateLocal} from '../../utils/fecha';
 import { useMonedaContrato } from '../../hooks/useMonedaContrato';
 
 type View = 'list' | 'form';
@@ -20,7 +22,7 @@ export function EtapasPage() {
   const solicitudId = searchParams.get('solicitud');
   const [view, setView] = useState<View>('list');
 
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = toISODateLocal();
 
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
@@ -38,6 +40,7 @@ export function EtapasPage() {
     }
   }, [monedaContrato]);
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Etapa | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -199,13 +202,13 @@ export function EtapasPage() {
   };
 
   const filteredEtapas = useMemo(() => {
-    if (!searchTerm) return etapas;
+    if (!deferredSearchTerm) return etapas;
     return etapas.filter(e =>
-      e.nombre_etapa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(e.numero_etapa).includes(searchTerm)
+      e.nombre_etapa?.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+      e.descripcion?.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+      String(e.numero_etapa).includes(deferredSearchTerm)
     );
-  }, [etapas, searchTerm]);
+  }, [etapas, deferredSearchTerm]);
 
   const getMonedaNombre = (id?: number) => {
     if (!id) return 'N/A';
@@ -220,7 +223,7 @@ export function EtapasPage() {
             <ArrowLeft className="h-4 w-4" />
             Proyectos
           </Button>
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
             <Layers className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -230,24 +233,17 @@ export function EtapasPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-          disabled={!solicitudId}
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Etapa
-        </Button>
+        <CreateButton label="Nueva Etapa" onClick={() => openForm()} disabled={!solicitudId} />
       </div>
 
       {solicitudId && (
-        <Card className="bg-gradient-to-r from-teal-50 to-cyan-50 border-teal-200">
+        <Card className="bg-gradient-to-r from-brand-50 to-brand-50 border-brand-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Tag className="h-5 w-5 text-teal-600" />
+              <Tag className="h-5 w-5 text-brand-600" />
               <div>
-                <p className="text-sm text-teal-700 font-medium">Proyecto seleccionado</p>
-                <p className="text-lg font-bold text-teal-900">{solicitudInfo?.codigo_proyecto || solicitudInfo?.codigo_solicitud}</p>
+                <p className="text-sm text-brand-700 font-medium">Proyecto seleccionado</p>
+                <p className="text-lg font-bold text-brand-900">{solicitudInfo?.codigo_proyecto || solicitudInfo?.codigo_solicitud}</p>
               </div>
             </div>
           </CardContent>
@@ -269,12 +265,12 @@ export function EtapasPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Valor
                   </div>
                 </TableHead>
@@ -328,7 +324,7 @@ export function EtapasPage() {
                               ? null
                               : { id: item.id_etapa, x: r.left, y: r.bottom + 4, anchor: { top: r.top, left: r.left, right: r.right, bottom: r.bottom } });
                           }}
-                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                          className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                         >
                           <MoreVertical className="h-3.5 w-3.5" />
                           Opciones
@@ -369,7 +365,7 @@ export function EtapasPage() {
             <div>
               <Label className="text-sm font-medium">Tipo de etapa</Label>
               <select
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                 value={formData.tipo_etapa || 'TAREAS'}
                 onChange={(e: any) => setFormData({ ...formData, tipo_etapa: e.target.value })}
               >
@@ -384,7 +380,7 @@ export function EtapasPage() {
             <div>
               <Label className="text-sm font-medium">Fecha Entrega</Label>
               <DateInput
-                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha_entrega || hoy}
                 min={hoy}
                 onChange={(fecha_entrega) => setFormData({...formData, fecha_entrega})}
@@ -393,7 +389,7 @@ export function EtapasPage() {
             <div>
               <Label className="text-sm font-medium">Fecha Pago</Label>
               <DateInput
-                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha_pago || ''}
                 min={formData.fecha_entrega || hoy}
                 onChange={(fecha_pago) => setFormData({...formData, fecha_pago})}
@@ -406,7 +402,7 @@ export function EtapasPage() {
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
               <select
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
                 value={formData.id_moneda || ''}
                 disabled={!!monedaContrato}
                 onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}
@@ -427,7 +423,7 @@ export function EtapasPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {renderList()}
 
       <FormModal
@@ -452,7 +448,7 @@ export function EtapasPage() {
               form={ETAPA_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -477,10 +473,10 @@ export function EtapasPage() {
           onClose={() => setDetailModal({ isOpen: false, item: null })}
         >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <Layers className="h-7 w-7" />
                   </div>
                   <div>
@@ -488,8 +484,8 @@ export function EtapasPage() {
                       <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.nombre_etapa || `Etapa ${detailModal.item.numero_etapa || ''}`}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         detailModal.item.tipo_etapa === 'CERTIFICACIONES'
-                          ? 'bg-teal-100 text-teal-800'
-                          : 'bg-teal-100 text-teal-800'
+                          ? 'bg-brand-100 text-brand-800'
+                          : 'bg-brand-100 text-brand-800'
                       }`}>
                         {detailModal.item.tipo_etapa === 'CERTIFICACIONES' ? 'Certificaciones' : 'Tareas'}
                       </span>
@@ -502,10 +498,10 @@ export function EtapasPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Valor</p>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Valor</p>
                   <p className="font-bold text-gray-900 text-xl">${Number(detailModal.item.valor).toFixed(2)}</p>
                 </div>
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
@@ -525,13 +521,13 @@ export function EtapasPage() {
                   <p className="font-bold text-gray-900">{detailModal.item.numero_etapa || 'N/A'}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Fecha Entrega</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Fecha Entrega</p>
                   <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_entrega) || 'N/A'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Fecha Pago</p>
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Fecha Pago</p>
                   <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_pago) || 'N/A'}</p>
                 </div>
               </div>
@@ -542,16 +538,16 @@ export function EtapasPage() {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 flex-wrap">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 flex-wrap">
               {detailModal.item.tipo_etapa === 'CERTIFICACIONES' ? (
-                <button onClick={() => navigate(`/proyectos/certificaciones?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Certificaciones</button>
+                <button onClick={() => navigate(`/proyectos/certificaciones?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 transition-all font-medium text-sm">Certificaciones</button>
               ) : (
-                <button onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Tareas</button>
+                <button onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 transition-all font-medium text-sm">Tareas</button>
               )}
-              <button onClick={() => navigate(`/proyectos/realizadores?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Realizadores</button>
+              <button onClick={() => navigate(`/proyectos/realizadores?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 transition-all font-medium text-sm">Realizadores</button>
               <button onClick={() => navigate(`/proyectos/ofertas?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl hover:from-amber-600 hover:to-orange-700 transition-all font-medium text-sm">Ofertas</button>
-              <button onClick={() => navigate(`/proyectos/pre-facturas?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all font-medium text-sm">Pre-facturas</button>
-              <button onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Facturas</button>
+              <button onClick={() => navigate(`/proyectos/pre-facturas?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 transition-all font-medium text-sm">Pre-facturas</button>
+              <button onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 transition-all font-medium text-sm">Facturas</button>
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm">Cerrar</button>
             </div>
           </div>
@@ -568,30 +564,30 @@ export function EtapasPage() {
             style={{ top: menu.y, left: menu.x }}
           >
             {et?.tipo_etapa === 'CERTIFICACIONES' ? (
-              <button onClick={() => go(`/proyectos/certificaciones?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
-                <FileText className="h-4 w-4 text-teal-600" />
+              <button onClick={() => go(`/proyectos/certificaciones?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700">
+                <FileText className="h-4 w-4 text-brand-600" />
                 Certificaciones
               </button>
             ) : (
-              <button onClick={() => go(`/proyectos/tareas-etapa?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
-                <CheckSquare className="h-4 w-4 text-teal-600" />
+              <button onClick={() => go(`/proyectos/tareas-etapa?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700">
+                <CheckSquare className="h-4 w-4 text-brand-600" />
                 Tareas
               </button>
             )}
-            <button onClick={() => go(`/proyectos/realizadores?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
-              <Users className="h-4 w-4 text-teal-600" />
+            <button onClick={() => go(`/proyectos/realizadores?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700">
+              <Users className="h-4 w-4 text-brand-600" />
               Realizadores
             </button>
             <button onClick={() => go(`/proyectos/ofertas?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700">
               <FileText className="h-4 w-4 text-amber-600" />
               Oferta
             </button>
-            <button onClick={() => go(`/proyectos/pre-facturas?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">
-              <FileText className="h-4 w-4 text-blue-600" />
+            <button onClick={() => go(`/proyectos/pre-facturas?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700">
+              <FileText className="h-4 w-4 text-brand-600" />
               Pre-factura
             </button>
-            <button onClick={() => go(`/proyectos/facturas-servicio?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
-              <FileText className="h-4 w-4 text-teal-600" />
+            <button onClick={() => go(`/proyectos/facturas-servicio?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700">
+              <FileText className="h-4 w-4 text-brand-600" />
               Factura
             </button>
             <div className="my-1 border-t border-gray-100" />

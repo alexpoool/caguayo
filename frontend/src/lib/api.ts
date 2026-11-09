@@ -1,42 +1,34 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { API_BASE_URL } from '../config/api';
+const LOGIN_PATH = '/login';
 
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
 const BASE_DATOS_KEY = 'auth_base_datos';
 
+let redirectingToLogin = false;
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly detail?: unknown;
+
+  constructor(message: string, status: number, detail?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+function redirectToLoginOnce(): void {
+  if (redirectingToLogin || typeof window === 'undefined') return;
+  if (window.location.pathname === LOGIN_PATH) return;
+  redirectingToLogin = true;
+  window.location.assign(LOGIN_PATH);
+}
+
 class ApiClient {
   private getToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
-  }
-
-  private async logApiCall(endpoint: string, method: string, status: number, duration: number) {
-    if (endpoint.startsWith('/logs') || endpoint.startsWith('/auth/')) return;
-    
-    try {
-      const token = localStorage.getItem('auth_token');
-      const userStr = localStorage.getItem('auth_user');
-      const user = userStr ? JSON.parse(userStr) : null;
-      
-      await fetch(`${API_BASE_URL}/logs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          nivel: status >= 500 ? 'ERROR' : 'INFO',
-          tipo: 'REQUEST',
-          mensaje: `${method} ${endpoint} - ${status}`,
-          detalle: JSON.stringify({ duration_ms: Math.round(duration * 1000) }),
-          endpoint,
-          method,
-          status_code: status,
-          navegador: navigator.userAgent.substring(0, 100),
-          usuario_id: user?.id_usuario,
-          usuario_nombre: user?.nombre,
-        }),
-      });
-    } catch {}
   }
 
   private async request<T>(
@@ -63,19 +55,21 @@ class ApiClient {
     };
 
     try {
-      const startTime = Date.now();
       const response = await fetch(url, config);
-      const duration = (Date.now() - startTime) / 1000;
 
       onHeaders?.(response.headers);
-      this.logApiCall(endpoint, options.method || 'GET', response.status, duration);
+
+      if (response.status === 401 && !endpoint.startsWith('/auth/login')) {
+        authHelpers.clearAuth();
+        redirectToLoginOnce();
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('API Error:', errorData);
-        
+
         let errorMessage = `HTTP error! status: ${response.status}`;
-        
+
         if (errorData.detail) {
           if (Array.isArray(errorData.detail)) {
             errorMessage = errorData.detail
@@ -88,18 +82,18 @@ class ApiClient {
             errorMessage = errorData.detail;
           }
         }
-        
-        throw new Error(errorMessage);
+
+        throw new ApiError(errorMessage, response.status, errorData);
       }
+
+      redirectingToLogin = false;
 
       // Handle 204 No Content responses
       if (response.status === 204 || response.headers.get('content-length') === '0') {
         return undefined as T;
       }
 
-      const data = await response.json();
-      console.log('API Response data:', data);
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('API Request failed:', error);
       if (error instanceof Error) {
@@ -168,6 +162,7 @@ export const apiClient = new ApiClient();
 export const authHelpers = {
   setToken(token: string): void {
     localStorage.setItem(TOKEN_KEY, token);
+    redirectingToLogin = false;
   },
 
   getToken(): string | null {

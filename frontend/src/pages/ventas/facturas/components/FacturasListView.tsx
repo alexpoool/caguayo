@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, Receipt, Loader2, Search } from 'lucide-react';
-import { Button } from '../../../../components/ui';
+import { Receipt, Loader2, Search } from 'lucide-react';
+import { CreateButton,
+} from '../../../../components/ui';
 import { FacturasTable } from './FacturasTable';
 import type { FacturaWithDetails } from '../../../../types/contrato';
 import type { ContratoWithDetails } from '../../../../types/contrato';
@@ -73,9 +74,9 @@ export function FacturasListView({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded shadow-lg animate-bounce-subtle bg-gradient-to-br ${esPreFactura ? 'from-blue-500 to-indigo-600' : 'from-teal-500 to-cyan-600'}`}>
+          <div className={`p-2 rounded shadow-lg animate-bounce-subtle bg-gradient-to-br ${esPreFactura ? 'from-brand-500 to-brand-600' : 'from-brand-500 to-brand-600'}`}>
             <Receipt className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -85,13 +86,11 @@ export function FacturasListView({
             </p>
           </div>
         </div>
-        <Button
+        <CreateButton
+          label={`Nueva ${singular}`}
           onClick={onAddNew}
-          className={`gap-2 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 bg-gradient-to-r ${esPreFactura ? 'from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700' : 'from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700'}`}
-        >
-          <Plus className="h-4 w-4" />
-          {`Nueva ${singular}`}
-        </Button>
+          className="shadow-lg hover:shadow-xl"
+        />
       </div>
 
       {/* Filtro por contrato (buscador) */}
@@ -111,7 +110,7 @@ export function FacturasListView({
             }}
             onFocus={() => setShowContratoDropdown(true)}
             placeholder="Buscar contrato..."
-            className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 outline-none bg-white ${esPreFactura ? 'focus:ring-blue-500' : 'focus:ring-teal-500'}`}
+            className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 outline-none bg-white ${esPreFactura ? 'focus:ring-brand-500' : 'focus:ring-brand-500'}`}
           />
         </div>
         {showContratoDropdown && (
@@ -123,7 +122,7 @@ export function FacturasListView({
                 <button
                   key={c.id_contrato}
                   type="button"
-                  className={`w-full px-3 py-2 text-left text-sm transition-colors ${esPreFactura ? 'hover:bg-blue-50' : 'hover:bg-teal-50'}`}
+                  className={`w-full px-3 py-2 text-left text-sm transition-colors ${esPreFactura ? 'hover:bg-brand-50' : 'hover:bg-brand-50'}`}
                   onClick={() => {
                     onSelectedContratoChange(c.id_contrato);
                     setContratoSearch('');
@@ -141,7 +140,7 @@ export function FacturasListView({
       {/* Tabla de facturas o skeleton inicial */}
       {isLoading && facturas.length === 0 ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className={`h-6 w-6 animate-spin ${esPreFactura ? 'text-blue-500' : 'text-teal-500'}`} />
+          <Loader2 className={`h-6 w-6 animate-spin ${esPreFactura ? 'text-brand-500' : 'text-brand-500'}`} />
           <span className="ml-3 text-sm text-gray-500">Cargando {etiqueta.toLowerCase()}...</span>
         </div>
       ) : (
@@ -165,7 +164,7 @@ export function FacturasListView({
         className="flex justify-center py-4"
       >
         {isFetchingMore && (
-          <Loader2 className={`h-5 w-5 animate-spin ${esPreFactura ? 'text-blue-500' : 'text-teal-500'}`} />
+          <Loader2 className={`h-5 w-5 animate-spin ${esPreFactura ? 'text-brand-500' : 'text-brand-500'}`} />
         )}
       </div>
     </div>

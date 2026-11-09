@@ -12,8 +12,7 @@
  *    finalmente a la empresa de esta instalación (Caguayo).
  */
 import { useEffect, useReducer } from 'react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+import { API_BASE_URL } from './api';
 
 /** Marca del software: idéntica en todas las instalaciones. */
 export const PRODUCTO = {

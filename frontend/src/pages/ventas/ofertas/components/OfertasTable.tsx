@@ -132,7 +132,7 @@ export function OfertasTable({
                       type="button"
                       onClick={() => onViewDetails(oferta)}
                       title="Ver detalles"
-                      className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      className="p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
                     >
                       <Eye className="h-4 w-4" />
                     </button>
@@ -142,7 +142,7 @@ export function OfertasTable({
                           type="button"
                           onClick={() => onEdit(oferta)}
                           title="Editar"
-                          className="p-2 text-gray-500 hover:text-violet-600 hover:bg-violet-50 rounded transition-colors"
+                          className="p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>

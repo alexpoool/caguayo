@@ -1,14 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
+  CreateButton,
+} from '../../components/ui';
 import { pagosFacturaServicioService, facturasServicioService, monedaService } from '../../services/api';
 import type { PagoFacturaServicio, PagoFacturaServicioCreate, FacturaServicio } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Trash2, ArrowLeft, Search, CreditCard, DollarSign, Calendar, FileText, X, Eye, Hash } from 'lucide-react';
+import { Trash2, ArrowLeft, Search, CreditCard, DollarSign, Calendar, FileText, X, Eye, Hash } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatCifra } from '../../utils/decimal';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { formatFecha } from '../../utils/fecha';
+import { formatFecha, toISODateLocal} from '../../utils/fecha';
 import { useMonedaContratoDeEtapa } from '../../hooks/useMonedaContrato';
 
 type View = 'list' | 'form';
@@ -28,6 +30,7 @@ export function PagosFacturaServicioPage() {
 
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [isSaving, setIsSaving] = useState(false);
 
   // Moneda del contrato de la etapa de la factura: fija, no se puede cambiar
@@ -142,7 +145,7 @@ export function PagosFacturaServicioPage() {
   };
 
   const resetForm = () => {
-    setFormData({ fecha: new Date().toISOString().split('T')[0], id_moneda: monedaContrato || factura?.id_moneda || '' });
+    setFormData({ fecha: toISODateLocal(), id_moneda: monedaContrato || factura?.id_moneda || '' });
   };
 
   const openForm = () => {
@@ -157,17 +160,17 @@ export function PagosFacturaServicioPage() {
   };
 
   const filteredPagos = useMemo(() => {
-    if (!searchTerm) return pagos;
-    const term = searchTerm.toLowerCase();
+    if (!deferredSearchTerm) return pagos;
+    const term = deferredSearchTerm.toLowerCase();
     return pagos.filter(p =>
       p.doc_traza?.toLowerCase().includes(term) ||
       p.fecha?.toLowerCase().includes(term)
     );
-  }, [pagos, searchTerm]);
+  }, [pagos, deferredSearchTerm]);
 
   const renderHeader = () => (
-    <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-4 border border-teal-100 mb-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-gradient-to-r from-brand-50 to-brand-50 rounded-xl p-4 border border-brand-100 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => navigate('/proyectos/facturas-servicio')} className="gap-1">
             <ArrowLeft className="h-4 w-4" />
@@ -180,7 +183,7 @@ export function PagosFacturaServicioPage() {
             return (
               <div className="flex items-center gap-6 ml-4">
                 <div>
-                  <span className="text-xs text-teal-600 uppercase tracking-wider">Factura</span>
+                  <span className="text-xs text-brand-600 uppercase tracking-wider">Factura</span>
                   <p className="font-bold text-gray-900">{factura.codigo_factura || `#${factura.id_factura_servicio}`}</p>
                 </div>
                 <div>
@@ -213,7 +216,7 @@ export function PagosFacturaServicioPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
             <CreditCard className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -231,14 +234,12 @@ export function PagosFacturaServicioPage() {
           const importe = Number(factura?.importe || 0);
           const estaPagada = importe > 0 && pagado >= importe;
           return (
-            <Button
+            <CreateButton
+              label={estaPagada ? 'Factura Pagada' : 'Nuevo Pago'}
               onClick={openForm}
               disabled={estaPagada}
-              className={`gap-2 shadow-lg hover:shadow-xl transition-all duration-300 ${estaPagada ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 hover:scale-105 active:scale-95'}`}
-            >
-              <Plus className="h-4 w-4" />
-              {estaPagada ? 'Factura Pagada' : 'Nuevo Pago'}
-            </Button>
+              className="shadow-lg hover:shadow-xl"
+            />
           );
         })()}
       </div>
@@ -258,29 +259,29 @@ export function PagosFacturaServicioPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-teal-600" />
+                    <Calendar className="h-4 w-4 text-brand-600" />
                     Fecha
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Monto
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-teal-600" />
+                    <Hash className="h-4 w-4 text-brand-600" />
                     Moneda
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-teal-600" />
+                    <FileText className="h-4 w-4 text-brand-600" />
                     Documento de traza
                   </div>
                 </TableHead>
@@ -317,7 +318,7 @@ export function PagosFacturaServicioPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setDetailModal({ isOpen: true, item: pago })}
-                          className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
+                          className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8"
                           title="Ver detalle"
                         >
                           <Eye className="h-4 w-4" />
@@ -365,7 +366,7 @@ export function PagosFacturaServicioPage() {
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
               <select
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
                 value={formData.id_moneda || ''}
                 disabled={!!monedaContrato}
                 onChange={(e: any) => setFormData({ ...formData, id_moneda: e.target.value })}
@@ -403,7 +404,7 @@ export function PagosFacturaServicioPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {renderHeader()}
       {renderList()}
 
@@ -429,7 +430,7 @@ export function PagosFacturaServicioPage() {
               form={PAGO_FACTURA_SERVICIO_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -455,10 +456,10 @@ export function PagosFacturaServicioPage() {
           ariaLabel="Detalle del Pago"
         >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <CreditCard className="h-7 w-7" />
                   </div>
                   <div>
@@ -471,14 +472,14 @@ export function PagosFacturaServicioPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Monto</p>
-                  <p className="font-bold text-teal-900 text-xl">${formatCifra(detailModal.item.monto)}</p>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Monto</p>
+                  <p className="font-bold text-brand-900 text-xl">${formatCifra(detailModal.item.monto)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Moneda</p>
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Moneda</p>
                   <p className="font-bold text-gray-900">{getMonedaNombre(detailModal.item.id_moneda)}</p>
                 </div>
               </div>
@@ -491,7 +492,7 @@ export function PagosFacturaServicioPage() {
                 <p className="text-gray-700 font-mono">{detailModal.item.doc_traza || 'N/A'}</p>
               </div>
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>

@@ -33,6 +33,7 @@ import type {
   MovimientosTrends,
 } from "../types/dashboard";
 import { formatFecha, formatFechaDiaSemana } from "../utils/fecha";
+import { CHART_COLORS, PALETA } from "../config/paleta";
 import {
   LineChart,
   Line,
@@ -82,13 +83,13 @@ function StatCard({
 
   return (
     <Card
-      className={`cursor-pointer group ${onClick ? "hover:border-blue-300" : ""}`}
+      className={`cursor-pointer group ${onClick ? "hover:border-brand-300" : ""}`}
       onClick={onClick}
       animate
       style={{ animationDelay: `${delay}ms` }}
     >
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
+      <CardContent className="p-4 md:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div
               className={`p-3 rounded-full ${color} transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
@@ -99,7 +100,7 @@ function StatCard({
               <p className="text-sm font-medium text-gray-600 group-hover:text-gray-700 transition-colors">
                 {title}
               </p>
-              <p className="text-2xl font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
+              <p className="text-2xl font-bold text-gray-900 group-hover:text-brand-700 transition-colors">
                 {value}
               </p>
               {trend && (
@@ -141,15 +142,15 @@ function TrendChart({ data }: { data: VentasTrends | undefined }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <CartesianGrid strokeDasharray="3 3" stroke={PALETA.neutral.grid} />
         <XAxis
           dataKey="fecha"
-          stroke="#6b7280"
+          stroke={PALETA.neutral.axis}
           fontSize={12}
           tickLine={false}
         />
         <YAxis
-          stroke="#6b7280"
+          stroke={PALETA.neutral.axis}
           fontSize={12}
           tickLine={false}
           tickFormatter={(value) => `$${value.toLocaleString()}`}
@@ -161,7 +162,7 @@ function TrendChart({ data }: { data: VentasTrends | undefined }) {
           ]}
           contentStyle={{
             backgroundColor: "white",
-            border: "1px solid #e5e7eb",
+            border: `1px solid ${PALETA.neutral.grid}`,
             borderRadius: "8px",
             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
           }}
@@ -169,10 +170,10 @@ function TrendChart({ data }: { data: VentasTrends | undefined }) {
         <Line
           type="monotone"
           dataKey="monto"
-          stroke="#3b82f6"
+          stroke={CHART_COLORS[0]}
           strokeWidth={3}
-          dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
-          activeDot={{ r: 6, fill: "#2563eb" }}
+          dot={{ fill: CHART_COLORS[0], strokeWidth: 2, r: 4 }}
+          activeDot={{ r: 6, fill: PALETA.brand[600] }}
         />
       </LineChart>
     </ResponsiveContainer>
@@ -204,15 +205,15 @@ function MovimientosTrendChart({
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <CartesianGrid strokeDasharray="3 3" stroke={PALETA.neutral.grid} />
         <XAxis
           dataKey="fecha"
-          stroke="#6b7280"
+          stroke={PALETA.neutral.axis}
           fontSize={12}
           tickLine={false}
         />
         <YAxis
-          stroke="#6b7280"
+          stroke={PALETA.neutral.axis}
           fontSize={12}
           tickLine={false}
           allowDecimals={false}
@@ -220,7 +221,7 @@ function MovimientosTrendChart({
         <Tooltip
           contentStyle={{
             backgroundColor: "white",
-            border: "1px solid #e5e7eb",
+            border: `1px solid ${PALETA.neutral.grid}`,
             borderRadius: "8px",
             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
           }}
@@ -228,33 +229,33 @@ function MovimientosTrendChart({
         <Line
           type="monotone"
           dataKey="recepciones"
-          stroke="#10b981"
+          stroke={CHART_COLORS[1]}
           strokeWidth={2}
-          dot={{ fill: "#10b981", strokeWidth: 2, r: 4 }}
+          dot={{ fill: CHART_COLORS[1], strokeWidth: 2, r: 4 }}
           name="Recepciones"
         />
         <Line
           type="monotone"
           dataKey="mermas"
-          stroke="#ef4444"
+          stroke={CHART_COLORS[3]}
           strokeWidth={2}
-          dot={{ fill: "#ef4444", strokeWidth: 2, r: 4 }}
+          dot={{ fill: CHART_COLORS[3], strokeWidth: 2, r: 4 }}
           name="Mermas"
         />
         <Line
           type="monotone"
           dataKey="donaciones"
-          stroke="#8b5cf6"
+          stroke={CHART_COLORS[4]}
           strokeWidth={2}
-          dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }}
+          dot={{ fill: CHART_COLORS[4], strokeWidth: 2, r: 4 }}
           name="Donaciones"
         />
         <Line
           type="monotone"
           dataKey="devoluciones"
-          stroke="#f59e0b"
+          stroke={CHART_COLORS[2]}
           strokeWidth={2}
-          dot={{ fill: "#f59e0b", strokeWidth: 2, r: 4 }}
+          dot={{ fill: CHART_COLORS[2], strokeWidth: 2, r: 4 }}
           name="Devoluciones"
         />
       </LineChart>
@@ -272,14 +273,14 @@ function TopProductsChart({ products }: { products: any[] }) {
     );
   }
 
-  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+  const colors = CHART_COLORS.slice(0, 5);
 
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={products.slice(0, 5)} layout="vertical">
         <CartesianGrid
           strokeDasharray="3 3"
-          stroke="#e5e7eb"
+          stroke={PALETA.neutral.grid}
           horizontal={false}
         />
         <XAxis type="number" hide />
@@ -299,7 +300,7 @@ function TopProductsChart({ products }: { products: any[] }) {
           ]}
           contentStyle={{
             backgroundColor: "white",
-            border: "1px solid #e5e7eb",
+            border: `1px solid ${PALETA.neutral.grid}`,
             borderRadius: "8px",
           }}
         />
@@ -392,7 +393,7 @@ export function Dashboard() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline">
           <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600">Vista general del sistema</p>
@@ -417,7 +418,7 @@ export function Dashboard() {
           title="Total Productos"
           value={stats.total_productos.toLocaleString()}
           icon={Package}
-          color="bg-blue-500"
+          color="bg-brand-500"
           onClick={() => navigate("/productos")}
           delay={0}
         />
@@ -437,7 +438,7 @@ export function Dashboard() {
           title="Total Clientes"
           value={stats.total_clientes.toLocaleString()}
           icon={Users}
-          color="bg-purple-500"
+          color="bg-brand-500"
           onClick={() => navigate("/clientes")}
           delay={200}
         />
@@ -456,7 +457,7 @@ export function Dashboard() {
       <Card animate style={{ animationDelay: "400ms" }}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <ArrowLeftRight className="h-5 w-5 text-purple-600" />
+            <ArrowLeftRight className="h-5 w-5 text-brand-600" />
             Tendencia de Movimientos (últimos 7 días)
           </CardTitle>
         </CardHeader>
@@ -473,7 +474,7 @@ export function Dashboard() {
               <span>Mermas</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+              <div className="w-3 h-3 rounded-full bg-brand-500"></div>
               <span>Donaciones</span>
             </div>
             <div className="flex items-center gap-1">
@@ -488,7 +489,7 @@ export function Dashboard() {
       <Card animate style={{ animationDelay: "500ms" }}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <TrendingUp className="h-5 w-5 text-blue-600" />
+            <TrendingUp className="h-5 w-5 text-brand-600" />
             Tendencia de Ventas (últimos 7 días)
           </CardTitle>
         </CardHeader>
@@ -536,7 +537,7 @@ export function Dashboard() {
             </p>
 
             {/* Distribución por estado */}
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t">
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1 text-yellow-600 mb-1">
                   <Clock3 className="h-4 w-4" />
@@ -625,7 +626,7 @@ export function Dashboard() {
                 ))}
                 <Button
                   variant="ghost"
-                  className="w-full mt-2 text-blue-600 hover:text-blue-800"
+                  className="w-full mt-2 text-brand-600 hover:text-brand-800"
                   onClick={() => navigate("/productos")}
                   rightIcon={<ArrowRight className="h-4 w-4" />}
                 >
@@ -650,7 +651,7 @@ export function Dashboard() {
         <Card animate style={{ animationDelay: "800ms" }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <ShoppingCart className="h-5 w-5 text-blue-600" />
+              <ShoppingCart className="h-5 w-5 text-brand-600" />
               Últimas Ventas
             </CardTitle>
           </CardHeader>
@@ -711,7 +712,7 @@ export function Dashboard() {
                 ))}
                 <Button
                   variant="ghost"
-                  className="w-full mt-2 text-blue-600 hover:text-blue-800"
+                  className="w-full mt-2 text-brand-600 hover:text-brand-800"
                   onClick={() => navigate("/ventas")}
                   rightIcon={<ArrowRight className="h-4 w-4" />}
                 >
@@ -733,7 +734,7 @@ export function Dashboard() {
         <Card animate style={{ animationDelay: "900ms" }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <TrendingUp className="h-5 w-5 text-purple-600" />
+              <TrendingUp className="h-5 w-5 text-brand-600" />
               Top Productos Vendidos
             </CardTitle>
           </CardHeader>
@@ -745,7 +746,7 @@ export function Dashboard() {
                   {stats.top_productos.slice(0, 5).map((producto, index) => (
                     <div
                       key={producto.id_producto}
-                      className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                      className="flex flex-wrap items-center justify-between gap-3 py-2 border-b border-gray-100 last:border-0"
                     >
                       <div className="flex items-center gap-3">
                         <span
@@ -756,7 +757,7 @@ export function Dashboard() {
                                 ? "bg-gray-200 text-gray-700"
                                 : index === 2
                                   ? "bg-orange-100 text-orange-700"
-                                  : "bg-slate-50 text-gray-600"
+                                  : "bg-gray-50 text-gray-600"
                           }`}
                         >
                           {index + 1}
@@ -799,7 +800,7 @@ export function Dashboard() {
       <Card animate style={{ animationDelay: "1000ms" }}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Users className="h-5 w-5 text-indigo-600" />
+            <Users className="h-5 w-5 text-brand-600" />
             Clientes Recientes
           </CardTitle>
         </CardHeader>
@@ -812,7 +813,7 @@ export function Dashboard() {
                   className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                   onClick={() => navigate(`/clientes/${cliente.id_cliente}`)}
                 >
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                  <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-semibold">
                     {cliente.nombre
                       .split(" ")
                       .map((n) => n[0])
@@ -841,7 +842,7 @@ export function Dashboard() {
           )}
           <Button
             variant="ghost"
-            className="w-full mt-4 text-blue-600 hover:text-blue-800"
+            className="w-full mt-4 text-brand-600 hover:text-brand-800"
             onClick={() => navigate("/clientes")}
             rightIcon={<ArrowRight className="h-4 w-4" />}
           >
@@ -877,7 +878,7 @@ export function Dashboard() {
             </div>
             <div className="flex justify-between items-center py-3">
               <span className="text-gray-600">Margen estimado</span>
-              <span className="text-lg font-semibold text-blue-600">
+              <span className="text-lg font-semibold text-brand-600">
                 $
                 {(
                   stats.valor_inventario_venta - stats.valor_inventario_compra

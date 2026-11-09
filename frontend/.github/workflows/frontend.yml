@@ -1,0 +1,73 @@
+name: Frontend
+
+on:
+  push:
+    branches: [main, podman, refactor/frontend-hardening]
+  pull_request:
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calidad:
+    name: Typecheck, lint, tests y build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.11.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Auditoría de dependencias
+        run: pnpm audit --audit-level high
+
+      - name: Verificación completa
+        run: pnpm check
+        env:
+          VITE_API_BASE_URL: https://api.example.com/api/v1
+
+  e2e:
+    name: Playwright + axe
+    runs-on: ubuntu-latest
+    needs: calidad
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.11.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Instalar Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Ejecutar E2E
+        run: pnpm e2e
+        env:
+          CI: 'true'
+          VITE_API_BASE_URL: http://127.0.0.1:8000/api/v1
+
+      - name: Guardar reporte
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

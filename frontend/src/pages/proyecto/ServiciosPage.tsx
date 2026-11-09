@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
+  CreateButton,
+} from '../../components/ui';
 import { serviciosProyectoService, monedaService } from '../../services/api';
 import type { Servicio, ServicioCreate, ServicioUpdate } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Trash2, Edit, ArrowLeft, Search, Wrench, DollarSign, Tag, X, Loader2 } from 'lucide-react';
+import { Trash2, Edit, ArrowLeft, Search, Wrench, DollarSign, Tag, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
@@ -23,7 +25,6 @@ export function ServiciosPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Servicio | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -48,10 +49,12 @@ export function ServiciosPage() {
     hasMore,
     loadMore,
     total: totalServicios,
+    searchTerm,
+    setSearch: setSearchTerm,
   } = useInfiniteList<Servicio>({
     queryKeyBase: 'servicios-proyecto',
-    queryFn: (skip, limit, _search, onTotal) =>
-      serviciosProyectoService.getServicios(skip, limit, onTotal),
+    queryFn: (skip, limit, search, onTotal) =>
+      serviciosProyectoService.getServicios(skip, limit, onTotal, search),
   });
 
   useEffect(() => {
@@ -145,12 +148,8 @@ export function ServiciosPage() {
     if (servicioParam) {
       result = result.filter(s => s.id_servicio === Number(servicioParam));
     }
-    if (!searchTerm) return result;
-    return result.filter(s =>
-      s.concepto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.codigo_servicio?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [servicios, searchTerm, servicioParam]);
+    return result;
+  }, [servicios, servicioParam]);
 
   const getMonedaNombre = (id?: number) => {
     if (!id) return 'N/A';
@@ -162,11 +161,11 @@ export function ServiciosPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           {servicioParam && (
-            <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">
+            <Button variant="outline" onClick={() => navigate('/proyectos/etapas')} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
             <Wrench className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -180,13 +179,7 @@ export function ServiciosPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Servicio
-        </Button>
+        <CreateButton label="Nuevo Servicio" onClick={() => openForm()} />
       </div>
 
       <div className="flex gap-2">
@@ -204,24 +197,24 @@ export function ServiciosPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-teal-600" />
+                    <Tag className="h-4 w-4 text-brand-600" />
                     Código
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Wrench className="h-4 w-4 text-teal-600" />
+                    <Wrench className="h-4 w-4 text-brand-600" />
                     Concepto
                   </div>
                 </TableHead>
                 <TableHead>Unidad Medida</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Precio
                   </div>
                 </TableHead>
@@ -240,7 +233,7 @@ export function ServiciosPage() {
                 filteredServicios.map((item) => (
                   <TableRow key={item.id_servicio} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
                         {item.codigo_servicio || 'N/A'}
                       </span>
@@ -314,7 +307,7 @@ export function ServiciosPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
                 <option value="">Seleccionar moneda</option>
                 {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
               </select>
@@ -328,7 +321,7 @@ export function ServiciosPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {renderList()}
 
       <FormModal
@@ -353,7 +346,7 @@ export function ServiciosPage() {
               form={SERVICIO_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -378,10 +371,10 @@ export function ServiciosPage() {
           onClose={() => setDetailModal({ isOpen: false, item: null })}
         >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <Wrench className="h-7 w-7" />
                   </div>
                   <div>
@@ -394,18 +387,18 @@ export function ServiciosPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Precio</p>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Precio</p>
                   <p className="font-bold text-gray-900 text-xl">${Number(detailModal.item.precio).toFixed(2)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Moneda</p>
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Moneda</p>
                   <p className="font-bold text-gray-900">{getMonedaNombre(detailModal.item.id_moneda)}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Código</p>
                   <p className="font-bold text-gray-900 font-mono">{detailModal.item.codigo_servicio || 'N/A'}</p>
@@ -422,7 +415,7 @@ export function ServiciosPage() {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>

@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rrhhService } from '../../services/rrhh';
 import type { RrhhPuesto, RrhhPuestoCreate, RrhhPuestoListado } from '../../types/rrhh';
 import {
-  Plus,
   Edit,
   Trash2,
   Briefcase,
@@ -28,12 +27,14 @@ import {
   TableCell,
   ConfirmModal,
   Modal,
+  CreateButton,
 } from '../../components/ui';
+import { getCachedNumberFormat } from '../../utils/formato';
 
 const fmtMoneda = (v: number | null | undefined) =>
   v === null || v === undefined
     ? '—'
-    : new Intl.NumberFormat('es-CU', {
+    : getCachedNumberFormat('es-CU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(v);
@@ -166,11 +167,11 @@ export function PuestosPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
             <Briefcase className="h-6 w-6 text-brand-600" />
             Puestos
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-gray-500">
             Puestos de trabajo y sus rangos salariales
           </p>
         </div>
@@ -178,7 +179,7 @@ export function PuestosPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[12rem] max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             placeholder="Buscar puesto por nombre..."
             value={searchTerm}
@@ -191,7 +192,7 @@ export function PuestosPage() {
           onChange={(e) =>
             setFiltroDepto(e.target.value === '' ? '' : Number(e.target.value))
           }
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
         >
           <option value="">Todos los departamentos</option>
           {departamentos.map((d) => (
@@ -200,10 +201,7 @@ export function PuestosPage() {
             </option>
           ))}
         </select>
-        <Button size="sm" onClick={handleNuevo} className="ml-auto">
-          <Plus className="h-4 w-4" />
-          Nuevo puesto
-        </Button>
+        <CreateButton label="Nuevo puesto" onClick={handleNuevo} size="sm" />
       </div>
 
       <Card>
@@ -237,11 +235,11 @@ export function PuestosPage() {
                 <TableBody>
                   {puestos.map((p: RrhhPuestoListado) => (
                     <TableRow key={p.id_puesto}>
-                      <TableCell className="font-medium text-slate-900">{p.nombre}</TableCell>
-                      <TableCell className="max-w-[200px] truncate text-slate-500">
+                      <TableCell className="font-medium text-gray-900">{p.nombre}</TableCell>
+                      <TableCell className="max-w-[200px] truncate text-gray-500">
                         {p.descripcion || '—'}
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-gray-600">
                         {p.departamento_nombre || 'Sin departamento'}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
@@ -250,7 +248,7 @@ export function PuestosPage() {
                       <TableCell className="text-right tabular-nums">
                         {fmtMoneda(p.salario_maximo)}
                       </TableCell>
-                      <TableCell className="text-center text-slate-600">
+                      <TableCell className="text-center text-gray-600">
                         {p.total_empleados}
                       </TableCell>
                       <TableCell className="text-center">
@@ -298,7 +296,7 @@ export function PuestosPage() {
             onClick={cerrarForm}
             title="Cerrar"
             aria-label="Cerrar"
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -331,7 +329,7 @@ export function PuestosPage() {
                   }
                   placeholder="Responsabilidades del puesto (opcional)"
                   rows={3}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 />
               </div>
 
@@ -346,7 +344,7 @@ export function PuestosPage() {
                       departamento_id: e.target.value === '' ? null : Number(e.target.value),
                     })
                   }
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">Sin departamento</option>
                   {departamentos.map((d) => (
@@ -452,8 +450,8 @@ function ActionButton({
       onClick={onClick}
       className={`rounded-md p-1.5 transition-colors ${
         danger
-          ? 'text-slate-400 hover:bg-red-50 hover:text-red-600'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+          ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
+          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
       }`}
     >
       {children}
@@ -465,7 +463,7 @@ function EstadoBadge({ activo }: { activo: boolean }) {
   return (
     <span
       className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-        activo ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+        activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
       }`}
     >
       {activo ? 'Activo' : 'Inactivo'}
@@ -477,7 +475,7 @@ function LoadingRows() {
   return (
     <div className="space-y-2 py-4">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-gray-100" />
       ))}
     </div>
   );
@@ -486,8 +484,8 @@ function LoadingRows() {
 function EmptyState({ mensaje }: { mensaje: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <Briefcase className="h-10 w-10 text-slate-300" />
-      <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
+      <Briefcase className="h-10 w-10 text-gray-300" />
+      <p className="max-w-sm text-sm text-gray-500">{mensaje}</p>
     </div>
   );
 }
@@ -502,7 +500,7 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-gray-600">
         {mensaje || 'No se pudieron cargar los puestos'}
       </p>
       <Button variant="outline" size="sm" onClick={onReintentar}>

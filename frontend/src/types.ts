@@ -70,8 +70,6 @@ export interface DashboardStats {
   }>;
 }
 
-export interface Dependencia{
-  
-}
+export type Dependencia = Record<string, unknown>;
 
 export type { ProductoConCantidad } from "./types/index";

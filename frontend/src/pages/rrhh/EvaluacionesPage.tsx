@@ -41,6 +41,7 @@ import {
   TableCell,
   ConfirmModal,
   Modal,
+  CreateButton,
 } from "../../components/ui";
 import { ModalNuevoPeriodo } from "../../components/rrhh/ModalNuevoPeriodo";
 
@@ -73,7 +74,7 @@ const fmtPromedio5 = (v: string | null | undefined) =>
 
 // Degradado de la página (celeste), referenciado de la página de Monedas
 const GRADIENTE =
-  "bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300";
+  "bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300";
 
 export function EvaluacionesPage() {
   const queryClient = useQueryClient();
@@ -204,7 +205,7 @@ export function EvaluacionesPage() {
       {/* Header con icono animado */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-sky-500 to-sky-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <ClipboardCheck className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline flex-wrap">
@@ -217,18 +218,15 @@ export function EvaluacionesPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 ml-auto">
-          <Button onClick={abrirForm} className={`gap-2 ${GRADIENTE}`}>
-            <Plus className="h-4 w-4" />
-            Nueva evaluación
-          </Button>
+          <CreateButton label="Nueva evaluación" onClick={abrirForm} />
         </div>
       </div>
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[240px] max-w-md flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[240px] sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Buscar por nombre, apellido o código..."
                 value={searchTerm}
@@ -237,7 +235,7 @@ export function EvaluacionesPage() {
               />
             </div>
             {empleadoId > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-sm font-medium text-sky-700 ring-1 ring-sky-200">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 px-3 py-1 text-sm font-medium text-brand-700 ring-1 ring-brand-200">
                 <User className="h-3.5 w-3.5" />
                 {empleadoFiltrado
                   ? `${empleadoFiltrado.apellido}, ${empleadoFiltrado.nombre}`
@@ -247,7 +245,7 @@ export function EvaluacionesPage() {
                   onClick={limpiarFiltro}
                   title="Quitar el filtro de empleado"
                   aria-label="Quitar el filtro de empleado"
-                  className="ml-1 rounded-full p-0.5 text-sky-600 transition-colors hover:bg-sky-200 hover:text-sky-800"
+                  className="ml-1 rounded-full p-0.5 text-brand-600 transition-colors hover:bg-brand-200 hover:text-brand-800"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -258,8 +256,8 @@ export function EvaluacionesPage() {
         <CardContent>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-96 gap-4">
-              <div className="p-4 bg-gradient-to-br from-sky-100 to-sky-200 rounded-full animate-pulse">
-                <ClipboardCheck className="h-12 w-12 text-sky-600 animate-spin" />
+              <div className="p-4 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full animate-pulse">
+                <ClipboardCheck className="h-12 w-12 text-brand-600 animate-spin" />
               </div>
               <div className="text-gray-600 font-medium">
                 Cargando evaluaciones...
@@ -272,7 +270,7 @@ export function EvaluacionesPage() {
             />
           ) : evaluaciones.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-gray-400">
-              <div className="p-4 bg-slate-50 rounded-full mb-2">
+              <div className="p-4 bg-gray-50 rounded-full mb-2">
                 <ClipboardCheck className="h-12 w-12 text-gray-300" />
               </div>
               <p className="text-lg font-medium mb-1">
@@ -282,25 +280,22 @@ export function EvaluacionesPage() {
                 Crea la primera con «Nueva evaluación», selecciona sus
                 objetivos y puntúalos con estrellas
               </p>
-              <Button onClick={abrirForm} className={`gap-2 ${GRADIENTE}`}>
-                <Plus className="h-4 w-4" />
-                Nueva evaluación
-              </Button>
+              <CreateButton label="Nueva evaluación" onClick={abrirForm} />
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-gradient-to-r from-sky-50 to-sky-100">
+                <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-100">
                   <TableRow>
                     <TableHead>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-sky-500" />
+                        <User className="h-4 w-4 text-brand-500" />
                         Nombre
                       </div>
                     </TableHead>
                     <TableHead>
                       <div className="flex items-center gap-2">
-                        <Hash className="h-4 w-4 text-purple-500" />
+                        <Hash className="h-4 w-4 text-brand-500" />
                         Periodo
                       </div>
                     </TableHead>
@@ -332,15 +327,15 @@ export function EvaluacionesPage() {
                       key={ev.id}
                       className="hover:bg-gray-50 transition-colors"
                     >
-                      <TableCell className="font-medium text-slate-900">
+                      <TableCell className="font-medium text-gray-900">
                         {ev.empleado_nombre || "—"}
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-gray-600">
                         {ev.periodo}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-slate-500">
+                      <TableCell className="whitespace-nowrap text-xs text-gray-500">
                         <span className="inline-flex items-center gap-1">
-                          <CalendarRange className="h-3.5 w-3.5 text-slate-400" />
+                          <CalendarRange className="h-3.5 w-3.5 text-gray-400" />
                           {ev.inicio_periodo && ev.fin_periodo
                             ? formatRangoFechasCorto(
                                 ev.inicio_periodo,
@@ -349,24 +344,24 @@ export function EvaluacionesPage() {
                             : "—"}
                         </span>
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-gray-600">
                         {ev.tipo_evaluacion ?? "—"}
                       </TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums text-slate-900">
+                      <TableCell className="text-right font-semibold tabular-nums text-gray-900">
                         {ev.promedio_objetivos === null ? (
-                          <span className="font-normal text-slate-400">
+                          <span className="font-normal text-gray-400">
                             Sin puntuar
                           </span>
                         ) : (
                           <span className="inline-flex items-baseline gap-1">
                             {fmtPromedio5(ev.promedio_objetivos)}
-                            <span className="text-xs font-semibold text-slate-400">
+                            <span className="text-xs font-semibold text-gray-400">
                               / 5
                             </span>
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums text-slate-600">
+                      <TableCell className="text-right tabular-nums text-gray-600">
                         {ev.cantidad_seleccionados}/{ev.cantidad_objetivos}
                       </TableCell>
                       <TableCell className="text-right">
@@ -378,7 +373,7 @@ export function EvaluacionesPage() {
                             onClick={() =>
                               navigate(`/rrhh/evaluaciones/${ev.id}`)
                             }
-                            className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                            className="text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -410,8 +405,8 @@ export function EvaluacionesPage() {
         className="overflow-hidden !rounded-none"
       >
         {/* Cabecera con el degradado de la página */}
-        <div className="sticky top-0 flex items-center gap-3 border-b bg-gradient-to-r from-sky-50 to-sky-100 px-6 py-4">
-          <div className="p-2 bg-gradient-to-br from-sky-500 to-sky-600 rounded-lg">
+        <div className="sticky top-0 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg">
             <ClipboardCheck className="h-5 w-5 text-white" />
           </div>
           <h2 className="text-lg font-bold text-gray-900">Nueva evaluación</h2>
@@ -422,7 +417,7 @@ export function EvaluacionesPage() {
               htmlFor="empleado_id"
               className="flex items-center gap-2 text-gray-700"
             >
-              <User className="h-4 w-4 text-sky-500" />
+              <User className="h-4 w-4 text-brand-500" />
               Empleado
             </Label>
             <select
@@ -435,8 +430,8 @@ export function EvaluacionesPage() {
                     e.target.value === "" ? 0 : Number(e.target.value),
                 })
               }
-              className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
-                formErrors.empleado_id ? "border-red-500" : "border-slate-300"
+              className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 ${
+                formErrors.empleado_id ? "border-red-500" : "border-gray-300"
               }`}
             >
               <option value="">Selecciona un empleado activo</option>
@@ -460,7 +455,7 @@ export function EvaluacionesPage() {
                 htmlFor="periodo"
                 className="flex items-center gap-2 text-gray-700"
               >
-                <Hash className="h-4 w-4 text-purple-500" />
+                <Hash className="h-4 w-4 text-brand-500" />
                 Periodo
               </Label>
               <div className="flex items-start gap-2">
@@ -478,8 +473,8 @@ export function EvaluacionesPage() {
                       periodo: periodo?.nombre ?? "",
                     });
                   }}
-                  className={`w-full flex-1 rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
-                    formErrors.periodo ? "border-red-500" : "border-slate-300"
+                  className={`w-full flex-1 rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 ${
+                    formErrors.periodo ? "border-red-500" : "border-gray-300"
                   }`}
                 >
                   <option value="">Selecciona un periodo</option>
@@ -528,10 +523,10 @@ export function EvaluacionesPage() {
                     tipo_evaluacion_id: Number(e.target.value),
                   })
                 }
-                className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
+                className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 ${
                   formErrors.tipo_evaluacion_id
                     ? "border-red-500"
-                    : "border-slate-300"
+                    : "border-gray-300"
                 }`}
               >
                 <option value={0} disabled>
@@ -561,7 +556,7 @@ export function EvaluacionesPage() {
                 htmlFor="inicio_periodo"
                 className="flex items-center gap-2 text-gray-700"
               >
-                <Calendar className="h-4 w-4 text-sky-500" />
+                <Calendar className="h-4 w-4 text-brand-500" />
                 Inicio del periodo
               </Label>
               <DateInput
@@ -570,7 +565,7 @@ export function EvaluacionesPage() {
                 onChange={(iso) =>
                   setFormData({ ...formData, inicio_periodo: iso })
                 }
-                className="transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
               />
             </div>
             <div className="space-y-2">
@@ -587,7 +582,7 @@ export function EvaluacionesPage() {
                 onChange={(iso) =>
                   setFormData({ ...formData, fin_periodo: iso })
                 }
-                className={`transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
+                className={`transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 ${
                   formErrors.fin_periodo ? "border-red-500" : ""
                 }`}
               />
@@ -670,7 +665,7 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-gray-600">
         {mensaje || "No se pudieron cargar las evaluaciones"}
       </p>
       <Button variant="outline" size="sm" onClick={onReintentar}>

@@ -6,8 +6,8 @@ import { Receipt, Download, Eye, Loader2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 import type { Moneda } from "../../types/moneda";
 
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+import { API_BASE_URL as BASE_URL } from "../../config/api";
+import { abrirBlob, descargarBlob } from '../../utils/archivos';
 
 const ReporteOnat: React.FC = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -51,7 +51,7 @@ const ReporteOnat: React.FC = () => {
       const token = authHelpers.getToken() ?? "";
       const r = await fetch(`${BASE_URL}/reportes/onat?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
-      window.open(window.URL.createObjectURL(await r.blob()), "_blank");
+      abrirBlob(await r.blob());
     } catch { toast.error("Error al generar vista previa"); } finally { setPreviewLoading(false); }
   };
 
@@ -63,17 +63,14 @@ const ReporteOnat: React.FC = () => {
       const r = await fetch(`${BASE_URL}/reportes/onat?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
       const blob = await r.blob();
-      const a = document.createElement("a");
-      a.href = window.URL.createObjectURL(blob);
-      a.download = `onat_${fechaInicio}_${fechaFin}.pdf`;
-      a.click();
+      descargarBlob(blob, `onat_${fechaInicio}_${fechaFin}.pdf`);
       toast.success("Reporte generado");
     } catch { toast.error("Error al generar reporte"); } finally { setPdfLoading(false); }
   };
 
   return (
     <div className="flex flex-col p-4">
-      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
             <Receipt className="w-4 h-4 text-rose-600" />
@@ -111,14 +108,14 @@ const ReporteOnat: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Moneda</label>
-                  <select value={idMoneda ?? ""} onChange={e => setIdMoneda(e.target.value ? Number(e.target.value) : null)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 bg-white">
+                  <select value={idMoneda ?? ""} onChange={e => setIdMoneda(e.target.value ? Number(e.target.value) : null)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-rose-500 bg-white">
                     <option value="">Todas</option>
                     {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Persona / Creador</label>
-                  <select value={idPersona ?? ""} onChange={e => setIdPersona(e.target.value ? Number(e.target.value) : null)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 bg-white">
+                  <select value={idPersona ?? ""} onChange={e => setIdPersona(e.target.value ? Number(e.target.value) : null)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-rose-500 bg-white">
                     <option value="">Todas</option>
                     {personas.map(p => <option key={p.id_persona} value={p.id_persona}>{p.nombre}</option>)}
                   </select>

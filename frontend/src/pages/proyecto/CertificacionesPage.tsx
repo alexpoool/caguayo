@@ -1,12 +1,14 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
+import { useState, useEffect, useMemo, useRef, useDeferredValue } from 'react';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
+  CreateButton,
+} from '../../components/ui';
 import { certificacionesService, etapasProyectoService, solicitudesService } from '../../services/api';
 import type { Certificacion, CertificacionCreate, Etapa } from '../../types/servicio';
-import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, X, Loader2 } from 'lucide-react';
+import { Trash2, Edit, ArrowLeft, Search, FileText, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
-import { formatFecha } from '../../utils/fecha';
+import { formatFecha, toISODateLocal} from '../../utils/fecha';
 
 type View = 'list' | 'form';
 
@@ -59,6 +61,7 @@ export function CertificacionesPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Certificacion | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -75,15 +78,15 @@ export function CertificacionesPage() {
   });
 
   const filteredCertificaciones = useMemo(() => {
-    if (!searchTerm) return certificaciones;
-    const term = searchTerm.toLowerCase();
+    if (!deferredSearchTerm) return certificaciones;
+    const term = deferredSearchTerm.toLowerCase();
     return certificaciones.filter(c => 
       c.nombre.toLowerCase().includes(term) ||
       c.obra?.toLowerCase().includes(term) ||
       c.constructor?.toLowerCase().includes(term) ||
       c.inversionista?.toLowerCase().includes(term)
     );
-  }, [certificaciones, searchTerm]);
+  }, [certificaciones, deferredSearchTerm]);
 
   useEffect(() => {
     loadSupportData();
@@ -114,7 +117,7 @@ export function CertificacionesPage() {
       obra: '',
       objeto_obra: '',
       actividad: '',
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: toISODateLocal(),
       a_cobrar: 0,
       impuesto_venta_onat: 0
     });
@@ -287,7 +290,7 @@ export function CertificacionesPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
 
       <FormModal
         isOpen={view === 'form'}
@@ -311,7 +314,7 @@ export function CertificacionesPage() {
               form={CERTIFICACION_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -328,7 +331,7 @@ export function CertificacionesPage() {
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
             <FileText className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -340,13 +343,7 @@ export function CertificacionesPage() {
             </p>
           </div>
         </div>
-        <Button 
-          onClick={handleNew}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Certificación
-        </Button>
+        <CreateButton label="Nueva Certificación" onClick={handleNew} />
       </div>
 
       <div className="mb-4">
@@ -365,7 +362,7 @@ export function CertificacionesPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
         <Table>
-          <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+          <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
             <TableRow>
               <TableHead>Nombre</TableHead>
               <TableHead>Constructor</TableHead>
@@ -448,10 +445,10 @@ export function CertificacionesPage() {
           ariaLabel="Certificación"
         >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <FileText className="h-7 w-7" />
                   </div>
                   <div>
@@ -464,8 +461,8 @@ export function CertificacionesPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Constructor</p>
                   <p className="font-bold text-gray-900">{detailModal.item.constructor || 'N/A'}</p>
@@ -505,25 +502,25 @@ export function CertificacionesPage() {
                   <p className="font-bold text-gray-900">{detailModal.item.observaciones}</p>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Fecha</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900 text-lg">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Impuesto Venta ONAT</p>
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Impuesto Venta ONAT</p>
                   <p className="font-bold text-gray-900 text-lg">${Number(detailModal.item.impuesto_venta_onat || 0).toLocaleString('es-ES', { maximumFractionDigits: 15 })}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">A Cobrar</p>
-                  <p className="font-bold text-teal-900 text-xl">${Number(detailModal.item.a_cobrar).toLocaleString('es-ES', { maximumFractionDigits: 15 })}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">A Cobrar</p>
+                  <p className="font-bold text-brand-900 text-xl">${Number(detailModal.item.a_cobrar).toLocaleString('es-ES', { maximumFractionDigits: 15 })}</p>
                 </div>
               </div>
 
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>

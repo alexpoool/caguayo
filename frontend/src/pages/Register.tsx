@@ -327,7 +327,7 @@ export function RegisterPage() {
                         conexionStatus !== "connected" ||
                         loadingDependencias
                       }
-                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-colors disabled:bg-slate-50"
+                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-colors disabled:bg-gray-50"
                     >
                       <option value="">
                         {loadingDependencias
@@ -362,7 +362,7 @@ export function RegisterPage() {
                         conexionStatus !== "connected" ||
                         loadingGrupos
                       }
-                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-colors disabled:bg-slate-50"
+                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-colors disabled:bg-gray-50"
                     >
                       <option value="">
                         {loadingGrupos
@@ -382,7 +382,7 @@ export function RegisterPage() {
               </div>
 
               {/* Fila 2: CI + Nombre + Apellido 1 */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Carnet de Identidad
@@ -424,7 +424,7 @@ export function RegisterPage() {
               </div>
 
               {/* Fila 2b: Segundo Apellido + Cargo */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Segundo Apellido
@@ -453,7 +453,7 @@ export function RegisterPage() {
               </div>
 
               {/* Fila 3: Alias + Contraseña + Confirmar */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Alias

@@ -7,8 +7,8 @@ import { Boxes, Download, Building2, Eye, Loader2, Table2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 import { ReportPreviewTable } from "../../components/ui/ReportPreviewTable";
 
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+import { API_BASE_URL as BASE_URL } from "../../config/api";
+import { abrirBlob, descargarBlob } from '../../utils/archivos';
 
 const ReporteExistencias: React.FC = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -53,7 +53,7 @@ const ReporteExistencias: React.FC = () => {
       const token = authHelpers.getToken() ?? "";
       const r = await fetch(`${BASE_URL}/reportes/existencias?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
-      window.open(window.URL.createObjectURL(await r.blob()), "_blank");
+      abrirBlob(await r.blob());
     } catch { toast.error("Error al generar vista previa"); } finally { setPreviewLoading(false); }
   };
 
@@ -65,19 +65,16 @@ const ReporteExistencias: React.FC = () => {
       const r = await fetch(`${BASE_URL}/reportes/existencias?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error(`${r.status}`);
       const blob = await r.blob();
-      const a = document.createElement("a");
-      a.href = window.URL.createObjectURL(blob);
-      a.download = `existencias_${idDependencia}.pdf`;
-      a.click();
+      descargarBlob(blob, `existencias_${idDependencia}.pdf`);
       toast.success("Reporte generado");
     } catch { toast.error("Error al generar reporte"); } finally { setPdfLoading(false); }
   };
 
   return (
     <div className="flex flex-col p-4">
-      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 flex-shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
             <Boxes className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -89,10 +86,10 @@ const ReporteExistencias: React.FC = () => {
           <button type="button" onClick={handleTablePreview} disabled={!idDependencia || tableLoading} className="p-2 rounded-lg text-green-600 hover:bg-green-50 disabled:opacity-50 transition-colors" title="Vista previa de tabla">
             {tableLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Table2 className="w-4 h-4" />}
           </button>
-          <button type="button" onClick={handlePreview} disabled={!idDependencia || previewLoading} className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
+          <button type="button" onClick={handlePreview} disabled={!idDependencia || previewLoading} className="p-2 rounded-lg text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
             {previewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
           </button>
-          <button type="button" onClick={handleSubmit} disabled={!idDependencia || pdfLoading} className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 disabled:opacity-50 transition-colors" title="Exportar PDF">
+          <button type="button" onClick={handleSubmit} disabled={!idDependencia || pdfLoading} className="p-2 rounded-lg text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors" title="Exportar PDF">
             {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           </button>
         </div>
@@ -105,7 +102,7 @@ const ReporteExistencias: React.FC = () => {
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Filtros</p>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-0.5">Dependencia <span className="text-red-500">*</span></label>
-                <select value={idDependencia ?? ""} onChange={e => { setIdDependencia(e.target.value ? Number(e.target.value) : null); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white" required>
+                <select value={idDependencia ?? ""} onChange={e => { setIdDependencia(e.target.value ? Number(e.target.value) : null); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-brand-500 bg-white" required>
                   <option value="">Seleccionar dependencia</option>
                   {dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
                 </select>

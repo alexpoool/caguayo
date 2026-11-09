@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import {
@@ -33,6 +33,8 @@ import {
   Wallet,
   Lock,
   ChevronDown,
+  Menu,
+  X,
   ChevronUp,
   ScrollText,
   Library,
@@ -45,83 +47,90 @@ import { HomePage } from './pages/HomePage';
 import { Dashboard } from './pages/Dashboard';
 import { LoggerPage } from './pages/Logger';
 import { PerfilPage } from './pages/Perfil';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './app/providers/AuthProvider';
+import { useAuth } from './context/AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useEmpresa } from './config/branding';
-import { ProductosPage } from './pages/Productos';
-import { ClientesPage } from './pages/Clientes';
-import { PerfilClientePage } from './pages/PerfilCliente';
-import { MovimientosPage } from './pages/Movimientos';
-import { MovimientosPendientesPage } from './pages/MovimientosPendientes';
-import { RecepcionesPage } from './pages/RecepcionesPage';
-import { ConfiguracionPage } from './pages/Configuracion';
-import { MonedasPage } from './pages/Monedas';
-import { UsuariosPage } from './pages/Usuarios';
-import { UsuariosCredencialesPage } from './pages/UsuariosCredenciales';
-import { GruposPage } from './pages/Grupos';
-import { DependenciasPage } from './pages/Dependencias';
-import { RespaldosPage } from './pages/Respaldos';
-import { CuentasPage } from './pages/Cuentas';
-import { CuentasClientePage } from './pages/CuentasCliente';
-import { InventarioHome } from './pages/home/InventarioHome';
-import { VentaHome } from './pages/home/VentaHome';
-import { CompraHome } from './pages/home/CompraHome';
-import { TercerosHome } from './pages/home/TercerosHome';
-import { ReportesHome } from './pages/home/ReportesHome';
-import { ProyectosHome } from './pages/home/ProyectosHome';
-import { AdministracionHome } from './pages/home/AdministracionHome';
-import ReporteExistencias from './pages/reportes/ReporteExistencias';
-import ReporteMovimientosDependencia from './pages/reportes/ReporteMovimientosDependencia';
-import ReporteMovimientosProducto from './pages/reportes/ReporteMovimientosProducto';
-import ReporteProveedores from './pages/reportes/ReporteProveedores';
-import ReporteClientes from './pages/reportes/ReporteClientes';
-import ReporteProyectos from './pages/reportes/ReporteProyectos';
-import ReporteCreadores from './pages/reportes/ReporteCreadores';
-import ReporteDesempeno from './pages/reportes/ReporteDesempeno';
-import ReporteOnat from './pages/reportes/ReporteOnat';
-import ReporteMincult from './pages/reportes/ReporteMincult';
-import ReporteLiquidaciones from './pages/reportes/ReporteLiquidaciones';
-import { ConveniosPage as CompraConveniosPage } from './pages/Convenios';
-import { AnexosPage as CompraAnexosPage } from './pages/Anexos';
-import { ProductosEnLiquidacionPage } from './pages/compra/ProductosEnLiquidacionPage';
-import { LiquidacionesPage } from './pages/compra/LiquidacionesPage';
-import { ContratosPage } from './pages/ventas/ContratosPage';
-import { SuplementosPage } from './pages/ventas/SuplementosPage';
-import { FacturasPage } from './pages/ventas/facturas/FacturasPage';
-import { OfertasTiendaPage } from './pages/ventas/ofertas/OfertasPage';
-import { PreFacturasPage as PreFacturasTiendaPage } from './pages/ventas/facturas/PreFacturasPage';
-import { VentasEfectivoPage } from './pages/ventas/VentasEfectivoPage';
-import { ServiciosPage } from './pages/proyecto/ServiciosPage';
-import { SolicitudesPage } from './pages/proyecto/SolicitudesPage';
-import { ProyectosPage } from './pages/proyecto/ProyectosPage';
-import { EtapasPage } from './pages/proyecto/EtapasPage';
-import { TareasEtapaPage } from './pages/proyecto/TareasEtapaPage';
-import { RealizadoresPage } from './pages/proyecto/RealizadoresPage';
-import { FacturasServicioPage } from './pages/proyecto/FacturasServicioPage';
-import { OfertasPage } from './pages/proyecto/OfertasPage';
-import { PreFacturasPage } from './pages/proyecto/PreFacturasPage';
-import { PagosFacturaServicioPage } from './pages/proyecto/PagosFacturaServicioPage';
-import { LiquidacionesPage as ProyectoLiquidacionesPage } from './pages/proyecto/LiquidacionesPage';
-import { CertificacionesPage } from './pages/proyecto/CertificacionesPage';
-import { DJ08Page } from './pages/dj08/DJ08Page';
-import { RrhhHome } from './pages/home/RrhhHome';
-import { CatalogosPage } from './pages/rrhh/CatalogosPage';
-import { EmpleadosPage } from './pages/rrhh/EmpleadosPage';
-import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
-import { MovimientosPage as RrhhMovimientosPage } from './pages/rrhh/MovimientosPage';
-import { NominaPage } from './pages/rrhh/NominaPage';
-import { NominaDetallePage } from './pages/rrhh/NominaDetallePage';
-import { NominaPagosPage } from './pages/rrhh/NominaPagosPage';
-import { PagosResultadoPage } from './pages/rrhh/PagosResultadoPage';
-import { PagoResultadoNuevoPage } from './pages/rrhh/PagoResultadoNuevoPage';
-import { PagoResultadoDetallePage } from './pages/rrhh/PagoResultadoDetallePage';
-import { SolicitudesPage as RrhhSolicitudesPage } from './pages/rrhh/SolicitudesPage';
-import { EvaluacionesPage } from './pages/rrhh/EvaluacionesPage';
-import { EvaluacionDetallePage } from './pages/rrhh/EvaluacionDetallePage';
-import { ObjetivosPage } from './pages/rrhh/ObjetivosPage';
-import { ReportesPage } from './pages/rrhh/ReportesPage';
-import { AuditoriaPage } from './pages/rrhh/AuditoriaPage';
-
-type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh' | 'terceros';
+import {
+  FUNCIONALIDADES_POR_MODULO,
+  moduloDeRuta,
+  obtenerRuta,
+  puedeAccederRuta,
+  type Modulo,
+} from './config/rutas';
+const ProductosPage = lazy(() => import('./pages/Productos').then(m => ({ default: m.ProductosPage })));
+const ClientesPage = lazy(() => import('./pages/Clientes').then(m => ({ default: m.ClientesPage })));
+const PerfilClientePage = lazy(() => import('./pages/PerfilCliente').then(m => ({ default: m.PerfilClientePage })));
+const MovimientosPage = lazy(() => import('./pages/Movimientos').then(m => ({ default: m.MovimientosPage })));
+const MovimientosPendientesPage = lazy(() => import('./pages/MovimientosPendientes').then(m => ({ default: m.MovimientosPendientesPage })));
+const RecepcionesPage = lazy(() => import('./pages/RecepcionesPage').then(m => ({ default: m.RecepcionesPage })));
+const ConfiguracionPage = lazy(() => import('./pages/Configuracion').then(m => ({ default: m.ConfiguracionPage })));
+const MonedasPage = lazy(() => import('./pages/Monedas').then(m => ({ default: m.MonedasPage })));
+const UsuariosPage = lazy(() => import('./pages/Usuarios').then(m => ({ default: m.UsuariosPage })));
+const UsuariosCredencialesPage = lazy(() => import('./pages/UsuariosCredenciales').then(m => ({ default: m.UsuariosCredencialesPage })));
+const GruposPage = lazy(() => import('./pages/Grupos').then(m => ({ default: m.GruposPage })));
+const DependenciasPage = lazy(() => import('./pages/Dependencias').then(m => ({ default: m.DependenciasPage })));
+const RespaldosPage = lazy(() => import('./pages/Respaldos').then(m => ({ default: m.RespaldosPage })));
+const CuentasPage = lazy(() => import('./pages/Cuentas').then(m => ({ default: m.CuentasPage })));
+const CuentasClientePage = lazy(() => import('./pages/CuentasCliente').then(m => ({ default: m.CuentasClientePage })));
+const InventarioHome = lazy(() => import('./pages/home/InventarioHome').then(m => ({ default: m.InventarioHome })));
+const VentaHome = lazy(() => import('./pages/home/VentaHome').then(m => ({ default: m.VentaHome })));
+const CompraHome = lazy(() => import('./pages/home/CompraHome').then(m => ({ default: m.CompraHome })));
+const TercerosHome = lazy(() => import('./pages/home/TercerosHome').then(m => ({ default: m.TercerosHome })));
+const ReportesHome = lazy(() => import('./pages/home/ReportesHome').then(m => ({ default: m.ReportesHome })));
+const ProyectosHome = lazy(() => import('./pages/home/ProyectosHome').then(m => ({ default: m.ProyectosHome })));
+const AdministracionHome = lazy(() => import('./pages/home/AdministracionHome').then(m => ({ default: m.AdministracionHome })));
+const ReporteExistencias = lazy(() => import('./pages/reportes/ReporteExistencias'));
+const ReporteMovimientosDependencia = lazy(() => import('./pages/reportes/ReporteMovimientosDependencia'));
+const ReporteMovimientosProducto = lazy(() => import('./pages/reportes/ReporteMovimientosProducto'));
+const ReporteProveedores = lazy(() => import('./pages/reportes/ReporteProveedores'));
+const ReporteClientes = lazy(() => import('./pages/reportes/ReporteClientes'));
+const ReporteProyectos = lazy(() => import('./pages/reportes/ReporteProyectos'));
+const ReporteCreadores = lazy(() => import('./pages/reportes/ReporteCreadores'));
+const ReporteDesempeno = lazy(() => import('./pages/reportes/ReporteDesempeno'));
+const ReporteOnat = lazy(() => import('./pages/reportes/ReporteOnat'));
+const ReporteMincult = lazy(() => import('./pages/reportes/ReporteMincult'));
+const ReporteLiquidaciones = lazy(() => import('./pages/reportes/ReporteLiquidaciones'));
+const CompraConveniosPage = lazy(() => import('./pages/Convenios').then(m => ({ default: m.ConveniosPage })));
+const CompraAnexosPage = lazy(() => import('./pages/Anexos').then(m => ({ default: m.AnexosPage })));
+const ProductosEnLiquidacionPage = lazy(() => import('./pages/compra/ProductosEnLiquidacionPage').then(m => ({ default: m.ProductosEnLiquidacionPage })));
+const LiquidacionesPage = lazy(() => import('./pages/compra/LiquidacionesPage').then(m => ({ default: m.LiquidacionesPage })));
+const ContratosPage = lazy(() => import('./pages/ventas/ContratosPage').then(m => ({ default: m.ContratosPage })));
+const SuplementosPage = lazy(() => import('./pages/ventas/SuplementosPage').then(m => ({ default: m.SuplementosPage })));
+const FacturasPage = lazy(() => import('./pages/ventas/facturas/FacturasPage').then(m => ({ default: m.FacturasPage })));
+const OfertasTiendaPage = lazy(() => import('./pages/ventas/ofertas/OfertasPage').then(m => ({ default: m.OfertasTiendaPage })));
+const PreFacturasTiendaPage = lazy(() => import('./pages/ventas/facturas/PreFacturasPage').then(m => ({ default: m.PreFacturasPage })));
+const VentasEfectivoPage = lazy(() => import('./pages/ventas/VentasEfectivoPage').then(m => ({ default: m.VentasEfectivoPage })));
+const ServiciosPage = lazy(() => import('./pages/proyecto/ServiciosPage').then(m => ({ default: m.ServiciosPage })));
+const SolicitudesPage = lazy(() => import('./pages/proyecto/SolicitudesPage').then(m => ({ default: m.SolicitudesPage })));
+const ProyectosPage = lazy(() => import('./pages/proyecto/ProyectosPage').then(m => ({ default: m.ProyectosPage })));
+const EtapasPage = lazy(() => import('./pages/proyecto/EtapasPage').then(m => ({ default: m.EtapasPage })));
+const TareasEtapaPage = lazy(() => import('./pages/proyecto/TareasEtapaPage').then(m => ({ default: m.TareasEtapaPage })));
+const RealizadoresPage = lazy(() => import('./pages/proyecto/RealizadoresPage').then(m => ({ default: m.RealizadoresPage })));
+const FacturasServicioPage = lazy(() => import('./pages/proyecto/FacturasServicioPage').then(m => ({ default: m.FacturasServicioPage })));
+const OfertasPage = lazy(() => import('./pages/proyecto/OfertasPage').then(m => ({ default: m.OfertasPage })));
+const PreFacturasPage = lazy(() => import('./pages/proyecto/PreFacturasPage').then(m => ({ default: m.PreFacturasPage })));
+const PagosFacturaServicioPage = lazy(() => import('./pages/proyecto/PagosFacturaServicioPage').then(m => ({ default: m.PagosFacturaServicioPage })));
+const ProyectoLiquidacionesPage = lazy(() => import('./pages/proyecto/LiquidacionesPage').then(m => ({ default: m.LiquidacionesPage })));
+const CertificacionesPage = lazy(() => import('./pages/proyecto/CertificacionesPage').then(m => ({ default: m.CertificacionesPage })));
+const DJ08Page = lazy(() => import('./app/container/dj08').then(m => ({ default: m.DJ08PageContainer })));
+const RrhhHome = lazy(() => import('./pages/home/RrhhHome').then(m => ({ default: m.RrhhHome })));
+const CatalogosPage = lazy(() => import('./pages/rrhh/CatalogosPage').then(m => ({ default: m.CatalogosPage })));
+const EmpleadosPage = lazy(() => import('./pages/rrhh/EmpleadosPage').then(m => ({ default: m.EmpleadosPage })));
+const AsistenciaPage = lazy(() => import('./pages/rrhh/AsistenciaPage').then(m => ({ default: m.AsistenciaPage })));
+const RrhhMovimientosPage = lazy(() => import('./pages/rrhh/MovimientosPage').then(m => ({ default: m.MovimientosPage })));
+const NominaPage = lazy(() => import('./pages/rrhh/NominaPage').then(m => ({ default: m.NominaPage })));
+const NominaDetallePage = lazy(() => import('./pages/rrhh/NominaDetallePage').then(m => ({ default: m.NominaDetallePage })));
+const NominaPagosPage = lazy(() => import('./pages/rrhh/NominaPagosPage').then(m => ({ default: m.NominaPagosPage })));
+const PagosResultadoPage = lazy(() => import('./pages/rrhh/PagosResultadoPage').then(m => ({ default: m.PagosResultadoPage })));
+const PagoResultadoNuevoPage = lazy(() => import('./pages/rrhh/PagoResultadoNuevoPage').then(m => ({ default: m.PagoResultadoNuevoPage })));
+const PagoResultadoDetallePage = lazy(() => import('./pages/rrhh/PagoResultadoDetallePage').then(m => ({ default: m.PagoResultadoDetallePage })));
+const RrhhSolicitudesPage = lazy(() => import('./pages/rrhh/SolicitudesPage').then(m => ({ default: m.SolicitudesPage })));
+const EvaluacionesPage = lazy(() => import('./pages/rrhh/EvaluacionesPage').then(m => ({ default: m.EvaluacionesPage })));
+const EvaluacionDetallePage = lazy(() => import('./pages/rrhh/EvaluacionDetallePage').then(m => ({ default: m.EvaluacionDetallePage })));
+const ObjetivosPage = lazy(() => import('./pages/rrhh/ObjetivosPage').then(m => ({ default: m.ObjetivosPage })));
+const ReportesPage = lazy(() => import('./pages/rrhh/ReportesPage').then(m => ({ default: m.ReportesPage })));
+const AuditoriaPage = lazy(() => import('./pages/rrhh/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -133,20 +142,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const rutasPorModulo: Record<Modulo, string[]> = {
-  inventario: ['/inventario', '/inventario/existencias', '/inventario/movimientos-dependencia', '/inventario/movimientos-producto', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
-  administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/respaldos', '/perfil'],
-  terceros: ['/terceros', '/terceros/registro-clientes', '/terceros/registro-proveedores', '/terceros/registro-realizadores', '/clientes', '/ventas/contratos', '/ventas/suplementos', '/compra/clientes', '/compra/convenios', '/perfil'],
-  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/ofertas', '/ventas/pre-facturas', '/ventas/efectivo', '/ventas/cuentas', '/ventas/registro-clientes', '/perfil'],
-  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/compra/reporte-proveedores', '/compra/resumen-liquidaciones', '/perfil'],
-  proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/proyectos/registro-proyectos', '/proyectos/registro-realizadores', '/proyectos/informe-desempeno', '/perfil'],
-  reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
-  home: ['/', '/perfil'],
-  dj08: ['/dj08', '/perfil'],
-  rrhh: ['/rrhh', '/rrhh/catalogos', '/rrhh/departamentos', '/rrhh/puestos', '/rrhh/empleados', '/rrhh/asistencia', '/rrhh/deducciones', '/rrhh/bonificaciones', '/rrhh/nomina', '/rrhh/solicitudes', '/rrhh/evaluaciones', '/rrhh/objetivos', '/rrhh/reportes', '/rrhh/auditoria', '/perfil'],
-};
-
-// Componente para proteger rutas según el módulo
+// Componente para proteger rutas según la funcionalidad requerida.
 function ProtectedRoute({
   children,
   currentPath,
@@ -155,20 +151,29 @@ function ProtectedRoute({
   currentPath: string;
   moduloActivo?: Modulo;
 }) {
-  const moduloRuta = (
-    Object.entries(rutasPorModulo) as [Modulo, string[]][]
-  ).find(([, rutas]) =>
-    rutas.some(route =>
-      route === '/' ? currentPath === route : currentPath === route || currentPath.startsWith(route)
-    )
-  )?.[0] as Modulo | undefined;
+  const { isAuthenticated, isLoading, hasFuncionalidad } = useAuth();
+  const ruta = obtenerRuta(currentPath);
+  const permitido = ruta ? puedeAccederRuta(currentPath, hasFuncionalidad) : false;
 
-  const rutasPermitidas = rutasPorModulo[moduloRuta ?? 'inventario'];
-  const isAllowed = rutasPermitidas.some(route =>
-    currentPath === route || (route !== '/' && currentPath.startsWith(route))
-  );
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && !permitido) {
+      toast.error('No tienes permisos para acceder a esta sección');
+    }
+  }, [isAuthenticated, isLoading, permitido]);
 
-  if (!isAllowed) {
+  if (isLoading) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!permitido) {
     return <Navigate to="/" replace />;
   }
 
@@ -254,18 +259,18 @@ function SidebarLink({
       <span className={`
         group flex items-center ${slim ? 'justify-center' : 'gap-3'} ${slim ? 'px-0' : 'px-3'} py-2.5 rounded-lg
         transition-all duration-300 ease-out relative overflow-hidden
-        text-slate-600 opacity-40 cursor-not-allowed
+        text-gray-600 opacity-40 cursor-not-allowed
       `}>
-        <span className="transition-all duration-300 text-slate-600">
+        <span className="transition-all duration-300 text-gray-600">
           {children && React.Children.toArray(children)[0]}
         </span>
         {!slim && (
           <span className="font-medium flex items-center gap-2">
             {children && React.Children.toArray(children).slice(1)}
-            <Lock className="w-3.5 h-3.5 text-slate-500" />
+            <Lock className="w-3.5 h-3.5 text-gray-500" />
           </span>
         )}
-        {slim && <Lock className="w-3 h-3 text-slate-500 absolute -top-0.5 -right-0.5" />}
+        {slim && <Lock className="w-3 h-3 text-gray-500 absolute -top-0.5 -right-0.5" />}
       </span>
     );
   }
@@ -279,19 +284,19 @@ function SidebarLink({
         transition-all duration-300 ease-out relative overflow-hidden
         ${isActive
           ? 'bg-panel-800 text-white shadow-none border-l-4 border-brand-500'
-          : 'text-slate-300 hover:bg-panel-800 hover:text-white'
+          : 'text-gray-300 hover:bg-panel-800 hover:text-white'
         }
       `}
     >
       <span className={`
         absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0
-        bg-blue-400 rounded-r-full transition-all duration-300
+        bg-brand-400 rounded-r-full transition-all duration-300
         group-hover:h-6
         ${isActive ? 'h-8 bg-white' : ''}
       `} />
       <span className={`
         transition-all duration-300
-        ${isActive ? 'text-white scale-110' : 'text-slate-500 group-hover:text-blue-400 group-hover:scale-110'}
+        ${isActive ? 'text-white scale-110' : 'text-gray-500 group-hover:text-brand-400 group-hover:scale-110'}
       `}>
         {children && React.Children.toArray(children)[0]}
       </span>
@@ -306,26 +311,12 @@ function SidebarLink({
 
 function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
-    <div className="flex items-center justify-between min-w-0">
-      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide truncate">{label}</span>
+    <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
+      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide truncate">{label}</span>
       <span className="text-sm font-bold text-white truncate ml-3">{value || '-'}</span>
     </div>
   );
 }
-
-// Map each module to the funcionalidades it requires
-const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
-  inventario: ['movimientos', 'pendientes', 'productos'],
-  terceros: ['clientes', 'contratos', 'proveedores', 'convenios'],
-  compra: ['proveedores', 'anexos', 'liquidaciones', 'productos_liquidacion'],
-  venta: ['clientes', 'facturas', 'venta_efectivo', 'ofertas_tienda'],
-  proyecto: ['servicios', 'solicitudes', 'proyectos', 'facturas_servicio', 'ofertas', 'pre_facturas', 'liquidaciones_servicio'],
-  reportes: ['reporte_existencias', 'reporte_movimientos_dependencia', 'reporte_movimientos_producto', 'reporte_proveedores', 'reporte_clientes', 'reporte_proyectos', 'reporte_creadores', 'reporte_desempeno', 'reporte_liquidaciones', 'reporte_onat', 'reporte_mincult'],
-  administracion: ['configuracion', 'monedas', 'usuarios', 'grupos', 'dependencias', 'cuentas'],
-  home: [],
-  dj08: [],
-  rrhh: ['rrhh_empleados', 'rrhh_departamentos', 'rrhh_puestos', 'rrhh_asistencia', 'rrhh_solicitudes', 'rrhh_deducciones', 'rrhh_bonificaciones', 'rrhh_nomina', 'rrhh_pagos', 'rrhh_evaluaciones', 'rrhh_catalogos', 'rrhh_reportes', 'rrhh_auditoria'],
-};
 
 interface AdminSeccionItem {
   to: string;
@@ -535,7 +526,7 @@ function SidebarSeccion({
         <button
           type="button"
           onClick={() => onToggle(seccion.id)}
-          className="flex w-full items-center justify-between gap-2 rounded px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-300"
+          className="flex w-full items-center justify-between gap-2 rounded px-2 pt-3 pb-1 text-xs font-bold uppercase tracking-widest text-gray-500 transition-colors hover:text-gray-300"
           aria-expanded={abierta}
         >
           <span>{seccion.label}</span>
@@ -618,12 +609,12 @@ function GrupoReportes({
 }
 
 function App() {
-  const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, funcionalidades, baseDatos } = useAuth();
+  const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, baseDatos } = useAuth();
   const empresa = useEmpresa();
 
   // Check if user has access to an entire module (at least one funcionalidad)
   const hasModuloAccess = (moduloId: Modulo): boolean => {
-    const funcs = MODULO_FUNCIONALIDADES[moduloId] || [];
+    const funcs = FUNCIONALIDADES_POR_MODULO[moduloId] || [];
     return funcs.some(f => hasFuncionalidad(f));
   };
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
@@ -633,6 +624,11 @@ function App() {
   const [proyectoSeccionesAbiertas, setProyectoSeccionesAbiertas] = useState<Record<string, boolean>>({});
   const [reportesSeccionesAbiertas, setReportesSeccionesAbiertas] = useState<Record<string, boolean>>({});
   const [slimSidebar, setSlimSidebar] = useState(false);
+  const [sidebarAbierto, setSidebarAbierto] = useState(false);
+  const [esMovil, setEsMovil] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
+  );
+  const sidebarRef = useRef<HTMLElement>(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [empresaOpen, setEmpresaOpen] = useState(false);
@@ -653,13 +649,7 @@ function App() {
       setModuloActivo('home');
       return;
     }
-    for (const [moduloKey, rutas] of Object.entries(rutasPorModulo) as [Modulo, string[]][]) {
-      if (rutas.some(route => route === '/' ? path === route : path === route || (route !== '/' && path.startsWith(route)))) {
-        setModuloActivo(moduloKey);
-        return;
-      }
-    }
-    setModuloActivo('inventario');
+    setModuloActivo(moduloDeRuta(path) ?? 'inventario');
   }, [location.pathname]);
 
   // Ensure sidebar is expanded on initial load
@@ -667,11 +657,57 @@ function App() {
     setSlimSidebar(false);
   }, []);
 
+  // Cierra el drawer móvil al navegar.
+  useEffect(() => {
+    setSidebarAbierto(false);
+  }, [location.pathname]);
+
+  // Detecta el cambio móvil/escritorio y cierra el drawer al pasar a escritorio.
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const onChange = () => {
+      setEsMovil(mq.matches);
+      if (!mq.matches) setSidebarAbierto(false);
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // El aside cerrado no debe ser accesible ni enfocable en móvil.
+  useEffect(() => {
+    const aside = sidebarRef.current;
+    if (!aside) return;
+    const oculto = esMovil && !sidebarAbierto;
+    if (oculto) {
+      aside.setAttribute('inert', '');
+      aside.setAttribute('aria-hidden', 'true');
+    } else {
+      aside.removeAttribute('inert');
+      aside.removeAttribute('aria-hidden');
+    }
+  }, [sidebarAbierto, esMovil]);
+
+  // Drawer abierto: bloquea el scroll del contenido y cierra con Escape.
+  useEffect(() => {
+    if (!sidebarAbierto || !esMovil) return;
+    const main = document.querySelector('main');
+    const previousOverflow = main?.style.overflowY ?? '';
+    if (main) main.style.overflowY = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSidebarAbierto(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      if (main) main.style.overflowY = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [sidebarAbierto, esMovil]);
+
   // Early returns must come AFTER all hooks
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
       </div>
     );
   }
@@ -686,10 +722,13 @@ function App() {
     navigate('/login', { replace: true });
   };
 
-  const handleLinkClick = () => { };
+  const handleLinkClick = () => {
+    setSidebarAbierto(false);
+  };
 
   const handleModuloClick = (moduloId: Modulo) => {
     setModuloActivo(moduloId);
+    setSidebarAbierto(false);
     // Navegar a la página home del módulo
     navigate(`/${moduloId}`);
   };
@@ -709,20 +748,21 @@ function App() {
     setSlimSidebar(prev => !prev);
   }
 
-  // RRHH está oculto del menú: sólo se entra escribiendo la URL, y siempre que
-  // el grupo del usuario tenga al menos una funcionalidad de RRHH asignada.
-  const esRutaRrhh =
-    location.pathname === '/rrhh' || location.pathname.startsWith('/rrhh/');
-  const esCatalogoRrhh = location.pathname.startsWith('/configuracion/rrhh');
-  const tieneAccesoRrhh = funcionalidades.some(f => f.nombre.startsWith('rrhh_'));
-  const sinAccesoRrhh = esRutaRrhh && !tieneAccesoRrhh;
-  const sinAccesoCatalogoRrhh =
-    esCatalogoRrhh && !hasFuncionalidad('rrhh_catalogos');
+  // RRHH está oculto del menú: sólo se entra escribiendo la URL. El guard de
+  // rutas valida la funcionalidad concreta de cada pantalla.
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-[4.5rem_minmax(0,1fr)]' : 'grid-cols-[16rem_minmax(0,1fr)]'} grid-rows-[auto_minmax(0,1fr)] h-screen overflow-hidden bg-surface w-full`}>
+    <>
+      <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-1 lg:grid-cols-[4.5rem_minmax(0,1fr)]' : 'grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)]'} grid-rows-[auto_minmax(0,1fr)] app-height overflow-hidden bg-surface w-full`}>
+        {!hideSidebar && sidebarAbierto && (
+          <button
+            type="button"
+            aria-label="Cerrar menú de navegación"
+            onClick={() => setSidebarAbierto(false)}
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden overflow-y-auto"
+          />
+        )}
         {!hideSidebar && (
-        <aside className={`row-span-2 col-start-1 col-end-2 h-full overflow-hidden bg-gradient-to-b from-panel-900 to-panel-800 text-white flex flex-col shadow-xl transition-all duration-300 ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
+        <aside id="sidebar-mobile" ref={sidebarRef} className={`fixed inset-y-0 left-0 z-50 row-span-2 col-start-1 col-end-2 h-full overflow-hidden bg-gradient-to-b from-panel-900 to-panel-800 text-white flex flex-col shadow-xl transition-transform duration-300 lg:static lg:translate-x-0 ${sidebarAbierto ? 'translate-x-0' : '-translate-x-full'} ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
           <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-panel-800`}>
             {!slimSidebar && (
               <div className="flex items-center gap-2">
@@ -731,9 +771,18 @@ function App() {
               </div>
             )}
             <button
+              onClick={() => setSidebarAbierto(false)}
+              title="Cerrar menú"
+              aria-label="Cerrar menú de navegación"
+              className="ml-auto p-2 rounded-full hover:bg-white/10 transition-colors lg:hidden"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <button
               onClick={handleToggleSlim}
               title={slimSidebar ? 'Expandir sidebar' : 'Contraer sidebar'}
-              className={`p-1 rounded-full hover:bg-white/10 transition-colors ${slimSidebar ? '' : 'ml-2'}`}
+              aria-label={slimSidebar ? 'Expandir sidebar' : 'Contraer sidebar'}
+              className={`hidden p-1 rounded-full hover:bg-white/10 transition-colors lg:inline-flex ${slimSidebar ? '' : 'ml-2'}`}
             >
               {slimSidebar ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
             </button>
@@ -914,7 +963,7 @@ function App() {
                                 [seccion.id]: !abierta,
                               }))
                             }
-                            className="flex w-full items-center justify-between gap-2 rounded px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-300"
+                            className="flex w-full items-center justify-between gap-2 rounded px-2 pt-3 pb-1 text-xs font-bold uppercase tracking-widest text-gray-500 transition-colors hover:text-gray-300"
                             aria-expanded={abierta}
                           >
                             <span>{seccion.label}</span>
@@ -1076,7 +1125,7 @@ function App() {
                 <div className={`${slimSidebar ? 'px-0' : 'px-3'} space-y-1`}>
                   {/* Inventario */}
                   {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-2 pb-1">Inventario</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest px-2 pt-2 pb-1">Inventario</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=existencias" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_existencias')}>
                     <Boxes className="w-4 h-4" /> Existencias
@@ -1090,7 +1139,7 @@ function App() {
 
                   {/* Tienda */}
                   {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Tienda</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest px-2 pt-3 pb-1">Tienda</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_clientes')}>
                     <Users className="w-4 h-4" /> Registro Clientes
@@ -1098,7 +1147,7 @@ function App() {
 
                   {/* Compra */}
                   {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Compra</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest px-2 pt-3 pb-1">Compra</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_proveedores')}>
                     <UserCircle className="w-4 h-4" /> Registro de Proveedores
@@ -1109,7 +1158,7 @@ function App() {
 
                   {/* Proyectos */}
                   {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Proyectos</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest px-2 pt-3 pb-1">Proyectos</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=proyectos" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_proyectos')}>
                     <Layers className="w-4 h-4" /> Registro Proyectos
@@ -1123,7 +1172,7 @@ function App() {
 
                   {/* Ministerios */}
                   {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Ministerios</p>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest px-2 pt-3 pb-1">Ministerios</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=onat" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_onat')}>
                     <FileText className="w-4 h-4" /> ONAT Retenciones
@@ -1141,7 +1190,7 @@ function App() {
           <div className={`min-h-0 flex-1 overflow-y-auto ${slimSidebar ? 'px-2 py-3 flex justify-center' : 'px-5 py-5 space-y-5'}`}>
             {!slimSidebar && (
               <div className="space-y-2.5">
-                <div className="flex items-center justify-between min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
                   <span className="text-sm font-bold text-white truncate">{user ? `${user.nombre} ${user.primer_apellido}` : '-'}</span>
                 </div>
                 <InfoRow label="Usuario" value={user?.alias} />
@@ -1153,10 +1202,10 @@ function App() {
             )}
 
             {!slimSidebar && (
-              <div className="border-t border-slate-800 pt-4">
+              <div className="border-t border-gray-800 pt-4">
                   <button
                     onClick={() => setEmpresaOpen(!empresaOpen)}
-                    className="w-full flex items-center justify-between py-1 text-xs font-bold text-slate-400 uppercase tracking-wider hover:text-slate-300 transition-colors"
+                    className="w-full flex flex-wrap items-center justify-between gap-3 py-1 text-xs font-bold text-gray-400 uppercase tracking-wider hover:text-gray-300 transition-colors"
                   >
                     <span>Empresa</span>
                     {empresaOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -1192,11 +1241,11 @@ function App() {
             </div>
             {!slimSidebar && (
               <div className="min-w-0 text-left leading-tight">
-                <span className="block text-sm font-medium text-slate-200 group-hover:text-white truncate">
+                <span className="block text-sm font-medium text-gray-200 group-hover:text-white truncate">
                   {user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}
                 </span>
                 {user?.cargo && (
-                  <span className="block text-xs text-slate-400 group-hover:text-slate-300 truncate">
+                  <span className="block text-xs text-gray-400 group-hover:text-gray-300 truncate">
                     {user.cargo}
                   </span>
                 )}
@@ -1206,19 +1255,32 @@ function App() {
         </div>
         </aside>
         )}
-        <header className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 min-w-0 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-6 py-4 h-16 flex items-center justify-between`}>
+        <header className={`col-span-1 ${hideSidebar ? '' : 'lg:col-start-2 lg:col-end-3'} row-start-1 row-end-2 sticky top-0 z-30 min-w-0 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-3 py-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] h-16 flex flex-wrap items-center justify-between gap-3 gap-2 md:px-6`}>
           <div className="flex items-center gap-2">
+            {!hideSidebar && (
+              <button
+                type="button"
+                onClick={() => setSidebarAbierto(true)}
+                aria-label="Abrir menú de navegación"
+                aria-controls="sidebar-mobile"
+                aria-expanded={sidebarAbierto}
+                title="Abrir menú"
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors lg:hidden"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+            )}
             <Link
               to="/"
               onClick={() => setModuloActivo('home')}
               className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Inicio"
             >
-              <Home className="w-6 h-6 text-slate-200 group-hover:text-white transition-colors" />
+              <Home className="w-6 h-6 text-gray-200 group-hover:text-white transition-colors" />
             </Link>
           </div>
 
-          <div className="flex items-center gap-6">
+          <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto md:gap-6" aria-label="Módulos">
             {modulos.map((modulo) => {
               const isActive = moduloActivo === modulo.id;
               const isBlocked = modulo.id !== 'home' && modulo.id !== 'dj08' && !hasModuloAccess(modulo.id);
@@ -1229,22 +1291,22 @@ function App() {
                   onClick={() => !isBlocked && handleModuloClick(modulo.id)}
                   disabled={isBlocked}
                   title={isBlocked ? 'No tienes acceso a este módulo' : undefined}
-                  className={`text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 pb-1 flex items-center gap-1.5
+                  className={`shrink-0 text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 pb-1 flex items-center gap-1.5
                     ${isBlocked
-                      ? 'text-slate-500 cursor-not-allowed hover:translate-y-0'
+                      ? 'text-gray-500 cursor-not-allowed hover:translate-y-0'
                       : isActive
                         ? 'text-white font-semibold border-b-2 border-brand-500'
-                        : 'text-slate-300 hover:text-white'
+                        : 'text-gray-300 hover:text-white'
                     }
                   `}
                 >
                   <Icon className="w-4 h-4" />
-                  {modulo.label}
+                  <span className="hidden sm:inline">{modulo.label}</span>
                   {isBlocked && <Lock className="w-3 h-3 text-gray-300" />}
                 </button>
               );
             })}
-          </div>
+          </nav>
 
           <div className="flex items-center gap-2">
             <button
@@ -1260,25 +1322,19 @@ function App() {
               }
               className={`p-2 rounded-lg transition-all duration-300 ease-out hover:scale-110 active:scale-95 group
                 ${!hasModuloAccess('administracion')
-                  ? 'text-slate-500 cursor-not-allowed hover:scale-100'
+                  ? 'text-gray-500 cursor-not-allowed hover:scale-100'
                   : moduloActivo === 'administracion'
                     ? 'bg-white/10 text-brand-400'
-                    : 'text-slate-200 hover:text-white hover:bg-gray-100'
+                    : 'text-gray-200 hover:text-white hover:bg-gray-100'
                 }`}
             >
               <Settings className="w-6 h-6 transition-colors" />
             </button>
           </div>
         </header>
-        <div className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col w-full`}>
-          <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} ${hideSidebar ? 'p-6' : 'p-8'} w-full`}>
+        <div className={`col-span-1 ${hideSidebar ? '' : 'lg:col-start-2 lg:col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col w-full`}>
+          <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:p-8 w-full`}>
             <div className="animate-fade-in-up animation-fill-both">
-              {sinAccesoRrhh || sinAccesoCatalogoRrhh ? (
-                <Navigate
-                  to={esCatalogoRrhh ? '/configuracion' : '/'}
-                  replace
-                />
-              ) : (
               <Routes>
                 <Route
                   path="/"
@@ -1313,14 +1369,6 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/proveedores">
                       <ClientesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/movimientos/pendientes"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
-                      <MovimientosPendientesPage />
                     </ProtectedRoute>
                   }
                 />
@@ -1873,14 +1921,6 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/movimientos/pendientes"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
-                      <MovimientosPendientesPage />
-                    </ProtectedRoute>
-                  }
-                />
                 {/* Rutas de Compras - protegidas */}
                 <Route
                   path="/compra"
@@ -2099,14 +2139,13 @@ function App() {
                   }
                 />
               </Routes>
-              )}
             </div>
           </main>
         </div>
       </div>
       {showAccountModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/50 px-4 overflow-y-auto"
           onClick={() => { setShowLogoutConfirm(false); setShowAccountModal(false); }}
         >
           <div
@@ -2117,13 +2156,13 @@ function App() {
               <img src="/default.jpg" alt="avatar" className="w-12 h-12 rounded-full object-cover" />
               <div>
                 <div className="text-sm font-semibold">{user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}</div>
-                <div className="text-xs text-slate-400">{user?.alias || 'Cuenta de usuario'}</div>
+                <div className="text-xs text-gray-400">{user?.alias || 'Cuenta de usuario'}</div>
               </div>
             </div>
 
             <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
               <button
-                className="w-full text-left px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                className="w-full text-left px-4 py-2 rounded-md bg-brand-600 text-white hover:bg-brand-700 transition-colors"
                 onClick={() => {
                   setShowAccountModal(false);
                   navigate('/perfil');
@@ -2148,7 +2187,7 @@ function App() {
 
       {showLogoutConfirm && (
         <div
-          className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 px-4"
+          className="fixed inset-0 z-60 flex items-start sm:items-center justify-center bg-black/60 px-4 overflow-y-auto"
           onClick={() => setShowLogoutConfirm(false)}
         >
           <div
@@ -2156,7 +2195,7 @@ function App() {
             onClick={(e) => e.stopPropagation()}
           >
             <h4 className="text-lg font-semibold">Confirmar cierre de sesión</h4>
-            <p className="text-sm text-slate-500 mt-2">¿Estás seguro que quieres cerrar la sesión?</p>
+            <p className="text-sm text-gray-500 mt-2">¿Estás seguro que quieres cerrar la sesión?</p>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 className="px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200"
@@ -2174,7 +2213,7 @@ function App() {
           </div>
         </div>
       )}
-    </QueryClientProvider>
+    </>
   );
 }
 
@@ -2184,12 +2223,29 @@ function AppWrapper() {
       <Router>
         <Toaster position="top-right" />
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/logger" element={<LoggerPage />} />
-            <Route path="/*" element={<App />} />
-          </Routes>
+          <ErrorBoundary>
+            <Suspense
+              fallback={
+                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600" />
+                </div>
+              }
+            >
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route
+                path="/logger"
+                element={
+                  <ProtectedRoute currentPath="/logger">
+                    <LoggerPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/*" element={<App />} />
+            </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </AuthProvider>
       </Router>
     </QueryClientProvider>

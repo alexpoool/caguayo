@@ -3,13 +3,14 @@ import { createPortal } from "react-dom";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useInfiniteList } from "../hooks/useInfiniteList";
+import { useDebounce } from "../hooks/useDebounce";
+import { coincideBusqueda, normalizarBusqueda } from "../utils/busqueda";
 import {
   conveniosService,
   clientesService,
   configuracionService,
 } from "../services/api";
 import {
-  Plus,
   Edit,
   Trash2,
   Search,
@@ -59,6 +60,7 @@ import {
   ConfirmModal,
   DateInput,
   FormModal,
+  CreateButton,
 } from "../components/ui";
 import { formatFecha } from "../utils/fecha";
 
@@ -143,29 +145,82 @@ export function ConveniosPage() {
     return () => observer.disconnect();
   }, [hasMore, isFetchingMore, loadMore]);
 
+  const [clienteSearch, setClienteSearch] = useState("");
+  const deferredClienteSearch = useDebounce(clienteSearch, 300);
   const { data: clientes = [] } = useQuery({
-    queryKey: ["clientes", "proveedores"],
-    queryFn: () => clientesService.getClientes(0, 10000, "PROVEEDOR,AMBAS"),
+    queryKey: ["clientes", "proveedores", deferredClienteSearch],
+    queryFn: () =>
+      clientesService.getClientes(
+        0,
+        50,
+        "PROVEEDOR,AMBAS",
+        deferredClienteSearch,
+      ),
   });
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<{
+    id_cliente: number;
+    nombre: string;
+  } | null>(null);
 
   const { data: tiposConvenio = [] } = useQuery({
     queryKey: ["tiposConvenio"],
     queryFn: () => configuracionService.getTiposConvenio(),
   });
 
-  const [clienteSearch, setClienteSearch] = useState("");
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const clienteRef = useRef<HTMLDivElement>(null);
 
   const filteredClientes = useMemo(() => {
-    if (!clienteSearch) return clientes;
-    const q = clienteSearch.toLowerCase();
-    return clientes.filter((c) =>
-      c.nombre?.toLowerCase().includes(q) ||
-      c.codigo?.toLowerCase().includes(q) ||
-      c.nit?.toLowerCase().includes(q)
+    const termino = normalizarBusqueda(clienteSearch).trim();
+    if (!termino) return clientes;
+    return clientes.filter(
+      (c) =>
+        coincideBusqueda(c.nombre, termino) ||
+        coincideBusqueda(c.codigo, termino) ||
+        coincideBusqueda(c.nit, termino),
     );
   }, [clientes, clienteSearch]);
+
+  useEffect(() => {
+    if (!formData.id_cliente) {
+      setClienteSeleccionado(null);
+      return;
+    }
+
+    const enLista = clientes.find((c) => c.id_cliente === formData.id_cliente);
+    if (enLista) {
+      setClienteSeleccionado({
+        id_cliente: enLista.id_cliente,
+        nombre: enLista.nombre,
+      });
+      return;
+    }
+
+    if (
+      editingConvenio?.id_cliente === formData.id_cliente &&
+      editingConvenio.cliente?.nombre
+    ) {
+      setClienteSeleccionado({
+        id_cliente: formData.id_cliente,
+        nombre: editingConvenio.cliente.nombre,
+      });
+      return;
+    }
+
+    let cancelado = false;
+    clientesService
+      .getCliente(formData.id_cliente)
+      .then((c) => {
+        if (!cancelado) {
+          setClienteSeleccionado({ id_cliente: c.id_cliente, nombre: c.nombre });
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelado = true;
+    };
+  }, [formData.id_cliente, clientes, editingConvenio]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -296,9 +351,9 @@ export function ConveniosPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <ScrollText className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -308,13 +363,7 @@ export function ConveniosPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={handleNew}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Convenio
-        </Button>
+        <CreateButton label="Nuevo Convenio" onClick={handleNew} />
       </div>
 
       <div className="flex gap-2">
@@ -332,7 +381,7 @@ export function ConveniosPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>Código</TableHead>
                 <TableHead>Proveedores</TableHead>
@@ -452,7 +501,7 @@ export function ConveniosPage() {
               form={CONVENIO_FORM_ID}
               disabled={!isFormValid || isSubmitting}
               isLoading={isSubmitting}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               {editingConvenio ? "Actualizar" : "Crear"}
             </Button>
@@ -467,18 +516,20 @@ export function ConveniosPage() {
               <input
                 value={
                   formData.id_cliente
-                    ? (clientes.find((c) => c.id_cliente === formData.id_cliente)?.nombre || "")
+                    ? (clienteSeleccionado?.nombre || "")
                     : clienteSearch
                 }
                 onChange={(e) => {
                   setClienteSearch(e.target.value);
-                  if (formData.id_cliente)
+                  if (formData.id_cliente) {
                     setFormData({ ...formData, id_cliente: 0 });
+                    setClienteSeleccionado(null);
+                  }
                   setShowClienteDropdown(true);
                 }}
                 onFocus={() => setShowClienteDropdown(true)}
                 placeholder="Buscar cliente..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
               />
             </div>
             {showClienteDropdown && (
@@ -489,9 +540,13 @@ export function ConveniosPage() {
                   filteredClientes.map((c) => (
                     <div
                       key={c.id_cliente}
-                      className="px-3 py-2 hover:bg-teal-50 cursor-pointer flex items-center justify-between"
+                      className="px-3 py-2 hover:bg-brand-50 cursor-pointer flex flex-wrap items-center justify-between gap-3"
                       onMouseDown={() => {
                         setFormData({ ...formData, id_cliente: c.id_cliente });
+                        setClienteSeleccionado({
+                          id_cliente: c.id_cliente,
+                          nombre: c.nombre,
+                        });
                         setClienteSearch("");
                         setShowClienteDropdown(false);
                       }}
@@ -520,7 +575,7 @@ export function ConveniosPage() {
                   id_tipo_convenio: parseInt(e.target.value) || 0,
                 })
               }
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
             >
               <option value="">Seleccione un tipo</option>
               {tiposConvenio.map((tc) => (
@@ -597,12 +652,12 @@ export function ConveniosPage() {
       />
 
       {detailModal.isOpen && detailModal.convenio && createPortal(
-        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-teal-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-gradient-to-r from-brand-50 to-brand-50 border-b border-brand-100">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 bg-white rounded-lg shadow-sm">
-                  <ScrollText className="h-5 w-5 text-teal-600" />
+                  <ScrollText className="h-5 w-5 text-brand-600" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">{detailModal.convenio.nombre_convenio}</h3>
@@ -617,7 +672,7 @@ export function ConveniosPage() {
                 <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="p-4 md:p-6 space-y-5">
               {new Date(detailModal.convenio.vigencia) < new Date() && (
                 <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
@@ -630,10 +685,10 @@ export function ConveniosPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="p-1.5 bg-teal-100 rounded-lg">
-                    <ScrollText className="h-4 w-4 text-teal-700" />
+                  <div className="p-1.5 bg-brand-100 rounded-lg">
+                    <ScrollText className="h-4 w-4 text-brand-700" />
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Código</p>
@@ -641,8 +696,8 @@ export function ConveniosPage() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="p-1.5 bg-blue-100 rounded-lg">
-                    <ScrollText className="h-4 w-4 text-blue-700" />
+                  <div className="p-1.5 bg-brand-100 rounded-lg">
+                    <ScrollText className="h-4 w-4 text-brand-700" />
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Cliente</p>
@@ -650,8 +705,8 @@ export function ConveniosPage() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="p-1.5 bg-purple-100 rounded-lg">
-                    <ScrollText className="h-4 w-4 text-purple-700" />
+                  <div className="p-1.5 bg-brand-100 rounded-lg">
+                    <ScrollText className="h-4 w-4 text-brand-700" />
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Nombre</p>

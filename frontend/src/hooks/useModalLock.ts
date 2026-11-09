@@ -11,8 +11,7 @@ let rootWasInert = false;
 function scrollLockTargets(): HTMLElement[] {
   const root = document.getElementById("root");
   const appTargets = root ? Array.from(root.querySelectorAll<HTMLElement>(SCROLL_LOCK_SELECTOR)) : [];
-  const targets = [document.body, ...appTargets];
-  return targets.filter((el, index) => targets.indexOf(el) === index);
+  return Array.from(new Set([document.body, ...appTargets]));
 }
 
 function acquireLock() {

@@ -78,7 +78,7 @@ export interface SolicitudServicioCreate {
   codigo_proyecto?: string;
 }
 
-export interface SolicitudServicioUpdate extends Partial<SolicitudServicioCreate> {}
+export type SolicitudServicioUpdate = Partial<SolicitudServicioCreate>;
 
 export interface Etapa {
   id_etapa: number;

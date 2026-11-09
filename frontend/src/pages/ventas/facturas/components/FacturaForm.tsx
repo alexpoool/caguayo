@@ -6,6 +6,7 @@ import type { SelectedProduct } from '../hooks/useProductSelection';
 import type { Productos } from '../../../../types';
 import type { ContratoWithDetails } from '../../../../types/contrato';
 import type { Cliente } from '../../../../types/ventas';
+import { toISODateLocal } from '../../../../utils/fecha';
 
 interface FacturaFormProps {
   formId: string;
@@ -19,6 +20,7 @@ interface FacturaFormProps {
   selectedContratoId: number | null;
   contratos: ContratoWithDetails[];
   clientes: Cliente[];
+  onClienteSearch?: (term: string) => void;
   onFormDataChange: (data: Record<string, any>) => void;
   onProductSearchChange: (search: string) => void;
   onAddProduct: (id: number) => void;
@@ -43,6 +45,7 @@ export function FacturaForm({
   selectedContratoId,
   contratos,
   clientes,
+  onClienteSearch,
   onFormDataChange,
   onProductSearchChange,
   onAddProduct,
@@ -56,9 +59,9 @@ export function FacturaForm({
 }: FacturaFormProps) {
   const esPreFactura = tipo === "PREFACTURA";
   const ringClass = esPreFactura
-    ? "focus:ring-blue-500 focus:border-blue-500"
-    : "focus:ring-violet-500 focus:border-violet-500";
-  const accentBg = esPreFactura ? "bg-blue-600 hover:bg-blue-700" : "bg-violet-600 hover:bg-violet-700";
+    ? "focus:ring-brand-500 focus:border-brand-500"
+    : "focus:ring-brand-500 focus:border-brand-500";
+  const accentBg = esPreFactura ? "bg-brand-600 hover:bg-brand-700" : "bg-brand-600 hover:bg-brand-700";
   const etiqueta = esPreFactura ? "Pre-factura" : "Factura";
   const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
   const [clienteSearch, setClienteSearch] = useState('');
@@ -125,6 +128,7 @@ export function FacturaForm({
                   value={selectedCliente ? selectedCliente.nombre : clienteSearch}
                   onChange={(e) => {
                     setClienteSearch(e.target.value);
+                    onClienteSearch?.(e.target.value);
                     if (selectedCliente) {
                       setSelectedClienteId(null);
                       onSelectedContratoChange(null);
@@ -158,7 +162,7 @@ export function FacturaForm({
                       <button
                         key={c.id_cliente}
                         type="button"
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors ${selectedClienteId === c.id_cliente ? 'bg-violet-100 font-medium' : ''}`}
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-brand-50 transition-colors ${selectedClienteId === c.id_cliente ? 'bg-brand-100 font-medium' : ''}`}
                         onClick={() => {
                           setSelectedClienteId(c.id_cliente);
                           onSelectedContratoChange(null);
@@ -204,7 +208,7 @@ export function FacturaForm({
                       <button
                         key={c.id_contrato}
                         type="button"
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-brand-50 transition-colors"
                         onClick={() => {
                           onSelectedContratoChange(c.id_contrato);
                           setSelectedClienteId(c.id_cliente);
@@ -229,14 +233,14 @@ export function FacturaForm({
                 <DateInput
                   id="fecha"
                   className={`flex-1 focus:ring-2 ${ringClass}`}
-                  value={formData.fecha || new Date().toISOString().split('T')[0]}
+                  value={formData.fecha || toISODateLocal()}
                   onChange={(fecha: string) =>
                     onFormDataChange({ ...formData, fecha })
                   }
                 />
                 <button
                   type="button"
-                  onClick={() => onFormDataChange({ ...formData, fecha: new Date().toISOString().split('T')[0] })}
+                  onClick={() => onFormDataChange({ ...formData, fecha: toISODateLocal() })}
                   className={`px-3 py-2 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap ${accentBg}`}
                 >
                   Hoy

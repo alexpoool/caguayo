@@ -1,3 +1,4 @@
+import { toISODateLocal } from '../../../../utils/fecha';
 /**
  * Utilidades para gestión de facturas
  * Funciones puras reutilizables sin estado
@@ -102,7 +103,7 @@ export function prepararFacturaParaAPI(
   const moneda = contrato?.id_moneda;
   return {
     id_contrato: selectedContratoId,
-    fecha: formData.fecha || new Date().toISOString().split('T')[0],
+    fecha: formData.fecha || toISODateLocal(),
     descripcion: formData.descripcion,
     observaciones: formData.observaciones,
     id_dependencia: userDependenciaId,

@@ -32,11 +32,12 @@ import {
   ConfirmModal,
 } from '../../components/ui';
 import { NominaFormModal } from './NominaPage';
+import { getCachedNumberFormat } from '../../utils/formato';
 
 const fmtMoneda = (v: number | string | null | undefined) =>
   v === null || v === undefined || v === ''
     ? '—'
-    : new Intl.NumberFormat('es-CU', {
+    : getCachedNumberFormat('es-CU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(Number(v));
@@ -44,7 +45,7 @@ const fmtMoneda = (v: number | string | null | undefined) =>
 const fmtNumero = (v: number | string | null | undefined) =>
   v === null || v === undefined || v === ''
     ? '—'
-    : new Intl.NumberFormat('es-CU', { maximumFractionDigits: 4 }).format(
+    : getCachedNumberFormat('es-CU', { maximumFractionDigits: 4 }).format(
         Number(v)
       );
 
@@ -258,8 +259,8 @@ export function NominaDetallePage() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 w-64 animate-pulse rounded-md bg-slate-100" />
-        <div className="h-72 animate-pulse rounded-xl bg-slate-100" />
+        <div className="h-8 w-64 animate-pulse rounded-md bg-gray-100" />
+        <div className="h-72 animate-pulse rounded-xl bg-gray-100" />
       </div>
     );
   }
@@ -268,7 +269,7 @@ export function NominaDetallePage() {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <AlertCircle className="h-10 w-10 text-red-400" />
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-gray-600">
           {error instanceof Error
             ? error.message
             : 'No se pudo cargar la nómina'}
@@ -298,12 +299,12 @@ export function NominaDetallePage() {
             type="button"
             title="Volver al listado"
             onClick={() => navigate('/rrhh/nomina')}
-            className="mt-1 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="mt-1 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="flex flex-wrap items-center gap-2 text-xl font-bold text-slate-900">
+            <h1 className="flex flex-wrap items-center gap-2 text-xl font-bold text-gray-900">
               <Wallet className="h-6 w-6 text-brand-600" />
               {detalle.descripcion}
               <span
@@ -314,24 +315,24 @@ export function NominaDetallePage() {
                 {ETIQUETA_ESTADO_NOMINA[detalle.estado]}
               </span>
             </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-slate-500">
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-500">
               <span>Periodo {detalle.periodo_nombre || '—'}</span>
-              <span className="text-slate-300">·</span>
+              <span className="text-gray-300">·</span>
               <span>
                 {fmtFecha(detalle.inicio_periodo)} –{' '}
                 {fmtFecha(detalle.fin_periodo)}
               </span>
-              <span className="text-slate-300">·</span>
+              <span className="text-gray-300">·</span>
               <span>
                 {detalle.moneda_nombre ?? 'Moneda'}
                 {detalle.moneda_simbolo ? ` (${detalle.moneda_simbolo})` : ''} ·
                 Tasa {fmtNumero(detalle.tasa)}
               </span>
-              <span className="text-slate-300">·</span>
+              <span className="text-gray-300">·</span>
               <span>Impuesto {fmtNumero(detalle.porcentaje_impuesto)}%</span>
               {detalle.metodo_pago_nombre && (
                 <>
-                  <span className="text-slate-300">·</span>
+                  <span className="text-gray-300">·</span>
                   <span>Método {detalle.metodo_pago_nombre}</span>
                 </>
               )}
@@ -416,7 +417,7 @@ export function NominaDetallePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:grid-cols-5">
         <Resumen
           titulo="Empleados"
           valor={String(detalle.cantidad_empleados)}
@@ -448,7 +449,7 @@ export function NominaDetallePage() {
       <Card>
         <CardHeader className="pb-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-700">
+            <h2 className="text-sm font-semibold text-gray-700">
               {esPreNomina ? 'Empleados del lote' : 'Detalle por empleado'}
             </h2>
             <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-600 ring-1 ring-brand-100">
@@ -457,7 +458,7 @@ export function NominaDetallePage() {
                 : `${detalle.empleados.length} empleado${detalle.empleados.length === 1 ? '' : 's'}`}
             </span>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-gray-500">
             {esPreNomina
               ? 'Marca a los empleados activos que entrarán en la nómina. Al confirmar el lote, la selección queda bloqueada.'
               : 'Importes calculados al confirmar la nómina. Solo lectura.'}
@@ -468,7 +469,7 @@ export function NominaDetallePage() {
             errorCandidatos ? (
               <div className="flex flex-col items-center gap-2 py-8 text-center">
                 <AlertCircle className="h-8 w-8 text-red-400" />
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-gray-600">
                   No se pudieron cargar los empleados.
                 </p>
                 <Button
@@ -483,8 +484,8 @@ export function NominaDetallePage() {
               <LoadingRows />
             ) : candidatos.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-10 text-center">
-                <Users className="h-8 w-8 text-slate-300" />
-                <p className="text-sm text-slate-500">
+                <Users className="h-8 w-8 text-gray-300" />
+                <p className="text-sm text-gray-500">
                   No hay empleados activos para incluir en la nómina.
                 </p>
               </div>
@@ -501,13 +502,13 @@ export function NominaDetallePage() {
                   return (
                     <div
                       key={grupo.clave}
-                      className="overflow-hidden rounded-lg border border-slate-200"
+                      className="overflow-hidden rounded-lg border border-gray-200"
                     >
                       <label
                         className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors ${
                           todas
                             ? 'bg-brand-50'
-                            : 'bg-slate-50 hover:bg-slate-100'
+                            : 'bg-gray-50 hover:bg-gray-100'
                         }`}
                       >
                         <input
@@ -519,7 +520,7 @@ export function NominaDetallePage() {
                           className="sr-only"
                         />
                         <CheckVisual todas={todas} algunas={algunas} />
-                        <Building2 className="h-4 w-4 text-slate-400" />
+                        <Building2 className="h-4 w-4 text-gray-400" />
                         <span className="flex-1 font-semibold text-gray-800">
                           {grupo.nombre}
                         </span>
@@ -546,7 +547,7 @@ export function NominaDetallePage() {
                     <span className="font-semibold text-brand-600">
                       Totales de la selección ({seleccion.size})
                     </span>
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-slate-700">
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-gray-700">
                       <span>
                         Devengado:{' '}
                         <strong className="tabular-nums">
@@ -578,8 +579,8 @@ export function NominaDetallePage() {
             )
           ) : gruposDetalle.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
-              <Users className="h-8 w-8 text-slate-300" />
-              <p className="text-sm text-slate-500">
+              <Users className="h-8 w-8 text-gray-300" />
+              <p className="text-sm text-gray-500">
                 Esta nómina no tiene empleados.
               </p>
             </div>
@@ -588,10 +589,10 @@ export function NominaDetallePage() {
               {gruposDetalle.map((grupo) => (
                 <div
                   key={grupo.clave}
-                  className="overflow-hidden rounded-lg border border-slate-200"
+                  className="overflow-hidden rounded-lg border border-gray-200"
                 >
-                  <div className="flex items-center gap-3 bg-slate-50 px-4 py-3">
-                    <Building2 className="h-4 w-4 text-slate-400" />
+                  <div className="flex items-center gap-3 bg-gray-50 px-4 py-3">
+                    <Building2 className="h-4 w-4 text-gray-400" />
                     <span className="flex-1 font-semibold text-gray-800">
                       {grupo.nombre}
                     </span>
@@ -648,22 +649,22 @@ function Resumen({
   return (
     <div
       className={`rounded-lg p-3 ${
-        destacado ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-slate-50'
+        destacado ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-gray-50'
       }`}
     >
       <div className="flex items-center gap-2">
         <Icono
-          className={`h-4 w-4 ${destacado ? 'text-brand-600' : 'text-slate-400'}`}
+          className={`h-4 w-4 ${destacado ? 'text-brand-600' : 'text-gray-400'}`}
         />
         <span
           className={`text-lg font-bold tabular-nums ${
-            destacado ? 'text-brand-600' : 'text-slate-700'
+            destacado ? 'text-brand-600' : 'text-gray-700'
           }`}
         >
           {valor}
         </span>
       </div>
-      <div className="text-xs text-slate-500">{titulo}</div>
+      <div className="text-xs text-gray-500">{titulo}</div>
     </div>
   );
 }
@@ -696,7 +697,7 @@ function CheckVisual({
 function Columnas() {
   return (
     <div
-      className={`hidden gap-3 border-b bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:items-center ${COLUMNAS}`}
+      className={`hidden gap-3 border-b bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 md:grid md:items-center ${COLUMNAS}`}
     >
       <span />
       <span>Nombre</span>
@@ -714,7 +715,7 @@ function Columnas() {
 function CeldaImporte({
   etiqueta,
   valor,
-  tono = 'text-slate-700',
+  tono = 'text-gray-700',
 }: {
   etiqueta: string;
   valor: number | string;
@@ -722,7 +723,7 @@ function CeldaImporte({
 }) {
   return (
     <div className={`text-right text-sm tabular-nums ${tono}`}>
-      <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-400 md:hidden">
+      <span className="block text-[11px] font-medium uppercase tracking-wide text-gray-400 md:hidden">
         {etiqueta}
       </span>
       {fmtMoneda(valor)}
@@ -741,7 +742,7 @@ function FilaCandidato({
 }) {
   return (
     <label
-      className={`grid cursor-pointer grid-cols-1 gap-2 border-b border-slate-100 px-4 py-3 transition-colors last:border-b-0 hover:bg-slate-50/70 md:items-center md:gap-3 ${COLUMNAS} ${
+      className={`grid cursor-pointer grid-cols-1 gap-2 border-b border-gray-100 px-4 py-3 transition-colors last:border-b-0 hover:bg-gray-50/70 md:items-center md:gap-3 ${COLUMNAS} ${
         marcada ? 'bg-brand-50/40' : ''
       }`}
     >
@@ -761,14 +762,14 @@ function FilaCandidato({
         {marcada && <Check className="h-3 w-3 text-white" />}
       </div>
       <div className="min-w-0">
-        <p className="truncate font-medium text-slate-900">
+        <p className="truncate font-medium text-gray-900">
           {fila.empleado_nombre ?? '—'}
         </p>
-        <p className="truncate font-mono text-xs text-slate-500">
+        <p className="truncate font-mono text-xs text-gray-500">
           {fila.empleado_codigo ?? '—'}
         </p>
       </div>
-      <div className="truncate text-sm text-slate-600">
+      <div className="truncate text-sm text-gray-600">
         {fila.puesto_nombre ?? '—'}
       </div>
       <CeldaImporte etiqueta="A cobrar" valor={aCobrar(fila)} />
@@ -787,7 +788,7 @@ function FilaCandidato({
       <CeldaImporte
         etiqueta="Neto a cobrar"
         valor={fila.neto_a_cobrar}
-        tono="font-semibold text-slate-900"
+        tono="font-semibold text-gray-900"
       />
     </label>
   );
@@ -796,18 +797,18 @@ function FilaCandidato({
 function FilaDetalle({ fila }: { fila: RrhhNominaEmpleadoRead }) {
   return (
     <div
-      className={`grid grid-cols-1 gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 md:items-center md:gap-3 ${COLUMNAS}`}
+      className={`grid grid-cols-1 gap-2 border-b border-gray-100 px-4 py-3 last:border-b-0 md:items-center md:gap-3 ${COLUMNAS}`}
     >
       <span />
       <div className="min-w-0">
-        <p className="truncate font-medium text-slate-900">
+        <p className="truncate font-medium text-gray-900">
           {fila.empleado_nombre ?? '—'}
         </p>
-        <p className="truncate font-mono text-xs text-slate-500">
+        <p className="truncate font-mono text-xs text-gray-500">
           {fila.empleado_codigo ?? '—'}
         </p>
       </div>
-      <div className="truncate text-sm text-slate-600">
+      <div className="truncate text-sm text-gray-600">
         {fila.puesto_nombre ?? '—'}
       </div>
       <CeldaImporte etiqueta="A cobrar" valor={aCobrar(fila)} />
@@ -826,7 +827,7 @@ function FilaDetalle({ fila }: { fila: RrhhNominaEmpleadoRead }) {
       <CeldaImporte
         etiqueta="Neto a cobrar"
         valor={fila.neto_a_cobrar}
-        tono="font-semibold text-slate-900"
+        tono="font-semibold text-gray-900"
       />
     </div>
   );
@@ -836,7 +837,7 @@ function LoadingRows() {
   return (
     <div className="space-y-2 py-4">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-gray-100" />
       ))}
     </div>
   );

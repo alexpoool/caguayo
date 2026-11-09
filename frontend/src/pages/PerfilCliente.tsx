@@ -51,7 +51,7 @@ export function PerfilClientePage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
         <div className="text-gray-500">Cargando perfil del cliente...</div>
       </div>
     );
@@ -97,7 +97,7 @@ export function PerfilClientePage() {
       COMPLETADA: "bg-green-100 text-green-800",
       ANULADA: "bg-red-100 text-red-800",
     };
-    return styles[estado as keyof typeof styles] || "bg-slate-50 text-gray-800";
+    return styles[estado as keyof typeof styles] || "bg-gray-50 text-gray-800";
   };
 
   return (
@@ -218,12 +218,12 @@ export function PerfilClientePage() {
         </Card>
 
         {/* Estadísticas */}
-        <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-blue-50">
-                  <ShoppingCart className="h-6 w-6 text-blue-600" />
+                <div className="p-3 rounded-lg bg-brand-50">
+                  <ShoppingCart className="h-6 w-6 text-brand-600" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total Ventas</p>
@@ -269,8 +269,8 @@ export function PerfilClientePage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-purple-50">
-                  <DollarSign className="h-6 w-6 text-purple-600" />
+                <div className="p-3 rounded-lg bg-brand-50">
+                  <DollarSign className="h-6 w-6 text-brand-600" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Monto Completado</p>
@@ -285,9 +285,9 @@ export function PerfilClientePage() {
             </CardContent>
           </Card>
 
-          <Card className="col-span-2">
+          <Card className="lg:col-span-2">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-lg bg-orange-50">
                     <Package className="h-6 w-6 text-orange-600" />

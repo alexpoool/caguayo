@@ -1,22 +1,24 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal,
+  CreateButton,
+} from '../../components/ui';
 import { suplementosService, contratosService } from '../../services/api';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import type { ContratoWithDetails } from '../../types/contrato';
 import type { SuplementoWithDetails } from '../../types/contrato';
-import { Plus, Trash2, Edit, Search, Layers, FileText, Calendar, Tag, X } from 'lucide-react';
+import { Trash2, Edit, Search, Layers, FileText, Calendar, Tag, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { required } from '../../utils/validacionFormularios';
-import { formatFecha } from '../../utils/fecha';
+import { formatFecha, toISODateLocal} from '../../utils/fecha';
 import { DateInput } from '../../components/ui';
 
 type View = 'list' | 'form';
 
 const SUPLEMENTO_FORM_ID = 'suplemento-form';
 
-const hoy = new Date().toISOString().split('T')[0];
+const hoy = toISODateLocal();
 
 export function SuplementosPage() {
   const [searchParams] = useSearchParams();
@@ -30,7 +32,6 @@ export function SuplementosPage() {
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(initialContratoId ? Number(initialContratoId) : null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [contratoSearch, setContratoSearch] = useState('');
   const [showContratoDropdown, setShowContratoDropdown] = useState(false);
@@ -62,12 +63,14 @@ export function SuplementosPage() {
     loadMore,
     refresh,
     total: totalSuplementos,
+    searchTerm,
+    setSearch: setSearchTerm,
   } = useInfiniteList<SuplementoWithDetails>({
     queryKeyBase: 'suplementos',
-    queryFn: (skip, limit, _search, onTotal) =>
+    queryFn: (skip, limit, search, onTotal) =>
       initialContratoId
-        ? suplementosService.getSuplementosByContrato(Number(initialContratoId), skip, limit)
-        : suplementosService.getSuplementos(skip, limit, onTotal),
+        ? suplementosService.getSuplementosByContrato(Number(initialContratoId), skip, limit, search)
+        : suplementosService.getSuplementos(skip, limit, onTotal, search),
     extraQueryKeyParams: [initialContratoId],
     limit: 100,
   });
@@ -115,14 +118,7 @@ export function SuplementosPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredSuplementos = useMemo(() => {
-    if (!searchTerm) return suplementos;
-    const term = searchTerm.toLowerCase();
-    return suplementos.filter(s =>
-      s.codigo?.toLowerCase().includes(term) ||
-      s.nombre?.toLowerCase().includes(term)
-    );
-  }, [suplementos, searchTerm]);
+  const filteredSuplementos = suplementos;
 
   const handleSave = async () => {
     if (!selectedContratoId) {
@@ -144,8 +140,8 @@ export function SuplementosPage() {
       const data = {
         id_contrato: selectedContratoId,
         nombre: formData.nombre || '',
-        fecha: formData.fecha || new Date().toISOString().split('T')[0],
-        fecha_vigencia: formData.fecha_vigencia || new Date().toISOString().split('T')[0],
+        fecha: formData.fecha || toISODateLocal(),
+        fecha_vigencia: formData.fecha_vigencia || toISODateLocal(),
         monto: Number(formData.monto) || 0,
         documento: formData.documento
       };
@@ -203,9 +199,9 @@ export function SuplementosPage() {
 
   const renderList = () => (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <Layers className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -215,14 +211,7 @@ export function SuplementosPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          disabled={contratos.length === 0}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Suplemento
-        </Button>
+        <CreateButton label="Nuevo Suplemento" onClick={() => openForm()} disabled={contratos.length === 0} />
       </div>
 
       <div className="relative max-w-md">
@@ -238,24 +227,24 @@ export function SuplementosPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+              <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
                 <TableRow>
                   <TableHead>
                     <div className="flex items-center gap-2">
-                      <Tag className="h-4 w-4 text-teal-600" />
+                      <Tag className="h-4 w-4 text-brand-600" />
                       Código
                     </div>
                   </TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-teal-600" />
+                      <FileText className="h-4 w-4 text-brand-600" />
                       Nombre
                     </div>
                   </TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-teal-600" />
+                      <Calendar className="h-4 w-4 text-brand-600" />
                       Fecha
                     </div>
                   </TableHead>
@@ -269,7 +258,7 @@ export function SuplementosPage() {
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                       <div className="flex flex-col items-center gap-2">
-                        <div className="h-5 w-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="h-5 w-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                         Cargando suplementos...
                       </div>
                     </TableCell>
@@ -290,7 +279,7 @@ export function SuplementosPage() {
                   filteredSuplementos.map((item) => (
                     <TableRow key={item.id_suplemento} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
                           <Tag className="h-3 w-3" />
                           {item.codigo || 'N/A'}
                         </span>
@@ -302,7 +291,7 @@ export function SuplementosPage() {
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           item.estado?.nombre === 'ACTIVO' ? 'bg-green-100 text-green-800' :
                           item.estado?.nombre === 'CANCELADO' ? 'bg-red-100 text-red-800' :
-                          item.estado?.nombre === 'FINALIZADO' ? 'bg-blue-100 text-blue-800' :
+                          item.estado?.nombre === 'FINALIZADO' ? 'bg-brand-100 text-brand-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
                           {item.estado?.nombre || 'N/A'}
@@ -331,8 +320,8 @@ export function SuplementosPage() {
           {!isLoading && filteredSuplementos.length > 0 && (
             <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
               {isFetchingMore ? (
-                <span className="text-sm text-teal-600 flex items-center gap-2">
-                  <div className="h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-brand-600 flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                   Cargando más...
                 </span>
               ) : hasMore ? (
@@ -384,7 +373,7 @@ export function SuplementosPage() {
                           <button
                             key={c.id_contrato}
                             type="button"
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50 transition-colors"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-brand-50 transition-colors"
                             onClick={() => {
                               setSelectedContratoId(c.id_contrato);
                               setContratoSearch('');
@@ -403,7 +392,7 @@ export function SuplementosPage() {
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
               <DateInput
-                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha || hoy}
                 min={hoy}
                 onChange={(fecha) => setFormData({...formData, fecha})}
@@ -412,7 +401,7 @@ export function SuplementosPage() {
             <div>
               <Label className="text-sm font-medium">Fecha de vigencia *</Label>
               <DateInput
-                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha_vigencia || hoy}
                 onChange={(fecha_vigencia) => setFormData({...formData, fecha_vigencia})}
               />
@@ -438,7 +427,7 @@ export function SuplementosPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {renderList()}
       <FormModal
         isOpen={view === 'form'}
@@ -462,7 +451,7 @@ export function SuplementosPage() {
               form={SUPLEMENTO_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               {editingId ? 'Actualizar' : 'Guardar'}
             </Button>
@@ -482,12 +471,12 @@ export function SuplementosPage() {
       />
 
       {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <Layers className="h-7 w-7" />
                   </div>
                   <div>
@@ -500,25 +489,25 @@ export function SuplementosPage() {
                 </button>
               </div>
             </div>
-              <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     detailModal.item.estado?.nombre === 'ACTIVO' ? 'bg-green-100 text-green-800' :
                     detailModal.item.estado?.nombre === 'CANCELADO' ? 'bg-red-100 text-red-800' :
-                    detailModal.item.estado?.nombre === 'FINALIZADO' ? 'bg-blue-100 text-blue-800' :
+                    detailModal.item.estado?.nombre === 'FINALIZADO' ? 'bg-brand-100 text-brand-800' :
                     'bg-yellow-100 text-yellow-800'
                   }`}>
                     {detailModal.item.estado?.nombre || 'N/A'}
                   </span>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
+                <div className="bg-gradient-to-br from-brand-50 to-pink-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha de vigencia</p>
+                <div className="bg-gradient-to-br from-brand-50 to-pink-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Fecha de vigencia</p>
                   <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_vigencia) || 'N/A'}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
@@ -533,7 +522,7 @@ export function SuplementosPage() {
                 )}
               </div>
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useDeferredValue, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,13 +9,11 @@ import {
   Truck,
   Briefcase,
   Coins,
-  Calendar,
   Plus,
   Edit,
   Trash2,
   X,
   Save,
-  Sparkles,
   FileCheck,
   FileText,
   ScrollText,
@@ -43,6 +41,8 @@ import {
   TableHead,
   TableCell,
   DateInput,
+  FormModal,
+  CreateButton,
 } from "../components/ui";
 import {
   configuracionService,
@@ -51,7 +51,6 @@ import {
 import {
   categoriasService,
   subcategoriasService,
-  monedaService,
   tipoEntidadService,
   dj08Service,
 } from "../services/api";
@@ -63,6 +62,7 @@ import type {
   EspecialidadCreate,
   EspecialidadUpdate,
 } from "../types/index";
+import { coincideBusqueda, normalizarBusqueda } from "../utils/busqueda";
 
 
 type ConfigSubTabType =
@@ -126,114 +126,6 @@ const fmtMonto = (valor: unknown) =>
 const fmtFechaCorta = (iso?: string) =>
   iso ? iso.split("-").reverse().join("/") : "-";
 
-interface ConfigCardProps {
-  title: string;
-  icon: React.ReactNode;
-  description: string;
-  count: number;
-  onClick: () => void;
-  color: string;
-}
-
-function ConfigCard({
-  title,
-  icon,
-  description,
-  count,
-  onClick,
-  color,
-}: ConfigCardProps) {
-  const colorClasses: Record<string, string> = {
-    "bg-blue-500": "from-blue-500 to-blue-600",
-    "bg-green-500": "from-green-500 to-emerald-600",
-    "bg-purple-500": "from-purple-500 to-purple-600",
-    "bg-orange-500": "from-orange-500 to-orange-600",
-    "bg-red-500": "from-red-500 to-red-600",
-    "bg-teal-500": "from-teal-500 to-teal-600",
-    "bg-indigo-500": "from-indigo-500 to-indigo-600",
-    "bg-cyan-500": "from-cyan-500 to-cyan-600",
-  };
-
-  return (
-    <Card
-      className="cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 hover:scale-[1.02] group overflow-hidden"
-      onClick={onClick}
-    >
-      <div className={`h-1 bg-gradient-to-r ${colorClasses[color]}`} />
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div
-            className={`p-4 rounded-md bg-gradient-to-br ${colorClasses[color]} text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}
-          >
-            {icon}
-          </div>
-          <div className="flex flex-col items-end">
-            <span className="text-3xl font-bold text-gray-800">{count}</span>
-            <span className="text-xs text-gray-500 uppercase tracking-wide">
-              Elementos
-            </span>
-          </div>
-        </div>
-        <h3 className="mt-5 font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
-          {title}
-        </h3>
-        <p className="mt-2 text-sm text-gray-500">{description}</p>
-        <div className="mt-4 flex items-center text-sm font-medium text-gray-400 group-hover:text-blue-500 transition-colors">
-          <span>Configurar</span>
-          <Plus className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-}
-
-function Modal({ isOpen, onClose, title, children }: ModalProps) {
-  if (!isOpen) return null;
-
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in"
-      onClick={handleBackdropClick}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col animate-scale-in">
-        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-gray-50 to-white rounded-t-2xl">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
-              <Settings className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-              <p className="text-sm text-gray-500">Gestión de configuración</p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="hover:bg-gray-200 rounded-full transition-colors"
-          >
-            <X className="h-6 w-6 text-gray-600" />
-          </Button>
-        </div>
-        <div className="flex-1 overflow-auto p-6">{children}</div>
-      </div>
-    </div>
-  );
-}
-
 export function ConfiguracionPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -258,6 +150,7 @@ export function ConfiguracionPage() {
     navigate(`/configuracion/${CONFIG_SLUGS[activeConfigSubTab]}`, { replace: true });
   }, [pagina, activeConfigSubTab, navigate]);
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [modalType, setModalType] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
@@ -598,30 +491,6 @@ const {
     },
   });
 
-  // Mutations para tipos de cuenta
-  const createTipoCuenta = useMutation({
-    mutationFn: () => Promise.resolve(),
-    onSuccess: () => {
-      toast.success("Tipo de cuenta creado");
-      closeModal();
-    },
-  });
-
-  const updateTipoCuenta = useMutation({
-    mutationFn: () => Promise.resolve(),
-    onSuccess: () => {
-      toast.success("Tipo de cuenta actualizado");
-      closeModal();
-    },
-  });
-
-  const deleteTipoCuenta = useMutation({
-    mutationFn: () => Promise.resolve(),
-    onSuccess: () => {
-      toast.success("Tipo de cuenta eliminado");
-    },
-  });
-
   // Mutations para tipos de entidad
   const createTipoEntidad = useMutation({
     mutationFn: tipoEntidadService.createTipoEntidad,
@@ -890,7 +759,7 @@ const {
           createCategoria.mutate(formData);
         }
         break;
-      case "subcategorias":
+      case "subcategorias": {
         if (!formData.id_categoria) {
           toast.error("Debe seleccionar una categoría");
           return;
@@ -909,6 +778,7 @@ const {
           createSubcategoria.mutate(subcategoriaData);
         }
         break;
+      }
       case "tipo-proveedores":
         if (editingItem) {
           updateTipoProveedor.mutate({
@@ -1064,98 +934,7 @@ const {
     setConfirmDelete({ isOpen: false, type: null, item: null });
   };
 
-  const configCards = [
-    {
-      title: "Tipos de Contrato",
-      icon: <ScrollText className="h-8 w-8" />,
-      description: "Gestión de tipos de contratos",
-      count: tiposContrato.length,
-      color: "bg-blue-500",
-      type: "tipo-contrato",
-    },
-    {
-      title: "Estados de Contrato",
-      icon: <ToggleLeft className="h-8 w-8" />,
-      description: "Estados posibles de contratos",
-      count: estadosContrato.length,
-      color: "bg-green-500",
-      type: "estado-contrato",
-    },
-    {
-      title: "Categorías",
-      icon: <FolderTree className="h-8 w-8" />,
-      description: "Categorías de productos",
-      count: categorias.length,
-      color: "bg-purple-500",
-      type: "categorias",
-    },
-    {
-      title: "Subcategorías",
-      icon: <Tag className="h-8 w-8" />,
-      description: "Subcategorías de productos",
-      count: subcategorias.length,
-      color: "bg-orange-500",
-      type: "subcategorias",
-    },
-    {
-      title: "Tipos de Proveedores",
-      icon: <Truck className="h-8 w-8" />,
-      description: "Clasificación de proveedores",
-      count: tiposProveedor.length,
-      color: "bg-red-500",
-      type: "tipo-proveedores",
-    },
-    {
-      title: "Tipos de Convenio",
-      icon: <FileText className="h-8 w-8" />,
-      description: "Tipos de convenios comerciales",
-      count: tiposConvenio.length,
-      color: "bg-teal-500",
-      type: "tipo-convenios",
-    },
-    {
-      title: "Tipos de Dependencia",
-      icon: <BuildingIcon className="h-8 w-8" />,
-      description: "Clasificación de dependencias",
-      count: tiposDependencia.length,
-      color: "bg-indigo-500",
-      type: "tipo-dependencia",
-    },
-    {
-      title: "Tipos de Cuenta",
-      icon: <Wallet className="h-8 w-8" />,
-      description: "Tipos de cuentas bancarias (CUP, MLC, USD)",
-      count: tiposCuenta.length,
-      color: "bg-cyan-500",
-      type: "tipo-cuenta",
-    },
-    {
-      title: "Tipos de Entidad",
-      icon: <BuildingIcon className="h-8 w-8" />,
-      description: "Tipos de entidad para personas jurídicas",
-      count: tiposEntidad.length,
-      color: "bg-rose-500",
-      type: "tipo-entidad",
-    },
-    {
-      title: "Actividades Económicas",
-      icon: <Briefcase className="h-8 w-8" />,
-      description: "Catálogo DJ-08: ingresos y gastos por actividad",
-      count: dj08Actividades.length,
-      color: "bg-amber-500",
-      type: "dj08-actividades",
-    },
-    {
-      title: "Tributos",
-      icon: <Coins className="h-8 w-8" />,
-      description: "Catálogo DJ-08: tributos pagados (Sección F)",
-      count: dj08Tributos.length,
-      color: "bg-cyan-500",
-      type: "dj08-tributos",
-    },
-  ];
-
-  const getItems = () => {
+  const currentItems = useMemo(() => {
     switch (activeConfigSubTab) {
       case "tipo-contrato":
         return tiposContrato;
@@ -1184,7 +963,32 @@ const {
       default:
         return [];
     }
-  };
+  }, [
+    activeConfigSubTab,
+    tiposContrato,
+    estadosContrato,
+    categorias,
+    subcategorias,
+    tiposProveedor,
+    tiposConvenio,
+    tiposDependencia,
+    tiposCuenta,
+    tiposEntidad,
+    dj08Actividades,
+    dj08Tributos,
+    especialidades,
+  ]);
+
+  const filteredItems = useMemo(() => {
+    const termino = normalizarBusqueda(deferredSearchTerm).trim();
+    if (!termino) return currentItems;
+    return currentItems.filter(
+      (item: any) =>
+        coincideBusqueda(item.nombre, termino) ||
+        coincideBusqueda(item.codigo, termino) ||
+        coincideBusqueda(item.descripcion, termino),
+    );
+  }, [currentItems, deferredSearchTerm]);
 
   const getItemId = (item: any) => {
     switch (activeConfigSubTab) {
@@ -1259,27 +1063,27 @@ const {
     const className = size === "lg" ? "h-8 w-8" : "h-5 w-5";
     switch (modalType) {
       case "tipo-contrato":
-        return <ScrollText className={`${className} text-blue-600`} />;
+        return <ScrollText className={`${className} text-brand-600`} />;
       case "estado-contrato":
         return <ToggleLeft className={`${className} text-green-600`} />;
       case "categorias":
-        return <FolderTree className={`${className} text-purple-600`} />;
+        return <FolderTree className={`${className} text-brand-600`} />;
       case "subcategorias":
         return <Tag className={`${className} text-orange-600`} />;
       case "tipo-proveedores":
         return <Truck className={`${className} text-red-600`} />;
       case "tipo-convenios":
-        return <FileText className={`${className} text-teal-600`} />;
+        return <FileText className={`${className} text-brand-600`} />;
       case "tipo-dependencia":
-        return <BuildingIcon className={`${className} text-indigo-600`} />;
+        return <BuildingIcon className={`${className} text-brand-600`} />;
       case "tipo-cuenta":
-        return <Wallet className={`${className} text-cyan-600`} />;
+        return <Wallet className={`${className} text-brand-600`} />;
       case "tipo-entidad":
         return <BuildingIcon className={`${className} text-rose-600`} />;
       case "dj08-actividades":
         return <Briefcase className={`${className} text-amber-600`} />;
       case "dj08-tributos":
-        return <Coins className={`${className} text-cyan-600`} />;
+        return <Coins className={`${className} text-brand-600`} />;
       case "especialidades":
         return <Palette className={`${className} text-fuchsia-600`} />;
       default:
@@ -1287,61 +1091,32 @@ const {
     }
   };
 
-  const getModalGradient = () => {
-    switch (modalType) {
-      case "tipo-contrato":
-        return "from-blue-50 to-indigo-50";
-      case "estado-contrato":
-        return "from-green-50 to-emerald-50";
-      case "categorias":
-        return "from-purple-50 to-pink-50";
-      case "subcategorias":
-        return "from-orange-50 to-amber-50";
-      case "tipo-proveedores":
-        return "from-red-50 to-rose-50";
-      case "tipo-convenios":
-        return "from-teal-50 to-cyan-50";
-      case "tipo-dependencia":
-        return "from-indigo-50 to-blue-50";
-      case "tipo-cuenta":
-        return "from-cyan-50 to-sky-50";
-      case "tipo-entidad":
-        return "from-rose-50 to-pink-50";
-      case "dj08-actividades":
-        return "from-amber-50 to-orange-50";
-      case "dj08-tributos":
-        return "from-cyan-50 to-teal-50";
-      default:
-        return "from-gray-50 to-gray-100";
-    }
-  };
-
   const getTableHeaderGradient = () => {
     switch (modalType) {
       case "tipo-contrato":
-        return "bg-gradient-to-r from-blue-50 to-indigo-50";
+        return "bg-gradient-to-r from-brand-50 to-brand-50";
       case "estado-contrato":
         return "bg-gradient-to-r from-green-50 to-emerald-50";
       case "categorias":
-        return "bg-gradient-to-r from-purple-50 to-pink-50";
+        return "bg-gradient-to-r from-brand-50 to-pink-50";
       case "subcategorias":
         return "bg-gradient-to-r from-orange-50 to-amber-50";
       case "tipo-proveedores":
         return "bg-gradient-to-r from-red-50 to-rose-50";
       case "tipo-convenios":
-        return "bg-gradient-to-r from-teal-50 to-cyan-50";
+        return "bg-gradient-to-r from-brand-50 to-brand-50";
       case "tipo-dependencia":
-        return "bg-gradient-to-r from-indigo-50 to-blue-50";
+        return "bg-gradient-to-r from-brand-50 to-brand-50";
       case "tipo-cuenta":
-        return "bg-gradient-to-r from-cyan-50 to-sky-50";
+        return "bg-gradient-to-r from-brand-50 to-brand-50";
       case "tipo-entidad":
         return "bg-gradient-to-r from-rose-50 to-pink-50";
       case "dj08-actividades":
         return "bg-gradient-to-r from-amber-50 to-orange-50";
       case "dj08-tributos":
-        return "bg-gradient-to-r from-cyan-50 to-teal-50";
+        return "bg-gradient-to-r from-brand-50 to-brand-50";
       case "especialidades":
-        return "bg-gradient-to-r from-fuchsia-50 to-purple-50";
+        return "bg-gradient-to-r from-fuchsia-50 to-brand-50";
       default:
         return "bg-gray-50";
     }
@@ -1350,60 +1125,60 @@ const {
   const getButtonGradient = () => {
     switch (modalType) {
       case "tipo-contrato":
-        return "from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800";
+        return "from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800";
       case "estado-contrato":
         return "from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800";
       case "categorias":
-        return "from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800";
+        return "from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800";
       case "subcategorias":
         return "from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800";
       case "tipo-proveedores":
         return "from-red-600 to-red-700 hover:from-red-700 hover:to-red-800";
       case "tipo-convenios":
-        return "from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800";
+        return "from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800";
       case "tipo-dependencia":
-        return "from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800";
+        return "from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800";
       case "tipo-cuenta":
-        return "from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800";
+        return "from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800";
       case "tipo-entidad":
         return "from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800";
       case "dj08-actividades":
         return "from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700";
       case "dj08-tributos":
-        return "from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700";
+        return "from-brand-600 to-brand-600 hover:from-brand-700 hover:to-brand-700";
       case "especialidades":
-        return "from-fuchsia-600 to-purple-700 hover:from-fuchsia-700 hover:to-purple-800";
+        return "from-fuchsia-600 to-brand-700 hover:from-fuchsia-700 hover:to-brand-800";
       default:
-        return "from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800";
+        return "from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800";
     }
   };
 
   const getListHeaderGradient = () => {
     switch (activeConfigSubTab) {
       case "tipo-contrato":
-        return "bg-gradient-to-r from-blue-50 to-indigo-50";
+        return "bg-gradient-to-r from-brand-50 to-brand-50";
       case "estado-contrato":
         return "bg-gradient-to-r from-green-50 to-emerald-50";
       case "categorias":
-        return "bg-gradient-to-r from-purple-50 to-pink-50";
+        return "bg-gradient-to-r from-brand-50 to-pink-50";
       case "subcategorias":
         return "bg-gradient-to-r from-orange-50 to-amber-50";
       case "tipo-proveedores":
         return "bg-gradient-to-r from-red-50 to-rose-50";
       case "tipo-convenios":
-        return "bg-gradient-to-r from-teal-50 to-cyan-50";
+        return "bg-gradient-to-r from-brand-50 to-brand-50";
       case "tipo-dependencia":
-        return "bg-gradient-to-r from-indigo-50 to-blue-50";
+        return "bg-gradient-to-r from-brand-50 to-brand-50";
       case "tipo-cuenta":
-        return "bg-gradient-to-r from-cyan-50 to-sky-50";
+        return "bg-gradient-to-r from-brand-50 to-brand-50";
       case "tipo-entidad":
         return "bg-gradient-to-r from-rose-50 to-pink-50";
       case "dj08-actividades":
         return "bg-gradient-to-r from-amber-50 to-orange-50";
       case "dj08-tributos":
-        return "bg-gradient-to-r from-cyan-50 to-teal-50";
+        return "bg-gradient-to-r from-brand-50 to-brand-50";
       case "especialidades":
-        return "bg-gradient-to-r from-fuchsia-50 to-purple-50";
+        return "bg-gradient-to-r from-fuchsia-50 to-brand-50";
       default:
         return "bg-gray-50";
     }
@@ -1412,58 +1187,58 @@ const {
   const getListBadgeColors = () => {
     switch (activeConfigSubTab) {
       case "tipo-contrato":
-        return { bg: "bg-blue-100", text: "text-blue-700" };
+        return { bg: "bg-brand-100", text: "text-brand-700" };
       case "estado-contrato":
         return { bg: "bg-green-100", text: "text-green-700" };
       case "categorias":
-        return { bg: "bg-purple-100", text: "text-purple-700" };
+        return { bg: "bg-brand-100", text: "text-brand-700" };
       case "subcategorias":
         return { bg: "bg-orange-100", text: "text-orange-700" };
       case "tipo-proveedores":
         return { bg: "bg-red-100", text: "text-red-700" };
       case "tipo-convenios":
-        return { bg: "bg-teal-100", text: "text-teal-700" };
+        return { bg: "bg-brand-100", text: "text-brand-700" };
       case "tipo-dependencia":
-        return { bg: "bg-indigo-100", text: "text-indigo-700" };
+        return { bg: "bg-brand-100", text: "text-brand-700" };
       case "tipo-cuenta":
-        return { bg: "bg-cyan-100", text: "text-cyan-700" };
+        return { bg: "bg-brand-100", text: "text-brand-700" };
       case "tipo-entidad":
         return { bg: "bg-rose-100", text: "text-rose-700" };
       case "dj08-actividades":
         return { bg: "bg-amber-100", text: "text-amber-700" };
       case "dj08-tributos":
-        return { bg: "bg-cyan-100", text: "text-cyan-700" };
+        return { bg: "bg-brand-100", text: "text-brand-700" };
       case "especialidades":
         return { bg: "bg-fuchsia-100", text: "text-fuchsia-700" };
       default:
-        return { bg: "bg-slate-50", text: "text-gray-700" };
+        return { bg: "bg-gray-50", text: "text-gray-700" };
     }
   };
 
   const getListIconColor = () => {
     switch (activeConfigSubTab) {
       case "tipo-contrato":
-        return "text-blue-600";
+        return "text-brand-600";
       case "estado-contrato":
         return "text-green-600";
       case "categorias":
-        return "text-purple-600";
+        return "text-brand-600";
       case "subcategorias":
         return "text-orange-600";
       case "tipo-proveedores":
         return "text-red-600";
       case "tipo-convenios":
-        return "text-teal-600";
+        return "text-brand-600";
       case "tipo-dependencia":
-        return "text-indigo-600";
+        return "text-brand-600";
       case "tipo-cuenta":
-        return "text-cyan-600";
+        return "text-brand-600";
       case "tipo-entidad":
         return "text-rose-600";
       case "dj08-actividades":
         return "text-amber-600";
       case "dj08-tributos":
-        return "text-cyan-600";
+        return "text-brand-600";
       case "especialidades":
         return "text-fuchsia-600";
       default:
@@ -1472,7 +1247,7 @@ const {
   };
 
   const renderModalContent = () => {
-    const items = getItems();
+    const items = currentItems;
 
     return (
       <div className="space-y-4 animate-fade-in-up">
@@ -1484,7 +1259,7 @@ const {
               {getFormTitle()}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 md:p-6">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -1495,7 +1270,7 @@ const {
                     onChange={(e) =>
                       setFormData({ ...formData, nombre: e.target.value })
                     }
-                    className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="mt-1 focus:ring-2 focus:ring-brand-500 outline-none"
                   />
                 </div>
                 {activeConfigSubTab === "dj08-actividades" && (
@@ -1507,7 +1282,7 @@ const {
                       onChange={(e) =>
                         setFormData({ ...formData, codigo: e.target.value })
                       }
-                      className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="mt-1 focus:ring-2 focus:ring-brand-500 outline-none"
                     />
                   </div>
                 )}
@@ -1515,7 +1290,7 @@ const {
                   <div className="space-y-1">
                     <Label className="text-sm font-medium">Categoría *</Label>
                     <select
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                       value={formData.id_categoria || ""}
                       onChange={(e) =>
                         setFormData({
@@ -1565,7 +1340,7 @@ const {
                       onChange={(e) =>
                         setFormData({ ...formData, ingresos: e.target.value })
                       }
-                      className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="mt-1 focus:ring-2 focus:ring-brand-500 outline-none"
                     />
                   </div>
                   <div className="space-y-1">
@@ -1578,7 +1353,7 @@ const {
                       onChange={(e) =>
                         setFormData({ ...formData, gastos: e.target.value })
                       }
-                      className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="mt-1 focus:ring-2 focus:ring-brand-500 outline-none"
                     />
                   </div>
                 </div>
@@ -1595,7 +1370,7 @@ const {
                     onChange={(e) =>
                       setFormData({ ...formData, importe: e.target.value })
                     }
-                    className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="mt-1 focus:ring-2 focus:ring-brand-500 outline-none"
                   />
                 </div>
               )}
@@ -1609,7 +1384,7 @@ const {
                     onChange={(e) =>
                       setFormData({ ...formData, descripcion: e.target.value })
                     }
-                    className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="mt-1 focus:ring-2 focus:ring-brand-500 outline-none"
                   />
                 </div>
               )}
@@ -1684,14 +1459,14 @@ const {
                   className="hover:bg-gray-50 transition-colors"
                 >
                   <TableCell>
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 text-gray-700 rounded text-sm font-medium">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-sm font-medium">
                       <Package className="h-3 w-3" />#{getItemId(item)}
                     </span>
                   </TableCell>
                   <TableCell className="font-semibold">{item.nombre}</TableCell>
                   {isSubcategoria && (
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-sm">
                         <FolderTree className="h-3 w-3" />
                         {item.categoria?.nombre || "-"}
                       </span>
@@ -1700,7 +1475,7 @@ const {
                   {isEspecialidades && (
                     <>
                       <TableCell>
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 text-gray-700 rounded text-sm">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-sm">
                           {item.artistas ?? 0}
                         </span>
                       </TableCell>
@@ -1709,7 +1484,7 @@ const {
                           className={`inline-flex px-2 py-1 rounded text-sm ${
                             item.activo
                               ? "bg-green-100 text-green-700"
-                              : "bg-slate-200 text-slate-600"
+                              : "bg-gray-200 text-gray-600"
                           }`}
                         >
                           {item.activo ? "Activa" : "Desactivada"}
@@ -1729,7 +1504,7 @@ const {
                           setEditingItem(item);
                           setFormData(item);
                         }}
-                        className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                        className="text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -1788,14 +1563,6 @@ const {
   };
 
   const renderConfigListView = () => {
-    const currentItems = getItems();
-    const filteredItems = currentItems.filter(
-      (item: any) =>
-        item.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()),
-    );
-
     return (
       <div className="space-y-4 animate-fade-in-up">
         {/* Header de la sección */}
@@ -1809,13 +1576,10 @@ const {
               className="pl-10"
             />
           </div>
-          <Button
+          <CreateButton
+            label="Nuevo"
             onClick={() => openModal(activeConfigSubTab)}
-            className={`gap-2 bg-gradient-to-r ${getButtonGradient()} text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300`}
-          >
-            <Plus className="h-4 w-4" />
-            Nuevo
-          </Button>
+          />
         </div>
 
         {/* Tabla */}
@@ -1887,7 +1651,7 @@ const {
                         className="text-center py-12"
                       >
                         <div className="flex flex-col items-center justify-center text-gray-400">
-                          <div className="p-4 bg-slate-50 rounded-full mb-4">
+                          <div className="p-4 bg-gray-50 rounded-full mb-4">
                             <AlertCircle className="h-12 w-12 text-gray-300" />
                           </div>
                           <p className="text-lg font-medium mb-2">
@@ -1938,7 +1702,7 @@ const {
                         )}
                         {activeConfigSubTab === "subcategorias" && (
                           <TableCell>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-sm">
                               <FolderTree className="h-3 w-3" />
                               {item.categoria?.nombre || "-"}
                             </span>
@@ -1959,7 +1723,7 @@ const {
                                 setFormData(item);
                                 setModalType(activeConfigSubTab);
                               }}
-                              className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                              className="text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all"
                               title="Editar"
                             >
                               <Edit className="h-4 w-4" />
@@ -1986,14 +1750,16 @@ const {
           </CardContent>
         </Card>
 
-        {/* Modal */}
-        <Modal
+        <FormModal
           isOpen={!!modalType}
           onClose={closeModal}
           title={currentSubTab?.label || ""}
+          subtitle="Gestión de configuración"
+          icon={<Settings className="h-6 w-6" />}
+          size="lg"
         >
           {renderModalContent()}
-        </Modal>
+        </FormModal>
       </div>
     );
   };
@@ -2001,9 +1767,9 @@ const {
   return (
     <div className="space-y-4 animate-fade-in-up">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded shadow-lg">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg">
             <Settings className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline gap-2">
@@ -2014,16 +1780,16 @@ const {
       </div>
 
       {/* Vista de lista */}
-      <div className="bg-white rounded-lg p-6 border">
+      <div className="bg-white rounded-lg p-4 md:p-6 border">
         {renderConfigListView()}
       </div>
 
       {/* Confirm Delete Modal */}
       {confirmDelete.isOpen &&
         createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
-              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-rose-50">
+              <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-rose-50">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-md bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
                     <Trash2 className="h-7 w-7" />
@@ -2038,7 +1804,7 @@ const {
                   </div>
                 </div>
               </div>
-              <div className="p-6">
+              <div className="p-4 md:p-6">
                 <p className="text-gray-600">
                   ¿Está seguro de que desea eliminar este elemento?
                 </p>
@@ -2048,7 +1814,7 @@ const {
                   </p>
                 )}
               </div>
-              <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
                 <Button
                   variant="outline"
                   onClick={() =>
@@ -2074,10 +1840,10 @@ const {
       {detailModal.isOpen &&
         detailModal.item &&
         createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-auto animate-scale-in">
-              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                <div className="flex items-center justify-between">
+              <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div
                       className={`p-3 rounded-md bg-gradient-to-br ${getButtonGradient()} text-white shadow-lg`}
@@ -2104,10 +1870,10 @@ const {
                   </button>
                 </div>
               </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
-                    <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">
+              <div className="p-4 md:p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-md border border-brand-100">
+                    <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">
                       ID
                     </p>
                     <p className="font-bold text-gray-900">
@@ -2124,7 +1890,7 @@ const {
                   </div>
                 </div>
                 {activeConfigSubTab === "dj08-actividades" && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-md border border-amber-100">
                       <p className="text-xs text-amber-600 uppercase tracking-wider mb-1">
                         Código
@@ -2133,8 +1899,8 @@ const {
                         {detailModal.item.codigo || "-"}
                       </p>
                     </div>
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
-                      <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">
+                    <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-md border border-brand-100">
+                      <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">
                         Período
                       </p>
                       <p className="font-bold text-gray-900 text-sm">
@@ -2150,8 +1916,8 @@ const {
                         {fmtMonto(detailModal.item.ingresos)}
                       </p>
                     </div>
-                    <div className="bg-gradient-to-br from-cyan-50 to-teal-50 p-4 rounded-md border border-cyan-100">
-                      <p className="text-xs text-cyan-600 uppercase tracking-wider mb-1">
+                    <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-md border border-brand-100">
+                      <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">
                         Gastos
                       </p>
                       <p className="font-bold text-gray-900">
@@ -2161,8 +1927,8 @@ const {
                   </div>
                 )}
                 {activeConfigSubTab === "dj08-tributos" && (
-                  <div className="bg-gradient-to-br from-cyan-50 to-teal-50 p-4 rounded-md border border-cyan-100">
-                    <p className="text-xs text-cyan-600 uppercase tracking-wider mb-1">
+                  <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-md border border-brand-100">
+                    <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">
                       Importe total pagado
                     </p>
                     <p className="font-bold text-gray-900">
@@ -2172,8 +1938,8 @@ const {
                 )}
                 {activeConfigSubTab === "subcategorias" &&
                   detailModal.item.categoria && (
-                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
-                      <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">
+                    <div className="bg-gradient-to-br from-brand-50 to-pink-50 p-4 rounded-md border border-brand-100">
+                      <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">
                         Categoría
                       </p>
                       <p className="font-bold text-gray-900">
@@ -2192,7 +1958,7 @@ const {
                   </div>
                 )}
               </div>
-              <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
                 <Button
                   variant="outline"
                   onClick={() => setDetailModal({ isOpen: false, item: null })}

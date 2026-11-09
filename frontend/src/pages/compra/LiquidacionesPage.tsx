@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Button, Card, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal, ConfirmModal } from '../../components/ui';
+import { Button, Card, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal, ConfirmModal,
+  CreateButton,
+} from '../../components/ui';
 import { 
   Search, 
-  Plus, 
   Trash2, 
   CheckCircle, 
   Eye,
@@ -68,15 +69,16 @@ export function LiquidacionesPage() {
     total: totalLiquidaciones,
   } = useInfiniteList<Liquidacion>({
     queryKeyBase: 'liquidaciones',
-    queryFn: (skip, limit, _search, onTotal) => {
+    queryFn: (skip, limit, search, onTotal) => {
+      const clienteId = filtroCliente ?? undefined;
       if (activeTab === 'pendientes') {
-        return liquidacionService.getLiquidacionesPendientes(skip, limit, undefined, onTotal);
+        return liquidacionService.getLiquidacionesPendientes(skip, limit, clienteId, onTotal, search);
       } else if (activeTab === 'liquidadas') {
-        return liquidacionService.getLiquidacionesLiquidadas(skip, limit, undefined, onTotal);
+        return liquidacionService.getLiquidacionesLiquidadas(skip, limit, clienteId, onTotal, search);
       }
-      return liquidacionService.getLiquidaciones(skip, limit, undefined, onTotal);
+      return liquidacionService.getLiquidaciones(skip, limit, clienteId, onTotal, search);
     },
-    extraQueryKeyParams: [activeTab],
+    extraQueryKeyParams: [activeTab, filtroCliente],
     limit: 100,
   });
 
@@ -135,18 +137,21 @@ export function LiquidacionesPage() {
     }
   });
 
-  const filteredLiquidaciones = liquidaciones.filter((l: Liquidacion) => {
-    if (filtroCliente && l.id_cliente !== filtroCliente) return false;
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return l.codigo?.toLowerCase().includes(search) || 
-           l.cliente?.nombre?.toLowerCase().includes(search);
-  });
+  const filteredLiquidaciones = useMemo(
+    () =>
+      filtroCliente
+        ? liquidaciones.filter((l: Liquidacion) => l.id_cliente === filtroCliente)
+        : liquidaciones,
+    [liquidaciones, filtroCliente],
+  );
 
-  const getClienteNombre = (clienteId: number) => {
-    const cliente = clientes.find((c: Cliente) => c.id_cliente === clienteId);
-    return cliente?.nombre || 'N/A';
-  };
+  const clientesPorId = useMemo(
+    () => new Map(clientes.map((c: Cliente) => [c.id_cliente, c.nombre])),
+    [clientes],
+  );
+
+  const getClienteNombre = (clienteId: number) =>
+    clientesPorId.get(clienteId) || 'N/A';
 
   // Quita el filtro por proveedor que llega desde la lista de Proveedores
   // (?proveedor=id) y vuelve a mostrar todas las liquidaciones.
@@ -446,9 +451,9 @@ export function LiquidacionesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <Receipt className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -458,13 +463,7 @@ export function LiquidacionesPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setShowCrearModal(true)}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Liquidación
-        </Button>
+        <CreateButton label="Nueva Liquidación" onClick={() => setShowCrearModal(true)} />
       </div>
 
       <div className="flex gap-4 border-b">
@@ -474,7 +473,7 @@ export function LiquidacionesPage() {
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === tab
-                ? 'text-teal-600 border-b-2 border-teal-600'
+                ? 'text-brand-600 border-b-2 border-brand-600'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -497,7 +496,7 @@ export function LiquidacionesPage() {
 
       {filtroCliente && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-sm font-medium text-teal-700">
+          <span className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full bg-brand-50 border border-brand-200 text-sm font-medium text-brand-700">
             <User className="h-3.5 w-3.5" />
             Proveedor: {getClienteNombre(filtroCliente)}
             <button
@@ -505,7 +504,7 @@ export function LiquidacionesPage() {
               onClick={limpiarFiltroProveedor}
               aria-label="Quitar filtro por proveedor"
               title="Quitar filtro por proveedor"
-              className="p-0.5 rounded-full text-teal-600 hover:bg-teal-100 hover:text-teal-900 transition-colors"
+              className="p-0.5 rounded-full text-brand-600 hover:bg-brand-100 hover:text-brand-900 transition-colors"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -519,23 +518,23 @@ export function LiquidacionesPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-teal-600" />
+                    <Tag className="h-4 w-4 text-brand-600" />
                     Código
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-teal-600" />
+                    <User className="h-4 w-4 text-brand-600" />
                     Proveedor
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Importe
                   </div>
                 </TableHead>
@@ -557,7 +556,7 @@ export function LiquidacionesPage() {
                 filteredLiquidaciones.map((liquidacion: Liquidacion) => (
                   <TableRow key={liquidacion.id_liquidacion} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item: liquidacion })}>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
                         {liquidacion.codigo}
                       </span>
@@ -578,7 +577,7 @@ export function LiquidacionesPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleViewDocument(liquidacion)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8"
                           title="Ver documento"
                         >
                           <Eye className="h-4 w-4" />
@@ -645,7 +644,7 @@ export function LiquidacionesPage() {
       {/* Sentinel para scroll infinito */}
       {hasMore && (
         <div ref={loadMoreRef} className="flex justify-center py-4">
-          <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-brand-500" />
         </div>
       )}
 
@@ -671,7 +670,7 @@ export function LiquidacionesPage() {
               form={CREAR_LIQUIDACION_FORM_ID}
               disabled={isSavingCrear}
               isLoading={isSavingCrear}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -687,17 +686,17 @@ export function LiquidacionesPage() {
       </FormModal>
 
       {showDetailModal && selectedLiquidacion && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="px-6 py-4 border-b flex justify-between items-center bg-gradient-to-r from-teal-50 to-cyan-50">
+            <div className="px-6 py-4 border-b flex justify-between items-center bg-gradient-to-r from-brand-50 to-brand-50">
               <h2 className="text-xl font-bold">Detalle de Liquidación</h2>
               <button onClick={() => { setShowDetailModal(false); setSelectedLiquidacion(null); }} className="text-gray-400 hover:text-gray-600">
                 <X className="w-6 h-6" />
               </button>
             </div>
             
-            <div className="p-6">
-              <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="p-4 md:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div>
                   <p className="text-sm text-gray-500">Código</p>
                   <p className="font-medium">{selectedLiquidacion.codigo}</p>
@@ -779,12 +778,12 @@ export function LiquidacionesPage() {
       )}
 
       {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <Receipt className="h-7 w-7" />
                   </div>
                   <div>
@@ -797,10 +796,10 @@ export function LiquidacionesPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Proveedor</p>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Proveedor</p>
                   <p className="font-bold text-gray-900">{detailModal.item.cliente?.nombre || getClienteNombre(detailModal.item.id_cliente)}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
@@ -816,15 +815,15 @@ export function LiquidacionesPage() {
                   <p className="font-bold text-lime-900 text-xl">{detailModal.item.neto_pagar?.toLocaleString()}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.item.liquidada ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                     {detailModal.item.liquidada ? 'Liquidada' : 'Pendiente'}
                   </span>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha Emisión</p>
+                <div className="bg-gradient-to-br from-brand-50 to-pink-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Fecha Emisión</p>
                   <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_emision)}</p>
                 </div>
               </div>
@@ -834,7 +833,7 @@ export function LiquidacionesPage() {
                   <div className="space-y-1 text-sm">
                     {detailModal.item.gasto_empresa ? <div className="flex justify-between"><span>Gasto Empresa (%)</span><span className="text-red-600">-{detailModal.item.gasto_empresa}%</span></div> : null}
                     {detailModal.item.comision_bancaria ? <div className="flex justify-between"><span>Comisión Bancaria (%)</span><span className="text-red-600">-{detailModal.item.comision_bancaria}%</span></div> : null}
-                    {detailModal.item.devengado ? <div className="flex justify-between font-medium"><span>Devengado</span><span className="text-blue-600">{detailModal.item.devengado?.toLocaleString()}</span></div> : null}
+                    {detailModal.item.devengado ? <div className="flex justify-between font-medium"><span>Devengado</span><span className="text-brand-600">{detailModal.item.devengado?.toLocaleString()}</span></div> : null}
                     {detailModal.item.tributario ? <div className="flex justify-between"><span>Tributario (%)</span><span className="text-red-600">-{detailModal.item.tributario}%</span></div> : null}
                   </div>
                 </div>
@@ -865,10 +864,10 @@ export function LiquidacionesPage() {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
               <button 
                 onClick={() => detailModal.item && handleViewDocument(detailModal.item)}
-                className="px-4 py-2 text-blue-700 bg-white border border-blue-300 rounded-xl hover:bg-blue-50 transition-colors font-medium flex items-center gap-2"
+                className="px-4 py-2 text-brand-700 bg-white border border-brand-300 rounded-xl hover:bg-brand-50 transition-colors font-medium flex items-center gap-2"
               >
                 <Eye className="h-4 w-4" />
                 Ver documento
@@ -888,16 +887,16 @@ export function LiquidacionesPage() {
       )}
 
       {printModal.isOpen && printModal.liquidacion && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-4 md:p-6 border-b border-gray-200">
               <div className="flex items-center gap-3">
                 <Printer className="h-6 w-6 text-gray-600" />
                 <h3 className="text-xl font-bold text-gray-900">Imprimir Liquidación</h3>
               </div>
               <p className="text-sm text-gray-500 mt-2">Complete los datos para la impresión</p>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               <div>
                 <Label className="text-sm font-medium">Autorizado por</Label>
                 <Input 
@@ -926,7 +925,7 @@ export function LiquidacionesPage() {
                 />
               </div>
             </div>
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <div className="p-4 md:p-6 border-t border-gray-200 flex justify-end gap-3">
               <button 
                 onClick={() => setPrintModal({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })} 
                 className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
@@ -935,7 +934,7 @@ export function LiquidacionesPage() {
               </button>
               <button 
                 onClick={handlePrint} 
-                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 font-medium flex items-center gap-2"
+                className="px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-lg hover:from-brand-600 hover:to-brand-700 font-medium flex items-center gap-2"
               >
                 <Printer className="h-4 w-4" />
                 Imprimir
@@ -947,16 +946,16 @@ export function LiquidacionesPage() {
       )}
 
       {approveModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in">
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-4 md:p-6 border-b border-gray-200">
               <div className="flex items-center gap-3">
                 <CheckCircle className="h-6 w-6 text-green-600" />
                 <h3 className="text-xl font-bold text-gray-900">Aprobar Liquidación</h3>
               </div>
               <p className="text-sm text-gray-500 mt-2">¿Está seguro de aprobar esta liquidación?</p>
             </div>
-            <div className="p-6 flex justify-end gap-3">
+            <div className="p-4 md:p-6 flex justify-end gap-3">
               <button
                 onClick={() => setApproveModal({ isOpen: false, id_liquidacion: null })}
                 className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, ShoppingBag, Loader2, Search } from 'lucide-react';
-import { Button } from '../../../../components/ui';
+import { ShoppingBag, Loader2, Search } from 'lucide-react';
+import { CreateButton,
+} from '../../../../components/ui';
 import { OfertasTable } from './OfertasTable';
 import type {
   OfertaTiendaWithDetails,
@@ -75,9 +76,9 @@ export function OfertasListView({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <ShoppingBag className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -87,13 +88,7 @@ export function OfertasListView({
             </p>
           </div>
         </div>
-        <Button
-          onClick={onAddNew}
-          className="gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Oferta
-        </Button>
+        <CreateButton label="Nueva Oferta" onClick={onAddNew} />
       </div>
 
       {/* Filtro por estado */}
@@ -105,7 +100,7 @@ export function OfertasListView({
             onClick={() => onEstadoFiltroChange(valor)}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
               estadoFiltro === valor
-                ? 'bg-violet-600 text-white'
+                ? 'bg-brand-600 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -131,7 +126,7 @@ export function OfertasListView({
             }}
             onFocus={() => setShowContratoDropdown(true)}
             placeholder="Buscar contrato..."
-            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
+            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
           />
         </div>
         {showContratoDropdown && (
@@ -143,7 +138,7 @@ export function OfertasListView({
                 <button
                   key={c.id_contrato}
                   type="button"
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-brand-50 transition-colors"
                   onClick={() => {
                     onSelectedContratoChange(c.id_contrato);
                     setContratoSearch('');
@@ -161,7 +156,7 @@ export function OfertasListView({
       {/* Tabla de ofertas o skeleton inicial */}
       {isLoading && ofertas.length === 0 ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-brand-500" />
           <span className="ml-3 text-sm text-gray-500">Cargando ofertas...</span>
         </div>
       ) : (
@@ -180,7 +175,7 @@ export function OfertasListView({
       {/* Sentinel para infinite scroll */}
       <div ref={loadMoreRef} className="flex justify-center py-4">
         {isFetchingMore && (
-          <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
+          <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
         )}
       </div>
     </div>

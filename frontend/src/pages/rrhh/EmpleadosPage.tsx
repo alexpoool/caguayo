@@ -12,7 +12,6 @@ import {
   type RrhhEstadoEmpleado,
 } from '../../types/rrhh';
 import {
-  Plus,
   Edit,
   Trash2,
   Users,
@@ -60,7 +59,9 @@ import {
   ConfirmModal,
   Modal,
   SearchSelect,
+  CreateButton,
 } from '../../components/ui';
+import { getCachedNumberFormat } from '../../utils/formato';
 
 const fmtHora = (v: string | null | undefined) =>
   v ? v.slice(0, 5) : null;
@@ -68,7 +69,7 @@ const fmtHora = (v: string | null | undefined) =>
 const fmtMoneda = (v: number | string | null | undefined) =>
   v === null || v === undefined || v === ''
     ? '—'
-    : new Intl.NumberFormat('es-CU', {
+    : getCachedNumberFormat('es-CU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(Number(v));
@@ -90,13 +91,13 @@ const inicialesEmpleado = (emp: { nombre: string; apellido: string }) =>
 const COLOR_ESTADO_EMPLEADO: Record<RrhhEstadoEmpleado, string> = {
   activo: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
   suspendido: 'bg-red-100 text-red-700 ring-red-200',
-  vacaciones: 'bg-sky-100 text-sky-700 ring-sky-200',
-  terminado: 'bg-slate-100 text-slate-600 ring-slate-200',
+  vacaciones: 'bg-brand-100 text-brand-700 ring-brand-200',
+  terminado: 'bg-gray-100 text-gray-600 ring-gray-200',
 };
 
 // Degradado del módulo RRHH (color propio, referenciado de la página de Monedas)
 const GRADIENTE =
-  'bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300';
+  'bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300';
 
 export function EmpleadosPage() {
   const queryClient = useQueryClient();
@@ -445,7 +446,7 @@ export function EmpleadosPage() {
       {/* Header con icono animado */}
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <Users className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline flex-wrap">
@@ -455,16 +456,13 @@ export function EmpleadosPage() {
             </p>
           </div>
         </div>
-        <Button onClick={handleNuevo} className={`gap-2 ${GRADIENTE}`}>
-          <Plus className="h-4 w-4" />
-          Nuevo empleado
-        </Button>
+        <CreateButton label="Nuevo empleado" onClick={handleNuevo} />
       </div>
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
           <CardHeader className="pb-3">
             <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Buscar por nombre, código, carnet o correo..."
                 value={searchTerm}
@@ -476,8 +474,8 @@ export function EmpleadosPage() {
           <CardContent>
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-96 gap-4">
-                <div className="p-4 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-full animate-pulse">
-                  <Users className="h-12 w-12 text-indigo-600 animate-spin" />
+                <div className="p-4 bg-gradient-to-br from-brand-100 to-brand-200 rounded-full animate-pulse">
+                  <Users className="h-12 w-12 text-brand-600 animate-spin" />
                 </div>
                 <div className="text-gray-600 font-medium">Cargando empleados...</div>
               </div>
@@ -500,7 +498,7 @@ export function EmpleadosPage() {
               </div>
             ) : empleados.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-gray-400">
-                <div className="p-4 bg-slate-50 rounded-full mb-2">
+                <div className="p-4 bg-gray-50 rounded-full mb-2">
                   <Users className="h-12 w-12 text-gray-300" />
                 </div>
                 <p className="text-lg font-medium mb-1">
@@ -511,25 +509,22 @@ export function EmpleadosPage() {
                 <p className="text-sm mb-4">
                   {searchTerm ? 'Prueba con otro término' : 'Comience creando un empleado nuevo'}
                 </p>
-                <Button onClick={handleNuevo} className={`gap-2 ${GRADIENTE}`}>
-                  <Plus className="h-4 w-4" />
-                  Nuevo empleado
-                </Button>
+                <CreateButton label="Nuevo empleado" onClick={handleNuevo} />
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader className="bg-gradient-to-r from-indigo-50 to-indigo-100">
+                  <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-100">
                     <TableRow>
                       <TableHead>
                         <div className="flex items-center gap-2">
-                          <Hash className="h-4 w-4 text-indigo-500" />
+                          <Hash className="h-4 w-4 text-brand-500" />
                           Código
                         </div>
                       </TableHead>
                       <TableHead>
                         <div className="flex items-center gap-2">
-                          <Type className="h-4 w-4 text-blue-500" />
+                          <Type className="h-4 w-4 text-brand-500" />
                           Empleado
                         </div>
                       </TableHead>
@@ -554,26 +549,26 @@ export function EmpleadosPage() {
                       <TableRow
                         key={emp.id}
                         onClick={() => setDetalle(emp)}
-                        className="cursor-pointer hover:bg-indigo-50/70 transition-colors"
+                        className="cursor-pointer hover:bg-brand-50/70 transition-colors"
                       >
                         <TableCell>
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-sm font-medium font-mono">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-sm font-medium font-mono">
                             <Hash className="h-3 w-3" />
                             {emp.codigo_empleado ?? '—'}
                           </span>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium text-slate-900">
+                          <div className="font-medium text-gray-900">
                             {emp.apellido}, {emp.nombre}
                           </div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-gray-500">
                             {emp.carnet_identidad ?? '—'}
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-600">
+                        <TableCell className="text-gray-600">
                           {emp.puesto_nombre ?? '—'}
                         </TableCell>
-                        <TableCell className="text-slate-600">
+                        <TableCell className="text-gray-600">
                           {emp.departamento_nombre ?? '—'}
                         </TableCell>
                         <TableCell
@@ -606,7 +601,7 @@ export function EmpleadosPage() {
                                       }
                                 );
                               }}
-                              className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50"
+                              className="h-8 w-8 p-0 text-brand-600 hover:bg-brand-50"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
@@ -621,7 +616,7 @@ export function EmpleadosPage() {
                                 e.stopPropagation();
                                 handleEditar(emp);
                               }}
-                              className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                              className="text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all"
                               title="Editar"
                             >
                               <Edit className="h-4 w-4" />
@@ -664,8 +659,8 @@ export function EmpleadosPage() {
         onClose={cerrarForm}
         className="!max-w-5xl overflow-hidden !rounded-none [&>button.absolute]:hidden"
       >
-        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-indigo-50 to-indigo-100 px-6 py-4 pr-12">
-          <div className="rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 p-2">
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+          <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
             <Users className="h-5 w-5 text-white" />
           </div>
           <div className="min-w-0">
@@ -675,7 +670,7 @@ export function EmpleadosPage() {
                 : 'Nuevo empleado'}
             </h2>
             {editing?.codigo_empleado && (
-              <p className="font-mono text-xs text-slate-500">
+              <p className="font-mono text-xs text-gray-500">
                 Código: {editing.codigo_empleado}
               </p>
             )}
@@ -685,7 +680,7 @@ export function EmpleadosPage() {
             onClick={cerrarForm}
             title="Cerrar"
             aria-label="Cerrar"
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-indigo-100 hover:text-slate-600"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -693,8 +688,8 @@ export function EmpleadosPage() {
         <form onSubmit={onSubmit} className="space-y-6 px-6 py-5">
               {/* Datos personales */}
               <section>
-                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <Users className="h-4 w-4 text-indigo-500" />
+                <h3 className="mb-3 text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-brand-500" />
                   Datos personales
                 </h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -706,7 +701,7 @@ export function EmpleadosPage() {
                       onChange={(v) => set('codigo_empleado', v)}
                       error={formErrors.codigo_empleado}
                       icono={Hash}
-                      color="text-indigo-500"
+                      color="text-brand-500"
                       placeholder="Ej. EMP-1234"
                       maxLength={20}
                     />
@@ -718,7 +713,7 @@ export function EmpleadosPage() {
                     onChange={(v) => set('nombre', v)}
                     error={formErrors.nombre}
                     icono={Type}
-                    color="text-blue-500"
+                    color="text-brand-500"
                   />
                   <CampoTexto
                     id="apellido"
@@ -753,7 +748,7 @@ export function EmpleadosPage() {
                     valor={formData.telefono ?? ''}
                     onChange={(v) => set('telefono', v)}
                     icono={Phone}
-                    color="text-purple-500"
+                    color="text-brand-500"
                   />
                   <CampoTexto
                     id="fecha_nacimiento"
@@ -762,7 +757,7 @@ export function EmpleadosPage() {
                     valor={formData.fecha_nacimiento ?? ''}
                     onChange={(v) => set('fecha_nacimiento', v)}
                     icono={Calendar}
-                    color="text-sky-500"
+                    color="text-brand-500"
                   />
                 </div>
                 <div className="mt-4">
@@ -772,14 +767,14 @@ export function EmpleadosPage() {
                     valor={formData.direccion ?? ''}
                     onChange={(v) => set('direccion', v)}
                     icono={MapPin}
-                    color="text-indigo-500"
+                    color="text-brand-500"
                   />
                 </div>
               </section>
 
               {/* Asignación laboral */}
               <section>
-                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <h3 className="mb-3 text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-amber-500" />
                   Asignación laboral
                 </h3>
@@ -794,7 +789,7 @@ export function EmpleadosPage() {
                       onChange={(e) =>
                         set('puesto_id', e.target.value === '' ? null : Number(e.target.value))
                       }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all duration-200"
                     >
                       <option value="">Sin puesto</option>
                       {puestos.map((p) => (
@@ -817,7 +812,7 @@ export function EmpleadosPage() {
                           e.target.value === '' ? null : Number(e.target.value)
                         )
                       }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all duration-200"
                     >
                       <option value="">Sin departamento</option>
                       {departamentos.map((d) => (
@@ -829,7 +824,7 @@ export function EmpleadosPage() {
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-gray-700">
-                      <FileText className="h-4 w-4 text-sky-500" />
+                      <FileText className="h-4 w-4 text-brand-500" />
                       Tipo de contrato
                     </Label>
                     <select
@@ -840,7 +835,7 @@ export function EmpleadosPage() {
                           e.target.value === '' ? null : Number(e.target.value)
                         )
                       }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all duration-200"
                     >
                       <option value="">Sin tipo de contrato</option>
                       {tiposContrato.map((t) => (
@@ -855,7 +850,7 @@ export function EmpleadosPage() {
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label className="flex items-center gap-2 text-gray-700">
-                      <UserCheck className="h-4 w-4 text-indigo-500" />
+                      <UserCheck className="h-4 w-4 text-brand-500" />
                       Supervisor
                     </Label>
                     <SearchSelect
@@ -867,7 +862,7 @@ export function EmpleadosPage() {
                       loading={buscandoSupervisor}
                       emptyMessage="Sin resultados"
                     />
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-gray-400">
                       Se busca por nombre o código. El propio empleado no puede
                       ser su supervisor.
                     </p>
@@ -877,8 +872,8 @@ export function EmpleadosPage() {
 
               {/* Contrato y jornada */}
               <section>
-                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-purple-500" />
+                <h3 className="mb-3 text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-brand-500" />
                   Contrato y jornada
                 </h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -889,7 +884,7 @@ export function EmpleadosPage() {
                     valor={formData.fecha_contratacion ?? ''}
                     onChange={(v) => set('fecha_contratacion', v)}
                     icono={Calendar}
-                    color="text-indigo-500"
+                    color="text-brand-500"
                   />
                   <CampoTexto
                     id="salario"
@@ -916,7 +911,7 @@ export function EmpleadosPage() {
                     }
                     error={formErrors.horas_a_trabajar}
                     icono={Clock}
-                    color="text-purple-500"
+                    color="text-brand-500"
                   />
                   <CampoTexto
                     id="dias_a_trabajar"
@@ -932,7 +927,7 @@ export function EmpleadosPage() {
                     }
                     error={formErrors.dias_a_trabajar}
                     icono={Calendar}
-                    color="text-purple-500"
+                    color="text-brand-500"
                   />
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-gray-700">
@@ -942,7 +937,7 @@ export function EmpleadosPage() {
                     <select
                       value={formData.estado}
                       onChange={(e) => set('estado', e.target.value as RrhhEstadoEmpleado)}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all duration-200"
                     >
                       {RRHH_ESTADOS_EMPLEADO.map((e) => (
                         <option key={e.valor} value={e.valor}>
@@ -977,7 +972,7 @@ export function EmpleadosPage() {
                           });
                         }
                       }}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all duration-200"
                     >
                       <option value="NO_LIBRE">NO_LIBRE (asistir en horario)</option>
                       <option value="LIBRE">LIBRE (sin horario fijo)</option>
@@ -993,7 +988,7 @@ export function EmpleadosPage() {
                         valor={formData.horario_inicio ?? ''}
                         onChange={(v) => set('horario_inicio', v)}
                         icono={Clock}
-                        color="text-slate-500"
+                        color="text-gray-500"
                       />
                       <CampoTexto
                         id="horario_final"
@@ -1003,18 +998,18 @@ export function EmpleadosPage() {
                         onChange={(v) => set('horario_final', v)}
                         error={formErrors.horario_final}
                         icono={Clock}
-                        color="text-slate-500"
+                        color="text-gray-500"
                       />
                     </>
                   ) : (
-                    <div className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500 sm:col-span-2">
-                      <Clock className="h-4 w-4 shrink-0 text-slate-400" />
+                    <div className="flex items-center gap-2 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-500 sm:col-span-2">
+                      <Clock className="h-4 w-4 shrink-0 text-gray-400" />
                       Sin horario fijo: este empleado no tiene hora de entrada ni
                       de salida.
                     </div>
                   )}
                 </div>
-                <p className="mt-3 text-xs text-slate-400">
+                <p className="mt-3 text-xs text-gray-400">
                   Las horas por día y los días por mes se usan para derivar la
                   tarifa horaria con la que se paga la nómina. Si faltan, el
                   empleado aparecerá con 0 en la nómina.
@@ -1046,8 +1041,8 @@ export function EmpleadosPage() {
       >
         {detalle && (
           <>
-            <div className="sticky top-0 z-10 flex items-center gap-4 border-b bg-gradient-to-r from-indigo-50 to-indigo-100 px-6 py-4 pr-12">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-lg font-bold text-white shadow">
+            <div className="sticky top-0 z-10 flex items-center gap-4 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-600 text-lg font-bold text-white shadow">
                 {inicialesEmpleado(detalle)}
               </div>
               <div className="min-w-0">
@@ -1055,7 +1050,7 @@ export function EmpleadosPage() {
                   {detalle.apellido}, {detalle.nombre}
                 </h2>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span className="rounded bg-white/70 px-2 py-0.5 font-mono text-xs text-indigo-700 ring-1 ring-indigo-200">
+                  <span className="rounded bg-white/70 px-2 py-0.5 font-mono text-xs text-brand-700 ring-1 ring-brand-200">
                     {detalle.codigo_empleado ?? 'Sin código'}
                   </span>
                   <span
@@ -1072,7 +1067,7 @@ export function EmpleadosPage() {
                 onClick={() => setDetalle(null)}
                 title="Cerrar"
                 aria-label="Cerrar"
-                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-indigo-100 hover:text-slate-600"
+                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1080,14 +1075,14 @@ export function EmpleadosPage() {
 
             <div className="space-y-6 px-6 py-5">
               <section>
-                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <Users className="h-4 w-4 text-indigo-500" />
+                <h3 className="mb-3 text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-brand-500" />
                   Datos personales
                 </h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <DatoDetalle
                     icono={CreditCard}
-                    color="text-indigo-500"
+                    color="text-brand-500"
                     etiqueta="Carnet de identidad"
                     valor={detalle.carnet_identidad || '—'}
                   />
@@ -1099,7 +1094,7 @@ export function EmpleadosPage() {
                   />
                   <DatoDetalle
                     icono={Mail}
-                    color="text-sky-500"
+                    color="text-brand-500"
                     etiqueta="Correo"
                     valor={detalle.correo || '—'}
                   />
@@ -1121,7 +1116,7 @@ export function EmpleadosPage() {
               </section>
 
               <section>
-                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <h3 className="mb-3 text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-amber-500" />
                   Asignación laboral
                 </h3>
@@ -1134,13 +1129,13 @@ export function EmpleadosPage() {
                   />
                   <DatoDetalle
                     icono={Building2}
-                    color="text-indigo-500"
+                    color="text-brand-500"
                     etiqueta="Departamento"
                     valor={detalle.departamento_nombre || '—'}
                   />
                   <DatoDetalle
                     icono={FileText}
-                    color="text-sky-500"
+                    color="text-brand-500"
                     etiqueta="Tipo de contrato"
                     valor={detalle.tipo_contrato_nombre || '—'}
                   />
@@ -1154,14 +1149,14 @@ export function EmpleadosPage() {
               </section>
 
               <section>
-                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-purple-500" />
+                <h3 className="mb-3 text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-brand-500" />
                   Contrato y jornada
                 </h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <DatoDetalle
                     icono={Calendar}
-                    color="text-indigo-500"
+                    color="text-brand-500"
                     etiqueta="Fecha de contratación"
                     valor={fmtFecha(detalle.fecha_contratacion)}
                   />
@@ -1183,7 +1178,7 @@ export function EmpleadosPage() {
                   />
                   <DatoDetalle
                     icono={Clock}
-                    color="text-slate-500"
+                    color="text-gray-500"
                     etiqueta="Horario"
                     valor={
                       detalle.tipo_asistencia === 'LIBRE' ||
@@ -1194,7 +1189,7 @@ export function EmpleadosPage() {
                   />
                   <DatoDetalle
                     icono={Timer}
-                    color="text-sky-500"
+                    color="text-brand-500"
                     etiqueta="Horas a trabajar"
                     valor={
                       detalle.horas_a_trabajar != null
@@ -1306,7 +1301,7 @@ function CampoTexto({
   tipo = 'text',
   error,
   icono: Icono,
-  color = 'text-indigo-500',
+  color = 'text-brand-500',
   placeholder,
   maxLength,
 }: {
@@ -1334,7 +1329,7 @@ function CampoTexto({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         maxLength={maxLength}
-        className={`transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${error ? 'border-red-500' : ''}`}
+        className={`transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 ${error ? 'border-red-500' : ''}`}
       />
       {error && (
         <p className="flex items-center gap-1 text-xs text-red-600">
@@ -1362,10 +1357,10 @@ function DatoDetalle({
     <div className="flex items-start gap-2.5">
       <Icono className={`mt-0.5 h-4 w-4 shrink-0 ${color}`} />
       <div className="min-w-0">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
           {etiqueta}
         </p>
-        <p className="break-words text-sm font-medium text-slate-900">{valor}</p>
+        <p className="break-words text-sm font-medium text-gray-900">{valor}</p>
       </div>
     </div>
   );

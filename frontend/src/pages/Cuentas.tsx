@@ -1,8 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useDeferredValue } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet,
-  Plus,
   Edit,
   Trash2,
   Search,
@@ -34,6 +33,7 @@ import {
   TableCell,
   ConfirmModal,
   FormModal,
+  CreateButton,
 } from "../components/ui";
 import { dependenciasService } from "../services/administracion";
 import { monedaService } from "../services/api";
@@ -46,6 +46,7 @@ export function CuentasPage() {
   const [view, setView] = useState<"list" | "form">("list");
   const [editingCuenta, setEditingCuenta] = useState<CuentaDependencia | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -77,15 +78,15 @@ export function CuentasPage() {
   });
 
   const filteredCuentas = useMemo(() => {
-    if (!searchTerm) return cuentas;
-    const term = searchTerm.toLowerCase();
+    if (!deferredSearchTerm) return cuentas;
+    const term = deferredSearchTerm.toLowerCase();
     return cuentas.filter(
       (c) =>
         (c.titular && c.titular.toLowerCase().includes(term)) ||
         (c.dependencia_nombre && c.dependencia_nombre.toLowerCase().includes(term)) ||
         (c.numero_cuenta && c.numero_cuenta.toLowerCase().includes(term))
     );
-  }, [cuentas, searchTerm]);
+  }, [cuentas, deferredSearchTerm]);
 
   const { data: dependencias = [] } = useQuery({
     queryKey: ["dependencias", "todas"],
@@ -232,7 +233,7 @@ export function CuentasPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="p-4 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full animate-pulse">
+        <div className="p-4 bg-gradient-to-br from-emerald-100 to-brand-100 rounded-full animate-pulse">
           <Wallet className="h-12 w-12 text-emerald-600 animate-spin" />
         </div>
         <div className="text-gray-600 font-medium">Cargando cuentas...</div>
@@ -263,9 +264,9 @@ export function CuentasPage() {
 
   return (
     <div className="space-y-4 animate-fade-in-up">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-emerald-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <Wallet className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -287,23 +288,13 @@ export function CuentasPage() {
             className="pl-10"
           />
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setEditingCuenta(null);
-            setView("form");
-          }}
-          className="ml-auto gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Cuenta
-        </Button>
+        <CreateButton label="Nueva Cuenta" onClick={() => { resetForm(); setEditingCuenta(null); setView("form"); }} />
       </div>
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-emerald-50 to-teal-50">
+            <TableHeader className="bg-gradient-to-r from-emerald-50 to-brand-50">
               <TableRow>
                 <TableHead className="flex items-center gap-2">
                   <Hash className="h-4 w-4 text-emerald-600" />
@@ -311,7 +302,7 @@ export function CuentasPage() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-blue-500" />
+                    <User className="h-4 w-4 text-brand-500" />
                     Titular
                   </div>
                 </TableHead>
@@ -323,13 +314,13 @@ export function CuentasPage() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-cyan-500" />
+                    <CreditCard className="h-4 w-4 text-brand-500" />
                     Núm. Cuenta
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Banknote className="h-4 w-4 text-purple-500" />
+                    <Banknote className="h-4 w-4 text-brand-500" />
                     Moneda
                   </div>
                 </TableHead>
@@ -347,22 +338,12 @@ export function CuentasPage() {
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12">
                     <div className="flex flex-col items-center justify-center text-gray-400">
-                      <div className="p-4 bg-slate-50 rounded-full mb-4">
+                      <div className="p-4 bg-gray-50 rounded-full mb-4">
                         <Wallet className="h-12 w-12 text-gray-300" />
                       </div>
                       <p className="text-lg font-medium mb-2">No se encontraron cuentas</p>
                       <p className="text-sm mb-4">Comience creando una nueva cuenta bancaria</p>
-                      <Button
-                        onClick={() => {
-                          resetForm();
-                          setEditingCuenta(null);
-                          setView("form");
-                        }}
-                        className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Crear Cuenta
-                      </Button>
+                      <CreateButton label="Crear Cuenta" onClick={() => { resetForm(); setEditingCuenta(null); setView("form"); }} />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -384,7 +365,7 @@ export function CuentasPage() {
                     </TableCell>
                     <TableCell>{getMonedaNombre(cuenta)}</TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-sm">
                         <Building className="h-3 w-3" />
                         {cuenta.dependencia_nombre || `#${cuenta.id_dependencia}`}
                       </span>
@@ -395,7 +376,7 @@ export function CuentasPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(cuenta)}
-                          className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                          className="text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
@@ -454,7 +435,7 @@ export function CuentasPage() {
               form={CUENTA_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-emerald-500 to-brand-600 hover:from-emerald-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               {editingCuenta ? "Actualizar" : "Guardar"}
             </Button>
@@ -463,9 +444,9 @@ export function CuentasPage() {
       >
         <form id={CUENTA_FORM_ID} onSubmit={handleSubmit}>
           <Card className="border-0 shadow-none">
-            <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-teal-50">
+            <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-brand-50">
               <CardTitle className="flex items-center gap-2">
-                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg">
+                <div className="p-2 bg-gradient-to-br from-emerald-500 to-brand-600 rounded-lg">
                   <CreditCard className="h-5 w-5 text-white" />
                 </div>
                 Información de la Cuenta
@@ -474,11 +455,11 @@ export function CuentasPage() {
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Building className="h-5 w-5 text-blue-500" />
+                  <Building className="h-5 w-5 text-brand-500" />
                   Dependencia *
                 </Label>
                 <select
-                  className={`w-full mt-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white ${formErrors.id_dependencia ? "border-red-500" : "border-gray-300"}`}
+                  className={`w-full mt-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white ${formErrors.id_dependencia ? "border-red-500" : "border-gray-300"}`}
                   value={formData.id_dependencia || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, id_dependencia: parseInt(e.target.value) || 0 })
@@ -498,11 +479,11 @@ export function CuentasPage() {
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Banknote className="h-5 w-5 text-purple-500" />
+                  <Banknote className="h-5 w-5 text-brand-500" />
                   Moneda
                 </Label>
                 <select
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                   value={formData.id_moneda || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, id_moneda: parseInt(e.target.value) || undefined })
@@ -553,7 +534,7 @@ export function CuentasPage() {
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Hash className="h-5 w-5 text-cyan-500" />
+                  <Hash className="h-5 w-5 text-brand-500" />
                   Número de Cuenta *
                 </Label>
                 <Input
@@ -589,7 +570,7 @@ export function CuentasPage() {
 
               <div className="md:col-span-2 space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Globe className="h-5 w-5 text-indigo-500" />
+                  <Globe className="h-5 w-5 text-brand-500" />
                   Dirección *
                 </Label>
                 <Input

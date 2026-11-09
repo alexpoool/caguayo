@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import {
   subcategoriasService,
 } from "../services/api";
 import { FichaCostoModal } from "../components/fichas/FichaCostoModal";
+import { coincideBusqueda, normalizarBusqueda } from "../utils/busqueda";
 import type {
   AnexoOperacionesProducto,
   AnexoOperacionesDevolucion,
@@ -96,8 +97,9 @@ import {
   TableHead,
   TableCell,
   FormModal,
+  CreateButton,
 } from "../components/ui";
-import { formatFecha } from "../utils/fecha";
+import { formatFecha, toISODateLocal} from "../utils/fecha";
 
 const ANEXO_FORM_ID = "anexo-form";
 
@@ -109,7 +111,7 @@ export function AnexosPage() {
     anexo: Anexo | null;
   }>({ isOpen: false, anexo: null });
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = toISODateLocal();
   const [formData, setFormData] = useState({
     id_convenio: 0,
     nombre_anexo: "",
@@ -220,6 +222,20 @@ export function AnexosPage() {
     queryKey: ["productos"],
     queryFn: () => productosService.getProductos(),
   });
+
+  const conveniosFiltrados = useMemo(() => {
+    const termino = normalizarBusqueda(convenioSearch).trim();
+    if (!termino) return convenios;
+    return convenios.filter((c: any) =>
+      coincideBusqueda(c.nombre_convenio, termino),
+    );
+  }, [convenios, convenioSearch]);
+
+  const productosFiltrados = useMemo(() => {
+    const termino = normalizarBusqueda(busquedaProducto).trim();
+    if (!termino) return productos;
+    return productos.filter((p: any) => coincideBusqueda(p.nombre, termino));
+  }, [productos, busquedaProducto]);
 
   const { data: monedas = [] } = useQuery({
     queryKey: ["monedas"],
@@ -375,15 +391,20 @@ export function AnexosPage() {
   ): number => Math.max(0, item.entrada - (item.vendido ?? 0));
 
   /** Unidades que quedan tras descontar lo que ya se marcaron en este formulario. */
+  const devolucionesPorItem = useMemo(
+    () => new Map(devoluciones.map((d) => [d.id_item_anexo, d.cantidad])),
+    [devoluciones],
+  );
+
   const disponibleDe = (item: NonNullable<Anexo["items_anexo"]>[number]): number => {
-    const pendiente = devoluciones.find((d) => d.id_item_anexo === item.id_item_anexo);
-    return Math.max(0, baseDisponibleDe(item) - (pendiente?.cantidad ?? 0));
+    const pendiente = devolucionesPorItem.get(item.id_item_anexo) ?? 0;
+    return Math.max(0, baseDisponibleDe(item) - pendiente);
   };
 
   const setDevolucion = (id_item_anexo: number, cantidad: number) => {
     setDevoluciones((prev) => {
-      if (cantidad <= 0) return prev.filter((d) => d.id_item_anexo !== id_item_anexo);
       const resto = prev.filter((d) => d.id_item_anexo !== id_item_anexo);
+      if (cantidad <= 0) return resto;
       return [...resto, { id_item_anexo, cantidad }];
     });
   };
@@ -495,7 +516,7 @@ export function AnexosPage() {
             form={ANEXO_FORM_ID}
             disabled={isSavingAnexo}
             isLoading={isSavingAnexo}
-            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
           >
             {editingAnexo ? "Aplicar operaciones" : "Crear"}
           </Button>
@@ -505,7 +526,7 @@ export function AnexosPage() {
       <form id={ANEXO_FORM_ID} onSubmit={handleSubmit}>
           {/* Encabezado: mismo formulario para crear y editar. Al editar los campos
               quedan deshabilitados porque el endpoint no los modifica. */}
-          <Card className="shadow-md border-gray-200 border-l-4 border-l-teal-500">
+          <Card className="shadow-md border-gray-200 border-l-4 border-l-brand-500">
             <CardContent className="pt-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div ref={convenioRef} className="relative">
@@ -525,15 +546,12 @@ export function AnexosPage() {
                   />
                   {convenioDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl ring-1 ring-black/5 max-h-48 overflow-y-auto">
-                      {convenios
-                        .filter((c: any) =>
-                          c.nombre_convenio.toLowerCase().includes(convenioSearch.toLowerCase())
-                        )
+                      {conveniosFiltrados
                         .map((c: any) => (
                           <div
                             key={c.id_convenio}
-                            className={`px-3 py-2.5 cursor-pointer text-sm transition-colors hover:bg-teal-50 border-b border-gray-100 last:border-b-0 ${
-                              formData.id_convenio === c.id_convenio ? "bg-teal-100 font-semibold text-teal-800" : "text-gray-700"
+                            className={`px-3 py-2.5 cursor-pointer text-sm transition-colors hover:bg-brand-50 border-b border-gray-100 last:border-b-0 ${
+                              formData.id_convenio === c.id_convenio ? "bg-brand-100 font-semibold text-brand-800" : "text-gray-700"
                             }`}
                             onClick={() => {
                               setFormData({ ...formData, id_convenio: c.id_convenio });
@@ -544,9 +562,7 @@ export function AnexosPage() {
                             {c.nombre_convenio}
                           </div>
                         ))}
-                      {convenios.filter((c: any) =>
-                        c.nombre_convenio.toLowerCase().includes(convenioSearch.toLowerCase())
-                      ).length === 0 && (
+                      {conveniosFiltrados.length === 0 && (
                         <div className="px-3 py-3 text-sm text-gray-400 text-center">Sin resultados</div>
                       )}
                     </div>
@@ -615,11 +631,11 @@ export function AnexosPage() {
             </p>
           )}
 
-          <Card className="mb-6 shadow-md border-gray-200 border-l-4 border-l-teal-500">
-            <CardHeader className="border-b bg-gradient-to-r from-teal-50/80 to-cyan-50/40">
+          <Card className="mb-6 shadow-md border-gray-200 border-l-4 border-l-brand-500">
+            <CardHeader className="border-b bg-gradient-to-r from-brand-50/80 to-brand-50/40">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <div className="p-1 bg-teal-100 rounded-lg">
-                  <Package className="h-4 w-4 text-teal-600" />
+                <div className="p-1 bg-brand-100 rounded-lg">
+                  <Package className="h-4 w-4 text-brand-600" />
                 </div>
                 {editingAnexo ? "Agregar productos al Anexo" : "Productos del Anexo *"}
               </CardTitle>
@@ -633,7 +649,7 @@ export function AnexosPage() {
               <div className="grid grid-cols-[4fr_1fr_auto] gap-4 items-start mb-4">
                 <div ref={dropdownProductoRef} className="relative">
                   <Label className="text-sm font-semibold mb-1.5 text-gray-700 flex items-center gap-2">
-                    <Package className="h-4 w-4 text-teal-500" />
+                    <Package className="h-4 w-4 text-brand-500" />
                     Producto *
                   </Label>
                   <div className="relative mt-1">
@@ -649,7 +665,7 @@ export function AnexosPage() {
                         setProductoSeleccionado(null);
                       }}
                       onFocus={() => setShowDropdownProducto(true)}
-                      className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
+                      className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
                     />
                     {productoSeleccionado && (
                       <button
@@ -666,13 +682,8 @@ export function AnexosPage() {
                   </div>
                   {showDropdownProducto && !productoSeleccionado && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl ring-1 ring-black/5 max-h-60 overflow-auto">
-                      {productos.filter((p: any) =>
-                        p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase())
-                      ).length > 0 ? (
-                        productos
-                          .filter((p: any) =>
-                            p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase())
-                          )
+                      {productosFiltrados.length > 0 ? (
+                        productosFiltrados
                           .map((p: any) => (
                             <button
                               key={p.id_producto}
@@ -685,11 +696,11 @@ export function AnexosPage() {
                                 setPrecioVenta(Number(p.precio_venta) || 0);
                                 setMonedaCompra(Number(p.moneda_compra) || (monedas[0]?.id_moneda) || 0);
                               }}
-                              className="w-full text-left px-4 py-3 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0 group"
+                              className="w-full text-left px-4 py-3 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0 group"
                             >
                               <div className="flex justify-between items-center">
-                                <span className="font-semibold text-gray-900 group-hover:text-teal-700 transition-colors">{p.nombre}</span>
-                                <span className="text-teal-600 text-xs font-semibold">
+                                <span className="font-semibold text-gray-900 group-hover:text-brand-700 transition-colors">{p.nombre}</span>
+                                <span className="text-brand-600 text-xs font-semibold">
                                   {p.precio_compra ? `Compra: $${Number(p.precio_compra).toFixed(2)}` : ""}
                                 </span>
                               </div>
@@ -718,41 +729,39 @@ export function AnexosPage() {
                   <Input
                     type="number"
                     min="1"
-                    className="mt-1 focus:ring-2 focus:ring-teal-500 outline-none"
+                    className="mt-1 focus:ring-2 focus:ring-brand-500 outline-none"
                     value={cantidad || ""}
                     onChange={(e) => setCantidad(parseInt(e.target.value) || 0)}
                     placeholder="0"
                   />
                 </div>
                 <div className="pt-7">
-                  <button
-                    type="button"
+                  <CreateButton
+                    variant="inline"
+                    label="Nuevo"
                     onClick={() => setShowNuevoProductoModal(true)}
-                    className="w-full py-2.5 px-4 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white rounded-lg transition-all duration-200 font-medium flex items-center justify-center gap-2 whitespace-nowrap shadow-md hover:shadow-lg"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Nuevo
-                  </button>
+                    className="w-full justify-center"
+                  />
                 </div>
               </div>
 
               {/* ── Precios Base ── */}
               {productoSeleccionado && (
-                <div className="mb-4 rounded-lg ring-1 ring-teal-200 overflow-hidden bg-gradient-to-r from-teal-50/30 to-white">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-50 to-teal-100/50 border-b border-teal-200">
-                    <div className="p-0.5 bg-teal-200 rounded">
-                      <DollarSign className="h-3.5 w-3.5 text-teal-700" />
+                <div className="mb-4 rounded-lg ring-1 ring-brand-200 overflow-hidden bg-gradient-to-r from-brand-50/30 to-white">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-50 to-brand-100/50 border-b border-brand-200">
+                    <div className="p-0.5 bg-brand-200 rounded">
+                      <DollarSign className="h-3.5 w-3.5 text-brand-700" />
                     </div>
                     <span className="text-sm font-semibold text-gray-700">Precios Base</span>
                   </div>
                   <div className="p-4">
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div>
                         <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Moneda</Label>
                         <select
                           value={monedaCompra || ""}
                           onChange={(e) => setMonedaCompra(parseInt(e.target.value) || 0)}
-                          className="w-full mt-1.5 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-white text-sm"
+                          className="w-full mt-1.5 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none bg-white text-sm"
                         >
                           <option value="">Seleccionar</option>
                           {monedas.map((m: any) => (
@@ -768,7 +777,7 @@ export function AnexosPage() {
                           type="number"
                           step="0.01"
                           min="0"
-                          className="mt-1.5 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                          className="mt-1.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                           value={precioCompra}
                           onChange={(e) => setPrecioCompra(parseFloat(e.target.value) || 0)}
                           placeholder="0.00"
@@ -780,7 +789,7 @@ export function AnexosPage() {
                           type="number"
                           step="0.01"
                           min="0"
-                          className="mt-1.5 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                          className="mt-1.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                           value={precioVenta}
                           onChange={(e) => setPrecioVenta(parseFloat(e.target.value) || 0)}
                           placeholder="0.00"
@@ -789,7 +798,7 @@ export function AnexosPage() {
                           type="button"
                           onClick={() => setShowFichaModal(true)}
                           disabled={!productoSeleccionado}
-                          className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-700 bg-teal-50 border border-teal-300 rounded-lg hover:bg-teal-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-700 bg-brand-50 border border-brand-300 rounded-lg hover:bg-brand-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Sparkles className="h-3.5 w-3.5" />
                           Sugerir precio
@@ -821,7 +830,7 @@ export function AnexosPage() {
               {/* ── Precios Adicionales ── */}
               {productoSeleccionado && (
                 <div className="mb-4 rounded-lg ring-1 ring-amber-200 bg-gradient-to-r from-amber-50/30 to-white overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-amber-50 to-amber-100/50 border-b border-amber-200">
+                  <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-gradient-to-r from-amber-50 to-amber-100/50 border-b border-amber-200">
                     <div className="flex items-center gap-2">
                       <div className="p-0.5 bg-amber-200 rounded">
                         <DollarSign className="h-3.5 w-3.5 text-amber-700" />
@@ -851,7 +860,7 @@ export function AnexosPage() {
                   )}
                   {preciosExtra.length > 0 && (
                     <div className="p-3">
-                      <div className="rounded-lg border border-gray-200 overflow-hidden">
+                      <div className="rounded-lg border border-gray-200 overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="bg-gray-50 border-b border-gray-200">
@@ -867,14 +876,14 @@ export function AnexosPage() {
                               return (
                                 <tr key={i} className="transition-colors hover:bg-amber-50/50 group">
                                   <td className="px-4 py-2.5">
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold">
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-brand-50 text-brand-700 rounded-md text-xs font-semibold">
                                       {moneda?.denominacion || "?"}
                                     </span>
                                   </td>
                                   <td className="px-4 py-2.5 text-right font-medium text-gray-700">
                                     {p.precio_compra ? Number(p.precio_compra).toFixed(2) : "-"}
                                   </td>
-                                  <td className="px-4 py-2.5 text-right font-medium text-teal-700">
+                                  <td className="px-4 py-2.5 text-right font-medium text-brand-700">
                                     {Number(p.precio_venta).toFixed(2)}
                                   </td>
                                   <td className="px-4 py-2.5">
@@ -886,7 +895,7 @@ export function AnexosPage() {
                                           setEditingPrecioIndex(i);
                                           setShowPreciosModal(true);
                                         }}
-                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                        className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-md transition-colors"
                                         title="Editar"
                                       >
                                         <Edit className="h-3.5 w-3.5" />
@@ -915,14 +924,7 @@ export function AnexosPage() {
               {/* ── Botón Agregar a la tabla ── */}
               {productoSeleccionado && (
                 <div className="flex justify-end mb-4">
-                  <Button
-                    type="button"
-                    onClick={addProductToList}
-                    className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Agregar a la tabla
-                  </Button>
+                  <CreateButton label="Agregar a la tabla" onClick={addProductToList} />
                 </div>
               )}
 
@@ -930,7 +932,7 @@ export function AnexosPage() {
               <div className="border rounded-lg overflow-hidden shadow-sm">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gradient-to-r from-teal-50 to-cyan-50">
+                    <TableRow className="bg-gradient-to-r from-brand-50 to-brand-50">
                       <TableHead className="text-xs uppercase tracking-wider">Producto</TableHead>
                       <TableHead className="text-xs uppercase tracking-wider">Entrada</TableHead>
                       <TableHead className="text-xs uppercase tracking-wider">Moneda</TableHead>
@@ -942,12 +944,12 @@ export function AnexosPage() {
                   <TableBody>
                     {formData.productos.length > 0 ? (
                       formData.productos.map((prod, index) => (
-                        <TableRow key={index} className="group transition-colors hover:bg-teal-50/40">
+                        <TableRow key={index} className="group transition-colors hover:bg-brand-50/40">
                           <TableCell className="font-medium text-gray-800">
                             {prod.nombre_producto || `Producto ${prod.id_producto}`}
                           </TableCell>
                           <TableCell>
-                            <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md text-xs font-bold">
+                            <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 bg-brand-50 text-brand-700 rounded-md text-xs font-bold">
                               {prod.entrada}
                             </span>
                           </TableCell>
@@ -961,7 +963,7 @@ export function AnexosPage() {
                               </span>
                             )}
                           </TableCell>
-                          <TableCell className="font-medium text-teal-700">${Number(prod.precio_venta).toFixed(2)}</TableCell>
+                          <TableCell className="font-medium text-brand-700">${Number(prod.precio_venta).toFixed(2)}</TableCell>
                           <TableCell className="text-gray-700">${Number(prod.precio_compra).toFixed(2)}</TableCell>
                           <TableCell>
                             <button
@@ -1039,7 +1041,7 @@ export function AnexosPage() {
                                 <span
                                   className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-0.5 rounded-md text-xs font-bold ${
                                     disponible > 0
-                                      ? "bg-blue-50 text-blue-700"
+                                      ? "bg-brand-50 text-brand-700"
                                       : "bg-gray-100 text-gray-400"
                                   }`}
                                 >
@@ -1083,17 +1085,17 @@ export function AnexosPage() {
         {/* ── Modal Nuevo Producto ── */}
         {showNuevoProductoModal &&
           createPortal(
-            <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-teal-100">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-gradient-to-r from-brand-50 to-brand-50 border-b border-brand-100">
                   <div className="flex items-center gap-3">
                     <div className="p-1.5 bg-white rounded-lg shadow-sm">
-                      <Package className="h-5 w-5 text-teal-600" />
+                      <Package className="h-5 w-5 text-brand-600" />
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                       Nuevo Producto
                       {nextCodigoData?.codigo && (
-                        <span className="px-2 py-0.5 text-sm font-mono text-teal-700 bg-white border border-teal-200 rounded-md">
+                        <span className="px-2 py-0.5 text-sm font-mono text-brand-700 bg-white border border-brand-200 rounded-md">
                           {nextCodigoData.codigo}
                         </span>
                       )}
@@ -1107,12 +1109,12 @@ export function AnexosPage() {
                     <X className="h-5 w-5 text-gray-500" />
                   </button>
                 </div>
-                <div className="p-6 space-y-4">
+                <div className="p-4 md:p-6 space-y-4">
                   <div>
                     <Label className="text-sm font-medium">Nombre *</Label>
                     <Input
                       required
-                      className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       value={nuevoProducto.nombre}
                       onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })}
                       placeholder="Nombre del producto"
@@ -1123,7 +1125,7 @@ export function AnexosPage() {
                     <select
                       value={nuevoProducto.id_subcategoria}
                       onChange={(e) => setNuevoProducto({ ...nuevoProducto, id_subcategoria: parseInt(e.target.value) || 1 })}
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-white"
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none bg-white"
                     >
                       {subcategorias.map((sc: any) => (
                         <option key={sc.id_subcategoria} value={sc.id_subcategoria}>{sc.nombre}</option>
@@ -1136,11 +1138,11 @@ export function AnexosPage() {
                       value={nuevoProducto.descripcion}
                       onChange={(e) => setNuevoProducto({ ...nuevoProducto, descripcion: e.target.value })}
                       rows={2}
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none resize-none"
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none"
                       placeholder="Descripción del producto"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-medium">Precio Compra *</Label>
                       <div className="flex gap-2 mt-1">
@@ -1148,12 +1150,12 @@ export function AnexosPage() {
                           type="number" step="0.01" min="0" required
                           value={nuevoProducto.precio_compra}
                           onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio_compra: parseFloat(e.target.value) || 0 })}
-                          className="flex-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500" placeholder="0.00"
+                          className="flex-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500" placeholder="0.00"
                         />
                         <select
                           value={nuevoProducto.moneda_compra}
                           onChange={(e) => setNuevoProducto({ ...nuevoProducto, moneda_compra: parseInt(e.target.value) || 1 })}
-                          className="w-24 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                          className="w-24 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                         >
                           {monedas.map((m: any) => (
                             <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>
@@ -1168,12 +1170,12 @@ export function AnexosPage() {
                           type="number" step="0.01" min="0" required
                           value={nuevoProducto.precio_venta}
                           onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio_venta: parseFloat(e.target.value) || 0 })}
-                          className="flex-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500" placeholder="0.00"
+                          className="flex-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500" placeholder="0.00"
                         />
                         <select
                           value={nuevoProducto.moneda_venta}
                           onChange={(e) => setNuevoProducto({ ...nuevoProducto, moneda_venta: parseInt(e.target.value) || 1 })}
-                          className="w-24 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                          className="w-24 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                         >
                           {monedas.map((m: any) => (
                             <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>
@@ -1186,14 +1188,14 @@ export function AnexosPage() {
                     <Label className="text-sm font-medium">Precio Mínimo *</Label>
                     <Input
                       type="number" step="0.01" min="0" required
-                      className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       value={nuevoProducto.precio_minimo}
                       onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio_minimo: parseFloat(e.target.value) || 0 })}
                       placeholder="0.00"
                     />
                   </div>
                 </div>
-                <div className="flex justify-end gap-3 p-6 border-t bg-gradient-to-r from-gray-50 to-white">
+                <div className="flex justify-end gap-3 p-4 md:p-6 border-t bg-gradient-to-r from-gray-50 to-white">
                   <Button type="button" variant="outline" onClick={() => setShowNuevoProductoModal(false)}>
                     Cancelar
                   </Button>
@@ -1208,7 +1210,7 @@ export function AnexosPage() {
                       toast.success("Producto creado (simulado)");
                       setShowNuevoProductoModal(false);
                     }}
-                    className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-md"
+                    className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-md"
                   >
                     <Save className="h-4 w-4" />
                     Guardar
@@ -1222,9 +1224,9 @@ export function AnexosPage() {
         {/* ── Modal Precios Adicionales ── */}
         {showPreciosModal &&
           createPortal(
-            <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-amber-50 to-amber-100/50 border-b border-amber-200">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-gradient-to-r from-amber-50 to-amber-100/50 border-b border-amber-200">
                   <div className="flex items-center gap-3">
                     <div className="p-1.5 bg-white rounded-lg shadow-sm">
                       <DollarSign className="h-5 w-5 text-amber-600" />
@@ -1241,13 +1243,13 @@ export function AnexosPage() {
                     <X className="h-5 w-5 text-gray-500" />
                   </button>
                 </div>
-                <div className="p-6 space-y-4">
+                <div className="p-4 md:p-6 space-y-4">
                   <div>
                     <Label className="text-sm font-medium">Moneda *</Label>
                     <select
                       value={currentPrecioForm.id_moneda}
                       onChange={(e) => setCurrentPrecioForm({ ...currentPrecioForm, id_moneda: parseInt(e.target.value) || 0 })}
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-white"
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none bg-white"
                     >
                       <option value={0}>Seleccionar moneda</option>
                       {monedas.map((m: any) => (
@@ -1261,7 +1263,7 @@ export function AnexosPage() {
                     <Label className="text-sm font-medium">Precio de Compra</Label>
                     <Input
                       type="number" step="0.01" min="0"
-                      className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       value={currentPrecioForm.precio_compra}
                       onChange={(e) => setCurrentPrecioForm({ ...currentPrecioForm, precio_compra: e.target.value })}
                       placeholder="0.00"
@@ -1271,14 +1273,14 @@ export function AnexosPage() {
                     <Label className="text-sm font-medium">Precio de Venta *</Label>
                     <Input
                       type="number" step="0.01" min="0.01" required
-                      className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       value={currentPrecioForm.precio_venta}
                       onChange={(e) => setCurrentPrecioForm({ ...currentPrecioForm, precio_venta: e.target.value })}
                       placeholder="0.00"
                     />
                   </div>
                 </div>
-                <div className="flex justify-end gap-3 p-6 border-t bg-gradient-to-r from-gray-50 to-white">
+                <div className="flex justify-end gap-3 p-4 md:p-6 border-t bg-gradient-to-r from-gray-50 to-white">
                   <Button type="button" variant="outline" onClick={() => setShowPreciosModal(false)}>
                     Cancelar
                   </Button>
@@ -1298,7 +1300,7 @@ export function AnexosPage() {
                       setShowPreciosModal(false);
                       setEditingPrecioIndex(null);
                     }}
-                    className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-md"
+                    className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-md"
                   >
                     <Save className="h-4 w-4" />
                     {editingPrecioIndex !== null ? "Actualizar" : "Agregar"}
@@ -1313,9 +1315,9 @@ export function AnexosPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <Package className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -1325,13 +1327,7 @@ export function AnexosPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={handleNew}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Anexo
-        </Button>
+        <CreateButton label="Nuevo Anexo" onClick={handleNew} />
       </div>
 
       <div className="flex gap-2">
@@ -1341,7 +1337,7 @@ export function AnexosPage() {
               placeholder="Buscar anexos..."
               value={searchTerm}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="pl-10 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             />
         </div>
       </div>
@@ -1349,7 +1345,7 @@ export function AnexosPage() {
       <Card className="overflow-hidden shadow-md border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 sticky top-0 z-10">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50 sticky top-0 z-10">
               <TableRow>
                 <TableHead className="text-xs uppercase tracking-wider">Convenio</TableHead>
                 <TableHead className="text-xs uppercase tracking-wider">Código</TableHead>
@@ -1364,7 +1360,7 @@ export function AnexosPage() {
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-16 text-gray-400">
                     <div className="flex flex-col items-center gap-3">
-                      <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+                      <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
                       <span className="text-sm">Cargando anexos...</span>
                     </div>
                   </TableCell>
@@ -1382,14 +1378,14 @@ export function AnexosPage() {
                 anexos.map((anexo, index) => (
                   <TableRow
                     key={anexo.id_anexo}
-                    className={`cursor-pointer transition-all duration-200 hover:bg-teal-50 hover:shadow-sm ${
+                    className={`cursor-pointer transition-all duration-200 hover:bg-brand-50 hover:shadow-sm ${
                       index % 2 === 0 ? "bg-white" : "bg-gray-50/40"
                     }`}
                     onClick={() => setAnexoDetailModal({ isOpen: true, anexo })}
                   >
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
                           {(anexo.convenios?.nombre_convenio || "S")[0].toUpperCase()}
                         </div>
                         <span className="font-medium text-gray-700">{anexo.convenios?.nombre_convenio || "Sin convenio"}</span>
@@ -1402,7 +1398,7 @@ export function AnexosPage() {
                     <TableCell className="text-gray-500 text-sm">{formatFecha(anexo.fecha)}</TableCell>
                     <TableCell>
                       {anexo.comision ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-700">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-100 text-brand-700">
                           {anexo.comision}%
                         </span>
                       ) : "-"}
@@ -1413,7 +1409,7 @@ export function AnexosPage() {
                           variant="ghost"
                           size="icon"
                           onClick={(e) => { e.stopPropagation(); handleEdit(anexo); }}
-                          className="text-gray-400 hover:text-teal-600 hover:bg-teal-50 h-8 w-8"
+                          className="text-gray-400 hover:text-brand-600 hover:bg-brand-50 h-8 w-8"
                           title="Editar anexo"
                         >
                           <Edit className="h-4 w-4" />
@@ -1438,12 +1434,12 @@ export function AnexosPage() {
       </Card>
 
       {anexoDetailModal.isOpen && anexoDetailModal.anexo && createPortal(
-        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-teal-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-gradient-to-r from-brand-50 to-brand-50 border-b border-brand-100">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 bg-white rounded-lg shadow-sm">
-                  <Package className="h-5 w-5 text-teal-600" />
+                  <Package className="h-5 w-5 text-brand-600" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">{anexoDetailModal.anexo.nombre_anexo}</h3>
@@ -1458,11 +1454,11 @@ export function AnexosPage() {
                 <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
-            <div className="p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 md:p-6 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="p-1.5 bg-teal-100 rounded-lg">
-                    <HeartHandshake className="h-4 w-4 text-teal-700" />
+                  <div className="p-1.5 bg-brand-100 rounded-lg">
+                    <HeartHandshake className="h-4 w-4 text-brand-700" />
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Convenio</p>
@@ -1470,8 +1466,8 @@ export function AnexosPage() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="p-1.5 bg-cyan-100 rounded-lg">
-                    <Calendar className="h-4 w-4 text-cyan-700" />
+                  <div className="p-1.5 bg-brand-100 rounded-lg">
+                    <Calendar className="h-4 w-4 text-brand-700" />
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Fecha</p>
@@ -1479,8 +1475,8 @@ export function AnexosPage() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="p-1.5 bg-blue-100 rounded-lg">
-                    <Hash className="h-4 w-4 text-blue-700" />
+                  <div className="p-1.5 bg-brand-100 rounded-lg">
+                    <Hash className="h-4 w-4 text-brand-700" />
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Código</p>
@@ -1501,16 +1497,16 @@ export function AnexosPage() {
               {anexoDetailModal.anexo.items_anexo && anexoDetailModal.anexo.items_anexo.length > 0 ? (
                 <div>
                   <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-                    <Package className="h-4 w-4 text-teal-500" />
+                    <Package className="h-4 w-4 text-brand-500" />
                     Productos
-                    <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 text-xs font-bold text-teal-700 bg-teal-100 rounded-full">
+                    <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 text-xs font-bold text-brand-700 bg-brand-100 rounded-full">
                       {anexoDetailModal.anexo.items_anexo.length}
                     </span>
                   </h4>
-                  <div className="rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="rounded-lg border border-gray-200 overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-gray-200">
+                        <tr className="bg-gradient-to-r from-brand-50 to-brand-50 border-b border-gray-200">
                           <th className="px-4 py-2.5 text-left font-semibold text-gray-600 text-xs uppercase tracking-wider">Producto</th>
                           <th className="px-4 py-2.5 text-center font-semibold text-gray-600 text-xs uppercase tracking-wider">Entrada</th>
                           <th className="px-4 py-2.5 text-center font-semibold text-gray-600 text-xs uppercase tracking-wider">Disponible</th>
@@ -1520,10 +1516,10 @@ export function AnexosPage() {
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {anexoDetailModal.anexo.items_anexo.map((item, i) => (
-                          <tr key={item.id_item_anexo} className={`transition-colors hover:bg-teal-50/50 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/30"}`}>
+                          <tr key={item.id_item_anexo} className={`transition-colors hover:bg-brand-50/50 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/30"}`}>
                             <td className="px-4 py-2.5 font-medium text-gray-800">{item.producto?.nombre || `Producto #${item.id_producto}`}</td>
                             <td className="px-4 py-2.5 text-center">
-                              <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md text-xs font-bold">
+                              <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 bg-brand-50 text-brand-700 rounded-md text-xs font-bold">
                                 {item.entrada}
                               </span>
                             </td>
@@ -1543,7 +1539,7 @@ export function AnexosPage() {
                                 );
                               })()}
                             </td>
-                            <td className="px-4 py-2.5 text-right font-medium text-teal-700">${Number(item.precio_venta).toFixed(2)}</td>
+                            <td className="px-4 py-2.5 text-right font-medium text-brand-700">${Number(item.precio_venta).toFixed(2)}</td>
                             <td className="px-4 py-2.5 text-right font-medium text-gray-700">${Number(item.precio_compra).toFixed(2)}</td>
                           </tr>
                         ))}

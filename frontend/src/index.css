@@ -4,6 +4,12 @@
 
 /* Mejoras de rendimiento para animaciones */
 @layer utilities {
+  /* Altura del shell con fallback para Safari antiguo. */
+  .app-height {
+    height: 100vh;
+    height: 100dvh;
+  }
+
   .animate-fade-in-up {
     will-change: transform, opacity;
   }
@@ -52,6 +58,15 @@
 @layer base {
   * {
     @apply transition-colors duration-200;
+  }
+}
+
+/* iOS Safari hace zoom al enfocar controles con fuente < 16px. */
+@media (max-width: 639px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select,
+  textarea {
+    font-size: 16px !important;
   }
 }
 

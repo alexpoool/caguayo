@@ -11,100 +11,100 @@ export function AdministracionHome() {
           <h1 className="text-xl font-bold tracking-wide md:text-2xl">
             MÓDULO DE ADMINISTRACIÓN
           </h1>
-          <p className="mt-1 text-sm text-slate-200 md:text-base">
+          <p className="mt-1 text-sm text-gray-200 md:text-base">
             Configuración y gestión del sistema
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-          <p className="mb-5 text-sm leading-relaxed text-slate-700">
+        <div className="rounded-xl border border-gray-100 bg-white p-4 md:p-6 shadow-sm">
+          <p className="mb-5 text-sm leading-relaxed text-gray-700">
             El módulo de Administración permite configurar y gestionar todos los
             aspectos del sistema. Desde parámetros generales hasta usuarios,
             permisos, dependencias y cuentas bancarias.
           </p>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
               <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Settings className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-gray-900">
                   Configuración
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                   Parámetros del sistema, catálogos, tipos y configuraciones
                   generales.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
               <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Coins className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-gray-900">
                   Monedas
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                   Gestión de monedas y tasas de cambio del sistema.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
               <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Users className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-gray-900">
                   Usuarios
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                   Administración de usuarios, credenciales y acceso al sistema.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
               <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Shield className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-gray-900">
                   Grupos y Permisos
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                   Gestión de grupos, roles y permisos por funcionalidad.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
               <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Building className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-gray-900">
                   Dependencias
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                   Configuración de dependencias, datos fiscales y estructura
                   organizativa.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+            <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50/60 p-4 transition-shadow hover:shadow-sm">
               <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Wallet className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-gray-900">
                   Cuentas Bancarias
                 </h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
                   Gestión de cuentas bancarias asociadas a dependencias.
                 </p>
               </div>

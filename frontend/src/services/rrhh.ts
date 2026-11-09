@@ -1,4 +1,5 @@
 import { apiClient } from "../lib/api";
+import { API_BASE_URL } from "../config/api";
 import type {
 	RrhhDepartamento,
 	RrhhDepartamentoCreate,
@@ -553,7 +554,7 @@ export const rrhhService = {
 		id: number,
 	): Promise<{ blob: Blob; nombre: string }> => {
 		const token = localStorage.getItem("auth_token");
-		const base = import.meta.env.VITE_API_BASE_URL;
+		const base = API_BASE_URL;
 		const resp = await fetch(`${base}/rrhh/nomina/${id}/recibo`, {
 			headers: token ? { Authorization: `Bearer ${token}` } : {},
 		});
@@ -755,7 +756,7 @@ export const rrhhService = {
 		id: number,
 	): Promise<{ blob: Blob; nombre: string }> => {
 		const token = localStorage.getItem("auth_token");
-		const base = import.meta.env.VITE_API_BASE_URL;
+		const base = API_BASE_URL;
 		const resp = await fetch(
 			`${base}/rrhh/pagos-resultado/${id}/documento`,
 			{

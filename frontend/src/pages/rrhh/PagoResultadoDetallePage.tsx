@@ -27,11 +27,12 @@ import {
   TableHeader,
   TableRow,
 } from '../../components/ui';
+import { getCachedNumberFormat } from '../../utils/formato';
 
 const fmtMoneda = (v: number | string | null | undefined) =>
   v === null || v === undefined || v === ''
     ? '—'
-    : new Intl.NumberFormat('es-CU', {
+    : getCachedNumberFormat('es-CU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(Number(v));
@@ -39,7 +40,7 @@ const fmtMoneda = (v: number | string | null | undefined) =>
 const fmtNumero = (v: number | string | null | undefined, max = 4) =>
   v === null || v === undefined || v === ''
     ? '—'
-    : new Intl.NumberFormat('es-CU', {
+    : getCachedNumberFormat('es-CU', {
         maximumFractionDigits: max,
       }).format(Number(v));
 
@@ -116,12 +117,12 @@ export function PagoResultadoDetallePage() {
           <button
             type="button"
             onClick={() => navigate('/rrhh/pagos-resultado')}
-            className="rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
             title="Volver al historial"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="rounded bg-gradient-to-br from-sky-500 to-sky-600 p-2 shadow-lg">
+          <div className="rounded bg-gradient-to-br from-brand-500 to-brand-600 p-2 shadow-lg">
             <Target className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -129,17 +130,17 @@ export function PagoResultadoDetallePage() {
               Pago por resultado
               {data ? ` #${data.id_pago_x_resultado}` : ''}
             </h1>
-            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500">
               <span>
                 {data?.periodo_nombre || 'Detalle del reparto por empleado'}
               </span>
               {data?.nomina_id && (
                 <>
-                  <span className="text-slate-300">·</span>
+                  <span className="text-gray-300">·</span>
                   <button
                     type="button"
                     onClick={() => navigate(`/rrhh/nomina/${data.nomina_id}`)}
-                    className="font-medium text-sky-700 hover:underline"
+                    className="font-medium text-brand-700 hover:underline"
                     title="Ver nómina"
                   >
                     Nómina{' '}
@@ -179,7 +180,7 @@ export function PagoResultadoDetallePage() {
 
       {isLoading ? (
         <Card>
-          <CardContent className="flex items-center justify-center gap-2 py-12 text-slate-500">
+          <CardContent className="flex items-center justify-center gap-2 py-12 text-gray-500">
             <Loader2 className="h-5 w-5 animate-spin" />
             Cargando pago...
           </CardContent>
@@ -188,7 +189,7 @@ export function PagoResultadoDetallePage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <AlertCircle className="h-8 w-8 text-red-500" />
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-gray-600">
               {error instanceof Error
                 ? error.message
                 : 'No se pudo cargar el pago por resultado.'}
@@ -203,30 +204,30 @@ export function PagoResultadoDetallePage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <Card>
               <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                   Monto total
                 </p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
+                <p className="mt-1 text-2xl font-bold text-gray-900">
                   {fmtMoneda(data.monto)}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                   Impuesto
                 </p>
                 <p className="mt-1 text-2xl font-bold text-red-600">
                   {fmtMoneda(totales.impuesto)}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-gray-500">
                   {fmtNumero(data.porcentaje_impuesto, 2)} %
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                   Neto a cobrar
                 </p>
                 <p className="mt-1 text-2xl font-bold text-emerald-700">
@@ -236,31 +237,31 @@ export function PagoResultadoDetallePage() {
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                   Promedio general
                 </p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
+                <p className="mt-1 text-2xl font-bold text-gray-900">
                   {fmtNumero(data.promedio_general)}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                   Suma de coeficientes
                 </p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
+                <p className="mt-1 text-2xl font-bold text-gray-900">
                   {fmtNumero(data.suma_coeficientes_empleados)}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                   Empleados pagados
                 </p>
-                <p className="mt-1 flex items-center gap-2 text-2xl font-bold text-slate-900">
-                  <Users className="h-5 w-5 text-sky-500" />
+                <p className="mt-1 flex items-center gap-2 text-2xl font-bold text-gray-900">
+                  <Users className="h-5 w-5 text-brand-500" />
                   {data.empleados.length}
                 </p>
               </CardContent>
@@ -271,14 +272,14 @@ export function PagoResultadoDetallePage() {
             <CardHeader className="pb-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <h2 className="text-base font-semibold text-slate-900">
+                  <h2 className="text-base font-semibold text-gray-900">
                     Datos del pago
                   </h2>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-gray-500">
                     {data.descripcion || 'Sin descripción'}
                   </p>
                 </div>
-                <div className="rounded-md bg-slate-50 px-3 py-2 text-right text-xs text-slate-500">
+                <div className="rounded-md bg-gray-50 px-3 py-2 text-right text-xs text-gray-500">
                   <p>
                     Periodo: {fmtFecha(data.inicio_periodo)} –{' '}
                     {fmtFecha(data.fin_periodo)}
@@ -316,23 +317,23 @@ export function PagoResultadoDetallePage() {
                     {data.empleados.map((fila) => (
                       <TableRow key={fila.id_pago_x_resultado_empleado}>
                         <TableCell>
-                          <div className="font-medium text-slate-900">
+                          <div className="font-medium text-gray-900">
                             {fila.empleado_nombre || 'Empleado'}
                           </div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-gray-500">
                             {fila.empleado_codigo || '—'}
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-600">
+                        <TableCell className="text-gray-600">
                           {fila.departamento_nombre || '—'}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums text-slate-700">
+                        <TableCell className="text-right tabular-nums text-gray-700">
                           {fmtNumero(fila.puntuacion)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums text-slate-700">
+                        <TableCell className="text-right tabular-nums text-gray-700">
                           {fmtNumero(fila.coeficiente)}
                         </TableCell>
-                        <TableCell className="text-right font-semibold tabular-nums text-slate-900">
+                        <TableCell className="text-right font-semibold tabular-nums text-gray-900">
                           {fmtMoneda(fila.devengado)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-red-600">
@@ -348,7 +349,7 @@ export function PagoResultadoDetallePage() {
                             onClick={() =>
                               navigate(`/rrhh/evaluaciones/${fila.evaluacion_id}`)
                             }
-                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-sky-600 transition-colors hover:bg-sky-50"
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-50"
                           >
                             <ClipboardCheck className="h-3.5 w-3.5" />
                             Ver
@@ -360,15 +361,15 @@ export function PagoResultadoDetallePage() {
                 </Table>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm">
-                <p className="flex items-start gap-1.5 text-xs text-slate-500">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-sm">
+                <p className="flex items-start gap-1.5 text-xs text-gray-500">
                   <Calculator className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   coeficiente = puntuación / promedio general · devengado =
                   (coeficiente × monto) / suma de coeficientes · impuesto =
                   devengado × porcentaje / 100 · neto = devengado − impuesto.
                 </p>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-right font-semibold">
-                  <span className="text-slate-700">
+                  <span className="text-gray-700">
                     Devengado: {fmtMoneda(totales.devengado)}
                   </span>
                   <span className="text-red-600">

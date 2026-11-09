@@ -37,12 +37,10 @@ export function getFacturaServicioDocument(
   const empresaTelefono = empresa?.telefono || '';
   const empresaWeb = empresa?.web || '';
   const empresaEmail = empresa?.email || '';
-  const empresaNit = empresa?.nit || '';
   const empresaReeup = empresa?.reeup || '';
 
   const clienteId = solicitud?.id_cliente;
   const cliente = clientesData.find(c => Number(c.id_cliente) === Number(clienteId));
-  const codigoProyecto = solicitud?.codigo_proyecto || 'N/A';
   const nombreCliente = cliente?.nombre || 'N/A';
   const provinciaCliente = cliente?.provincia?.nombre || 'N/A';
   const municipioCliente = cliente?.municipio?.nombre || 'N/A';
@@ -52,7 +50,6 @@ export function getFacturaServicioDocument(
   const cuentaCliente = cuentasClientesData && cuentasClientesData.length > 0 ? cuentasClientesData[0] : null;
 
   const nombreEtapa = etapa?.nombre_etapa || `Etapa #${etapa?.numero_etapa || 'N/A'}`;
-  const codigoSolicitud = solicitud?.codigo_solicitud || 'N/A';
   const nombreMoneda = moneda?.nombre || '';
   const simboloMoneda = moneda?.simbolo || '';
 

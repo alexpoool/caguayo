@@ -51,11 +51,11 @@ const BADGE_NIVEL: Record<string, string> = {
 
 /** Insignia de color por tipo de evento. */
 const BADGE_TIPO: Record<string, string> = {
-  REQUEST: 'bg-sky-100 text-sky-700',
-  SOLICITUD: 'bg-purple-100 text-purple-700',
+  REQUEST: 'bg-brand-100 text-brand-700',
+  SOLICITUD: 'bg-brand-100 text-brand-700',
   ACTION: 'bg-orange-100 text-orange-700',
   NOMINA: 'bg-emerald-100 text-emerald-700',
-  FRONTEND: 'bg-slate-200 text-slate-600',
+  FRONTEND: 'bg-gray-200 text-gray-600',
 };
 
 /** JSON legible del detalle; si no parsea, el texto crudo. */
@@ -206,8 +206,8 @@ export function AuditoriaPage() {
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[220px] flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[220px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Buscar en mensaje, endpoint o usuario..."
                 value={buscar}
@@ -230,7 +230,7 @@ export function AuditoriaPage() {
             <select
               value={tipo}
               onChange={(e) => setTipo(e.target.value)}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">Todos los tipos</option>
               {tipos.map((t) => (
@@ -242,7 +242,7 @@ export function AuditoriaPage() {
             <select
               value={nivel}
               onChange={(e) => setNivel(e.target.value)}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">Todos los niveles</option>
               {niveles.map((n) => (
@@ -273,7 +273,7 @@ export function AuditoriaPage() {
           {rangoInvertido ? (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
               <AlertCircle className="h-10 w-10 text-amber-400" />
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-gray-600">
                 La fecha «desde» es posterior a la fecha «hasta». Corrige el
                 rango para consultar el registro.
               </p>
@@ -346,13 +346,13 @@ function FilaAuditoria({
           expandida ? 'bg-rose-50/40' : ''
         }`}
       >
-        <TableCell className="whitespace-nowrap text-xs text-slate-600 tabular-nums">
+        <TableCell className="whitespace-nowrap text-xs text-gray-600 tabular-nums">
           {fmtMomento(fila.timestamp)}
         </TableCell>
         <TableCell>
           <span
             className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-              BADGE_TIPO[fila.tipo] ?? 'bg-slate-100 text-slate-600'
+              BADGE_TIPO[fila.tipo] ?? 'bg-gray-100 text-gray-600'
             }`}
           >
             {fila.tipo}
@@ -361,7 +361,7 @@ function FilaAuditoria({
         <TableCell>
           <span
             className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-              BADGE_NIVEL[fila.nivel] ?? 'bg-slate-100 text-slate-600'
+              BADGE_NIVEL[fila.nivel] ?? 'bg-gray-100 text-gray-600'
             }`}
           >
             {fila.nivel}
@@ -369,16 +369,16 @@ function FilaAuditoria({
         </TableCell>
         <TableCell className="max-w-[360px]">
           <span
-            className="block truncate text-slate-700"
+            className="block truncate text-gray-700"
             title={fila.mensaje}
           >
             {fila.mensaje}
           </span>
         </TableCell>
-        <TableCell className="whitespace-nowrap text-slate-600">
+        <TableCell className="whitespace-nowrap text-gray-600">
           {fila.usuario_nombre ?? '—'}
         </TableCell>
-        <TableCell className="whitespace-nowrap text-xs text-slate-500 tabular-nums">
+        <TableCell className="whitespace-nowrap text-xs text-gray-500 tabular-nums">
           {fila.ip ?? '—'}
         </TableCell>
         <TableCell>
@@ -387,7 +387,7 @@ function FilaAuditoria({
             size="icon"
             title={expandida ? 'Ocultar detalle' : 'Ver detalle'}
             onClick={onAlternar}
-            className="text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all"
+            className="text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition-all"
           >
             <ChevronRight
               className={`h-4 w-4 transition-transform ${
@@ -402,42 +402,42 @@ function FilaAuditoria({
           <TableCell colSpan={7} className="align-top">
             <div className="space-y-3">
               {(fila.method || fila.endpoint || fila.status_code !== null) && (
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
                   {fila.method && (
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-semibold">
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 font-semibold">
                       {fila.method}
                     </span>
                   )}
                   {fila.endpoint && (
-                    <code className="rounded bg-slate-100 px-1.5 py-0.5">
+                    <code className="rounded bg-gray-100 px-1.5 py-0.5">
                       {fila.endpoint}
                     </code>
                   )}
                   {fila.status_code !== null && (
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-semibold">
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 font-semibold">
                       HTTP {fila.status_code}
                     </span>
                   )}
                 </div>
               )}
               <div>
-                <p className="mb-1 text-xs font-semibold text-slate-500">
+                <p className="mb-1 text-xs font-semibold text-gray-500">
                   Navegador
                 </p>
-                <p className="text-xs text-slate-600 break-all">
+                <p className="text-xs text-gray-600 break-all">
                   {fila.navegador ?? '—'}
                 </p>
               </div>
               <div>
-                <p className="mb-1 text-xs font-semibold text-slate-500">
+                <p className="mb-1 text-xs font-semibold text-gray-500">
                   Detalle
                 </p>
                 {detalle ? (
-                  <pre className="overflow-x-auto rounded-md bg-slate-900 p-3 text-xs text-slate-100 whitespace-pre-wrap break-all">
+                  <pre className="overflow-x-auto rounded-md bg-gray-900 p-3 text-xs text-gray-100 whitespace-pre-wrap break-all">
                     {detalle}
                   </pre>
                 ) : (
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-gray-400">
                     Sin detalle adicional.
                   </p>
                 )}
@@ -456,7 +456,7 @@ function LoadingRows() {
   return (
     <div className="space-y-2 py-4">
       {[...Array(8)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-gray-100" />
       ))}
     </div>
   );
@@ -465,10 +465,10 @@ function LoadingRows() {
 function EmptyState({ mensaje }: { mensaje: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <div className="p-4 bg-slate-50 rounded-full mb-2">
-        <ShieldAlert className="h-10 w-10 text-slate-300" />
+      <div className="p-4 bg-gray-50 rounded-full mb-2">
+        <ShieldAlert className="h-10 w-10 text-gray-300" />
       </div>
-      <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
+      <p className="max-w-sm text-sm text-gray-500">{mensaje}</p>
     </div>
   );
 }
@@ -483,7 +483,7 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-gray-600">
         {mensaje || 'No se pudo cargar el registro de auditoría'}
       </p>
       <Button variant="outline" size="sm" onClick={onReintentar}>

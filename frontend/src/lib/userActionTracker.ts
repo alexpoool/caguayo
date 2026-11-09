@@ -3,7 +3,6 @@ import { apiClient } from '../lib/api';
 const userActionTracker = {
   track: async (modulo: string, accion: string, detalle?: any) => {
     try {
-      const token = localStorage.getItem('auth_token');
       const userStr = localStorage.getItem('auth_user');
       const user = userStr ? JSON.parse(userStr) : null;
       
@@ -23,7 +22,6 @@ const userActionTracker = {
   
   trackError: async (mensaje: string, detalle?: string) => {
     try {
-      const token = localStorage.getItem('auth_token');
       const userStr = localStorage.getItem('auth_user');
       const user = userStr ? JSON.parse(userStr) : null;
       

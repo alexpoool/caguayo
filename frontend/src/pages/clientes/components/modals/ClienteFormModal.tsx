@@ -55,7 +55,7 @@ export function ClienteFormModal({
             form={CLIENTE_FORM_ID}
             disabled={!isValid || isSubmitting}
             isLoading={isSubmitting}
-            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
           >
             {!isSubmitting && <Save className="h-4 w-4" />}
             {editingCliente ? "Actualizar" : "Crear"}

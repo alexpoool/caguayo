@@ -13,7 +13,6 @@ import {
 import {
   MinusCircle,
   PlusCircle,
-  Plus,
   Edit,
   Trash2,
   Save,
@@ -43,7 +42,9 @@ import {
   ConfirmModal,
   Modal,
   SearchSelect,
+  CreateButton,
 } from '../../components/ui';
+import { getCachedNumberFormat } from '../../utils/formato';
 
 type Pestana = 'deducciones' | 'bonificaciones' | 'consolidado';
 
@@ -142,7 +143,7 @@ const CONFIG: Record<'deducciones' | 'bonificaciones', ConfigMovimiento> = {
 const fmtMoneda = (v: number | string | null | undefined) =>
   v === null || v === undefined || v === ''
     ? '—'
-    : new Intl.NumberFormat('es-CU', {
+    : getCachedNumberFormat('es-CU', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(Number(v));
@@ -180,16 +181,16 @@ export function MovimientosPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+        <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
           <Scale className="h-6 w-6 text-brand-600" />
           Deducciones y bonificaciones
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-gray-500">
           Movimientos que se aplican en la nómina de cada empleado
         </p>
       </div>
 
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="flex gap-1 border-b border-gray-200">
         {(
           [
             ['deducciones', 'Deducciones', MinusCircle],
@@ -204,7 +205,7 @@ export function MovimientosPage() {
             className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               pestana === clave
                 ? 'border-brand-600 text-brand-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             <Icono className="h-4 w-4" />
@@ -490,8 +491,8 @@ function TablaMovimientos({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[200px] flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Buscar por nombre o código del empleado..."
                 value={busqueda}
@@ -514,7 +515,7 @@ function TablaMovimientos({
             <select
               value={filtroTipo}
               onChange={(e) => setFiltroTipo(e.target.value === '' ? '' : Number(e.target.value))}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">Todos los tipos</option>
               {opcionesTipo.map((t) => (
@@ -523,10 +524,11 @@ function TablaMovimientos({
                 </option>
               ))}
             </select>
-            <Button size="sm" onClick={abrirNuevo}>
-              <Plus className="h-4 w-4" />
-              Nueva {cfg.etiqueta.toLowerCase()}
-            </Button>
+            <CreateButton
+              label={`Nueva ${cfg.etiqueta.toLowerCase()}`}
+              onClick={abrirNuevo}
+              size="sm"
+            />
             {empleadoFiltro !== null && (
               <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100">
                 {empleadoPreseleccionado
@@ -576,10 +578,10 @@ function TablaMovimientos({
                 {filas.map((fila) => (
                   <TableRow key={fila.id}>
                     <TableCell>
-                      <div className="font-medium text-slate-900">
+                      <div className="font-medium text-gray-900">
                         {fila.empleado_nombre ?? '—'}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-gray-500">
                         {fila.empleado_codigo ?? '—'}
                         {fila.departamento_nombre ? ` · ${fila.departamento_nombre}` : ''}
                       </div>
@@ -588,8 +590,8 @@ function TablaMovimientos({
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
                           fila.es_porcentaje
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-slate-100 text-slate-600'
+                            ? 'bg-brand-100 text-brand-700'
+                            : 'bg-gray-100 text-gray-600'
                         }`}
                       >
                         {fila.tipo_nombre ?? '—'}
@@ -602,7 +604,7 @@ function TablaMovimientos({
                     <TableCell className="text-right font-semibold tabular-nums">
                       {fmtMoneda(fila.monto)}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-slate-600">
+                    <TableCell className="whitespace-nowrap text-gray-600">
                       {fmtFecha(fila.inicio_periodo)} – {fmtFecha(fila.fin_periodo)}
                     </TableCell>
                     <TableCell>
@@ -643,7 +645,7 @@ function TablaMovimientos({
                 : `Nueva ${cfg.etiqueta.toLowerCase()}`}
             </h2>
             {editando && (
-              <p className="truncate text-xs text-slate-500">
+              <p className="truncate text-xs text-gray-500">
                 {editando.empleado_nombre ?? ''} ·{' '}
                 {fmtFecha(editando.inicio_periodo)} –{' '}
                 {fmtFecha(editando.fin_periodo)}
@@ -655,7 +657,7 @@ function TablaMovimientos({
             onClick={cerrarModal}
             title="Cerrar"
             aria-label="Cerrar"
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -680,7 +682,7 @@ function TablaMovimientos({
               onChange={(e) =>
                 setFormData({ ...formData, tipo_id: e.target.value === '' ? '' : Number(e.target.value) })
               }
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">Elegir tipo...</option>
               {opcionesTipo.map((t) => (
@@ -689,7 +691,7 @@ function TablaMovimientos({
                 </option>
               ))}
             </select>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-gray-400">
               Los tipos se gestionan en{' '}
               <a href={cfg.rutaTipos} className="text-brand-600 underline">
                 Catálogos
@@ -697,7 +699,7 @@ function TablaMovimientos({
               .
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="valor">Valor {esPorcentaje ? '(%)' : ''}</Label>
               <Input
@@ -709,7 +711,7 @@ function TablaMovimientos({
                 onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
               />
               {esPorcentaje && (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-gray-400">
                   Porcentaje del salario. Máximo 100.
                 </p>
               )}
@@ -723,7 +725,7 @@ function TablaMovimientos({
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="inicio">Inicio del periodo</Label>
               <DateInput
@@ -813,7 +815,7 @@ function ConsolidadoVista() {
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-gray-400">
               Sin fechas se incluye todo. Los porcentuales se calculan con el
               salario actual.
             </p>
@@ -854,10 +856,10 @@ function ConsolidadoVista() {
                     {consolidado.empleados.map((fila) => (
                       <TableRow key={fila.empleado_id}>
                         <TableCell>
-                          <div className="font-medium text-slate-900">
+                          <div className="font-medium text-gray-900">
                             {fila.empleado_nombre}
                           </div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-gray-500">
                             {fila.empleado_codigo ?? '—'}
                             {fila.departamento_nombre ? ` · ${fila.departamento_nombre}` : ''}
                           </div>
@@ -870,7 +872,7 @@ function ConsolidadoVista() {
                         </TableCell>
                         <TableCell
                           className={`text-right font-semibold tabular-nums ${
-                            Number(fila.saldo) < 0 ? 'text-red-600' : 'text-slate-900'
+                            Number(fila.saldo) < 0 ? 'text-red-600' : 'text-gray-900'
                           }`}
                         >
                           {fmtMoneda(fila.saldo)}
@@ -902,17 +904,17 @@ function Resumen({
   return (
     <div
       className={`rounded-lg p-3 ${
-        destacado ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-slate-50'
+        destacado ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-gray-50'
       }`}
     >
       <div
         className={`text-2xl font-bold tabular-nums ${
-          destacado ? 'text-brand-600' : 'text-slate-700'
+          destacado ? 'text-brand-600' : 'text-gray-700'
         }`}
       >
         {valor}
       </div>
-      <div className="text-xs text-slate-500">{titulo}</div>
+      <div className="text-xs text-gray-500">{titulo}</div>
     </div>
   );
 }
@@ -935,8 +937,8 @@ function ActionButton({
       onClick={onClick}
       className={`rounded-md p-1.5 transition-colors ${
         danger
-          ? 'text-slate-400 hover:bg-red-50 hover:text-red-600'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+          ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
+          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
       }`}
     >
       {children}
@@ -948,7 +950,7 @@ function LoadingRows() {
   return (
     <div className="space-y-2 py-4">
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-gray-100" />
       ))}
     </div>
   );
@@ -957,8 +959,8 @@ function LoadingRows() {
 function EmptyState({ mensaje }: { mensaje: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <Scale className="h-10 w-10 text-slate-300" />
-      <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
+      <Scale className="h-10 w-10 text-gray-300" />
+      <p className="max-w-sm text-sm text-gray-500">{mensaje}</p>
     </div>
   );
 }
@@ -973,7 +975,7 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">{mensaje || 'No se pudieron cargar los datos'}</p>
+      <p className="text-sm text-gray-600">{mensaje || 'No se pudieron cargar los datos'}</p>
       <Button variant="outline" size="sm" onClick={onReintentar}>
         Reintentar
       </Button>

@@ -83,7 +83,7 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
         <div>
           <Label>Fecha de Aprobación</Label>
           <DateInput
-            className="focus:ring-violet-500 focus:border-violet-500"
+            className="focus:ring-brand-500 focus:border-brand-500"
             value={data.fecha_aprobacion || ""}
             onChange={(fecha_aprobacion) =>
               setDatos({

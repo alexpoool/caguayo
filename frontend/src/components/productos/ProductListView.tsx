@@ -48,7 +48,7 @@ export function ProductListView({
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <Package className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -59,7 +59,7 @@ export function ProductListView({
         <Card className="overflow-hidden shadow-sm border-gray-200">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+              <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
                 <TableRow>
                   <TableHead className="w-[40%]">Nombre</TableHead>
                   <TableHead>Precio Venta</TableHead>
@@ -98,9 +98,9 @@ export function ProductListView({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <Package className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -115,7 +115,7 @@ export function ProductListView({
         </div>
         <Button
           onClick={onCreateNew}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+          className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
           Nuevo Producto
@@ -138,7 +138,7 @@ export function ProductListView({
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead className="w-[40%]">Nombre</TableHead>
                 <TableHead>Precio Venta</TableHead>
@@ -159,7 +159,7 @@ export function ProductListView({
                   <TableRow key={producto.id_producto} className="hover:bg-gray-50/50 transition-colors">
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
+                        <div className="p-2 bg-brand-50 rounded-lg text-brand-600">
                            <Package className="h-4 w-4" />
                         </div>
                         <div>
@@ -177,7 +177,7 @@ export function ProductListView({
                       ${producto.precio_minimo.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-50 text-gray-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-800">
                         {producto.subcategoria?.nombre || `ID: ${producto.id_subcategoria}`}
                       </span>
                     </TableCell>

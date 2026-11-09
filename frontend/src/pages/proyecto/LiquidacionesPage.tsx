@@ -2,10 +2,11 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Button, Card, Label, Input, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ModalOverlay, FormModal, ConfirmModal } from '../../components/ui';
+import { Button, Card, Label, Input, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ModalOverlay, FormModal, ConfirmModal,
+  CreateButton,
+} from '../../components/ui';
 import { 
   Search, 
-  Plus, 
   Edit, 
   Trash2,
   Check,
@@ -37,6 +38,8 @@ import {
 import { administracionService } from '../../services/administracion';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useMonedaContrato, useMonedaContratoDeEtapa } from '../../hooks/useMonedaContrato';
+import { mapConcurrent } from '../../utils/async';
+import { filtrarLiquidaciones } from './filtrosLiquidacion';
 import type { Usuario } from '../../types/usuario';
 import type { PersonaLiquidacionInput, PersonaLiquidacionInputUpdate, PersonaLiquidacionValidacion } from '../../types/servicio';
 import type { 
@@ -47,13 +50,25 @@ import type {
   Moneda,
   Cliente
 } from '../../services/api';
-import { formatFecha } from '../../utils/fecha';
+import { formatFecha, toISODateLocal} from '../../utils/fecha';
 import { empresaActual } from '../../config/branding';
 
 type View = 'list' | 'form';
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
 
 const LIQUIDACION_FORM_ID = 'liquidacion-form';
+
+/** Resuelve los clientes de una etapa con concurrencia limitada. */
+async function cargarClientesDePersonas(pes: PersonaEtapa[]): Promise<Cliente[]> {
+  const detalles = await mapConcurrent(pes, 8, async (pe) => {
+    try {
+      return await clientesService.getCliente(pe.id_persona);
+    } catch {
+      return null;
+    }
+  });
+  return detalles.filter((p): p is Cliente => p !== null);
+}
 
 export function LiquidacionesPage() {
   const queryClient = useQueryClient();
@@ -63,7 +78,6 @@ export function LiquidacionesPage() {
   const [view, setView] = useState<View>('list');
   const [activeTab, setActiveTab] = useState<TabType>('todas');
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
   
   const idParam = searchParams.get('id');
   const solicitudParam = searchParams.get('solicitud');
@@ -116,7 +130,7 @@ export function LiquidacionesPage() {
   });
   
   const [formData, setFormData] = useState({
-    fecha_emision: new Date().toISOString().split('T')[0],
+    fecha_emision: toISODateLocal(),
     fecha_liquidacion: '',
     descripcion: '',
     id_moneda: 0,
@@ -158,10 +172,12 @@ export function LiquidacionesPage() {
     isFetchingMore,
     hasMore,
     loadMore,
+    searchTerm,
+    setSearch: setSearchTerm,
   } = useInfiniteList({
     queryKeyBase: 'persona-liquidaciones',
-    queryFn: (skip, limit, _search, onTotal) =>
-      personaLiquidacionService.getLiquidaciones(skip, limit, onTotal),
+    queryFn: (skip, limit, search, onTotal) =>
+      personaLiquidacionService.getLiquidaciones(skip, limit, onTotal, search),
   });
 
   useEffect(() => {
@@ -358,7 +374,7 @@ export function LiquidacionesPage() {
 
   const resetForm = () => {
     setFormData({
-      fecha_emision: new Date().toISOString().split('T')[0],
+      fecha_emision: toISODateLocal(),
       fecha_liquidacion: '',
       descripcion: '',
       id_moneda: monedas[0]?.id_moneda ?? 0,
@@ -390,16 +406,7 @@ export function LiquidacionesPage() {
     }
     try {
       const pes = await personaEtapaService.getPersonasByEtapa(idEtapa);
-      const personasDetails = await Promise.all(
-        pes.map(async (pe: PersonaEtapa) => {
-          try {
-            return await clientesService.getCliente(pe.id_persona);
-          } catch {
-            return null;
-          }
-        })
-      );
-      const filtered = personasDetails.filter((p): p is Cliente => p !== null);
+      const filtered = await cargarClientesDePersonas(pes);
       setPersonasEtapa(filtered);
       if (personaId && Number(personaId) > 0) {
         setSelectedPersona(Number(personaId));
@@ -500,16 +507,7 @@ export function LiquidacionesPage() {
         }
 
         const personasDeEtapa = await personaEtapaService.getPersonasByEtapa(etapaId);
-        const personasDetails = await Promise.all(
-          personasDeEtapa.map(async (pe: PersonaEtapa) => {
-            try {
-              return await clientesService.getCliente(pe.id_persona);
-            } catch {
-              return null;
-            }
-          })
-        );
-        setPersonasEtapa(personasDetails.filter((p): p is Cliente => p !== null));
+        setPersonasEtapa(await cargarClientesDePersonas(personasDeEtapa));
       } catch (error) {
         console.error('Error loading personas de etapa:', error);
       }
@@ -646,7 +644,7 @@ export function LiquidacionesPage() {
       id_persona: selectedPersona,
       id_pago: selectedPago || undefined,
       importe: Number(formData.importe) || undefined,
-      fecha_emision: formData.fecha_emision || new Date().toISOString().split('T')[0],
+      fecha_emision: formData.fecha_emision || toISODateLocal(),
       fecha_liquidacion: formData.fecha_liquidacion || undefined,
       descripcion: formData.descripcion || undefined,
       id_moneda: monedaContrato || formData.id_moneda || undefined,
@@ -723,7 +721,7 @@ export function LiquidacionesPage() {
     const importe = formatCifra(liquidacion.importe);
     
     if (!liquidacion.fecha_liquidacion && liquidacion.confirmado) {
-      liquidacion.fecha_liquidacion = new Date().toISOString().split('T')[0];
+      liquidacion.fecha_liquidacion = toISODateLocal();
     }
     const fechaEmision = formatFecha(liquidacion.fecha_emision) || 'N/A';
     const fechaLiquidacion = formatFecha(liquidacion.fecha_liquidacion) || 'N/A';
@@ -918,36 +916,15 @@ export function LiquidacionesPage() {
     printWindow.document.close();
   };
 
-  const filteredLiquidaciones = useMemo(() => {
-    let result = liquidaciones;
-    
-    if (filtroEtapa) {
-      result = result.filter((l: PersonaLiquidacion) => l.id_etapa === filtroEtapa);
-    }
-    
-    if (filtroPersona) {
-      result = result.filter((l: PersonaLiquidacion) => l.id_persona === filtroPersona);
-    }
-    
-    if (activeTab === 'pendientes') {
-      result = result.filter((l: PersonaLiquidacion) => !l.confirmado);
-    } else if (activeTab === 'liquidadas') {
-      result = result.filter((l: PersonaLiquidacion) => l.confirmado);
-    }
-    
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter((l: PersonaLiquidacion) =>
-        l.numero?.toLowerCase().includes(term) ||
-        l.descripcion?.toLowerCase().includes(term) ||
-        l.observacion?.toLowerCase().includes(term) ||
-        getPersonaNombre(l.id_persona).toLowerCase().includes(term)
-      );
-    }
-    
-    return result;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liquidaciones, activeTab, searchTerm, filtroPersona, filtroEtapa, personas]);
+  const filteredLiquidaciones = useMemo(
+    () =>
+      filtrarLiquidaciones(liquidaciones, {
+        activeTab,
+        filtroEtapa,
+        filtroPersona,
+      }),
+    [liquidaciones, activeTab, filtroEtapa, filtroPersona],
+  );
 
   return (
     <div className="space-y-6">
@@ -960,7 +937,7 @@ export function LiquidacionesPage() {
                   Volver a Realizadores
                 </Button>
               )}
-              <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+              <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
                 <ScrollText className="h-8 w-8 text-white" />
               </div>
               <div>
@@ -973,18 +950,16 @@ export function LiquidacionesPage() {
                 </p>
               </div>
             </div>
-            <Button
+            <CreateButton
+              label={
+                !!filtroPersona && !!filtroEtapa && porCobrarPersona <= 0
+                  ? 'Liquidado'
+                  : 'Nueva Liquidación'
+              }
               onClick={() => openForm()}
               disabled={!!(filtroPersona && filtroEtapa) && porCobrarPersona <= 0}
-              className={`gap-2 shadow-lg hover:shadow-xl transition-all duration-300 ${
-                (!!filtroPersona && !!filtroEtapa && porCobrarPersona <= 0)
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 hover:scale-105 active:scale-95'
-              }`}
-            >
-              <Plus className="h-4 w-4" />
-              {(!!filtroPersona && !!filtroEtapa && porCobrarPersona <= 0) ? 'Liquidado' : 'Nueva Liquidación'}
-            </Button>
+              className="shadow-lg hover:shadow-xl"
+            />
           </div>
 
           <div className="flex gap-4 border-b">
@@ -994,7 +969,7 @@ export function LiquidacionesPage() {
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-2 font-medium transition-colors ${
                   activeTab === tab
-                    ? 'text-teal-600 border-b-2 border-teal-600'
+                    ? 'text-brand-600 border-b-2 border-brand-600'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -1011,7 +986,7 @@ export function LiquidacionesPage() {
                 placeholder="Buscar liquidaciones..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -1019,29 +994,29 @@ export function LiquidacionesPage() {
           <Card className="overflow-hidden shadow-sm border-gray-200">
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+                <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
                   <TableRow>
                     <TableHead>
                       <div className="flex items-center gap-2">
-                        <Tag className="h-4 w-4 text-teal-600" />
+                        <Tag className="h-4 w-4 text-brand-600" />
                         Número
                       </div>
                     </TableHead>
                     <TableHead>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-teal-600" />
+                        <User className="h-4 w-4 text-brand-600" />
                         Persona
                       </div>
                     </TableHead>
                     <TableHead>
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-teal-600" />
+                        <Calendar className="h-4 w-4 text-brand-600" />
                         Fecha
                       </div>
                     </TableHead>
                     <TableHead>
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-teal-600" />
+                        <DollarSign className="h-4 w-4 text-brand-600" />
                         Importe
                       </div>
                     </TableHead>
@@ -1067,7 +1042,7 @@ export function LiquidacionesPage() {
                         onClick={() => setDetailModal({ isOpen: true, item: liquidacion })}
                       >
                         <TableCell>
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
                             <Tag className="h-3 w-3" />
                             {liquidacion.numero || `#${liquidacion.id_liquidacion}`}
                           </span>
@@ -1104,7 +1079,7 @@ export function LiquidacionesPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleViewDocument(liquidacion)}
-                              className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
+                              className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8"
                               title="Ver documento"
                             >
                               <Eye className="h-4 w-4" />
@@ -1185,7 +1160,7 @@ export function LiquidacionesPage() {
               form={LIQUIDACION_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -1204,7 +1179,7 @@ export function LiquidacionesPage() {
                   <select
                     value={selectedSolicitud || ''}
                     onChange={handleSolicitudChange}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                   >
                     <option value="">Seleccionar solicitud</option>
                     {solicitudes.map((solicitud: SolicitudServicio) => (
@@ -1220,7 +1195,7 @@ export function LiquidacionesPage() {
                   <select
                     value={selectedEtapa || ''}
                     onChange={handleEtapaChange}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                     disabled={!selectedSolicitud}
                   >
                     <option value="">Seleccionar etapa</option>
@@ -1237,7 +1212,7 @@ export function LiquidacionesPage() {
                   <select
                     value={selectedPersona || ''}
                     onChange={handlePersonaChange}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                     disabled={!selectedEtapa}
                   >
                     <option value="">Seleccionar persona</option>
@@ -1252,11 +1227,11 @@ export function LiquidacionesPage() {
 
           {selectedPersona && selectedEtapa && (
           <div className="border border-gray-200 rounded-lg">
-            <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center gap-2 text-teal-600">
+            <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center gap-2 text-brand-600">
               <DollarSign className="h-5 w-5" />
               <h3 className="text-lg font-semibold">Pago</h3>
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <div>
                 <Label>Pago de Factura</Label>
                 {pagosDisponibles.length > 0 ? (
@@ -1264,19 +1239,19 @@ export function LiquidacionesPage() {
                   {pagosDisponibles.map((pago) => (
                     <label key={pago.id_pago_factura_servicio} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
                       selectedPago === pago.id_pago_factura_servicio
-                        ? 'border-teal-500 bg-teal-50 shadow-md'
-                        : 'border-gray-200 hover:border-teal-300 hover:bg-teal-50/50'
+                        ? 'border-brand-500 bg-brand-50 shadow-md'
+                        : 'border-gray-200 hover:border-brand-300 hover:bg-brand-50/50'
                     }`}>
                       <input
                         type="radio"
                         name="pago"
                         checked={selectedPago === pago.id_pago_factura_servicio}
                         onChange={() => handlePagoChange(pago.id_pago_factura_servicio)}
-                        className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
+                        className="h-4 w-4 text-brand-600 border-gray-300 focus:ring-brand-500"
                       />
                       <div className="flex-1 flex justify-between items-center">
                         <span className="text-sm font-medium text-gray-900">{formatFecha(pago.fecha) || 'S/N'}</span>
-                        <span className="text-sm font-bold text-teal-700">{formatCifra(pago.monto_disponible)} {getMonedaSimbolo(pago.id_moneda)}</span>
+                        <span className="text-sm font-bold text-brand-700">{formatCifra(pago.monto_disponible)} {getMonedaSimbolo(pago.id_moneda)}</span>
                       </div>
                     </label>
                   ))}
@@ -1287,7 +1262,7 @@ export function LiquidacionesPage() {
                   </p>
                 )}
                 {disponibleLiquidar > 0 && (
-                  <div className="flex justify-between text-xs text-blue-600 mt-2 border-t pt-2">
+                  <div className="flex justify-between text-xs text-brand-600 mt-2 border-t pt-2">
                     <span>Disponible del pago: <strong>{selectedPago ? formatCifra(pagosDisponibles.find(p => p.id_pago_factura_servicio === selectedPago)?.monto_disponible || 0) : '0'}</strong></span>
                     <span>Por cobrar de la persona: <strong>{formatCifra(porCobrarPersona)}</strong></span>
                   </div>
@@ -1304,7 +1279,7 @@ export function LiquidacionesPage() {
                     value={formData.id_moneda}
                     disabled={!!monedaContrato}
                     onChange={(e) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
                   >
                     <option value={0}>Seleccionar moneda</option>
                     {monedas.map((moneda: Moneda) => (
@@ -1323,7 +1298,7 @@ export function LiquidacionesPage() {
                   <select
                     value={formData.tipo_pago}
                     onChange={(e) => setFormData(prev => ({ ...prev, tipo_pago: e.target.value }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                   >
                     <option value="TRANSFERENCIA">Transferencia</option>
                     <option value="EFECTIVO">Efectivo</option>
@@ -1409,8 +1384,8 @@ export function LiquidacionesPage() {
                 </div>
               </div>
 
-              <div className="bg-teal-50 rounded-lg p-4 mt-6 border border-teal-100">
-                <Label className="text-sm text-teal-600 font-medium">Importe a Liquidar</Label>
+              <div className="bg-brand-50 rounded-lg p-4 mt-6 border border-brand-100">
+                <Label className="text-sm text-brand-600 font-medium">Importe a Liquidar</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -1428,7 +1403,7 @@ export function LiquidacionesPage() {
                     }
                     setFormData(prev => ({ ...prev, importe: nuevoValor }));
                   }}
-                  className="mt-1 text-2xl font-bold text-teal-700"
+                  className="mt-1 text-2xl font-bold text-brand-700"
                 />
               </div>
 
@@ -1446,7 +1421,7 @@ export function LiquidacionesPage() {
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-800">Devengado:</span>
-                      <span className="font-bold text-blue-600 text-lg">{formatCifra(calculateDevengado())}</span>
+                      <span className="font-bold text-brand-600 text-lg">{formatCifra(calculateDevengado())}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
                       <span>Tributario ({Number(formData.tributario) || 5}%):</span>
@@ -1454,7 +1429,7 @@ export function LiquidacionesPage() {
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-800">Subtotal:</span>
-                      <span className="font-bold text-purple-600 text-lg">{formatCifra(calculateSubtotal())}</span>
+                      <span className="font-bold text-brand-600 text-lg">{formatCifra(calculateSubtotal())}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
                       <span>Gasto Empresa:</span>
@@ -1495,10 +1470,10 @@ export function LiquidacionesPage() {
       {detailModal.isOpen && detailModal.item && (
         <ModalOverlay isOpen={true} onClose={() => setDetailModal({ isOpen: false, item: null })} ariaLabel="Liquidación">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <ScrollText className="h-7 w-7" />
                   </div>
                   <div>
@@ -1511,10 +1486,10 @@ export function LiquidacionesPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Persona</p>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Persona</p>
                   <p className="font-bold text-gray-900">{getPersonaNombre(detailModal.item.id_persona)}</p>
                 </div>
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
@@ -1522,7 +1497,7 @@ export function LiquidacionesPage() {
                   <p className="font-bold text-green-900 text-xl">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.neto_pagar)}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Emisión</p>
                   <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_emision)}</p>
@@ -1546,21 +1521,21 @@ export function LiquidacionesPage() {
               </div>
               <div className="border-t pt-4">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-teal-600" />
+                  <DollarSign className="h-4 w-4 text-brand-600" />
                   Detalle Financiero
                 </h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
-                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Importe</p>
-                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.importe)}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="bg-brand-50 p-3 rounded-xl border border-brand-100">
+                    <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Importe</p>
+                    <p className="font-bold text-brand-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.importe)}</p>
                   </div>
-                  <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
-                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Devengado</p>
-                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.devengado)}</p>
+                  <div className="bg-brand-50 p-3 rounded-xl border border-brand-100">
+                    <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Devengado</p>
+                    <p className="font-bold text-brand-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.devengado)}</p>
                   </div>
-                  <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
-                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Tributario</p>
-                    <p className="font-bold text-teal-900">{Number(detailModal.item.tributario || 0).toFixed(2)}%</p>
+                  <div className="bg-brand-50 p-3 rounded-xl border border-brand-100">
+                    <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Tributario</p>
+                    <p className="font-bold text-brand-900">{Number(detailModal.item.tributario || 0).toFixed(2)}%</p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Comisión</p>
@@ -1570,19 +1545,19 @@ export function LiquidacionesPage() {
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Comisión (Admin. Obra)</p>
                     <p className="font-bold text-gray-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.comision_admin_obra)}</p>
                   </div>
-                  <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
-                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Gasto Empresa</p>
-                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.gasto_empresa)}</p>
+                  <div className="bg-brand-50 p-3 rounded-xl border border-brand-100">
+                    <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Gasto Empresa</p>
+                    <p className="font-bold text-brand-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.gasto_empresa)}</p>
                   </div>
-                  <div className="bg-teal-50 p-3 rounded-xl border border-teal-100 col-span-3">
-                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Neto a Pagar</p>
-                    <p className="font-bold text-teal-900 text-xl">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.neto_pagar)}</p>
+                  <div className="bg-brand-50 p-3 rounded-xl border border-brand-100 col-span-3">
+                    <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Neto a Pagar</p>
+                    <p className="font-bold text-brand-900 text-xl">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.neto_pagar)}</p>
                   </div>
                 </div>
               </div>
             </div>
-              <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => { setDetailModal({ isOpen: false, item: null }); openForm(detailModal.item!); }} className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-colors font-medium">Editar</button>
+              <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => { setDetailModal({ isOpen: false, item: null }); openForm(detailModal.item!); }} className="px-6 py-3 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 transition-colors font-medium">Editar</button>
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
@@ -1592,10 +1567,10 @@ export function LiquidacionesPage() {
       {confirmModal.isOpen && confirmModal.item && (
         <ModalOverlay isOpen={true} onClose={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ doc_pago_liquidacion: '', porcentaje_agencia: 10 }); }} ariaLabel="Confirmar Liquidación">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <Check className="h-7 w-7" />
                   </div>
                   <div>
@@ -1608,10 +1583,10 @@ export function LiquidacionesPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Resumen</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <p className="text-sm text-gray-600">Persona</p>
                     <p className="font-semibold text-gray-900">{getPersonaNombre(confirmModal.item.id_persona)}</p>
@@ -1634,11 +1609,11 @@ export function LiquidacionesPage() {
                 />
               </div>
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
               <button
                 onClick={handleConfirmarSubmit}
                 disabled={confirmarMutation.isPending}
-                className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium disabled:opacity-50"
+                className="px-6 py-3 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 shadow-lg hover:shadow-xl transition-all font-medium disabled:opacity-50"
               >
                 {confirmarMutation.isPending ? 'Confirmando...' : 'Confirmar'}
               </button>
@@ -1679,8 +1654,8 @@ export function LiquidacionesPage() {
       {validacionModal.isOpen && validacionModal.validacion && (
         <ModalOverlay isOpen={true} onClose={() => setValidacionModal({ isOpen: false, validacion: null })} ariaLabel="No se puede liquidar">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-orange-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-orange-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-orange-600 text-white shadow-lg">
                     <XCircle className="h-7 w-7" />
@@ -1695,7 +1670,7 @@ export function LiquidacionesPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               {validacionModal.validacion.factura && (
                 <>
                   <div className="bg-gray-50 rounded-xl p-4">
@@ -1703,7 +1678,7 @@ export function LiquidacionesPage() {
                       <FileText className="h-4 w-4 text-gray-600" />
                       Datos de la Factura
                     </h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="text-xs text-gray-500 uppercase">Código</p>
                         <p className="font-semibold text-gray-900">{validacionModal.validacion.factura.codigo_factura || 'N/A'}</p>
@@ -1763,10 +1738,10 @@ export function LiquidacionesPage() {
                 </p>
               </div>
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-between gap-3">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-between gap-3">
               <button
                 onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${validacionModal.validacion?.id_etapa}`)}
-                className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium"
+                className="px-6 py-3 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 shadow-lg hover:shadow-xl transition-all font-medium"
               >
                 Ir a Pagar Factura
               </button>
@@ -1784,14 +1759,14 @@ export function LiquidacionesPage() {
       {printModal.isOpen && printModal.liquidacion && (
         <ModalOverlay isOpen={true} onClose={() => setPrintModal({ isOpen: false, liquidacion: null, autorizado_por_id: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })} ariaLabel="Imprimir Liquidación">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex items-center gap-3">
-                <Printer className="h-6 w-6 text-teal-600" />
+                <Printer className="h-6 w-6 text-brand-600" />
                 <h3 className="text-xl font-bold text-gray-900">Imprimir Liquidación</h3>
               </div>
               <p className="text-sm text-gray-500 mt-2">Complete los datos para la impresión</p>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               <div>
                 <Label className="text-sm font-medium">Autorizado por</Label>
                 <select
@@ -1806,7 +1781,7 @@ export function LiquidacionesPage() {
                       cargo_autorizado: selectedUsuario?.cargo || ''
                     });
                   }}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
                 >
                   <option value="">Seleccionar usuario (opcional)</option>
                   {usuarios.map((usuario: Usuario) => (
@@ -1835,7 +1810,7 @@ export function LiquidacionesPage() {
                 />
               </div>
             </div>
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <div className="p-4 md:p-6 border-t border-gray-200 flex justify-end gap-3">
               <button 
                 onClick={() => setPrintModal({ isOpen: false, liquidacion: null, autorizado_por_id: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })} 
                 className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
@@ -1844,7 +1819,7 @@ export function LiquidacionesPage() {
               </button>
               <button 
                 onClick={handlePrint} 
-                className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-lg hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium flex items-center gap-2"
+                className="px-4 py-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white rounded-lg hover:from-brand-600 hover:to-brand-700 shadow-lg hover:shadow-xl transition-all font-medium flex items-center gap-2"
               >
                 <Printer className="h-4 w-4" />
                 Imprimir

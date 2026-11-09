@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal, ConfirmModal, SearchSelect } from '../../components/ui';
+import type { SearchSelectOption } from '../../components/ui';
 import { productosEnLiquidacionService, productosService, monedaService } from '../../services/api';
 import type { ProductosEnLiquidacion, ProductosEnLiquidacionCreate } from '../../services/api';
 import type { Productos } from '../../types';
 import type { Moneda } from '../../types/moneda';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { useDebounce } from '../../hooks/useDebounce';
 import { Trash2, Edit, X, Search, Package, DollarSign, Boxes, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatFecha } from '../../utils/fecha';
@@ -23,8 +25,10 @@ export function ProductosEnLiquidacionPage() {
 
   const [view, setView] = useState<View>('list');
   const [allProductos, setAllProductos] = useState<Productos[]>([]);
+  const [productoSearch, setProductoSearch] = useState('');
+  const debouncedProductoSearch = useDebounce(productoSearch, 300);
+  const [loadingProductos, setLoadingProductos] = useState(false);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: ProductosEnLiquidacion | null }>({ isOpen: false, item: null });
 
   const [activeTab, setActiveTab] = useState<TabType>('pendientes');
@@ -48,15 +52,17 @@ export function ProductosEnLiquidacionPage() {
     refresh,
     reset,
     total: totalProductosPL,
+    searchTerm,
+    setSearch: setSearchTerm,
   } = useInfiniteList<ProductosEnLiquidacion>({
     queryKeyBase: 'productos-liquidacion',
     extraQueryKeyParams: queryKeyParams,
-    queryFn: (skip, limit, _search, onTotal) => {
+    queryFn: (skip, limit, search, onTotal) => {
       if (activeTab === 'pendientes')
-        return productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit, filtroCliente ?? undefined, onTotal);
+        return productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit, filtroCliente ?? undefined, onTotal, search);
       if (activeTab === 'liquidadas')
-        return productosEnLiquidacionService.getProductosEnLiquidacionLiquidadas(skip, limit, filtroCliente ?? undefined, onTotal);
-      return productosEnLiquidacionService.getProductosEnLiquidacion(skip, limit, filtroCliente ?? undefined, onTotal);
+        return productosEnLiquidacionService.getProductosEnLiquidacionLiquidadas(skip, limit, filtroCliente ?? undefined, onTotal, search);
+      return productosEnLiquidacionService.getProductosEnLiquidacion(skip, limit, filtroCliente ?? undefined, onTotal, search);
     },
     limit: 100,
   });
@@ -81,18 +87,63 @@ export function ProductosEnLiquidacionPage() {
   // ── Referencia de datos (productos para select, monedas) ─────────────────
 
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const [prods, mons] = await Promise.all([
-          productosService.getProductos(0, 1000),
-          monedaService.getMonedas(0, 100)
-        ]);
-        setAllProductos(prods);
-        setMonedas(mons);
-      } catch (error) { console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido'); }
-    };
-    loadInitialData();
+    monedaService.getMonedas(0, 100).then(setMonedas).catch((error) => {
+      console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido');
+    });
   }, []);
+
+  useEffect(() => {
+    let activo = true;
+    setLoadingProductos(true);
+    productosService
+      .getProductos(0, 50, debouncedProductoSearch)
+      .then((prods) => {
+        if (activo) setAllProductos(prods);
+      })
+      .catch(() => {
+        if (activo) setAllProductos([]);
+      })
+      .finally(() => {
+        if (activo) setLoadingProductos(false);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [debouncedProductoSearch]);
+
+  // El producto ya elegido debe seguir visible aunque no esté en la búsqueda.
+  useEffect(() => {
+    const idProducto = Number(formData.id_producto);
+    if (!idProducto) return;
+    if (allProductos.some((p) => p.id_producto === idProducto)) return;
+
+    let activo = true;
+    productosService
+      .getProducto(idProducto)
+      .then((producto) => {
+        if (!activo) return;
+        setAllProductos((prev) =>
+          prev.some((p) => p.id_producto === producto.id_producto)
+            ? prev
+            : [producto, ...prev],
+        );
+      })
+      .catch(() => undefined);
+
+    return () => {
+      activo = false;
+    };
+  }, [formData.id_producto, allProductos]);
+
+  const opcionesProductos: SearchSelectOption[] = useMemo(
+    () =>
+      allProductos.map((p) => ({
+        value: p.id_producto,
+        label: p.nombre,
+        description: p.codigo ? `[${p.codigo}]` : undefined,
+      })),
+    [allProductos],
+  );
 
   const handleSave = async () => {
     const newErrors: Record<string, string> = {};
@@ -158,14 +209,7 @@ export function ProductosEnLiquidacionPage() {
     setView('form');
   };
 
-  const filteredProductos = useMemo(() => {
-    if (!searchTerm) return productos;
-    return productos.filter(p => 
-      p.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.producto?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.tipo_compra?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [productos, searchTerm]);
+  const filteredProductos = productos;
 
   const getTipoLabel = (tipo: string) => {
     switch (tipo) {
@@ -178,9 +222,9 @@ export function ProductosEnLiquidacionPage() {
 
   const renderList = () => (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
             <Boxes className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -203,7 +247,7 @@ export function ProductosEnLiquidacionPage() {
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === tab
-                ? 'text-teal-600 border-b-2 border-teal-600'
+                ? 'text-brand-600 border-b-2 border-brand-600'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -227,24 +271,24 @@ export function ProductosEnLiquidacionPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-teal-600" />
+                    <Package className="h-4 w-4 text-brand-600" />
                     Producto
                   </div>
                 </TableHead>
                 <TableHead>Cantidad</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Precio Compra
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    <DollarSign className="h-4 w-4 text-brand-600" />
                     Precio Venta
                   </div>
                 </TableHead>
@@ -258,7 +302,7 @@ export function ProductosEnLiquidacionPage() {
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -273,7 +317,7 @@ export function ProductosEnLiquidacionPage() {
                   <TableRow key={item.id_producto_en_liquidacion} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4 text-blue-500" />
+                        <Package className="h-4 w-4 text-brand-500" />
                         <span>{item.producto?.nombre || `${item.id_producto}`}</span>
                       </div>
                     </TableCell>
@@ -283,7 +327,7 @@ export function ProductosEnLiquidacionPage() {
                     <TableCell className="font-medium text-green-700">
                       ${Number(item.precio).toFixed(2)}
                     </TableCell>
-                    <TableCell className="font-medium text-blue-700">
+                    <TableCell className="font-medium text-brand-700">
                       ${Number(item.producto?.precio_venta || 0).toFixed(2)}
                     </TableCell>
                     <TableCell>
@@ -348,14 +392,19 @@ export function ProductosEnLiquidacionPage() {
     >
       <div>
         <Label className="text-sm font-medium">Producto *</Label>
-        <select
-          className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-          value={formData.id_producto || ''}
-          onChange={(e) => { setFormData({...formData, id_producto: Number(e.target.value)}); setErrors(prev => ({...prev, id_producto: ''})); }}
-        >
-          <option value="">Seleccionar</option>
-          {allProductos.map(p => <option key={p.id_producto} value={p.id_producto}>{p.nombre}</option>)}
-        </select>
+        <SearchSelect
+          className="mt-1"
+          options={opcionesProductos}
+          value={formData.id_producto ?? null}
+          onChange={(id) => {
+            setFormData({ ...formData, id_producto: id });
+            setErrors((prev) => ({ ...prev, id_producto: '' }));
+          }}
+          onSearch={setProductoSearch}
+          loading={loadingProductos}
+          placeholder="Buscar y seleccionar producto…"
+          emptyMessage="Sin productos"
+        />
         {errors.id_producto && <p className="text-red-500 text-sm mt-1">{errors.id_producto}</p>}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -385,7 +434,7 @@ export function ProductosEnLiquidacionPage() {
         <div>
           <Label className="text-sm font-medium">Moneda *</Label>
           <select
-            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
             value={formData.id_moneda || ''}
             onChange={(e) => { setFormData({...formData, id_moneda: Number(e.target.value)}); setErrors(prev => ({...prev, id_moneda: ''})); }}
           >
@@ -397,7 +446,7 @@ export function ProductosEnLiquidacionPage() {
         <div>
           <Label className="text-sm font-medium">Tipo Compra *</Label>
           <select
-            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
             value={formData.tipo_compra || ''}
             onChange={(e) => { setFormData({...formData, tipo_compra: e.target.value as any}); setErrors(prev => ({...prev, tipo_compra: ''})); }}
           >
@@ -431,7 +480,7 @@ export function ProductosEnLiquidacionPage() {
               form={PEL_FORM_ID}
               disabled={isSaving}
               isLoading={isSaving}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Guardar
             </Button>
@@ -442,12 +491,12 @@ export function ProductosEnLiquidacionPage() {
       </FormModal>
 
       {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <Boxes className="h-7 w-7" />
                   </div>
                   <div>
@@ -460,15 +509,15 @@ export function ProductosEnLiquidacionPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
                   <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Precio de Compra</p>
                   <p className="font-bold text-green-900 text-xl">${Number(detailModal.item.precio).toFixed(2)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Precio de Venta</p>
-                  <p className="font-bold text-blue-900 text-xl">${Number(detailModal.item.producto?.precio_venta || 0).toFixed(2)}</p>
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Precio de Venta</p>
+                  <p className="font-bold text-brand-900 text-xl">${Number(detailModal.item.producto?.precio_venta || 0).toFixed(2)}</p>
                 </div>
                 <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
                   <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">Cantidad</p>
@@ -478,8 +527,8 @@ export function ProductosEnLiquidacionPage() {
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Tipo Compra</p>
                   <p className="font-bold text-gray-900">{getTipoLabel(detailModal.item.tipo_compra)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
+                <div className="bg-gradient-to-br from-brand-50 to-pink-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha)}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
@@ -487,9 +536,9 @@ export function ProductosEnLiquidacionPage() {
                   <p className="font-bold text-gray-900">{detailModal.item.moneda?.denominacion || 'N/A'}</p>
                 </div>
               </div>
-              <div className="bg-gradient-to-br from-indigo-50 to-violet-50 p-4 rounded-xl border border-indigo-100">
-                <p className="text-xs text-indigo-600 uppercase tracking-wider mb-1">Total (Precio Venta × Cantidad)</p>
-                <p className="font-bold text-indigo-900 text-2xl">${Number((detailModal.item.producto?.precio_venta || 0) * detailModal.item.cantidad).toFixed(2)}</p>
+              <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Total (Precio Venta × Cantidad)</p>
+                <p className="font-bold text-brand-900 text-2xl">${Number((detailModal.item.producto?.precio_venta || 0) * detailModal.item.cantidad).toFixed(2)}</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-xl">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
@@ -498,7 +547,7 @@ export function ProductosEnLiquidacionPage() {
                 </span>
               </div>
             </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>

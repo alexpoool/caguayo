@@ -37,8 +37,9 @@ import {
   fichasTarifasService,
   productosService,
 } from "../../services/api";
+import { useDebounce } from "../../hooks/useDebounce";
 import { calcularFicha } from "../../utils/fichaCostoCalculo";
-import { formatFecha, formatFechaMesLargo } from "../../utils/fecha";
+import { formatFecha, formatFechaMesLargo, toISODateLocal} from "../../utils/fecha";
 import type {
   FichaCostoRead,
   FichaInsumoInput,
@@ -138,6 +139,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
 
   // Búsqueda en la hoja Productos (solo lectura)
   const [busquedaProductos, setBusquedaProductos] = useState("");
+  const debouncedBusquedaProductos = useDebounce(busquedaProductos, 300);
 
   // Catálogo de tarifas (hoja Tarifas)
   const [nuevaTarifa, setNuevaTarifa] = useState({ categoria: "", tarifa_horaria: "" });
@@ -155,7 +157,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = toISODateLocal();
   const fechaAnexo = fecha || today;
   const fechaFmt = formatFechaMesLargo(fechaAnexo);
 
@@ -188,8 +190,8 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
 
   // Catálogo de productos (insumos + hoja Productos)
   const { data: productos = [] } = useQuery({
-    queryKey: ["productos-ficha"],
-    queryFn: () => productosService.getProductos(0, 500),
+    queryKey: ["productos-ficha", debouncedBusquedaProductos],
+    queryFn: () => productosService.getProductos(0, 50, debouncedBusquedaProductos),
     enabled: isOpen,
   });
 
@@ -443,6 +445,32 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
     onError: () => toast.error("Error al guardar la ficha de costo"),
   });
 
+  // Selector de productos para agregar como insumo (combobox con buscador)
+  const productosDisponibles = useMemo(() => {
+    const yaAgregados = new Set(insumosProducto.map((i) => i.id_producto));
+    return productos.filter((p: any) => !yaAgregados.has(p.id_producto));
+  }, [productos, insumosProducto]);
+
+  const opcionesProductos: SearchSelectOption[] = useMemo(
+    () =>
+      productosDisponibles.map((p: any) => ({
+        value: p.id_producto,
+        label: p.nombre,
+        description: `${p.codigo ? `[${p.codigo}] ` : ""}P. compra: $${Number(p.precio_compra ?? 0).toFixed(2)}`,
+      })),
+    [productosDisponibles]
+  );
+
+  const opcionesTarifas: SearchSelectOption[] = useMemo(
+    () =>
+      tarifas.map((t: any) => ({
+        value: t.id_tarifa,
+        label: t.categoria,
+        description: `$${fmt(Number(t.tarifa_horaria))}/h`,
+      })),
+    [tarifas]
+  );
+
   if (!isOpen || !producto) return null;
 
   const validarYGuardar = (usarPrecio: boolean) => {
@@ -553,32 +581,6 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
     setVista("form");
   };
 
-  // Selector de productos para agregar como insumo (combobox con buscador)
-  const productosDisponibles = useMemo(() => {
-    const yaAgregados = new Set(insumosProducto.map((i) => i.id_producto));
-    return productos.filter((p: any) => !yaAgregados.has(p.id_producto));
-  }, [productos, insumosProducto]);
-
-  const opcionesProductos: SearchSelectOption[] = useMemo(
-    () =>
-      productosDisponibles.map((p: any) => ({
-        value: p.id_producto,
-        label: p.nombre,
-        description: `${p.codigo ? `[${p.codigo}] ` : ""}P. compra: $${Number(p.precio_compra ?? 0).toFixed(2)}`,
-      })),
-    [productosDisponibles]
-  );
-
-  const opcionesTarifas: SearchSelectOption[] = useMemo(
-    () =>
-      tarifas.map((t: any) => ({
-        value: t.id_tarifa,
-        label: t.categoria,
-        description: `$${fmt(Number(t.tarifa_horaria))}/h`,
-      })),
-    [tarifas]
-  );
-
   const agregarInsumoProducto = (idProducto: number) => {
     const p = productos.find((x: any) => x.id_producto === idProducto);
     if (!p) return;
@@ -612,7 +614,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
   };
 
   const inputCls =
-    "w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-teal-500 outline-none disabled:bg-gray-100 disabled:text-gray-500";
+    "w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-brand-500 outline-none disabled:bg-gray-100 disabled:text-gray-500";
 
   const badgeDe = (id: HojaId): number | undefined => {
     if (id === "materiales") return insumosProducto.length + otrosInsumos.filter((i) => i.nombre.trim()).length;
@@ -639,13 +641,13 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
   ];
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[520px] max-h-[92vh] flex flex-col overflow-hidden animate-scale-in">
         {/* Header — mismo estilo que el modal de Nuevo Cliente */}
-        <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-          <div className="flex items-center justify-between">
+        <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                 <Calculator className="h-7 w-7" />
               </div>
               <div>
@@ -682,13 +684,13 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
               <button key={h.id} type="button" onClick={() => setHojaActiva(h.id)}
                 className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                   activa
-                    ? "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md"
+                    ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-md"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}>
                 {h.label}
                 {badge !== undefined && badge > 0 && (
                   <span className={`inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 text-[11px] font-bold rounded-full ${
-                    activa ? "bg-white/25 text-white" : "bg-teal-100 text-teal-700"
+                    activa ? "bg-white/25 text-white" : "bg-brand-100 text-brand-700"
                   }`}>
                     {badge}
                   </span>
@@ -704,7 +706,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
           {/* ── Vista: lista de fichas existentes del producto ── */}
           {vista === "lista" && (
             <div className="max-w-3xl mx-auto">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
                   <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
                     Fichas de costo del producto
@@ -714,7 +716,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                   </p>
                 </div>
                 <Button size="sm" onClick={nuevaFicha}
-                  className="gap-1.5 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white">
+                  className="gap-1.5 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white">
                   <Plus className="h-3.5 w-3.5" />
                   Crear nueva ficha
                 </Button>
@@ -728,9 +730,9 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                   (fichasProducto ?? []).map((f) => (
                     <button key={f.id_ficha} type="button"
                       onClick={() => abrirFichaExistente(f)}
-                      className="w-full flex items-center justify-between gap-4 px-4 py-3 border border-gray-200 rounded-xl bg-white hover:border-teal-300 hover:bg-teal-50/40 transition-colors text-left group">
+                      className="w-full flex flex-wrap items-center justify-between gap-3 gap-4 px-4 py-3 border border-gray-200 rounded-xl bg-white hover:border-brand-300 hover:bg-brand-50/40 transition-colors text-left group">
                       <div className="flex items-center gap-4">
-                        <div className="p-2.5 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow">
+                        <div className="p-2.5 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow">
                           <Calculator className="h-5 w-5" />
                         </div>
                         <div>
@@ -744,9 +746,9 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                       <div className="flex items-center gap-3">
                         <div className="text-right">
                           <p className="text-[11px] text-gray-400 uppercase tracking-wider">Precio sugerido</p>
-                          <p className="text-sm font-bold text-teal-700">${fmt(Number(f.precio_unitario_ajustado))}</p>
+                          <p className="text-sm font-bold text-brand-700">${fmt(Number(f.precio_unitario_ajustado))}</p>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
+                        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-brand-500 transition-colors" />
                       </div>
                     </button>
                   ))
@@ -764,21 +766,21 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
               <Card className="shadow-sm border-gray-200" hover={false}>
                 <CardHeader className="border-b bg-gray-50/50">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Calculator className="h-5 w-5 text-teal-600" />
+                    <Calculator className="h-5 w-5 text-brand-600" />
                     Resultado del cálculo (filas 1–15)
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     {filasResultado.map((r) => (
-                      <div key={r.fila} className={"flex items-center justify-between px-4 py-2 border-b border-gray-100 last:border-b-0 " + (r.fuerte ? "bg-gray-50 font-semibold" : "")}>
+                      <div key={r.fila} className={"flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-b border-gray-100 last:border-b-0 " + (r.fuerte ? "bg-gray-50 font-semibold" : "")}>
                         <span className="text-sm text-gray-600">
                           <span className="inline-block w-6 text-gray-400">{r.fila}</span> {r.label}
                         </span>
                         <span className={"text-sm " + (r.fuerte ? "text-gray-900" : "text-gray-700")}>${fmt(r.valor)}</span>
                       </div>
                     ))}
-                    <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-teal-600 to-cyan-700 text-white">
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-gradient-to-r from-brand-600 to-brand-700 text-white">
                       <span className="text-sm font-bold">
                         <span className="inline-block w-6">15</span> PRECIO O TARIFA UNITARIO AJUSTADO
                       </span>
@@ -791,13 +793,13 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
               <Card className="shadow-sm border-gray-200" hover={false}>
                 <CardHeader className="border-b bg-gray-50/50 flex-row items-center justify-between gap-4">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <FileSignature className="h-5 w-5 text-teal-600" />
+                    <FileSignature className="h-5 w-5 text-brand-600" />
                     Firmas del documento
                   </CardTitle>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" disabled={!fichaEditando}
                       onClick={abrirDialogoExportar}
-                      className="gap-1.5 text-teal-700 border-teal-300 hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="gap-1.5 text-brand-700 border-brand-300 hover:bg-brand-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       title={fichaEditando ? "Descargar el documento Excel" : "Guarde la ficha para poder exportarla"}>
                       <FileDown className="h-4 w-4" />
                       Exportar a Excel
@@ -828,7 +830,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
               <Card className="shadow-sm border-gray-200" hover={false}>
                 <CardHeader className="border-b bg-gray-50/50">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Package className="h-5 w-5 text-teal-600" />
+                    <Package className="h-5 w-5 text-brand-600" />
                     Insumos (del catálogo de productos)
                   </CardTitle>
                 </CardHeader>
@@ -841,6 +843,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                       value={null}
                       placeholder="Buscar y seleccionar producto…"
                       emptyMessage="Sin resultados"
+                      onSearch={setBusquedaProductos}
                       onChange={agregarInsumoProducto}
                     />
                   </div>
@@ -899,10 +902,10 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
               <Card className="shadow-sm border-gray-200" hover={false}>
                 <CardHeader className="border-b bg-gray-50/50 flex-row items-center justify-between gap-4">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Percent className="h-5 w-5 text-teal-600" />
+                    <Percent className="h-5 w-5 text-brand-600" />
                     Otros insumos (entrada manual)
                   </CardTitle>
-                  <Button size="sm" variant="outline" className="gap-1.5 text-teal-700 border-teal-300 hover:bg-teal-50"
+                  <Button size="sm" variant="outline" className="gap-1.5 text-brand-700 border-brand-300 hover:bg-brand-50"
                     onClick={() => setOtrosInsumos([...otrosInsumos, { nombre: "", um: "", norma_consumo: "", precio_unitario: "" }])}>
                     <Plus className="h-3.5 w-3.5" />
                     Agregar otro insumo
@@ -965,7 +968,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
 
               <div className="flex items-center justify-end gap-2 text-sm">
                 <span className="text-gray-500">TOTAL DE INSUMOS:</span>
-                <span className="font-bold text-teal-700">${fmt(totalInsumos)}</span>
+                <span className="font-bold text-brand-700">${fmt(totalInsumos)}</span>
               </div>
             </div>
           )}
@@ -975,10 +978,10 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
             <Card className="shadow-sm border-gray-200" hover={false}>
               <CardHeader className="border-b bg-gray-50/50 flex-row items-center justify-between gap-4">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Users className="h-5 w-5 text-teal-600" />
+                  <Users className="h-5 w-5 text-brand-600" />
                   Mano de obra — operaciones del catálogo de tarifas
                 </CardTitle>
-                <Button size="sm" variant="outline" className="gap-1.5 text-teal-700 border-teal-300 hover:bg-teal-50"
+                <Button size="sm" variant="outline" className="gap-1.5 text-brand-700 border-brand-300 hover:bg-brand-50"
                   onClick={() => setManoObra([...manoObra, { id_tarifa: null, categoria: "", tarifa_horaria: "", norma_tiempo: "" }])}>
                   <Plus className="h-3.5 w-3.5" />
                   Agregar operación
@@ -1041,9 +1044,9 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                       })}
                     </tbody>
                     <tfoot>
-                      <tr className="bg-teal-50/60 border-t border-teal-200 font-semibold">
+                      <tr className="bg-brand-50/60 border-t border-brand-200 font-semibold">
                         <td colSpan={3} className="px-3 py-2 text-right text-gray-700">SALARIO DIRECTO</td>
-                        <td className="px-3 py-2 text-right text-teal-700">${fmt(salarioDirecto)}</td>
+                        <td className="px-3 py-2 text-right text-brand-700">${fmt(salarioDirecto)}</td>
                         <td></td>
                       </tr>
                     </tfoot>
@@ -1058,7 +1061,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
             <Card className="shadow-sm border-gray-200" hover={false}>
               <CardHeader className="border-b bg-gray-50/50">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Percent className="h-5 w-5 text-teal-600" />
+                  <Percent className="h-5 w-5 text-brand-600" />
                   Gastos — Coeficientes y porcentajes
                 </CardTitle>
               </CardHeader>
@@ -1100,7 +1103,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
             <Card className="shadow-sm border-gray-200" hover={false}>
               <CardHeader className="border-b bg-gray-50/50">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Wallet className="h-5 w-5 text-teal-600" />
+                  <Wallet className="h-5 w-5 text-brand-600" />
                   Tarifas — salario por hora por categoría ocupacional
                 </CardTitle>
               </CardHeader>
@@ -1120,7 +1123,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                   </div>
                   <Button size="sm" disabled={crearTarifaMutation.isPending || !nuevaTarifa.categoria.trim()}
                     onClick={() => crearTarifaMutation.mutate()}
-                    className="gap-1.5 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white">
+                    className="gap-1.5 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white">
                     <Plus className="h-3.5 w-3.5" />
                     Agregar
                   </Button>
@@ -1145,7 +1148,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                       {tarifas.map((t: any) => {
                         const et = editandoTarifa?.id === t.id_tarifa ? editandoTarifa : null;
                         return et ? (
-                          <tr key={t.id_tarifa} className="bg-teal-50/40">
+                          <tr key={t.id_tarifa} className="bg-brand-50/40">
                             <td className="px-3 py-1.5">
                               <input className={inputCls} value={et.categoria}
                                 onChange={(e) => setEditandoTarifa({ ...et, categoria: e.target.value })} />
@@ -1158,7 +1161,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" title="Guardar"
                                   onClick={() => actualizarTarifaMutation.mutate(et)}
-                                  className="p-1.5 text-teal-600 hover:bg-teal-100 rounded">
+                                  className="p-1.5 text-brand-600 hover:bg-brand-100 rounded">
                                   <Check className="h-4 w-4" />
                                 </button>
                                 <button type="button" title="Cancelar"
@@ -1181,7 +1184,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                                     categoria: t.categoria,
                                     tarifa_horaria: String(t.tarifa_horaria),
                                   })}
-                                  className="p-1.5 text-gray-400 hover:text-teal-600 rounded">
+                                  className="p-1.5 text-gray-400 hover:text-brand-600 rounded">
                                   <Pencil className="h-4 w-4" />
                                 </button>
                                 <button type="button" title={confirmarEliminarId === t.id_tarifa ? "Confirmar eliminación" : "Eliminar"}
@@ -1212,7 +1215,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
             <Card className="shadow-sm border-gray-200" hover={false}>
               <CardHeader className="border-b bg-gray-50/50">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Package className="h-5 w-5 text-teal-600" />
+                  <Package className="h-5 w-5 text-brand-600" />
                   Productos del sistema
                 </CardTitle>
               </CardHeader>
@@ -1264,12 +1267,12 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t bg-gray-50">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t bg-gray-50">
           {vista === "form" ? (
             <>
               <div className="text-sm">
                 <span className="text-gray-500">Precio sugerido: </span>
-                <span className="font-bold text-teal-700">${fmt(m.precioUnitarioAjustado)}</span>
+                <span className="font-bold text-brand-700">${fmt(m.precioUnitarioAjustado)}</span>
                 {fichaEditando && (
                   <span className="ml-3 text-xs text-gray-400">editando Ficha No.{fichaEditando.id_ficha}</span>
                 )}
@@ -1279,12 +1282,12 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                   Cancelar
                 </Button>
                 <Button disabled={guardarMutation.isPending} onClick={() => validarYGuardar(false)}
-                  className="gap-2 border border-teal-300 text-teal-700 bg-teal-50 hover:bg-teal-100 hover:border-teal-400">
+                  className="gap-2 border border-brand-300 text-brand-700 bg-brand-50 hover:bg-brand-100 hover:border-brand-400">
                   Guardar ficha
                 </Button>
                 {onAccept && (
                   <Button disabled={guardarMutation.isPending} onClick={() => validarYGuardar(true)}
-                    className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
+                    className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
                     <Save className="h-4 w-4" />
                     Guardar y usar precio
                   </Button>
@@ -1306,12 +1309,12 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
 
       {/* Diálogo de firmas para exportación */}
       {showFirmasModal && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+        <div className="fixed inset-0 z-[130] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
                     <FileSignature className="h-5 w-5" />
                   </div>
                   <div>
@@ -1356,7 +1359,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                 {exportando === "pdf" ? "Generando…" : "Generar PDF"}
               </Button>
               <Button onClick={exportarExcel} disabled={exportando === "excel"}
-                className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white">
+                className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white">
                 <FileDown className="h-4 w-4" />
                 {exportando === "excel" ? "Exportando…" : "Exportar a Excel"}
               </Button>

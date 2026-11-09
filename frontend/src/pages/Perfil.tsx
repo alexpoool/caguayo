@@ -91,7 +91,7 @@ export function PerfilPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 p-6 md:p-8 mb-6 text-white shadow-lg">
+        <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 p-4 md:p-6 md:p-8 mb-6 text-white shadow-lg">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border-2 border-brand-400/60">
               <User className="h-10 w-10 text-white" />
@@ -100,7 +100,7 @@ export function PerfilPage() {
               <h2 className="text-2xl font-bold">
                 {user.nombre} {user.primer_apellido} {user.segundo_apellido}
               </h2>
-              <p className="text-slate-200">@{user.alias}</p>
+              <p className="text-gray-200">@{user.alias}</p>
               <div className="flex flex-wrap items-center gap-2 mt-2">
                 <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium border border-white/20">
                   <BadgeCheck className="h-4 w-4 text-brand-100" />
@@ -127,7 +127,7 @@ export function PerfilPage() {
                 Información Personal
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                   <p className="text-sm text-gray-500 mb-1">Carné de Identidad</p>
@@ -168,7 +168,7 @@ export function PerfilPage() {
                 Cambiar Alias
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               <p className="text-gray-600 mb-4">
                 El alias es tu identificador único en el sistema.
               </p>
@@ -211,7 +211,7 @@ export function PerfilPage() {
                 Cambiar Contraseña
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -290,7 +290,7 @@ export function PerfilPage() {
                 Sesión
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               <Button
                 onClick={async () => {
                   await logout();

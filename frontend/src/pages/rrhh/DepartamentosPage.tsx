@@ -7,7 +7,6 @@ import type {
   RrhhDepartamentoListado,
 } from '../../types/rrhh';
 import {
-  Plus,
   Edit,
   Trash2,
   Building2,
@@ -34,6 +33,7 @@ import {
   ConfirmModal,
   Modal,
   SearchSelect,
+  CreateButton,
 } from '../../components/ui';
 
 interface Props {
@@ -168,11 +168,11 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
       {/* Encabezado */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
             <Building2 className="h-6 w-6 text-brand-600" />
             Departamentos
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-gray-500">
             Estructura de departamentos y sus responsables
           </p>
         </div>
@@ -180,7 +180,7 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[12rem] max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             placeholder="Buscar departamento por nombre..."
             value={searchTerm}
@@ -191,16 +191,13 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
         <select
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value as any)}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
         >
           <option value="todos">Todos</option>
           <option value="activo">Activos</option>
           <option value="inactivo">Inactivos</option>
         </select>
-        <Button size="sm" onClick={handleNuevo} className="ml-auto">
-          <Plus className="h-4 w-4" />
-          Nuevo departamento
-        </Button>
+        <CreateButton label="Nuevo departamento" onClick={handleNuevo} size="sm" />
       </div>
 
       {/* Contenido */}
@@ -234,19 +231,19 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
                 <TableBody>
                   {departamentos.map((dep: RrhhDepartamentoListado) => (
                     <TableRow key={dep.id_departamento}>
-                      <TableCell className="font-medium text-slate-900">
+                      <TableCell className="font-medium text-gray-900">
                         {dep.nombre}
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate text-slate-500">
+                      <TableCell className="max-w-[200px] truncate text-gray-500">
                         {dep.descripcion || '—'}
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-gray-600">
                         {dep.responsable_nombre || 'Sin asignar'}
                       </TableCell>
-                      <TableCell className="text-center text-slate-600">
+                      <TableCell className="text-center text-gray-600">
                         {dep.total_puestos}
                       </TableCell>
-                      <TableCell className="text-center text-slate-600">
+                      <TableCell className="text-center text-gray-600">
                         {dep.total_empleados}
                       </TableCell>
                       <TableCell className="text-center">
@@ -302,7 +299,7 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
             onClick={cerrarForm}
             title="Cerrar"
             aria-label="Cerrar"
-            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 transition-colors hover:bg-brand-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -337,7 +334,7 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
                   }
                   placeholder="Qué hace este departamento (opcional)"
                   rows={3}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 />
               </div>
 
@@ -357,7 +354,7 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
                   loading={buscandoResponsable}
                   emptyMessage="Sin resultados"
                 />
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-gray-400">
                   Se busca por nombre o código. Debe ser un empleado activo.
                 </p>
               </div>
@@ -414,8 +411,8 @@ function ActionButton({
       onClick={onClick}
       className={`rounded-md p-1.5 transition-colors ${
         danger
-          ? 'text-slate-400 hover:bg-red-50 hover:text-red-600'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+          ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
+          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
       }`}
     >
       {children}
@@ -427,7 +424,7 @@ function EstadoBadge({ activo }: { activo: boolean }) {
   return (
     <span
       className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-        activo ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+        activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
       }`}
     >
       {activo ? 'Activo' : 'Inactivo'}
@@ -439,7 +436,7 @@ function LoadingRows() {
   return (
     <div className="space-y-2 py-4">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-gray-100" />
       ))}
     </div>
   );
@@ -448,8 +445,8 @@ function LoadingRows() {
 function EmptyState({ mensaje }: { mensaje: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <Building2 className="h-10 w-10 text-slate-300" />
-      <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
+      <Building2 className="h-10 w-10 text-gray-300" />
+      <p className="max-w-sm text-sm text-gray-500">{mensaje}</p>
     </div>
   );
 }
@@ -464,7 +461,7 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-gray-600">
         {mensaje || 'No se pudieron cargar los departamentos'}
       </p>
       <Button variant="outline" size="sm" onClick={onReintentar}>

@@ -148,36 +148,40 @@ export function LoginPage() {
     if (conexionStatus === "error") return "border-red-500 focus:ring-red-500";
     if (conexionStatus === "testing")
       return "border-amber-500 focus:ring-amber-500";
-    return "border-slate-200 focus:ring-blue-500 focus:border-blue-500";
+    return "border-gray-200 focus:ring-brand-500 focus:border-brand-500";
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Decorative background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-100 rounded-full opacity-40 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-50 rounded-full opacity-50 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-100/20 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-brand-100 rounded-full opacity-40 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-brand-50 rounded-full opacity-50 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-100/20 rounded-full blur-3xl" />
       </div>
 
       <div className="w-full max-w-md relative z-10">
         {/* Login Card */}
-        <div className="bg-white/80 backdrop-blur-sm border-0 rounded-2xl shadow-2xl shadow-blue-900/10 ring-1 ring-blue-100 overflow-hidden animate-login-card">
-          <div className="h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700" />
+        <div className="bg-white/80 backdrop-blur-sm border-0 rounded-2xl shadow-2xl shadow-brand-900/10 ring-1 ring-brand-100 overflow-hidden animate-login-card">
+          <div className="h-1 bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700" />
           <div className="p-8">
-            <h2 className="text-xl font-semibold text-blue-900 mb-6 text-center">
+            <h2 className="text-xl font-semibold text-brand-900 mb-6 text-center">
               Iniciar Sesión
             </h2>
 
             <div className="space-y-5">
               {/* Base de Datos - PRIMERO */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label
+                  htmlFor="base-datos"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Base de Datos
                 </label>
                 <div className="relative">
-                  <Database className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400 z-10" />
+                  <Database className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-brand-400 z-10" />
                   <select
+                    id="base-datos"
                     value={baseDatos}
                     onChange={(e) => handleBaseDatosChange(e.target.value)}
                     disabled={loadingConexiones}
@@ -223,18 +227,22 @@ export function LoginPage() {
 
               {/* Alias */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label
+                  htmlFor="alias"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Alias de Usuario
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-brand-400" />
                   <Input
+                    id="alias"
                     type="text"
                     placeholder="Ingrese su alias"
                     value={alias}
                     onChange={(e) => setAlias(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                    className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
+                    className="pl-10 border-gray-200 focus:ring-brand-500 focus:border-brand-500 rounded-xl transition-all duration-200"
                     disabled={!baseDatos}
                   />
                 </div>
@@ -242,23 +250,28 @@ export function LoginPage() {
 
               {/* Contraseña */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label
+                  htmlFor="contrasenia"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Contraseña
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-brand-400" />
                   <Input
+                    id="contrasenia"
                     type={showPassword ? "text" : "password"}
                     placeholder="Ingrese su contraseña"
                     value={contrasenia}
                     onChange={(e) => setContrasenia(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                    className="pl-10 pr-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
+                    className="pl-10 pr-10 border-gray-200 focus:ring-brand-500 focus:border-brand-500 rounded-xl transition-all duration-200"
                     disabled={!baseDatos}
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-blue-600 focus:outline-none"
+                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-brand-600 focus:outline-none"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
@@ -274,7 +287,7 @@ export function LoginPage() {
               <Button
                 onClick={handleLogin}
                 disabled={loadingLogin || loadingConexiones || !baseDatos}
-                className="w-full rounded-xl h-12 text-base font-semibold shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30"
+                className="w-full rounded-xl h-12 text-base font-semibold shadow-lg shadow-brand-600/25 hover:shadow-xl hover:shadow-brand-600/30"
               >
                 {loadingLogin ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -287,7 +300,7 @@ export function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-slate-400 mt-6">
+        <p className="text-center text-xs text-gray-500 mt-6">
           © {new Date().getFullYear()} {PRODUCTO.nombre}. Todos los derechos reservados.
         </p>
       </div>
