@@ -9,6 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
+from sqlalchemy import text
 from sqlmodel import Field, SQLModel
 
 
@@ -25,8 +26,8 @@ class RrhhTipoContrato(SQLModel, table=True):
     nombre: str = Field(max_length=50, unique=True)
     descripcion: Optional[str] = None
     activo: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
-    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
+    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
+    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
 
 
 class RrhhTipoDeduccion(SQLModel, table=True):
@@ -39,8 +40,8 @@ class RrhhTipoDeduccion(SQLModel, table=True):
     descripcion: Optional[str] = None
     es_porcentaje: bool = Field(default=False)
     activo: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
-    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
+    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
+    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
 
 
 class RrhhTipoBonificacion(SQLModel, table=True):
@@ -53,8 +54,8 @@ class RrhhTipoBonificacion(SQLModel, table=True):
     descripcion: Optional[str] = None
     es_porcentaje: bool = Field(default=False)
     activo: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
-    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
+    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
+    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
 
 
 class RrhhTipoEvaluacion(SQLModel, table=True):
@@ -72,8 +73,8 @@ class RrhhTipoEvaluacion(SQLModel, table=True):
     nombre: str = Field(max_length=50, unique=True)
     descripcion: Optional[str] = None
     activo: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
-    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
+    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
+    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
 
 
 class RrhhPeriodoEvaluacion(SQLModel, table=True):
@@ -94,10 +95,10 @@ class RrhhPeriodoEvaluacion(SQLModel, table=True):
     descripcion: Optional[str] = None
     activo: bool = Field(default=True)
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
 
 
@@ -112,8 +113,8 @@ class RrhhCalificacion(SQLModel, table=True):
     # (5, 10 o 100; CHECK `chk_calificaciones_valor` en BD).
     valor: int = Field(ge=1, le=100)
     descripcion: Optional[str] = None
-    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
-    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
+    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
+    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
 
 
 class RrhhTipoPago(SQLModel, table=True):
@@ -125,8 +126,8 @@ class RrhhTipoPago(SQLModel, table=True):
     nombre: str = Field(max_length=30, unique=True)
     descripcion: Optional[str] = None
     activo: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
-    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
+    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
+    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")})
 
 
 # Re-export del tipo decimal usado por el resto del módulo en catálogos.

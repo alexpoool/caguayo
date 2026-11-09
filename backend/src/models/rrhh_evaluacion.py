@@ -27,6 +27,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     UniqueConstraint,
+    text,
 )
 from sqlmodel import Field, SQLModel
 
@@ -114,10 +115,10 @@ class RrhhEvaluacion(SQLModel, table=True):
     recomendaciones: Optional[str] = None
     fecha: date = Field(default_factory=_today)
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
 
 
@@ -154,10 +155,10 @@ class RrhhObjetivo(SQLModel, table=True):
     )
     observaciones: Optional[str] = None
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
 
 
@@ -215,8 +216,8 @@ class RrhhEvaluacionObjetivo(SQLModel, table=True):
     # Texto libre: qué debería hacer el empleado respecto a este objetivo.
     recomendaciones: Optional[str] = None
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )

@@ -10,7 +10,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Column, ForeignKey, CheckConstraint, Integer
+from sqlalchemy import Column, ForeignKey, CheckConstraint, Integer, text
 from sqlmodel import Field, SQLModel
 
 
@@ -51,10 +51,10 @@ class RrhhDeduccion(SQLModel, table=True):
     fin_periodo: date
     observaciones: Optional[str] = None
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
 
 
@@ -91,8 +91,8 @@ class RrhhBonificacion(SQLModel, table=True):
     fin_periodo: date
     observaciones: Optional[str] = None
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )

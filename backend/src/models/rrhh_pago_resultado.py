@@ -26,6 +26,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     UniqueConstraint,
+    text,
 )
 from sqlmodel import Field, SQLModel
 
@@ -102,10 +103,10 @@ class RrhhPagoResultado(SQLModel, table=True):
         default=Decimal("0.0000"), decimal_places=4, max_digits=14
     )
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
 
 
@@ -170,8 +171,8 @@ class RrhhPagoResultadoEmpleado(SQLModel, table=True):
     impuesto: Decimal = Field(decimal_places=2, max_digits=12)
     neto_a_cobrar: Decimal = Field(decimal_places=2, max_digits=12)
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )

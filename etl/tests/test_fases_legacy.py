@@ -288,6 +288,11 @@ def test_la_liquidacion_mapea_las_columnas_que_son_suyas(monkeypatch):
     assert p["tipo_concepto"] == "Por representación"
     assert p["descripcion"] == "Pago 100%"
     assert str(p["neto_pagar"]) == "4100.20"
+    # El white-label renombró las columnas; el payload tiene que usar las nuevas.
+    assert str(p["porcentaje_agencia"]) == "17.00"
+    assert str(p["importe_agencia"]) == "0.00"
+    assert "porcentaje_caguayo" not in p
+    assert "importe_caguayo" not in p
 
 
 def test_liquidada_no_es_true(monkeypatch):

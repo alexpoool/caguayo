@@ -127,14 +127,15 @@ def init_office(db_name: str, admin_password_hash: str | None = None) -> list[st
                 cur.execute("""
                     INSERT INTO convenio (
                         id_cliente, nombre_convenio, fecha, vigencia,
-                        id_tipo_convenio, codigo
+                        id_tipo_convenio, codigo, estado
                     ) VALUES (
                         (SELECT id_cliente FROM clientes WHERE codigo = 'CAGUAYO'),
                         'Convenio Base Recepción',
                         CURRENT_DATE,
                         '2099-12-31',
                         (SELECT id_tipo_convenio FROM tipo_convenio WHERE nombre = 'COMPRA VENTA'),
-                        'BASE-REC'
+                        'BASE-REC',
+                        'ACTIVO'
                     )
                 """)
                 inserted.append("convenio")

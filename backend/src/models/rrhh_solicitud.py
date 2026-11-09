@@ -6,7 +6,7 @@ Sin colisión con `solicitud_servicio` (módulo Proyecto).
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Column, ForeignKey, CheckConstraint, Integer
+from sqlalchemy import Column, ForeignKey, CheckConstraint, Integer, text
 from sqlmodel import Field, SQLModel
 
 
@@ -52,8 +52,8 @@ class RrhhSolicitud(SQLModel, table=True):
     fecha_aprobacion: Optional[datetime] = None
     observaciones: Optional[str] = None
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )

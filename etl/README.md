@@ -153,11 +153,12 @@ Cuatro columnas salen del ETL con un valor, y conviene saber de dónde:
   de insertar porque `codigo_servicio` es UNIQUE, y le cuelga todas las tareas.
   `concepto_modificado` no se toca: sigue siendo el nombre de la etapa, que es lo
   que muestran la tabla y los PDF.
-- **`persona_liquidacion.numero`** — `FT.AA.<id_liquidacion del legacy>`. No se
-  copia `numero_liquidacion`: sólo tiene 903 valores distintos en 4.362 filas y
-  no puede ser clave. El año sale de la fecha de la liquidación y no del reloj
-  como en la aplicación (`servicio_service.py:875`), porque este número es lo
-  que permite reconocer en la segunda pasada lo que escribió la primera.
+- **`persona_liquidacion.numero`** — `FT.AA.<numero_liquidacion>` del legacy. El
+  número se repite (910 valores distintos en 5.392 filas), así que a partir de la
+  segunda aparición lleva el `id_liquidacion` detrás (`FT.14.59-1043`); si la fila
+  no trae número, se usa el id. El año sale de la fecha de la liquidación y no
+  del reloj como en la aplicación (`servicio_service.py:875`), porque este número
+  es lo que permite reconocer en la segunda pasada lo que escribió la primera.
 
 Las etapas **no tienen código**. La columna no existe en la tabla y nadie la lee;
 si algún día hace falta, sale al vuelo de `{codigo_solicitud}.{numero_etapa}`

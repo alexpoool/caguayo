@@ -106,24 +106,41 @@ def test_sin_etapas_no_hay_onde_colgar():
 # --------------------------------------------------------------------------
 # El número
 # --------------------------------------------------------------------------
-def test_el_numero_sale_del_id_del_legacy_y_no_del_numero_del_legacy():
-    """`numero_liquidacion` tiene 903 valores distintos en 4.362 filas, así que
-    no puede ser la clave. El `id_liquidacion` es único y estable."""
-    assert mp._numero(date(2014, 3, 1), "5") == "FT.14.5"
-    assert mp._numero(date(2014, 3, 1), "6") == "FT.14.6"
+def test_el_numero_sale_del_numero_liquidacion_del_legacy():
+    """Manda `numero_liquidacion`; el id sólo entra cuando el número se repite."""
+    assert mp._numero(date(2014, 3, 1), "5", "1043") == "FT.14.5"
+    assert mp._numero(date(2014, 3, 1), "6", "1044") == "FT.14.6"
+
+
+def test_el_numero_sin_numero_liquidacion_cae_al_id():
+    assert mp._numero(date(2014, 3, 1), None, "77") == "FT.14.77"
+    assert mp._numero(date(2014, 3, 1), "   ", "78") == "FT.14.78"
 
 
 def test_el_anio_del_numero_viene_de_la_fecha_y_no_del_reloj():
     """Reejecutar en otro año no debe cambiar lo ya escrito: el número es la
     clave con la que la fase se reconoce en la segunda pasada."""
-    assert mp._numero(date(2016, 7, 4), "42") == "FT.16.42"
+    assert mp._numero(date(2016, 7, 4), "42", "99") == "FT.16.42"
 
 
 def test_el_numero_no_se_rompe_si_la_fecha_no_trae_ano():
     """La fecha sin respaldo del legacy es el literal '1900-01-01', que no es un
     `date`: el número tiene que salir igual, no reventar."""
-    assert mp._numero("1900-01-01", "7") == "FT.00.7"
-    assert mp._numero(None, "7") == "FT.00.7"
+    assert mp._numero("1900-01-01", "7", "1") == "FT.00.7"
+    assert mp._numero(None, "7", "1") == "FT.00.7"
+
+
+def test_el_numero_repetido_lleva_el_id_detras():
+    """`numero_liquidacion` se repite 746 veces: el primero se queda el limpio
+    y los siguientes llevan el id, que vuelve a la fila de origen."""
+    asignados = set()
+    primero = mp._unico(mp._numero(date(2014, 3, 1), "59", "10"), "10", asignados)
+    asignados.add(primero)
+    segundo = mp._unico(mp._numero(date(2014, 3, 1), "59", "11"), "11", asignados)
+    asignados.add(segundo)
+
+    assert primero == "FT.14.59"
+    assert segundo == "FT.14.59-11"
 
 
 # --------------------------------------------------------------------------
@@ -135,6 +152,7 @@ def test_el_numero_ya_migrado_no_se_vuelve_a_insertar():
     número."""
     primera = _leer("artista_liquidacion")[0]
     numero = mp._numero(primera.get("fecha_emision"),
+                        primera.get("numero_liquidacion"),
                         str(primera["id_liquidacion"]))
 
     payloads, registro = _preparar(numeros_existentes=(numero,))
@@ -150,6 +168,29 @@ def test_todos_los_numeros_de_una_pasada_son_distintos():
     numeros = [p["numero"] for p in payloads]
 
     assert len(numeros) == len(set(numeros))
+
+
+@necesita_dump
+def test_la_asignacion_del_numero_es_estable_entre_pasadas():
+    """El sufijo depende del orden del volcado, no de la base: dos pasadas
+    proponen exactamente los mismos números."""
+    primera, _ = _preparar()
+    segunda, _ = _preparar()
+
+    assert [p["numero"] for p in primera] == [p["numero"] for p in segunda]
+
+
+@necesita_dump
+def test_el_payload_usa_las_columnas_agencia_del_destino():
+    """El white-label renombró `*_caguayo` a `*_agencia`; el payload tiene que
+    hablar el nombre nuevo o el INSERT revienta."""
+    payloads, _ = _preparar()
+
+    assert payloads
+    assert all("porcentaje_agencia" in p for p in payloads)
+    assert all("importe_agencia" in p for p in payloads)
+    assert all("porcentaje_caguayo" not in p for p in payloads)
+    assert all("importe_caguayo" not in p for p in payloads)
 
 
 # --------------------------------------------------------------------------

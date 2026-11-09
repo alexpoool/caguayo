@@ -42,9 +42,11 @@ con `neto_pagar` porque la tabla estaba vacía; poner aquí el bruto haría que
 `pago_factura_servicio` no se migra —no hay facturas de etapa que paguen— y es
 NULLABLE. El legacy no trae ese vínculo.
 
-`numero` sale con el patrón de `generar_codigo` (`FT.AA.id`), no con el
-`numero_liquidacion` del legacy: aquel sólo tiene 903 valores distintos en 4.362
-filas y no puede ser clave. El id del legacy sí lo es, y es estable.
+`numero` sale con el patrón de `generar_codigo` (`FT.AA.numero_liquidacion`):
+manda el número del legacy y sólo se le añade el id detrás cuando se repite,
+porque no es único (910 valores distintos en 5.392 filas). Si la fila no trae
+número, se usa el id. El año sale de la fecha y no del reloj, para que la
+segunda pasada reconozca lo que escribió la primera.
 
 ## Lo que no tiene destino, dicho aquí para que no se busque después
 
@@ -58,7 +60,7 @@ filas y no puede ser clave. El id del legacy sí lo es, y es estable.
   · **`id_tipoconcepto`**: el destino no tiene catálogo de conceptos, sólo el
     número, y los ids no viajan. El nombre que sí trae el catálogo del legacy se
     guarda al principio de `observacion`, que el legacy no usa.
-  · **`importe_caguayo` y `tributario_monto`**: son columnas que la aplicación
+  · **`importe_agencia` y `tributario_monto`**: son columnas que la aplicación
     deriva de las anteriores; el legacy no las guarda. Van en 0 y se recalculan
     solas en la primera edición.
 """
@@ -230,23 +232,41 @@ def _etapa_para(etapas_del_contrato, personas, id_persona):
     return etapas_del_contrato[0], "primera etapa del contrato"
 
 
-def _numero(fecha, id_legado):
-    """`FT.AA.<id_liquidacion del legacy>`, el patrón de `generar_codigo`.
+def _anio_codigo(fecha):
+    """Los dos dígitos del año de `fecha`; `00` si no se puede leer."""
+    anio = str(getattr(fecha, "year", None) or str(fecha or "")[:4])
+    return anio[-2:] if anio.isdigit() else "00"
+
+
+def _numero(fecha, numero_legado, id_legado):
+    """`FT.AA.<numero_liquidacion>`, el patrón de `generar_codigo`.
+
+    Manda el número del legacy; sólo si la fila no lo trae se cae al id. El
+    número no es único —910 valores distintos en 5.392 filas y 746 de esos
+    valores aparecen más de una vez—, así que `_unico` le pone el id detrás a
+    partir de la segunda aparición.
 
     El año sale de la fecha de la liquidación y no del reloj como hace la
     aplicación (`servicio_service.py:875`): este número es la clave con la que la
     fase se reconoce a sí misma en la segunda pasada, y si dependiera de la fecha
     de ejecución, reejecutarla en otro año no reconocería lo que escribió la vez
-    anterior y duplicaría las 4.362 filas.
-
-    El id del legacy es único —4.362 de 4.362— y estable, que es justo lo que le
-    faltaba a `numero_liquidacion`: 903 valores distintos para las mismas 4.362
-    filas, 7 de ellas negativas.
+    anterior y duplicaría las 5.392 filas.
     """
-    anio = str(getattr(fecha, "year", None) or str(fecha or "")[:4])
-    if not anio.isdigit():
-        anio = "00"
-    return "%s.%s.%s" % (PREFIJO_CODIGO, anio[-2:], id_legado)
+    base = texto(numero_legado) or id_legado
+    return "%s.%s.%s" % (PREFIJO_CODIGO, _anio_codigo(fecha), base)
+
+
+def _unico(numero, id_legado, asignados):
+    """El número limpio y, si ya salió en esta pasada, con el id detrás.
+
+    `numero_liquidacion` se repite en 5.228 de las 5.392 filas: la primera que
+    llega se queda el número limpio y las siguientes lo llevan con su id, que
+    vuelve a la fila de origen. Así el código se lee como el legacy en la
+    mayoría de los casos sin renunciar a que sea único.
+    """
+    while numero in asignados:
+        numero = "%s-%s" % (numero, id_legado)
+    return numero
 
 
 # --------------------------------------------------------------------------
@@ -269,6 +289,7 @@ def preparar(registro: Registro, codigos_cliente, contratos_por_moneda,
     fechas_por_artista = _fechas_por_artista(filas)
 
     ya_usados = set(numeros_existentes)
+    numeros_asignados = set()
     payloads = []
     reglas = {}
 
@@ -280,13 +301,14 @@ def preparar(registro: Registro, codigos_cliente, contratos_por_moneda,
             f.get("fecha_emision"), fechas_por_artista.get(f.get("id_artista"), []))
         fecha_liquidacion, avisos_liq = rl.fecha_con_respaldo(
             f.get("fecha_liquidacion"), fechas_por_artista.get(f.get("id_artista"), []))
-        numero = _numero(fecha_emision, id_legacy)
+        numero = _numero(fecha_emision, f.get("numero_liquidacion"), id_legacy)
+        numero = _unico(numero, id_legacy, numeros_asignados)
+        numeros_asignados.add(numero)
 
         if numero in ya_usados:
             registro.descarte(ORIGEN, id_legacy, nombre, "ya migrada",
                               "numero=%s" % numero)
             continue
-        ya_usados.add(numero)
 
         id_persona = codigos_cliente.get(codigo_artista)
         if id_persona is None:
@@ -353,8 +375,8 @@ def preparar(registro: Registro, codigos_cliente, contratos_por_moneda,
             # cheque se considera que el pago fue por cheque.
             "tipo_pago": "CHEQUE" if texto(f.get("cheque")) else "TRANSFERENCIA",
             "importe": neto,
-            "porcentaje_caguayo": _dinero(f.get("porcientocaguayo"), "10.00"),
-            "importe_caguayo": _dinero("0.00"),
+            "porcentaje_agencia": _dinero(f.get("porcientocaguayo"), "10.00"),
+            "importe_agencia": _dinero("0.00"),
             "porciento_gestion": _dinero("0.00"),
             "porciento_empresa": _dinero("0.00"),
             "devengado": _dinero(f.get("devengado")),

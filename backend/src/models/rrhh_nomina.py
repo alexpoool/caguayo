@@ -21,7 +21,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Column, ForeignKey, CheckConstraint, Integer, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, CheckConstraint, Integer, UniqueConstraint, text
 from sqlmodel import Field, SQLModel
 
 
@@ -91,10 +91,10 @@ class RrhhNomina(SQLModel, table=True):
     )
     estado: str = Field(default="pre_nomina", max_length=20)
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
 
 
@@ -182,8 +182,8 @@ class RrhhNominaEmpleado(SQLModel, table=True):
     )
     referencia: Optional[str] = Field(default=None, max_length=50)
     created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
     updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+        default_factory=_now, sa_column_kwargs={"server_default": text("CURRENT_TIMESTAMP")}
     )
