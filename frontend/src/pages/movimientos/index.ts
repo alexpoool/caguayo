@@ -1,1 +1,0 @@
-export { MovimientoRecepcionForm } from './MovimientoForm';

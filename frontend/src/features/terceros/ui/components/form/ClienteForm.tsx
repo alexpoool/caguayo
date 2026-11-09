@@ -1,0 +1,888 @@
+import React, { useCallback, useState, useEffect, useRef } from "react";
+import { toast } from "react-hot-toast";
+import { Button } from "@/shared/ui/components";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Modal,
+} from "@/shared/ui/components";
+import { Label } from "@/shared/ui/components";
+import { Input } from "@/shared/ui/components";
+import {
+  User,
+  Building2,
+  Briefcase,
+  Pencil,
+  Trash2,
+  Check,
+  AlertTriangle,
+  ArrowLeft,
+  Save,
+} from "lucide-react";
+
+import { TipoPersona, TipoRelacion } from "./types";
+import { NaturalForm } from "./forms-especificos/NaturalForm";
+import { JuridicaForm } from "./forms-especificos/JuridicaForm";
+import { TCPForm } from "./forms-especificos/TCPForm";
+import type {
+  ClienteNatural,
+  ClienteJuridica,
+  ClienteTCP,
+} from "../../../domain/terceros";
+import type { CasosUsoTerceros } from "../../../application/casos-uso";
+import { toISODateLocal } from '@/utils/fecha';
+
+export interface ClienteFormProps {
+  formId?: string;
+  editingCliente: any | null;
+  isProveedorView: boolean;
+  onCancel?: () => void;
+  onSubmit: (data: any) => Promise<void>;
+  onValidityChange?: (valid: boolean) => void;
+  /** Renderiza el header y el footer propios. `false` para embeberlo (p. ej. dentro de un modal). */
+  selfContained?: boolean;
+  provincias?: any[];
+  tiposEntidad?: any[];
+  casosUso: CasosUsoTerceros;
+}
+
+export const ClienteForm: React.FC<ClienteFormProps> = ({
+  formId = "cliente-form",
+  editingCliente,
+  isProveedorView,
+  onCancel,
+  onSubmit,
+  onValidityChange,
+  selfContained = true,
+  provincias = [],
+  tiposEntidad = [],
+  casosUso,
+}) => {
+  const [localProvincias, setLocalProvincias] = useState<any[]>(
+    provincias || [],
+  );
+  const [localTiposEntidad, setLocalTiposEntidad] = useState<any[]>(
+    tiposEntidad || [],
+  );
+  const fetchedProvinciasRef = useRef(false);
+  const fetchedTiposEntidadRef = useRef(false);
+
+  useEffect(() => {
+    if (provincias && Array.isArray(provincias) && provincias.length > 0) {
+      setLocalProvincias(provincias);
+    }
+  }, [provincias]);
+
+  // Fetch provincias from API when not provided as prop
+  useEffect(() => {
+    if (fetchedProvinciasRef.current || localProvincias.length > 0) return;
+    fetchedProvinciasRef.current = true;
+    casosUso
+      .listarProvincias()
+      .then((data: any[]) => {
+        setLocalProvincias(Array.isArray(data) ? data : []);
+      })
+      .catch((error: any) => {
+        console.error("Error loading provincias:", error);
+      });
+  }, [casosUso, localProvincias.length]);
+
+  useEffect(() => {
+    if (
+      tiposEntidad &&
+      Array.isArray(tiposEntidad) &&
+      tiposEntidad.length > 0
+    ) {
+      setLocalTiposEntidad(tiposEntidad);
+    }
+  }, [tiposEntidad]);
+
+  // Fetch tiposEntidad from API when not provided as prop
+  useEffect(() => {
+    if (fetchedTiposEntidadRef.current || localTiposEntidad.length > 0) return;
+    fetchedTiposEntidadRef.current = true;
+    casosUso
+      .listarTiposEntidad()
+      .then((data: any[]) => {
+        setLocalTiposEntidad(Array.isArray(data) ? data : []);
+      })
+      .catch((error: any) => {
+        console.error("Error loading tiposEntidad:", error);
+      });
+  }, [casosUso, localTiposEntidad.length]);
+
+  const [tipoPersona, setTipoPersona] = useState<TipoPersona | null>(
+    editingCliente?.tipo_persona || null,
+  );
+
+  const [formData, setFormData] = useState<any>({
+    tipo_persona: editingCliente?.tipo_persona || null,
+    tipo_relacion:
+      editingCliente?.tipo_relacion ||
+      (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
+    codigo: editingCliente?.codigo || "",
+    nombre: editingCliente?.nombre || "",
+    nit: editingCliente?.nit || "",
+    email: editingCliente?.email || "",
+    telefono: editingCliente?.telefono || "",
+    direccion: editingCliente?.direccion || "",
+    fax: editingCliente?.fax || "",
+    web: editingCliente?.web || "",
+    codigo_postal: editingCliente?.codigo_postal || "",
+    estado: editingCliente?.estado || "ACTIVO",
+    id_provincia: editingCliente?.id_provincia || undefined,
+    id_municipio: editingCliente?.id_municipio || undefined,
+  });
+
+  const [municipios, setMunicipios] = useState<any[]>([]);
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
+
+  const handleProvinciaChange = useCallback(async (provinciaId: number | undefined) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      id_provincia: provinciaId,
+      id_municipio: undefined,
+    }));
+
+    if (provinciaId) {
+      setLoadingMunicipios(true);
+      try {
+        const data = await casosUso.listarMunicipios(provinciaId);
+        setMunicipios(data);
+      } catch (error) {
+        console.error("Error loading municipios:", error);
+        setMunicipios([]);
+      } finally {
+        setLoadingMunicipios(false);
+      }
+    } else {
+      setMunicipios([]);
+    }
+  }, [casosUso]);
+
+  useEffect(() => {
+    if (formData.id_provincia) {
+      handleProvinciaChange(formData.id_provincia);
+    }
+    // handleProvinciaChange es estable; solo corre al cambiar la provincia.
+  }, [formData.id_provincia, handleProvinciaChange]);
+
+  useEffect(() => {
+    if (
+      editingCliente ||
+      formData.id_provincia ||
+      localProvincias.length === 0
+    ) {
+      return;
+    }
+    const provinciaDefault = localProvincias.find(
+      (p: any) => p.nombre === "Santiago de Cuba",
+    );
+    if (!provinciaDefault) return;
+    let cancelled = false;
+    setLoadingMunicipios(true);
+    casosUso
+      .listarMunicipios(provinciaDefault.id_provincia)
+      .then((data: any[]) => {
+        if (cancelled) return;
+        const lista = Array.isArray(data) ? data : [];
+        const municipioDefault = lista.find(
+          (m: any) => m.nombre === "Santiago de Cuba",
+        );
+        setMunicipios(lista);
+        setFormData((prev: any) => ({
+          ...prev,
+          id_provincia: provinciaDefault.id_provincia,
+          id_municipio: municipioDefault?.id_municipio,
+        }));
+      })
+      .catch((error: any) => {
+        console.error("Error loading municipios:", error);
+        if (!cancelled) setMunicipios([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMunicipios(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [casosUso, editingCliente, formData.id_provincia, localProvincias]);
+
+  const [datosNatural, setDatosNatural] = useState<ClienteNatural | null>(
+    editingCliente?.cliente_natural || null,
+  );
+  const [datosJuridica, setDatosJuridica] = useState<ClienteJuridica | null>(
+    editingCliente?.cliente_juridica || null,
+  );
+  const [datosTCP, setDatosTCP] = useState<ClienteTCP | null>(
+    editingCliente?.cliente_tcp || null,
+  );
+
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [modalTipo, setModalTipo] = useState<TipoPersona | null>(null);
+  const [datosDraft, setDatosDraft] = useState<any>(null);
+
+  useEffect(() => {
+    if (editingCliente) {
+      setFormData({
+        tipo_persona: editingCliente.tipo_persona || null,
+        tipo_relacion:
+          editingCliente.tipo_relacion ||
+          (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
+        codigo: editingCliente.codigo || "",
+        nombre: editingCliente.nombre || "",
+        nit: editingCliente.nit || "",
+        email: editingCliente.email || "",
+        telefono: editingCliente.telefono || "",
+        direccion: editingCliente.direccion || "",
+        fax: editingCliente.fax || "",
+        web: editingCliente.web || "",
+        codigo_postal: editingCliente.codigo_postal || "",
+        estado: editingCliente.estado || "ACTIVO",
+        id_provincia: editingCliente.id_provincia || undefined,
+        id_municipio: editingCliente.id_municipio || undefined,
+      });
+      setTipoPersona(editingCliente.tipo_persona || null);
+      setDatosNatural(editingCliente.cliente_natural || null);
+      setDatosJuridica(editingCliente.cliente_juridica || null);
+      setDatosTCP(editingCliente.cliente_tcp || null);
+    }
+  }, [editingCliente, isProveedorView]);
+
+  const abrirModalTipo = (tipo: TipoPersona) => {
+    setModalTipo(tipo);
+    const today = toISODateLocal();
+    setDatosDraft(
+      tipo === "NATURAL"
+        ? { ...(datosNatural || {}) }
+        : tipo === "JURIDICA"
+          ? { ...(datosJuridica || {}) }
+          : {
+              ...(datosTCP || {}),
+              fecha_aprobacion: datosTCP?.fecha_aprobacion || today,
+            },
+    );
+    setModalAbierto(true);
+  };
+
+  const confirmarModalTipo = () => {
+    if (!modalTipo) return;
+    if (modalTipo === "NATURAL") setDatosNatural(datosDraft);
+    if (modalTipo === "JURIDICA") setDatosJuridica(datosDraft);
+    if (modalTipo === "TCP") setDatosTCP(datosDraft);
+    setTipoPersona(modalTipo);
+    setFormData((prev: any) => ({ ...prev, tipo_persona: modalTipo }));
+    setModalAbierto(false);
+    setModalTipo(null);
+    setDatosDraft(null);
+  };
+
+  const cerrarModalTipo = () => {
+    setModalAbierto(false);
+    setModalTipo(null);
+    setDatosDraft(null);
+  };
+
+  const quitarTipoPersona = () => {
+    setDatosNatural(null);
+    setDatosJuridica(null);
+    setDatosTCP(null);
+    setTipoPersona(null);
+    setFormData((prev: any) => ({ ...prev, tipo_persona: null }));
+  };
+
+  const relacionActual: TipoRelacion =
+    formData.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE");
+
+  // En edición la relación original no se puede quitar; solo se puede sumar
+  // la otra para pasar a AMBAS (y volver a la original al desmarcarla).
+  const relacionOriginal: TipoRelacion =
+    editingCliente?.tipo_relacion ||
+    (isProveedorView ? "PROVEEDOR" : "CLIENTE");
+  const bloqueadoCliente =
+    Boolean(editingCliente) &&
+    (relacionOriginal === "CLIENTE" ||
+      (relacionOriginal === "AMBAS" && relacionActual === "CLIENTE"));
+  const bloqueadoProveedor =
+    Boolean(editingCliente) &&
+    (relacionOriginal === "PROVEEDOR" ||
+      (relacionOriginal === "AMBAS" && relacionActual === "PROVEEDOR"));
+
+  const esCliente =
+    relacionActual === "CLIENTE" || relacionActual === "AMBAS";
+  const esProveedor =
+    relacionActual === "PROVEEDOR" || relacionActual === "AMBAS";
+
+  const aplicarRelacion = (cliente: boolean, proveedor: boolean) => {
+    const tipo_relacion: TipoRelacion =
+      cliente && proveedor
+        ? "AMBAS"
+        : cliente
+          ? "CLIENTE"
+          : proveedor
+            ? "PROVEEDOR"
+            : relacionActual;
+    setFormData((prev: any) => ({ ...prev, tipo_relacion }));
+  };
+
+  const toggleCliente = () => {
+    if (bloqueadoCliente) return;
+    // Nunca se puede quedar sin ninguna relación marcada.
+    if (esCliente && !esProveedor) return;
+    aplicarRelacion(!esCliente, esProveedor);
+  };
+
+  const toggleProveedor = () => {
+    if (bloqueadoProveedor) return;
+    if (esProveedor && !esCliente) return;
+    aplicarRelacion(esCliente, !esProveedor);
+  };
+
+  const personaCompleta =
+    tipoPersona === "NATURAL"
+      ? Boolean(
+          datosNatural?.nombre?.trim() && datosNatural.primer_apellido?.trim(),
+        )
+      : tipoPersona === "JURIDICA"
+        ? Boolean(datosJuridica?.codigo_reup?.trim())
+        : tipoPersona === "TCP"
+          ? Boolean(
+              datosTCP?.nombre?.trim() && datosTCP.primer_apellido?.trim(),
+            )
+          : false;
+
+  useEffect(() => {
+    onValidityChange?.(Boolean(tipoPersona) && personaCompleta);
+  }, [tipoPersona, personaCompleta, onValidityChange]);
+
+  const resumenTipoPersona =
+    tipoPersona === "NATURAL" && datosNatural
+      ? `${datosNatural.nombre || ""} ${datosNatural.primer_apellido || ""} ${datosNatural.segundo_apellido || ""}${datosNatural.carnet_identidad ? ` · CI ${datosNatural.carnet_identidad}` : ""}`.trim()
+      : tipoPersona === "JURIDICA" && datosJuridica
+        ? `${datosJuridica.codigo_reup || ""}${
+            datosJuridica.id_tipo_entidad
+              ? ` · ${
+                  localTiposEntidad.find(
+                    (t: any) => t.id_tipo_entidad === datosJuridica.id_tipo_entidad,
+                  )?.nombre || ""
+                }`
+              : ""
+          }`.trim()
+        : tipoPersona === "TCP" && datosTCP
+          ? `${datosTCP.nombre || ""} ${datosTCP.primer_apellido || ""} ${datosTCP.segundo_apellido || ""}${datosTCP.direccion ? ` · ${datosTCP.direccion}` : ""}`.trim()
+          : "";
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.codigo?.trim()) {
+      toast.error("El código es obligatorio");
+      return;
+    }
+    if (!tipoPersona) {
+      toast.error("Seleccione el tipo de persona");
+      return;
+    }
+    if (!personaCompleta) {
+      toast.error("Complete los datos de la persona seleccionada");
+      return;
+    }
+    const formDataSinFecha = { ...formData };
+    delete formDataSinFecha.fecha_registro;
+    const payload = {
+      ...formDataSinFecha,
+      cliente_natural: tipoPersona === "NATURAL" ? datosNatural : undefined,
+      cliente_juridica: tipoPersona === "JURIDICA" ? datosJuridica : undefined,
+      cliente_tcp: tipoPersona === "TCP" ? datosTCP : undefined,
+    };
+    try {
+      await onSubmit(payload);
+    } catch (error) {
+      console.error("Error al guardar cliente:", error);
+    }
+  };
+
+  return (
+    <>
+      {editingCliente?.valido === false && (
+        <div className={`rounded-lg border border-amber-300 bg-amber-50 p-4 ${selfContained ? "mb-6" : "m-4 mb-0 md:mx-6 md:mt-6"}`}>
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                Este registro migró con un dato corregido
+              </p>
+              <p className="text-sm text-amber-800 mt-1">
+                Campo a revisar:{" "}
+                <span className="font-medium">{editingCliente.campo || "(sin especificar)"}</span>
+              </p>
+              {editingCliente.razon && (
+                <p className="text-sm text-amber-700 mt-1">{editingCliente.razon}</p>
+              )}
+              <p className="text-xs text-amber-700 mt-2">
+                La marca se retira sola cuando guardes un valor válido para ese campo.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {selfContained && (
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 relative z-10">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-gray-800">
+                {editingCliente
+                  ? isProveedorView
+                    ? "Editar Proveedor"
+                    : "Editar Cliente"
+                  : isProveedorView
+                    ? "Nuevo Proveedor"
+                    : "Nuevo Cliente"}
+              </h2>
+              <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+                Complete los datos del registro
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={onCancel} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Volver
+          </Button>
+        </div>
+      )}
+
+      <form id={formId} onSubmit={handleSubmit} className={selfContained ? "" : "p-4 md:p-6"}>
+        {/* Tipo de Relación */}
+        <div className="mb-6">
+          <span className="text-sm font-medium text-gray-700">Tipo de Relación:</span>
+          <div className="mt-2 flex flex-wrap gap-4">
+            {[
+              {
+                valor: "CLIENTE",
+                etiqueta: "Cliente",
+                checked: esCliente,
+                disabled: bloqueadoCliente,
+                onToggle: toggleCliente,
+              },
+              {
+                valor: "PROVEEDOR",
+                etiqueta: "Proveedor",
+                checked: esProveedor,
+                disabled: bloqueadoProveedor,
+                onToggle: toggleProveedor,
+              },
+            ].map((opcion) => (
+              <label
+                key={opcion.valor}
+                title={
+                  opcion.disabled
+                    ? "Esta relación no se puede desmarcar"
+                    : undefined
+                }
+                className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                  opcion.checked
+                    ? "border-brand-500 bg-brand-50 text-brand-800"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                } ${opcion.disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
+              >
+                <input
+                  type="checkbox"
+                  name="tipo_relacion"
+                  value={opcion.valor}
+                  checked={opcion.checked}
+                  disabled={opcion.disabled}
+                  onChange={opcion.onToggle}
+                  className="w-4 h-4"
+                />
+                {opcion.etiqueta}
+              </label>
+            ))}
+          </div>
+          {editingCliente && (
+            <p className="mt-2 text-xs text-gray-500">
+              {relacionOriginal === "AMBAS"
+                ? "Si desmarca una relación, la que quede no se podrá desmarcar. Puede volver a marcar la otra para dejarlo como cliente y proveedor."
+                : "La relación original no se puede quitar. Marca la otra opción para convertir el registro en cliente y proveedor."}
+            </p>
+          )}
+        </div>
+
+        {/* Datos Base del Cliente */}
+        <Card className="mb-6 shadow-sm border-gray-200">
+          <CardHeader className="border-b bg-gray-50/50">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <User className="h-5 w-5 text-brand-600" />
+              Información del Cliente
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div>
+              <Label>Nombre Comercial</Label>
+              <Input
+                value={formData.nombre || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    nombre: e.target.value.slice(0, 200),
+                  })
+                }
+                required
+                maxLength={200}
+              />
+            </div>
+            <div>
+              <Label>NIT</Label>
+              <Input
+                value={formData.nit || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    nit: e.target.value.slice(0, 20),
+                  })
+                }
+                required
+                maxLength={20}
+              />
+            </div>
+            <div>
+              <Label>Código</Label>
+              <Input
+                value={formData.codigo || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    codigo: e.target.value.slice(0, 50),
+                  })
+                }
+                required
+                maxLength={50}
+                placeholder="Código del cliente"
+              />
+            </div>
+            <div>
+              <Label>Teléfono</Label>
+              <Input
+                value={formData.telefono || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    telefono: e.target.value.slice(0, 20),
+                  })
+                }
+                maxLength={20}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Dirección</Label>
+              <Input
+                value={formData.direccion || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, direccion: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Provincia</Label>
+              <select
+                value={formData.id_provincia || ""}
+                onChange={(e) =>
+                  handleProvinciaChange(
+                    e.target.value ? parseInt(e.target.value) : undefined,
+                  )
+                }
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
+              >
+                <option value="">Seleccione provincia</option>
+                {localProvincias.map((p: any) => (
+                  <option key={p.id_provincia} value={p.id_provincia}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Municipio</Label>
+              <select
+                value={formData.id_municipio || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    id_municipio: e.target.value
+                      ? parseInt(e.target.value)
+                      : undefined,
+                  })
+                }
+                disabled={!formData.id_provincia || loadingMunicipios}
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {loadingMunicipios
+                    ? "Cargando..."
+                    : formData.id_provincia
+                      ? "Seleccione municipio"
+                      : "Primero seleccione provincia"}
+                </option>
+                {municipios.map((m: any) => (
+                  <option key={m.id_municipio} value={m.id_municipio}>
+                    {m.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Código Postal</Label>
+              <Input
+                value={formData.codigo_postal || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    codigo_postal: e.target.value.slice(0, 10),
+                  })
+                }
+                maxLength={10}
+              />
+            </div>
+            <div>
+              <Label>Web</Label>
+              <Input
+                value={formData.web || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    web: e.target.value.slice(0, 100),
+                  })
+                }
+                maxLength={100}
+              />
+            </div>
+            <div>
+              <Label>Correo</Label>
+              <Input
+                type="email"
+                value={formData.email || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    email: e.target.value.slice(0, 100),
+                  })
+                }
+                maxLength={100}
+              />
+            </div>
+            <div>
+              <Label>Fax</Label>
+              <Input
+                value={formData.fax || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, fax: e.target.value.slice(0, 20) })
+                }
+                maxLength={20}
+              />
+            </div>
+            {editingCliente && (
+              <div>
+                <Label>Estado</Label>
+                <select
+                  aria-label="Estado"
+                  value={formData.estado || "ACTIVO"}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      estado: e.target.value,
+                    })
+                  }
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
+                >
+                  <option value="ACTIVO">Activo</option>
+                  <option value="INACTIVO">Inactivo</option>
+                </select>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Tipo de Persona */}
+        <Card className="mb-6 shadow-sm border-gray-200">
+          <CardHeader className="border-b bg-gray-50/50">
+            <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-lg">
+              <span className="flex items-center gap-2">
+                <User className="h-5 w-5 text-brand-600" />
+                Tipo de Persona
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {
+                    value: "NATURAL" as TipoPersona,
+                    label: "Creador",
+                    color:
+                      "bg-brand-100 text-brand-700 hover:bg-brand-200 ring-brand-500",
+                  },
+                  {
+                    value: "JURIDICA" as TipoPersona,
+                    label: "Persona Jurídica",
+                    color:
+                      "bg-amber-100 text-amber-700 hover:bg-amber-200 ring-amber-500",
+                  },
+                  {
+                    value: "TCP" as TipoPersona,
+                    label: "TCP",
+                    color:
+                      "bg-brand-100 text-brand-700 hover:bg-brand-200 ring-brand-500",
+                  },
+                ].map((tipo) => (
+                  <button
+                    key={tipo.value}
+                    type="button"
+                    onClick={() => abrirModalTipo(tipo.value)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95 ${tipo.color} ${
+                      tipoPersona === tipo.value
+                        ? "ring-2 ring-offset-1 shadow-md"
+                        : "opacity-90"
+                    }`}
+                  >
+                    {tipo.label}
+                  </button>
+                ))}
+              </div>
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        {/* Resumen tipo de persona */}
+        {tipoPersona && (
+          <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50/50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 gap-4">
+              <div className="flex items-start gap-3 min-w-0">
+                {tipoPersona === "NATURAL" ? (
+                  <User className="h-5 w-5 text-brand-600 shrink-0 mt-0.5" />
+                ) : tipoPersona === "JURIDICA" ? (
+                  <Building2 className="h-5 w-5 text-brand-600 shrink-0 mt-0.5" />
+                ) : (
+                  <Briefcase className="h-5 w-5 text-brand-600 shrink-0 mt-0.5" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800">
+                    {tipoPersona === "NATURAL"
+                      ? "Creador"
+                      : tipoPersona === "JURIDICA"
+                        ? "Persona Jurídica"
+                        : "TCP"}
+                  </p>
+                  <p className="text-sm text-gray-600 truncate">
+                    {resumenTipoPersona || "Sin datos"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => abrirModalTipo(tipoPersona)}
+                  className="gap-1"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Editar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={quitarTipoPersona}
+                  className="gap-1 text-red-600 hover:text-red-700 hover:border-red-300"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Quitar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal formulario tipo de persona */}
+        <Modal className="max-w-2xl" isOpen={modalAbierto} onClose={cerrarModalTipo}>
+          <div className="p-4 md:p-6 pb-5 border-b">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
+                {modalTipo === "NATURAL" ? (
+                  <User className="h-5 w-5 text-brand-600" />
+                ) : modalTipo === "JURIDICA" ? (
+                  <Building2 className="h-5 w-5 text-brand-600" />
+                ) : (
+                  <Briefcase className="h-5 w-5 text-brand-600" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {modalTipo === "NATURAL"
+                    ? "Datos Persona Natural"
+                    : modalTipo === "JURIDICA"
+                      ? "Datos Persona Jurídica"
+                      : "Datos TCP"}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {modalTipo === "NATURAL"
+                    ? "Complete los datos personales"
+                    : modalTipo === "JURIDICA"
+                      ? "Código REEUP y tipo de entidad"
+                      : "Trabajo por Cuenta Propia"}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 md:p-6">
+            {modalTipo === "NATURAL" && (
+              <NaturalForm
+                datos={datosDraft}
+                setDatos={setDatosDraft}
+                campoACorregir={editingCliente?.valido === false ? editingCliente.campo : null}
+                razon={editingCliente?.razon}
+                casosUso={casosUso}
+              />
+            )}
+            {modalTipo === "JURIDICA" && (
+              <JuridicaForm
+                datos={datosDraft}
+                setDatos={setDatosDraft}
+                tiposEntidad={localTiposEntidad}
+              />
+            )}
+            {modalTipo === "TCP" && (
+              <TCPForm datos={datosDraft} setDatos={setDatosDraft} />
+            )}
+          </div>
+          <div className="flex justify-end gap-3 px-6 py-4 border-t bg-gray-50/50 rounded-b-2xl">
+            <Button type="button" variant="outline" onClick={cerrarModalTipo}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmarModalTipo}
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+            >
+              <Check className="h-4 w-4" />
+              Guardar
+            </Button>
+          </div>
+        </Modal>
+
+        {selfContained && (
+          <div className="flex gap-3 mt-8 pt-6 border-t">
+            <Button
+              type="submit"
+              disabled={!tipoPersona || !personaCompleta}
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+            >
+              <Save className="h-4 w-4" />
+              {editingCliente ? "Actualizar" : "Crear"}
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+          </div>
+        )}
+      </form>
+    </>
+  );
+};

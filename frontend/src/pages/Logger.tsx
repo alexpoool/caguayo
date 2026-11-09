@@ -12,7 +12,7 @@ import {
   Monitor,
   FileText,
 } from 'lucide-react';
-import { apiClient } from '../lib/api';
+import { apiClient } from '@/shared/infrastructure/http/api';
 import { 
   Button, 
   Input, 
@@ -23,7 +23,7 @@ import {
   TableRow, 
   TableHead, 
   TableCell 
-} from '../components/ui';
+} from '@/shared/ui/components';
 import { formatFechaHora } from '../utils/fecha';
 
 interface LogEntry {

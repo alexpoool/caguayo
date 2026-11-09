@@ -32,7 +32,7 @@ import {
   TableHeader,
   TableRow,
   CreateButton,
-} from "../../../components/ui";
+} from "@/shared/ui/components";
 import { toISODateLocal } from "../../../utils/fecha";
 import { descargarBlob } from "../../../utils/archivos";
 import { crearCasosUsoDj08 } from "../application/casos-uso";

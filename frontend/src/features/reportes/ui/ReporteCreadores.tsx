@@ -1,0 +1,148 @@
+import React, { useState, useEffect } from "react";
+import type { CasosUsoReportes } from '../application/casos-uso';
+import { useAuth } from '@/shared/ui/auth';
+import { toast } from "react-hot-toast";
+
+
+import { UserCircle, Download, Eye, Loader2, AlertTriangle } from "lucide-react";
+import ReportNotes from "@/shared/ui/components/ReportNotes";
+import type { Provincia, Municipio } from "../domain/reportes";
+
+
+import { abrirBlob, descargarBlob } from '@/utils/archivos';
+
+const ReporteCreadores: React.FC<{ casosUso: CasosUsoReportes }> = ({ casosUso }) => {
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [provincias, setProvincias] = useState<Provincia[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [idProvincia, setIdProvincia] = useState<number | null>(null);
+  const [idMunicipio, setIdMunicipio] = useState<number | null>(null);
+  const [vigencia, setVigencia] = useState("");
+  const [textoBusqueda, setTextoBusqueda] = useState("");
+  const [notas, setNotas] = useState("");
+
+  const { user } = useAuth();
+  const userName = user ? `${user.nombre} ${user.primer_apellido}${user.segundo_apellido ? " " + user.segundo_apellido : ""}`.trim() : "";
+  const userCargo = user?.cargo || "";
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { casosUso.listarProvincias().then(setProvincias).catch(() => toast.error("Error cargando provincias")); }, []);
+  useEffect(() => {
+    if (!idProvincia) { setMunicipios([]); setIdMunicipio(null); return; }
+    casosUso.listarMunicipios(idProvincia).then(setMunicipios).catch(() => toast.error("Error cargando municipios"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idProvincia]);
+
+  const buildParams = () => {
+    const p = new URLSearchParams({
+      aprobado_por_nombre: userName, aprobado_por_cargo: userCargo, notas,
+    });
+    if (idProvincia) p.append("id_provincia", idProvincia.toString());
+    if (idMunicipio) p.append("id_municipio", idMunicipio.toString());
+    if (vigencia) p.append("vigencia", vigencia);
+    if (textoBusqueda.trim()) p.append("texto_busqueda", textoBusqueda.trim());
+    return p;
+  };
+
+  const handlePreview = async () => {
+    setPreviewLoading(true);
+    try {
+            const r = await casosUso.generarReporte('/proyecto/', Object.fromEntries(buildParams()));
+      abrirBlob(r);
+    } catch { toast.error("Error al generar vista previa"); } finally { setPreviewLoading(false); }
+  };
+
+  const handleSubmit = async () => {
+    setPdfLoading(true);
+    try {
+            const r = await casosUso.generarReporte('/proyecto/', Object.fromEntries(buildParams()));
+      const blob = r;
+      descargarBlob(blob, "creadores.pdf");
+      toast.success("Reporte generado");
+    } catch { toast.error("Error al generar reporte"); } finally { setPdfLoading(false); }
+  };
+
+  return (
+    <div className="flex flex-col p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 flex-shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center">
+            <UserCircle className="w-4 h-4 text-brand-600" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900 leading-tight">Registro de Realizadores</h1>
+            <p className="text-xs text-gray-500">Listado de realizadores asignados a etapas</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={handlePreview} disabled={previewLoading} className="p-2 rounded-lg text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
+            {previewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+          </button>
+          <button type="button" onClick={handleSubmit} disabled={pdfLoading} className="p-2 rounded-lg text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors" title="Exportar PDF">
+            {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-xs text-amber-900">
+        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+        <span>
+          La columna <strong>VALOR ETAPA</strong> y los totales por persona suman
+          el valor de la etapa <em>una vez por cada realizador</em> que tenga. En
+          los contratos migrados del legacy, donde todos los artistas se
+          pusieron en la primera etapa porque el legacy no guardaba de qué era
+          cada uno, ese total queda multiplicado por el número de realizadores.
+          El <strong>cobro</strong> y el <strong>por cobrar</strong> sí son
+          correctos.
+        </span>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 w-full max-w-lg mx-auto">
+        <div className="space-y-3">
+          <div className="flex-shrink-0">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Filtros</p>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-0.5">Búsqueda</label>
+                  <input type="text" value={textoBusqueda} onChange={e => setTextoBusqueda(e.target.value)} placeholder="Nombre, CI, código..." className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Provincia</label>
+                    <select value={idProvincia ?? ""} onChange={e => { setIdProvincia(e.target.value ? Number(e.target.value) : null); setIdMunicipio(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-brand-500 bg-white">
+                      <option value="">Todas</option>
+                      {provincias.map(p => <option key={p.id_provincia} value={p.id_provincia}>{p.nombre}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Municipio</label>
+                    <select value={idMunicipio ?? ""} onChange={e => setIdMunicipio(e.target.value ? Number(e.target.value) : null)} disabled={!idProvincia} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-brand-500 bg-white disabled:bg-gray-50">
+                      <option value="">{idProvincia ? "Todos" : "Primero provincia"}</option>
+                      {municipios.map(m => <option key={m.id_municipio} value={m.id_municipio}>{m.nombre}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-0.5">Vigencia</label>
+                <select value={vigencia} onChange={e => setVigencia(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-brand-500 bg-white">
+                  <option value="">Todos</option>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="flex-shrink-0">
+            <ReportNotes value={notas} onChange={setNotas} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ReporteCreadores;

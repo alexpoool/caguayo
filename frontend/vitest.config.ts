@@ -1,8 +1,14 @@
+import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
@@ -26,17 +32,23 @@ export default defineConfig({
           functions: 70,
           lines: 75,
         },
-        'src/hooks/**/*.ts': {
+        'src/shared/ui/components/**/*.tsx': {
+          statements: 16,
+          branches: 10,
+          functions: 16,
+          lines: 18,
+        },
+        'src/shared/ui/hooks/**/*.ts': {
           statements: 30,
           branches: 25,
           functions: 25,
           lines: 30,
         },
-        'src/components/ui/**/*.tsx': {
-          statements: 16,
-          branches: 10,
-          functions: 16,
-          lines: 18,
+        'src/shared/ui/utils/**/*.ts': {
+          statements: 72,
+          branches: 70,
+          functions: 70,
+          lines: 75,
         },
         'src/features/*/domain/**/*.ts': {
           statements: 90,

@@ -1,0 +1,98 @@
+import React from "react";
+import { Label } from "@/shared/ui/components"
+import { Input } from "@/shared/ui/components"
+import { DateInput } from "@/shared/ui/components"
+
+export interface DatosTCPFormProps {
+  datos: any;
+  setDatos: React.Dispatch<React.SetStateAction<any>>;
+  formErrors?: any;
+}
+
+export const TCPForm: React.FC<DatosTCPFormProps> = ({
+  datos,
+  setDatos,
+  formErrors,
+}) => {
+  const data = datos || {};
+  const errors = formErrors || {};
+  
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <Label>Titular</Label>
+          <Input
+            value={data.nombre || ""}
+            onChange={(e) =>
+              setDatos({ ...data, nombre: e.target.value })
+            }
+            className={errors.tcp_nombre ? "border-red-500" : ""}
+          />
+          {errors.tcp_nombre && (
+            <p className="text-red-600 text-sm">{errors.tcp_nombre}</p>
+          )}
+        </div>
+        <div>
+          <Label>Primer Apellido</Label>
+          <Input
+            value={data.primer_apellido || ""}
+            onChange={(e) =>
+              setDatos({
+                ...data,
+                primer_apellido: e.target.value,
+              })
+            }
+          />
+        </div>
+        <div>
+          <Label>Segundo Apellido</Label>
+          <Input
+            value={data.segundo_apellido || ""}
+            onChange={(e) =>
+              setDatos({
+                ...data,
+                segundo_apellido: e.target.value,
+              })
+            }
+          />
+        </div>
+        <div className="md:col-span-2">
+          <Label>Dirección</Label>
+          <Input
+            value={data.direccion || ""}
+            onChange={(e) =>
+              setDatos({
+                ...data,
+                direccion: e.target.value,
+              })
+            }
+          />
+        </div>
+        <div>
+          <Label>Numero de Registro del Proyecto</Label>
+          <Input
+            value={data.numero_registro_proyecto || ""}
+            onChange={(e) =>
+              setDatos({
+                ...data,
+                numero_registro_proyecto: e.target.value,
+              })
+            }
+          />
+        </div>
+        <div>
+          <Label>Fecha de Aprobación</Label>
+          <DateInput
+            className="focus:ring-brand-500 focus:border-brand-500"
+            value={data.fecha_aprobacion || ""}
+            onChange={(fecha_aprobacion) =>
+              setDatos({
+                ...data,
+                fecha_aprobacion,
+              })
+            }
+          />
+        </div>
+    </div>
+  );
+};

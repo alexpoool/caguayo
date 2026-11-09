@@ -1,5 +1,5 @@
 import { Component, ReactNode } from 'react';
-import { apiClient } from '../lib/api';
+import { apiClient } from '@/shared/infrastructure/http/api';
 
 interface Props {
   children: ReactNode;

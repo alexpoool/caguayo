@@ -1,4 +1,4 @@
-import { apiClient } from '../lib/api';
+import { apiClient } from '@/shared/infrastructure/http/api';
 import { API_BASE_URL } from '../config/api';
 import { configuracionService as configService } from './administracion';
 
@@ -21,7 +21,7 @@ import type {
   DeclaracionJurada,
 } from '../types/dj08';
 import type { FichaCostoInput, FichaCostoRead, FichaTarifa, FichaTarifaInput } from '../types/fichaCosto';
-import type { CuentaDependenciaInfo } from './auth';
+import type { CuentaDependenciaSesion } from '@/shared/domain/sesion';
 import type {
   Productos, 
   ProductosCreate, 
@@ -44,7 +44,6 @@ import type {
   Dependencia,
   OrigenRecepcion
 } from '../types/index';
-import type { DashboardStats, VentasTrends, MovimientosTrends } from '../types/dashboard';
 import type {
   Venta,
   Cliente,
@@ -174,28 +173,6 @@ export const categoriasService = {
     return apiClient.delete<void>(`/categorias/${id}`);
   }
 };
-
-export const dashboardService = {
-  async getStats(): Promise<DashboardStats> {
-    return apiClient.get<DashboardStats>('/dashboard/stats');
-  },
-
-  async getTrends(dias: number = 7): Promise<VentasTrends> {
-    return apiClient.get<VentasTrends>(`/dashboard/trends?dias=${dias}`);
-  },
-
-  async getMovimientosTrends(dias: number = 7): Promise<MovimientosTrends> {
-    return apiClient.get<MovimientosTrends>(`/dashboard/movimientos-trends?dias=${dias}`);
-  },
-
-  async refreshStats(): Promise<DashboardStats> {
-    // Adding cache-busting query param
-    const timestamp = new Date().getTime();
-    return apiClient.get<DashboardStats>(`/dashboard/stats?_=${timestamp}`);
-  }
-};
-
-
 
 export const clientesService = {
   async getClientes(
@@ -553,8 +530,8 @@ export const dependenciasService = {
     return apiClient.get<Dependencia>(`/dependencias/${id}`);
   },
 
-  async getCuentasByDependencia(idDependencia: number): Promise<CuentaDependenciaInfo[]> {
-    return apiClient.get<CuentaDependenciaInfo[]>(`/dependencias/cuentas/dependencia/${idDependencia}`);
+  async getCuentasByDependencia(idDependencia: number): Promise<CuentaDependenciaSesion[]> {
+    return apiClient.get<CuentaDependenciaSesion[]>(`/dependencias/cuentas/dependencia/${idDependencia}`);
   }
 };
 

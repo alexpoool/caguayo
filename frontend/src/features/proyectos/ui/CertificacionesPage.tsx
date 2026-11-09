@@ -1,0 +1,533 @@
+import { useState, useEffect, useMemo, useRef, useDeferredValue } from 'react';
+import type { CasosUsoProyectos } from '../application/casos-uso';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
+  CreateButton,
+} from '@/shared/ui/components';
+
+import type { Certificacion, CertificacionCreate, Etapa } from '../domain/proyectos';
+import { Trash2, Edit, ArrowLeft, Search, FileText, X, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
+import { formatFecha, toISODateLocal} from '@/utils/fecha';
+
+type View = 'list' | 'form';
+
+const CERTIFICACION_FORM_ID = 'certificacion-form';
+
+export function CertificacionesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const etapaIdParam = searchParams.get('etapa');
+  
+  const [view, setView] = useState<View>('list');
+  const [etapas, setEtapas] = useState<Etapa[]>([]);
+  const [solicitudesMap, setSolicitudesMap] = useState<Record<number, { codigo_proyecto?: string; id_solicitud_servicio: number }>>({});
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const {
+    items: certificaciones,
+    isFetchingMore,
+    refresh,
+    hasMore,
+    loadMore,
+    total: totalCertificaciones,
+  } = useInfiniteList<Certificacion>({
+    queryKeyBase: 'certificaciones',
+    queryFn: async (skip, limit, _search, onTotal) => {
+      if (etapaIdParam) {
+        return casosUso.getCertificacionesByEtapa(Number(etapaIdParam));
+      }
+      return casosUso.getCertificaciones(skip, limit, onTotal);
+    },
+    extraQueryKeyParams: etapaIdParam ? [etapaIdParam] : [],
+  });
+
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
+  
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Certificacion | null }>({ isOpen: false, item: null });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'danger'
+  });
+
+  const filteredCertificaciones = useMemo(() => {
+    if (!deferredSearchTerm) return certificaciones;
+    const term = deferredSearchTerm.toLowerCase();
+    return certificaciones.filter(c => 
+      c.nombre.toLowerCase().includes(term) ||
+      c.obra?.toLowerCase().includes(term) ||
+      c.constructor?.toLowerCase().includes(term) ||
+      c.inversionista?.toLowerCase().includes(term)
+    );
+  }, [certificaciones, deferredSearchTerm]);
+
+  useEffect(() => {
+    loadSupportData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadSupportData = async () => {
+    try {
+      const [etapasRes, solicRes] = await Promise.all([
+        casosUso.getAllEtapas(),
+        casosUso.getSolicitudes(0, 1000)
+      ]);
+      setEtapas(etapasRes);
+      const map: Record<number, { codigo_proyecto?: string; id_solicitud_servicio: number }> = {};
+      solicRes.forEach((s: any) => { map[s.id_solicitud_servicio] = s; });
+      setSolicitudesMap(map);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Error al cargar datos');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      nombre: '',
+      id_etapa: etapaIdParam ? Number(etapaIdParam) : '',
+      nombre_constructor: '',
+      inversionista: '',
+      obra: '',
+      objeto_obra: '',
+      actividad: '',
+      fecha: toISODateLocal(),
+      a_cobrar: 0,
+      impuesto_venta_onat: 0
+    });
+    setEditingId(null);
+  };
+
+  const handleNew = () => {
+    resetForm();
+    setView('form');
+  };
+
+  const handleEdit = (item: Certificacion) => {
+    setFormData({
+      nombre: item.nombre,
+      id_etapa: item.id_etapa,
+      nombre_constructor: item.constructor || '',
+      inversionista: item.inversionista || '',
+      obra: item.obra || '',
+      objeto_obra: item.objeto_obra || '',
+      actividad: item.actividad || '',
+      fecha: item.fecha || '',
+      a_cobrar: item.a_cobrar,
+      impuesto_venta_onat: item.impuesto_venta_onat || 0
+    });
+    setEditingId(item.id_certificacion);
+    setView('form');
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const data: CertificacionCreate = {
+        nombre: formData.nombre,
+        id_etapa: Number(formData.id_etapa),
+        constructor: formData.nombre_constructor || undefined,
+        inversionista: formData.inversionista || undefined,
+        obra: formData.obra || undefined,
+        objeto_obra: formData.objeto_obra || undefined,
+        actividad: formData.actividad || undefined,
+        fecha: formData.fecha || undefined,
+        a_cobrar: Number(formData.a_cobrar) || 0,
+        impuesto_venta_onat: Number(formData.impuesto_venta_onat) || 0
+      };
+
+      if (editingId) {
+        const updateData: any = data;
+        await casosUso.updateCertificacion(editingId, updateData);
+        toast.success('Certificación actualizada');
+      } else {
+        await casosUso.createCertificacion(data);
+        toast.success('Certificación creada');
+      }
+      setView('list');
+      refresh();
+    } catch (error) {
+      console.error('Error saving:', error);
+      toast.error('Error al guardar');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = (item: Certificacion) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Eliminar Certificación',
+      message: `¿Está seguro de eliminar la certificación "${item.nombre}"?`,
+      onConfirm: async () => {
+        try {
+          await casosUso.deleteCertificacion(item.id_certificacion);
+          toast.success('Certificación eliminada');
+          refresh();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'Error al eliminar');
+        }
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      },
+      type: 'danger'
+    });
+  };
+
+  const openDetail = (item: Certificacion) => {
+    setDetailModal({ isOpen: true, item });
+  };
+
+  const getEtapaNombre = (idEtapa: number) => {
+    const etapa = etapas.find(e => e.id_etapa === idEtapa);
+    if (!etapa) return `Etapa ${idEtapa}`;
+    const solic = solicitudesMap[etapa.id_solicitud_servicio];
+    return `${solic?.codigo_proyecto || 'Proyecto'} - ${etapa.nombre_etapa || `Etapa ${etapa.numero_etapa}`}`;
+  };
+
+  const certificacionForm = (
+    <form
+      id={CERTIFICACION_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <Label>Nombre *</Label>
+                <Input value={formData.nombre || ''} onChange={e => setFormData({...formData, nombre: e.target.value})} placeholder="Nombre de la certificación" />
+              </div>
+
+              {etapaIdParam ? (
+                <input type="hidden" name="id_etapa" value={etapaIdParam} />
+              ) : (
+                <div className="md:col-span-2">
+                  <Label>Etapa *</Label>
+                  <select 
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={formData.id_etapa || ''}
+                    onChange={e => setFormData({...formData, id_etapa: e.target.value})}
+                  >
+                    <option value="">Seleccionar etapa</option>
+                    {etapas.map(e => (
+                      <option key={e.id_etapa} value={e.id_etapa}>{getEtapaNombre(e.id_etapa)}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="md:col-span-2">
+                <Label>Fecha</Label>
+                <DateInput value={formData.fecha || ''} onChange={(fecha) => setFormData({...formData, fecha})} />
+              </div>
+
+              <div className="md:col-span-2">
+                <Label>Constructor</Label>
+                <Input value={formData.nombre_constructor || ''} onChange={e => setFormData({...formData, nombre_constructor: e.target.value})} placeholder="Constructor" />
+              </div>
+
+              <div className="md:col-span-2">
+                <Label>Inversionista</Label>
+                <Input value={formData.inversionista || ''} onChange={e => setFormData({...formData, inversionista: e.target.value})} placeholder="Inversionista" />
+              </div>
+
+              <div className="md:col-span-2">
+                <Label>Obra</Label>
+                <Input value={formData.obra || ''} onChange={e => setFormData({...formData, obra: e.target.value})} placeholder="Obra" />
+              </div>
+
+              <div className="md:col-span-2">
+                <Label>Objeto de Obra</Label>
+                <textarea 
+                  className="w-full px-3 py-2 border rounded-lg"
+                  rows={2}
+                  value={formData.objeto_obra || ''}
+                  onChange={e => setFormData({...formData, objeto_obra: e.target.value})}
+                  placeholder="Objeto de la obra"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <Label>Actividad</Label>
+                <Input value={formData.actividad || ''} onChange={e => setFormData({...formData, actividad: e.target.value})} placeholder="Actividad" />
+              </div>
+
+              <div>
+                <Label>A Cobrar ($)</Label>
+                <Input type="number" step="0.01" placeholder="0.00" value={formData.a_cobrar || ''} onChange={e => setFormData({...formData, a_cobrar: e.target.value})} />
+              </div>
+
+              <div>
+                <Label>Impuesto Venta ONAT ($)</Label>
+                <Input type="number" step="0.01" placeholder="0.00" value={formData.impuesto_venta_onat || ''} onChange={e => setFormData({...formData, impuesto_venta_onat: e.target.value})} />
+              </div>
+            </div>
+    </form>
+  );
+
+  return (
+    <div className="p-4 md:p-6">
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={`${editingId ? 'Editar' : 'Nueva'} Certificación`}
+        subtitle="Complete los datos de la certificación"
+        icon={<FileText className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={CERTIFICACION_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {certificacionForm}
+      </FormModal>
+
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+          {etapaIdParam && (
+            <button onClick={() => navigate(`/proyectos/etapas?solicitud=${etapas.find(e => e.id_etapa === Number(etapaIdParam))?.id_solicitud_servicio}`)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          )}
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <FileText className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Certificaciones</h1>
+            <p className="text-gray-500 mt-1">
+              {searchTerm || etapaIdParam
+                ? filteredCertificaciones.length
+                : (totalCertificaciones ?? filteredCertificaciones.length)} certificación{searchTerm || etapaIdParam ? (filteredCertificaciones.length !== 1 ? 'es' : '') : ((totalCertificaciones ?? filteredCertificaciones.length) !== 1 ? 'es' : '')}
+            </p>
+          </div>
+        </div>
+        <CreateButton label="Nueva Certificación" onClick={handleNew} />
+      </div>
+
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar certificaciones..."
+            className="pl-10 pr-4 py-2 border rounded-lg w-64"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+        <Table>
+          <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
+            <TableRow>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Constructor</TableHead>
+              <TableHead>Inversionista</TableHead>
+              <TableHead>Obra</TableHead>
+              <TableHead>Fecha</TableHead>
+              <TableHead className="text-right">A Cobrar</TableHead>
+              <TableHead className="w-24">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredCertificaciones.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  No hay certificaciones registradas
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredCertificaciones.map(cert => (
+                <TableRow key={cert.id_certificacion} className="hover:bg-gray-50 cursor-pointer" onClick={() => openDetail(cert)}>
+                  <TableCell className="font-medium">{cert.nombre}</TableCell>
+                  <TableCell>{cert.constructor || '-'}</TableCell>
+                  <TableCell>{cert.inversionista || '-'}</TableCell>
+                  <TableCell>{cert.obra || '-'}</TableCell>
+                  <TableCell>{formatFecha(cert.fecha) || '-'}</TableCell>
+                  <TableCell className="text-right">${Number(cert.a_cobrar).toLocaleString('es-ES', { maximumFractionDigits: 15 })}</TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(cert)}
+                        className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                        title="Editar"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(cert)}
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        </div>
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {confirmModal.isOpen && (
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+          type={confirmModal.type}
+        />
+      )}
+
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay
+          isOpen={true}
+          onClose={() => setDetailModal({ isOpen: false, item: null })}
+          ariaLabel="Certificación"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
+                    <FileText className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.nombre}</h3>
+                    <p className="text-sm text-gray-500">Certificación</p>
+                  </div>
+                </div>
+                <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Constructor</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.constructor || 'N/A'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Inversionista</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.inversionista || 'N/A'}</p>
+                </div>
+              </div>
+              {detailModal.item.obra && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Obra</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.obra}</p>
+                </div>
+              )}
+              {detailModal.item.objeto_obra && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Objeto de Obra</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.objeto_obra}</p>
+                </div>
+              )}
+              {detailModal.item.actividad && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Actividad</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.actividad}</p>
+                </div>
+              )}
+              {detailModal.item.descripcion && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Descripción</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.descripcion}</p>
+                </div>
+              )}
+              {detailModal.item.observaciones && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Observaciones</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.observaciones}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Fecha</p>
+                  <p className="font-bold text-gray-900 text-lg">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
+                </div>
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Impuesto Venta ONAT</p>
+                  <p className="font-bold text-gray-900 text-lg">${Number(detailModal.item.impuesto_venta_onat || 0).toLocaleString('es-ES', { maximumFractionDigits: 15 })}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">A Cobrar</p>
+                  <p className="font-bold text-brand-900 text-xl">${Number(detailModal.item.a_cobrar).toLocaleString('es-ES', { maximumFractionDigits: 15 })}</p>
+                </div>
+              </div>
+
+            </div>
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+    </div>
+  );
+}

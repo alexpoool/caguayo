@@ -41,14 +41,14 @@ import {
   ShoppingBag
 } from 'lucide-react';
 
-import { LoginPage } from './pages/Login';
-import { RegisterPage } from './pages/Register';
-import { HomePage } from './pages/HomePage';
-import { Dashboard } from './pages/Dashboard';
+import { LoginPage } from './features/auth/ui/LoginPage';
+import { RegisterPage } from './features/auth/ui/RegisterPage';
+import { HomePage } from './app/layout/HomePage';
+import { DashboardPageContainer } from './app/container/dashboard';
 import { LoggerPage } from './pages/Logger';
-import { PerfilPage } from './pages/Perfil';
+import { PerfilPage } from './features/auth/ui/PerfilPage';
 import { AuthProvider } from './app/providers/AuthProvider';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from '@/shared/ui/auth';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useEmpresa } from './config/branding';
 import {
@@ -58,79 +58,79 @@ import {
   puedeAccederRuta,
   type Modulo,
 } from './config/rutas';
-const ProductosPage = lazy(() => import('./pages/Productos').then(m => ({ default: m.ProductosPage })));
-const ClientesPage = lazy(() => import('./pages/Clientes').then(m => ({ default: m.ClientesPage })));
-const PerfilClientePage = lazy(() => import('./pages/PerfilCliente').then(m => ({ default: m.PerfilClientePage })));
-const MovimientosPage = lazy(() => import('./pages/Movimientos').then(m => ({ default: m.MovimientosPage })));
-const MovimientosPendientesPage = lazy(() => import('./pages/MovimientosPendientes').then(m => ({ default: m.MovimientosPendientesPage })));
-const RecepcionesPage = lazy(() => import('./pages/RecepcionesPage').then(m => ({ default: m.RecepcionesPage })));
-const ConfiguracionPage = lazy(() => import('./pages/Configuracion').then(m => ({ default: m.ConfiguracionPage })));
-const MonedasPage = lazy(() => import('./pages/Monedas').then(m => ({ default: m.MonedasPage })));
-const UsuariosPage = lazy(() => import('./pages/Usuarios').then(m => ({ default: m.UsuariosPage })));
-const UsuariosCredencialesPage = lazy(() => import('./pages/UsuariosCredenciales').then(m => ({ default: m.UsuariosCredencialesPage })));
-const GruposPage = lazy(() => import('./pages/Grupos').then(m => ({ default: m.GruposPage })));
-const DependenciasPage = lazy(() => import('./pages/Dependencias').then(m => ({ default: m.DependenciasPage })));
-const RespaldosPage = lazy(() => import('./pages/Respaldos').then(m => ({ default: m.RespaldosPage })));
-const CuentasPage = lazy(() => import('./pages/Cuentas').then(m => ({ default: m.CuentasPage })));
-const CuentasClientePage = lazy(() => import('./pages/CuentasCliente').then(m => ({ default: m.CuentasClientePage })));
-const InventarioHome = lazy(() => import('./pages/home/InventarioHome').then(m => ({ default: m.InventarioHome })));
-const VentaHome = lazy(() => import('./pages/home/VentaHome').then(m => ({ default: m.VentaHome })));
-const CompraHome = lazy(() => import('./pages/home/CompraHome').then(m => ({ default: m.CompraHome })));
-const TercerosHome = lazy(() => import('./pages/home/TercerosHome').then(m => ({ default: m.TercerosHome })));
-const ReportesHome = lazy(() => import('./pages/home/ReportesHome').then(m => ({ default: m.ReportesHome })));
-const ProyectosHome = lazy(() => import('./pages/home/ProyectosHome').then(m => ({ default: m.ProyectosHome })));
-const AdministracionHome = lazy(() => import('./pages/home/AdministracionHome').then(m => ({ default: m.AdministracionHome })));
-const ReporteExistencias = lazy(() => import('./pages/reportes/ReporteExistencias'));
-const ReporteMovimientosDependencia = lazy(() => import('./pages/reportes/ReporteMovimientosDependencia'));
-const ReporteMovimientosProducto = lazy(() => import('./pages/reportes/ReporteMovimientosProducto'));
-const ReporteProveedores = lazy(() => import('./pages/reportes/ReporteProveedores'));
-const ReporteClientes = lazy(() => import('./pages/reportes/ReporteClientes'));
-const ReporteProyectos = lazy(() => import('./pages/reportes/ReporteProyectos'));
-const ReporteCreadores = lazy(() => import('./pages/reportes/ReporteCreadores'));
-const ReporteDesempeno = lazy(() => import('./pages/reportes/ReporteDesempeno'));
-const ReporteOnat = lazy(() => import('./pages/reportes/ReporteOnat'));
-const ReporteMincult = lazy(() => import('./pages/reportes/ReporteMincult'));
-const ReporteLiquidaciones = lazy(() => import('./pages/reportes/ReporteLiquidaciones'));
-const CompraConveniosPage = lazy(() => import('./pages/Convenios').then(m => ({ default: m.ConveniosPage })));
-const CompraAnexosPage = lazy(() => import('./pages/Anexos').then(m => ({ default: m.AnexosPage })));
-const ProductosEnLiquidacionPage = lazy(() => import('./pages/compra/ProductosEnLiquidacionPage').then(m => ({ default: m.ProductosEnLiquidacionPage })));
-const LiquidacionesPage = lazy(() => import('./pages/compra/LiquidacionesPage').then(m => ({ default: m.LiquidacionesPage })));
-const ContratosPage = lazy(() => import('./pages/ventas/ContratosPage').then(m => ({ default: m.ContratosPage })));
-const SuplementosPage = lazy(() => import('./pages/ventas/SuplementosPage').then(m => ({ default: m.SuplementosPage })));
-const FacturasPage = lazy(() => import('./pages/ventas/facturas/FacturasPage').then(m => ({ default: m.FacturasPage })));
-const OfertasTiendaPage = lazy(() => import('./pages/ventas/ofertas/OfertasPage').then(m => ({ default: m.OfertasTiendaPage })));
-const PreFacturasTiendaPage = lazy(() => import('./pages/ventas/facturas/PreFacturasPage').then(m => ({ default: m.PreFacturasPage })));
-const VentasEfectivoPage = lazy(() => import('./pages/ventas/VentasEfectivoPage').then(m => ({ default: m.VentasEfectivoPage })));
-const ServiciosPage = lazy(() => import('./pages/proyecto/ServiciosPage').then(m => ({ default: m.ServiciosPage })));
-const SolicitudesPage = lazy(() => import('./pages/proyecto/SolicitudesPage').then(m => ({ default: m.SolicitudesPage })));
-const ProyectosPage = lazy(() => import('./pages/proyecto/ProyectosPage').then(m => ({ default: m.ProyectosPage })));
-const EtapasPage = lazy(() => import('./pages/proyecto/EtapasPage').then(m => ({ default: m.EtapasPage })));
-const TareasEtapaPage = lazy(() => import('./pages/proyecto/TareasEtapaPage').then(m => ({ default: m.TareasEtapaPage })));
-const RealizadoresPage = lazy(() => import('./pages/proyecto/RealizadoresPage').then(m => ({ default: m.RealizadoresPage })));
-const FacturasServicioPage = lazy(() => import('./pages/proyecto/FacturasServicioPage').then(m => ({ default: m.FacturasServicioPage })));
-const OfertasPage = lazy(() => import('./pages/proyecto/OfertasPage').then(m => ({ default: m.OfertasPage })));
-const PreFacturasPage = lazy(() => import('./pages/proyecto/PreFacturasPage').then(m => ({ default: m.PreFacturasPage })));
-const PagosFacturaServicioPage = lazy(() => import('./pages/proyecto/PagosFacturaServicioPage').then(m => ({ default: m.PagosFacturaServicioPage })));
-const ProyectoLiquidacionesPage = lazy(() => import('./pages/proyecto/LiquidacionesPage').then(m => ({ default: m.LiquidacionesPage })));
-const CertificacionesPage = lazy(() => import('./pages/proyecto/CertificacionesPage').then(m => ({ default: m.CertificacionesPage })));
+const ProductosPage = lazy(() => import('./app/container/inventario').then(m => ({ default: m.ProductosPageContainer })));
+const ClientesPage = lazy(() => import('./app/container/terceros').then(m => ({ default: m.ClientesPageContainer })));
+const PerfilClientePage = lazy(() => import('./app/container/terceros').then(m => ({ default: m.PerfilClientePageContainer })));
+const MovimientosPage = lazy(() => import('./app/container/inventario').then(m => ({ default: m.MovimientosPageContainer })));
+const MovimientosPendientesPage = lazy(() => import('./app/container/inventario').then(m => ({ default: m.MovimientosPendientesPageContainer })));
+const RecepcionesPage = lazy(() => import('./app/container/inventario').then(m => ({ default: m.RecepcionesPageContainer })));
+const ConfiguracionPage = lazy(() => import('./app/container/administracion').then(m => ({ default: m.ConfiguracionPageContainer })));
+const MonedasPage = lazy(() => import('./app/container/administracion').then(m => ({ default: m.MonedasPageContainer })));
+const UsuariosPage = lazy(() => import('./app/container/administracion').then(m => ({ default: m.UsuariosPageContainer })));
+const UsuariosCredencialesPage = lazy(() => import('./app/container/administracion').then(m => ({ default: m.UsuariosCredencialesPageContainer })));
+const GruposPage = lazy(() => import('./app/container/administracion').then(m => ({ default: m.GruposPageContainer })));
+const DependenciasPage = lazy(() => import('./app/container/administracion').then(m => ({ default: m.DependenciasPageContainer })));
+const RespaldosPage = lazy(() => import('./app/container/administracion').then(m => ({ default: m.RespaldosPageContainer })));
+const CuentasPage = lazy(() => import('./app/container/administracion').then(m => ({ default: m.CuentasPageContainer })));
+const CuentasClientePage = lazy(() => import('./app/container/terceros').then(m => ({ default: m.CuentasClientePageContainer })));
+const InventarioHome = lazy(() => import('./app/container/inventario').then(m => ({ default: m.InventarioHomeContainer })));
+const VentaHome = lazy(() => import('./app/layout/VentaHome').then(m => ({ default: m.VentaHome })));
+const CompraHome = lazy(() => import('./app/container/compra').then(m => ({ default: m.CompraHomeContainer })));
+const TercerosHome = lazy(() => import('./app/container/terceros').then(m => ({ default: m.TercerosHomeContainer })));
+const ReportesHome = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReportesHomeContainer })));
+const ProyectosHome = lazy(() => import('./app/layout/ProyectosHome').then(m => ({ default: m.ProyectosHome })));
+const AdministracionHome = lazy(() => import('./app/layout/AdministracionHome').then(m => ({ default: m.AdministracionHome })));
+const ReporteExistencias = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteExistenciasContainer })));
+const ReporteMovimientosDependencia = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteMovimientosDependenciaContainer })));
+const ReporteMovimientosProducto = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteMovimientosProductoContainer })));
+const ReporteProveedores = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteProveedoresContainer })));
+const ReporteClientes = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteClientesContainer })));
+const ReporteProyectos = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteProyectosContainer })));
+const ReporteCreadores = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteCreadoresContainer })));
+const ReporteDesempeno = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteDesempenoContainer })));
+const ReporteOnat = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteOnatContainer })));
+const ReporteMincult = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteMincultContainer })));
+const ReporteLiquidaciones = lazy(() => import('./app/container/reportes').then(m => ({ default: m.ReporteLiquidacionesContainer })));
+const CompraConveniosPage = lazy(() => import('./app/container/compra').then(m => ({ default: m.ConveniosPageContainer })));
+const CompraAnexosPage = lazy(() => import('./app/container/compra').then(m => ({ default: m.AnexosPageContainer })));
+const ProductosEnLiquidacionPage = lazy(() => import('./app/container/compra').then(m => ({ default: m.ProductosEnLiquidacionPageContainer })));
+const LiquidacionesPage = lazy(() => import('./app/container/compra').then(m => ({ default: m.LiquidacionesPageContainer })));
+const ContratosPage = lazy(() => import('./app/container/ventas').then(m => ({ default: m.ContratosPageContainer })));
+const SuplementosPage = lazy(() => import('./app/container/ventas').then(m => ({ default: m.SuplementosPageContainer })));
+const FacturasPage = lazy(() => import('./app/container/ventas').then(m => ({ default: m.FacturasPageContainer })));
+const OfertasTiendaPage = lazy(() => import('./app/container/ventas').then(m => ({ default: m.OfertasTiendaPageContainer })));
+const PreFacturasTiendaPage = lazy(() => import('./app/container/ventas').then(m => ({ default: m.PreFacturasPageContainer })));
+const VentasEfectivoPage = lazy(() => import('./app/container/ventas').then(m => ({ default: m.VentasEfectivoPageContainer })));
+const ServiciosPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.ServiciosPageContainer })));
+const SolicitudesPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.SolicitudesPageContainer })));
+const ProyectosPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.ProyectosPageContainer })));
+const EtapasPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.EtapasPageContainer })));
+const TareasEtapaPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.TareasEtapaPageContainer })));
+const RealizadoresPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.RealizadoresPageContainer })));
+const FacturasServicioPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.FacturasServicioPageContainer })));
+const OfertasPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.OfertasPageContainer })));
+const PreFacturasPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.PreFacturasPageContainer })));
+const PagosFacturaServicioPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.PagosFacturaServicioPageContainer })));
+const ProyectoLiquidacionesPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.ProyectoLiquidacionesPageContainer })));
+const CertificacionesPage = lazy(() => import('./app/container/proyectos').then(m => ({ default: m.CertificacionesPageContainer })));
 const DJ08Page = lazy(() => import('./app/container/dj08').then(m => ({ default: m.DJ08PageContainer })));
-const RrhhHome = lazy(() => import('./pages/home/RrhhHome').then(m => ({ default: m.RrhhHome })));
-const CatalogosPage = lazy(() => import('./pages/rrhh/CatalogosPage').then(m => ({ default: m.CatalogosPage })));
-const EmpleadosPage = lazy(() => import('./pages/rrhh/EmpleadosPage').then(m => ({ default: m.EmpleadosPage })));
-const AsistenciaPage = lazy(() => import('./pages/rrhh/AsistenciaPage').then(m => ({ default: m.AsistenciaPage })));
-const RrhhMovimientosPage = lazy(() => import('./pages/rrhh/MovimientosPage').then(m => ({ default: m.MovimientosPage })));
-const NominaPage = lazy(() => import('./pages/rrhh/NominaPage').then(m => ({ default: m.NominaPage })));
-const NominaDetallePage = lazy(() => import('./pages/rrhh/NominaDetallePage').then(m => ({ default: m.NominaDetallePage })));
-const NominaPagosPage = lazy(() => import('./pages/rrhh/NominaPagosPage').then(m => ({ default: m.NominaPagosPage })));
-const PagosResultadoPage = lazy(() => import('./pages/rrhh/PagosResultadoPage').then(m => ({ default: m.PagosResultadoPage })));
-const PagoResultadoNuevoPage = lazy(() => import('./pages/rrhh/PagoResultadoNuevoPage').then(m => ({ default: m.PagoResultadoNuevoPage })));
-const PagoResultadoDetallePage = lazy(() => import('./pages/rrhh/PagoResultadoDetallePage').then(m => ({ default: m.PagoResultadoDetallePage })));
-const RrhhSolicitudesPage = lazy(() => import('./pages/rrhh/SolicitudesPage').then(m => ({ default: m.SolicitudesPage })));
-const EvaluacionesPage = lazy(() => import('./pages/rrhh/EvaluacionesPage').then(m => ({ default: m.EvaluacionesPage })));
-const EvaluacionDetallePage = lazy(() => import('./pages/rrhh/EvaluacionDetallePage').then(m => ({ default: m.EvaluacionDetallePage })));
-const ObjetivosPage = lazy(() => import('./pages/rrhh/ObjetivosPage').then(m => ({ default: m.ObjetivosPage })));
-const ReportesPage = lazy(() => import('./pages/rrhh/ReportesPage').then(m => ({ default: m.ReportesPage })));
-const AuditoriaPage = lazy(() => import('./pages/rrhh/AuditoriaPage').then(m => ({ default: m.AuditoriaPage })));
+const RrhhHome = lazy(() => import('./app/layout/RrhhHome').then(m => ({ default: m.RrhhHome })));
+const CatalogosPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.CatalogosPageContainer })));
+const EmpleadosPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.EmpleadosPageContainer })));
+const AsistenciaPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.AsistenciaPageContainer })));
+const RrhhMovimientosPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.MovimientosPageContainer })));
+const NominaPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.NominaPageContainer })));
+const NominaDetallePage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.NominaDetallePageContainer })));
+const NominaPagosPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.NominaPagosPageContainer })));
+const PagosResultadoPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.PagosResultadoPageContainer })));
+const PagoResultadoNuevoPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.PagoResultadoNuevoPageContainer })));
+const PagoResultadoDetallePage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.PagoResultadoDetallePageContainer })));
+const RrhhSolicitudesPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.SolicitudesPageContainer })));
+const EvaluacionesPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.EvaluacionesPageContainer })));
+const EvaluacionDetallePage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.EvaluacionDetallePageContainer })));
+const ObjetivosPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.ObjetivosPageContainer })));
+const ReportesPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.ReportesPageContainer })));
+const AuditoriaPage = lazy(() => import('./app/container/rrhh').then(m => ({ default: m.AuditoriaPageContainer })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -1344,7 +1344,7 @@ function App() {
                   path="/dashboard"
                   element={
                     <ProtectedRoute currentPath="/dashboard">
-                      <Dashboard />
+                      <DashboardPageContainer />
                     </ProtectedRoute>
                   }
                 />

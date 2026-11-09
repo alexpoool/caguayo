@@ -1,0 +1,1413 @@
+import { useState, useEffect, useMemo, useRef } from 'react';
+import type { CasosUsoProyectos } from '../application/casos-uso';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
+  CreateButton,
+} from '@/shared/ui/components';
+import { ClienteFormContainer as ClienteForm } from '@/app/container/terceros-cliente-form';
+
+import type { SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdate, Etapa, Oferta } from '../domain/proyectos';
+import type { ContratoWithDetails, ContratoCreate, SuplementoWithDetails, SuplementoCreate } from '../domain/proyectos';
+import type { Cliente } from '../domain/proyectos';
+import type { Moneda } from '../domain/proyectos';
+import { Plus, Trash2, Edit, Search, ClipboardList, Tag, X, Layers, CheckCircle, FileText, FilePlus, User, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
+import { formatFecha, toISODateLocal} from '@/utils/fecha';
+
+type View = 'list' | 'form';
+
+const SOLICITUD_FORM_ID = 'solicitud-form';
+
+export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<View>('list');
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  const hoy = toISODateLocal();
+
+  const addDays = (dateStr: string, days: number) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + days);
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${dt.getFullYear()}-${mm}-${dd}`;
+  };
+
+  const handleFechaSolicitudChange = (fecha: string) => {
+    setFormData(prev => {
+      let nuevaEntrega = prev.fecha_entrega;
+      if (fecha) {
+        if (!prev.fecha_entrega || prev.fecha_entrega <= fecha) {
+          nuevaEntrega = addDays(fecha, 1);
+        }
+      } else {
+        nuevaEntrega = '';
+      }
+      return { ...prev, fecha_solicitud: fecha, fecha_entrega: nuevaEntrega };
+    });
+  };
+  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: SolicitudServicio | null }>({ isOpen: false, item: null });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'danger'
+  });
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const {
+    items: solicitudes,
+    isFetchingMore,
+    refresh,
+    hasMore,
+    loadMore,
+    total: totalSolicitudes,
+    searchTerm,
+    setSearch: setSearchTerm,
+  } = useInfiniteList<SolicitudServicio>({
+    queryKeyBase: 'solicitudes-servicio',
+    queryFn: (skip, limit, search, onTotal) =>
+      casosUso.getSolicitudes(skip, limit, onTotal, { search }),
+  });
+
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
+
+  const [contratoModal, setContratoModal] = useState<{ isOpen: boolean; item: ContratoWithDetails | null; loading: boolean }>({ isOpen: false, item: null, loading: false });
+  const [suplementoModal, setSuplementoModal] = useState<{ isOpen: boolean; item: SuplementoWithDetails | null; loading: boolean }>({ isOpen: false, item: null, loading: false });
+
+  const [aprobarModal, setAprobarModal] = useState<{
+    isOpen: boolean;
+    solicitud: SolicitudServicio | null;
+    modo: 'seleccionar' | 'crear' | 'seleccionar-suplemento' | 'crear-suplemento';
+    contratos: ContratoWithDetails[];
+    loadingContratos: boolean;
+  }>({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false });
+
+  const [suplementosPorContrato, setSuplementosPorContrato] = useState<{ [key: number]: SuplementoWithDetails[] }>({});
+  const [formContrato, setFormContrato] = useState<Record<string, any>>({});
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
+  const [nuevoClienteTarget, setNuevoClienteTarget] = useState<'form' | 'contrato'>('form');
+  const clienteRef = useRef<HTMLDivElement | null>(null);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+
+  const filteredClientes = useMemo(() => {
+    if (!clienteSearch) return clientes;
+    const term = clienteSearch.toLowerCase();
+    return clientes.filter(c => c.nombre.toLowerCase().includes(term));
+  }, [clientes, clienteSearch]);
+  const [monedas, setMonedas] = useState<Moneda[]>([]);
+  const [allEtapas, setAllEtapas] = useState<Etapa[]>([]);
+  const [allOfertas, setAllOfertas] = useState<Oferta[]>([]);
+  const conteosCargadosRef = useRef(false);
+  const { data: estadosContrato = [] } = useQuery({
+    queryKey: ['estados-contrato'],
+    queryFn: () => casosUso.getEstadosContrato(),
+  });
+  const tiposContrato = [{ id: 1, nombre: 'SERVICIO' }, { id: 2, nombre: 'OBRA' }, { id: 3, nombre: 'MANTENIMIENTO' }, { id: 4, nombre: 'ALQUILER' }, { id: 5, nombre: 'COMPRA' }];
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) {
+        setShowClienteDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [clientesRes, monedasRes, etapasRes, ofertasRes] = await Promise.all([
+          casosUso.getClientes(0, 1000),
+          casosUso.getMonedas(0, 100),
+          casosUso.getAllEtapas(),
+          casosUso.getOfertas(0, 10000)
+        ]);
+        setClientes(clientesRes);
+        setMonedas(monedasRes);
+        setAllEtapas(etapasRes);
+        setAllOfertas(ofertasRes);
+      } catch (error) { console.error('Error:', error); }
+    };
+    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (view !== 'list') return;
+    // La primera carga ya la hizo el efecto de datos maestros.
+    if (!conteosCargadosRef.current) {
+      conteosCargadosRef.current = true;
+      return;
+    }
+    const loadConteos = async () => {
+      try {
+        const [etapasRes, ofertasRes] = await Promise.all([
+          casosUso.getAllEtapas(),
+          casosUso.getOfertas(0, 10000)
+        ]);
+        setAllEtapas(etapasRes);
+        setAllOfertas(ofertasRes);
+      } catch (error) { console.error('Error:', error); }
+    };
+    loadConteos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      if (!formData.id_cliente) {
+        toast.error('Debe seleccionar un cliente');
+        return;
+      }
+      const fechaSolicitud = formData.fecha_solicitud || hoy;
+      const fechaEntrega = formData.fecha_entrega || (fechaSolicitud ? addDays(fechaSolicitud, 1) : '');
+      if (!fechaSolicitud || !fechaEntrega || fechaEntrega <= fechaSolicitud) {
+        toast.error('La fecha de entrega debe ser posterior a la fecha de solicitud');
+        return;
+      }
+      if (editingId) {
+        const data: SolicitudServicioUpdate = {
+          id_cliente: Number(formData.id_cliente) || undefined,
+          descripcion: formData.descripcion,
+          fecha_solicitud: fechaSolicitud,
+          fecha_entrega: fechaEntrega,
+          estado: formData.estado,
+          observaciones: formData.observaciones,
+          material_asumido_x: formData.material_asumido_x === 'true' || formData.material_asumido_x === true,
+          aprobado: formData.aprobado === 'true' || formData.aprobado === true
+        };
+        await casosUso.updateSolicitud(editingId, data);
+      } else {
+        const data: SolicitudServicioCreate = {
+          id_cliente: Number(formData.id_cliente) || undefined,
+          descripcion: formData.descripcion,
+          fecha_solicitud: fechaSolicitud,
+          fecha_entrega: fechaEntrega,
+          estado: formData.estado || 'PENDIENTE',
+          observaciones: formData.observaciones,
+          material_asumido_x: formData.material_asumido_x === 'true' || formData.material_asumido_x === true,
+          aprobado: false
+        };
+        await casosUso.createSolicitud(data);
+      }
+      toast.success(editingId ? 'Actualizado' : 'Creado');
+      setView('list');
+      resetForm();
+      refresh();
+      queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
+    } catch (error: any) { toast.error(error.message || 'Error'); }
+    finally { setIsSaving(false); }
+  };
+
+  const handleDelete = async (id: number, codigo: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Eliminar solicitud?',
+      message: `¿Está seguro de eliminar la solicitud "${codigo}"?`,
+      onConfirm: async () => {
+        try {
+          await casosUso.deleteSolicitud(id);
+          toast.success('Eliminado');
+          refresh();
+          queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
+        } catch (error: any) { toast.error(error.message || 'Error'); }
+      },
+      type: 'danger'
+    });
+  };
+
+  const handleToggleAprobado = async (item: SolicitudServicio) => {
+    try {
+      await casosUso.updateSolicitud(item.id_solicitud_servicio, { 
+        aprobado: true,
+        estado: 'EN NEGOCIACION'
+      });
+      toast.success('Solicitud en negociación');
+      refresh();
+      queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
+    } catch (error: any) { toast.error(error.message || 'Error'); }
+  };
+
+  const handleAsignarContrato = async (item: SolicitudServicio) => {
+    setAprobarModal({
+      isOpen: true,
+      solicitud: item,
+      modo: 'seleccionar',
+      contratos: [],
+      loadingContratos: true
+    });
+    setSuplementosPorContrato({});
+    try {
+      const data = await casosUso.getContratos(0, 1000);
+      const contratosDelCliente = item.id_cliente
+        ? data.filter(c => c.id_cliente === item.id_cliente)
+        : data;
+      setAprobarModal(prev => ({ ...prev, contratos: contratosDelCliente, loadingContratos: false }));
+    } catch {
+      toast.error('Error al cargar contratos');
+      setAprobarModal(prev => ({ ...prev, isOpen: false, loadingContratos: false }));
+    }
+  };
+
+  const cargarSuplementosPorContrato = async (contratoId: number) => {
+    try {
+      const data = await casosUso.getSuplementosByContrato(contratoId);
+      setSuplementosPorContrato(prev => ({ ...prev, [contratoId]: data }));
+    } catch (error: any) {
+      console.error('Error al cargar suplementos:', error);
+      toast.error('Error al cargar suplementos');
+    }
+  };
+
+  const confirmarAprobacion = async () => {
+    if (!aprobarModal.solicitud) return;
+    
+    try {
+      if (aprobarModal.modo === 'crear') {
+        if (!formContrato.id_cliente) {
+          toast.error('Debe seleccionar un cliente');
+          return;
+        }
+        if (aprobarModal.solicitud.id_cliente && Number(formContrato.id_cliente) !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El cliente del contrato debe ser el mismo que el de la solicitud');
+          return;
+        }
+        const data: ContratoCreate = {
+          nombre: formContrato.nombre || `Contrato-${Date.now()}`,
+          id_cliente: Number(formContrato.id_cliente),
+          id_estado: Number(formContrato.id_estado) || (estadosContrato[0]?.id_estado_contrato ?? 0),
+          id_tipo_contrato: Number(formContrato.id_tipo_contrato) || 1,
+          id_moneda: Number(formContrato.id_moneda) || monedas[0]?.id_moneda,
+          fecha: formContrato.fecha || toISODateLocal(),
+          vigencia: formContrato.vigencia || toISODateLocal(),
+          proforma: formContrato.proforma,
+          documento_final: formContrato.documento_final,
+          monto: Number(formContrato.valor_contrato) || 0,
+        };
+          const nuevoContrato = await casosUso.createContrato(data);
+        await casosUso.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
+          aprobado: true,
+          id_contrato: nuevoContrato.id_contrato,
+          id_cliente: Number(formContrato.id_cliente),
+          estado: 'EN PROCESO'
+        });
+        toast.success('Solicitud aprobada con nuevo contrato');
+      } else if (aprobarModal.modo === 'crear-suplemento') {
+        if (!formContrato.id_contrato_suplemento) {
+          toast.error('Debe seleccionar un contrato');
+          return;
+        }
+        const data: SuplementoCreate = {
+          id_contrato: Number(formContrato.id_contrato_suplemento),
+          nombre: formContrato.nombre_suplemento || `Suplemento-${Date.now()}`,
+          fecha: formContrato.fecha_suplemento || toISODateLocal(),
+          fecha_vigencia: formContrato.fecha_vigencia_suplemento || toISODateLocal(),
+          monto: Number(formContrato.valor_suplemento) || 0,
+          documento: formContrato.documento_suplemento,
+        };
+        const nuevoSuplemento = await casosUso.createSuplemento(data);
+        const contratoDelSuplemento = aprobarModal.contratos.find(c => c.id_contrato === Number(formContrato.id_contrato_suplemento));
+        if (aprobarModal.solicitud.id_cliente && contratoDelSuplemento?.id_cliente !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El contrato seleccionado pertenece a un cliente distinto al de la solicitud');
+          return;
+        }
+        await casosUso.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
+          aprobado: true,
+          id_contrato: Number(formContrato.id_contrato_suplemento),
+          id_suplemento: nuevoSuplemento.id_suplemento,
+          id_cliente: contratoDelSuplemento?.id_cliente,
+          estado: 'EN PROCESO'
+        });
+        toast.success('Solicitud aprobada con nuevo suplemento');
+      } else if (aprobarModal.modo === 'seleccionar-suplemento') {
+        if (!formContrato.id_suplemento_seleccionado) {
+          toast.error('Debe seleccionar un suplemento');
+          return;
+        }
+        const suplementoId = Number(formContrato.id_suplemento_seleccionado);
+        const contratoId = Number(formContrato.id_contrato_suple);
+        const suplementos = suplementosPorContrato[contratoId] || [];
+        const suplementoSeleccionado = suplementos.find(s => s.id_suplemento === suplementoId);
+        if (!suplementoSeleccionado) {
+          toast.error('Suplemento no encontrado');
+          return;
+        }
+        const contratoDelSuplemento = aprobarModal.contratos.find(c => c.id_contrato === contratoId);
+        if (aprobarModal.solicitud.id_cliente && contratoDelSuplemento?.id_cliente !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El contrato seleccionado pertenece a un cliente distinto al de la solicitud');
+          return;
+        }
+        await casosUso.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
+          aprobado: true,
+          id_contrato: contratoId,
+          id_suplemento: suplementoId,
+          id_cliente: contratoDelSuplemento?.id_cliente,
+          estado: 'EN PROCESO'
+        });
+        toast.success('Solicitud aprobada con suplemento');
+      } else {
+        const contratoSeleccionado = aprobarModal.contratos.find(c => c.id_contrato === Number(formContrato.id_contrato_seleccionado));
+        if (!contratoSeleccionado) {
+          toast.error('Debe seleccionar un contrato');
+          return;
+        }
+        if (aprobarModal.solicitud.id_cliente && contratoSeleccionado.id_cliente !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El contrato seleccionado pertenece a un cliente distinto al de la solicitud');
+          return;
+        }
+        await casosUso.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
+          aprobado: true,
+          id_contrato: Number(formContrato.id_contrato_seleccionado),
+          id_cliente: contratoSeleccionado.id_cliente,
+          estado: 'EN PROCESO'
+        });
+        toast.success('Solicitud aprobada');
+      }
+      setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false });
+      setFormContrato({});
+      setSuplementosPorContrato({});
+      refresh();
+      queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
+    } catch (error: any) {
+      toast.error(error.message || 'Error al aprobar');
+    }
+  };
+
+  const resetForm = () => { setFormData({ fecha_solicitud: hoy }); setEditingId(null); setClienteSearch(''); };
+
+  const openForm = (item?: SolicitudServicio) => {
+    if (item) {
+      setEditingId(item.id_solicitud_servicio);
+      setFormData({
+        id_cliente: item.id_cliente,
+        descripcion: item.descripcion,
+        fecha_solicitud: item.fecha_solicitud,
+        fecha_entrega: item.fecha_entrega,
+        estado: item.estado,
+        observaciones: item.observaciones,
+        material_asumido_x: item.material_asumido_x,
+        aprobado: item.aprobado
+      });
+    } else { resetForm(); }
+    setView('form');
+  };
+
+  const filteredSolicitudes = useMemo(
+    () => solicitudes.filter(s => ['PENDIENTE', 'EN NEGOCIACION'].includes(s.estado || '')),
+    [solicitudes],
+  );
+
+  const conteosPorSolicitud = useMemo(() => {
+    const etapasPorSolicitud = new Map<number, number>();
+    const etapaPorId = new Map<number, Etapa>();
+    const ofertasPorSolicitud = new Map<number, { total: number; pendientes: number; confirmadas: number }>();
+
+    for (const etapa of allEtapas) {
+      etapasPorSolicitud.set(
+        etapa.id_solicitud_servicio,
+        (etapasPorSolicitud.get(etapa.id_solicitud_servicio) || 0) + 1
+      );
+      etapaPorId.set(etapa.id_etapa, etapa);
+    }
+    for (const solicitudId of etapasPorSolicitud.keys()) {
+      ofertasPorSolicitud.set(solicitudId, { total: 0, pendientes: 0, confirmadas: 0 });
+    }
+    for (const oferta of allOfertas) {
+      if (!oferta.id_etapa) continue;
+      const etapa = etapaPorId.get(oferta.id_etapa);
+      if (!etapa) continue;
+      const acc = ofertasPorSolicitud.get(etapa.id_solicitud_servicio) || { total: 0, pendientes: 0, confirmadas: 0 };
+      acc.total += 1;
+      if (oferta.estado === 'CONFIRMADA') acc.confirmadas += 1;
+      else acc.pendientes += 1;
+      ofertasPorSolicitud.set(etapa.id_solicitud_servicio, acc);
+    }
+
+    return { etapasPorSolicitud, ofertasPorSolicitud };
+  }, [allEtapas, allOfertas]);
+
+  const renderList = () => (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <ClipboardList className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Solicitudes de Servicio</h1>
+            <p className="text-gray-500 mt-1">
+              {filteredSolicitudes.length === solicitudes.length
+                ? `Gestión de solicitudes (${totalSolicitudes ?? solicitudes.length} items)`
+                : `Mostrando ${filteredSolicitudes.length} de ${solicitudes.length} solicitudes (total en BD: ${totalSolicitudes ?? solicitudes.length})`
+              }
+            </p>
+          </div>
+        </div>
+        <CreateButton label="Nueva Solicitud" onClick={() => openForm()} />
+      </div>
+
+      <div className="flex gap-2">
+        <div className="flex-1 relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Buscar solicitudes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
+              <TableRow>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-brand-600" />
+                    Código
+                  </div>
+                </TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-amber-600" />
+                    Ofertas
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-brand-600" />
+                    Etapas
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-brand-600" />
+                    Cliente
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSolicitudes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                    {searchTerm ? 'No se encontraron solicitudes que coincidan con la búsqueda' : 'No hay solicitudes'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredSolicitudes.map((item) => (
+                  <TableRow key={item.id_solicitud_servicio} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
+                        <Tag className="h-3 w-3" />
+                        {item.codigo_solicitud || 'N/A'}
+                      </span>
+                    </TableCell>
+<TableCell>{formatFecha(item.fecha_solicitud) || 'N/A'}</TableCell>
+                    <TableCell>
+{item.estado ? (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          item.estado === 'TERMINADA' ? 'bg-green-100 text-green-800' :
+                          item.estado === 'CANCELADA' ? 'bg-red-100 text-red-800' :
+                          item.estado === 'EN PROCESO' ? 'bg-brand-100 text-brand-800' :
+                          item.estado === 'EN NEGOCIACION' ? 'bg-brand-100 text-brand-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {item.estado}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {(() => {
+                        const ofertas = conteosPorSolicitud.ofertasPorSolicitud.get(item.id_solicitud_servicio) || { total: 0, pendientes: 0, confirmadas: 0 };
+                        return (
+                          <button
+                            onClick={() => navigate(`/proyectos/ofertas?solicitud=${item.id_solicitud_servicio}`)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                              ofertas.pendientes > 0
+                                ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                : ofertas.total > 0
+                                ? 'bg-brand-100 text-brand-700 hover:bg-brand-200'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                            title="Ver ofertas de la solicitud"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            {ofertas.total === 1 ? 'oferta' : 'ofertas'}
+                          </button>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {(() => {
+                        const count = conteosPorSolicitud.etapasPorSolicitud.get(item.id_solicitud_servicio) || 0;
+                        return (
+                          <button
+                            onClick={() => navigate(`/proyectos/etapas?solicitud=${item.id_solicitud_servicio}`)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                              count > 0
+                                ? 'bg-brand-100 text-brand-700 hover:bg-brand-200'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                            title="Ver etapas de la solicitud"
+                          >
+                            <Layers className="h-3.5 w-3.5" />
+                            {count === 1 ? 'etapa' : 'etapas'}
+                          </button>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-gray-400" />
+                        {clientes.find(c => c.id_cliente === item.id_cliente)?.nombre || 'N/A'}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-2">
+                        {item.estado === 'PENDIENTE' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleToggleAprobado(item)}
+                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                            title="Aceptar solicitud"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {item.estado === 'EN NEGOCIACION' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleAsignarContrato(item)}
+                            className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8"
+                            title="Asignar contrato"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openForm(item)}
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(item.id_solicitud_servicio, item.codigo_solicitud || 'N/A')}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+
+  const renderForm = () => (
+    <form
+      id={SOLICITUD_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label className="text-sm font-medium">Fecha Solicitud</Label>
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                value={formData.fecha_solicitud || ''}
+                min={hoy}
+                onChange={(fecha_solicitud) => handleFechaSolicitudChange(fecha_solicitud)}
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Fecha Entrega</Label>
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                value={formData.fecha_entrega || ''}
+                min={formData.fecha_solicitud ? addDays(formData.fecha_solicitud, 1) : hoy}
+                onChange={(fecha_entrega) => setFormData({...formData, fecha_entrega})}
+              />
+            </div>
+            <div className="md:col-span-2 flex gap-2 items-start">
+              <div ref={clienteRef} className="relative flex-1">
+                <Label className="text-sm font-medium">Cliente *</Label>
+                <div className="relative mt-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente..."
+                    value={
+                      formData.id_cliente
+                        ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
+                        : clienteSearch
+                    }
+                    disabled={!!formData.id_cliente}
+                    onChange={(e) => {
+                      setClienteSearch(e.target.value);
+                      setFormData({ ...formData, id_cliente: '' });
+                      setShowClienteDropdown(true);
+                    }}
+                    onFocus={() => setShowClienteDropdown(true)}
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
+                  />
+                  {(formData.id_cliente || clienteSearch) && (
+                    <button
+                      type="button"
+                      onClick={() => { setFormData({ ...formData, id_cliente: '' }); setClienteSearch(''); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {showClienteDropdown && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {filteredClientes.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-500">No se encontraron resultados</div>
+                    ) : (
+                      filteredClientes.map(c => (
+                        <button
+                          key={c.id_cliente}
+                          type="button"
+                          className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
+                          onClick={() => {
+                            setFormData({ ...formData, id_cliente: c.id_cliente });
+                            setClienteSearch('');
+                            setShowClienteDropdown(false);
+                          }}
+                        >
+                          <span className="font-medium text-gray-900">{c.nombre}</span>
+                          <span className="text-xs text-gray-400 ml-2">({c.tipo_persona})</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="pt-7">
+                <button
+                  type="button"
+                  onClick={() => { setNuevoClienteTarget('form'); setShowNuevoClienteModal(true); }}
+                  className="py-2 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo Cliente
+                </button>
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-sm font-medium">Descripción</Label>
+              <Input value={formData.descripcion || ''} onChange={(e: any) => setFormData({...formData, descripcion: e.target.value})} className="mt-1" placeholder="Descripción de la solicitud" />
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-sm font-medium">Observaciones</Label>
+              <Input value={formData.observaciones || ''} onChange={(e: any) => setFormData({...formData, observaciones: e.target.value})} className="mt-1" placeholder="Observaciones adicionales" />
+            </div>
+          </div>
+      </form>
+  );
+
+  return (
+    <div className="p-4 md:p-6">
+      {renderList()}
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Solicitud' : 'Nueva Solicitud'}
+        subtitle="Complete los datos de la solicitud"
+        icon={<ClipboardList className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={SOLICITUD_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        onConfirm={() => confirmModal.onConfirm()}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay isOpen={true} onClose={() => setDetailModal({ isOpen: false, item: null })} ariaLabel="Detalle de solicitud">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
+                    <ClipboardList className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.codigo_solicitud || 'Sin código'}</h3>
+                    <p className="text-sm text-gray-500 font-mono">{detailModal.item.codigo_solicitud || 'Sin código'}</p>
+                  </div>
+                </div>
+                <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Estado</p>
+                  {detailModal.item.estado && detailModal.item.estado !== 'EN NEGOCIACION' ? (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      detailModal.item.estado === 'TERMINADA' ? 'bg-green-100 text-green-800' :
+                      detailModal.item.estado === 'CANCELADA' ? 'bg-red-100 text-red-800' :
+                      detailModal.item.estado === 'EN PROCESO' ? 'bg-brand-100 text-brand-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {detailModal.item.estado}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-sm">—</span>
+                  )}
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Aprobado</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.aprobado ? 'Sí' : 'No'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Solicitud</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_solicitud) || 'N/A'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Entrega</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_entrega) || 'N/A'}</p>
+                </div>
+              </div>
+              {(detailModal.item.id_cliente) && (
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Cliente</p>
+                  <p className="font-bold text-gray-900">{clientes.find(c => c.id_cliente === detailModal.item?.id_cliente)?.nombre || 'N/A'}</p>
+                </div>
+              )}
+              {detailModal.item.descripcion && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Descripción</p>
+                  <p className="text-gray-700">{detailModal.item.descripcion}</p>
+                </div>
+              )}
+              {detailModal.item.observaciones && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Observaciones</p>
+                  <p className="text-gray-700">{detailModal.item.observaciones}</p>
+                </div>
+              )}
+            </div>
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => navigate(`/proyectos/etapas?solicitud=${detailModal.item!.id_solicitud_servicio}`)} className="px-6 py-3 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 transition-colors font-medium">Ver Etapas</button>
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
+      <ModalOverlay isOpen={contratoModal.isOpen} onClose={() => setContratoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Contrato">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
+                    <FileText className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Detalle del Contrato</h3>
+                    <p className="text-sm text-gray-500">{contratoModal.item?.nombre || 'Cargando...'}</p>
+                  </div>
+                </div>
+                <button onClick={() => setContratoModal({ isOpen: false, item: null, loading: false })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            {contratoModal.loading ? (
+              <div className="p-12 text-center text-gray-500">Cargando...</div>
+            ) : contratoModal.item ? (
+              <div className="p-4 md:p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Nombre</p>
+                    <p className="font-bold text-gray-900">{contratoModal.item.nombre}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Cliente</p>
+                    <p className="font-bold text-gray-900">{contratoModal.item.cliente?.nombre || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Monto</p>
+                    <p className="font-bold text-gray-900">${Number(contratoModal.item.monto).toFixed(2)}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
+                    <p className="font-bold text-gray-900">{contratoModal.item.estado?.nombre || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
+                    <p className="font-bold text-gray-900">{formatFecha(contratoModal.item.fecha) || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Vigencia</p>
+                    <p className="font-bold text-gray-900">{formatFecha(contratoModal.item.vigencia) || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setContratoModal({ isOpen: false, item: null, loading: false })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+      </ModalOverlay>
+
+      <ModalOverlay isOpen={suplementoModal.isOpen} onClose={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Suplemento">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
+                    <FilePlus className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Detalle del Suplemento</h3>
+                    <p className="text-sm text-gray-500">{suplementoModal.item?.nombre || 'Cargando...'}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            {suplementoModal.loading ? (
+              <div className="p-12 text-center text-gray-500">Cargando...</div>
+            ) : suplementoModal.item ? (
+              <div className="p-4 md:p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Nombre</p>
+                    <p className="font-bold text-gray-900">{suplementoModal.item.nombre}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
+                    <p className="font-bold text-gray-900">{suplementoModal.item.estado?.nombre || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Monto</p>
+                    <p className="font-bold text-gray-900">{Number(suplementoModal.item.monto || 0).toFixed(2)}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
+                    <p className="font-bold text-gray-900">{formatFecha(suplementoModal.item.fecha) || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+      </ModalOverlay>
+
+      <ModalOverlay isOpen={aprobarModal.isOpen} onClose={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); }} ariaLabel="Aprobar Solicitud">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
+                    <CheckCircle className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Aprobar Solicitud</h3>
+                    <p className="text-sm text-gray-500">{aprobarModal.solicitud?.codigo_solicitud || 'Sin código'}</p>
+                  </div>
+                </div>
+                <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); }} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 md:p-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+                <button
+                  onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'seleccionar' }))}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  <FileText className="h-4 w-4" />
+                  Contrato
+                </button>
+                <button
+                  onClick={() => {
+                    setAprobarModal(prev => ({ ...prev, modo: 'crear' }));
+                    setFormContrato({ fecha: toISODateLocal(), id_cliente: aprobarModal.solicitud?.id_cliente });
+                    setClienteSearch('');
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo Contrato
+                </button>
+                <button
+                  onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'seleccionar-suplemento' }))}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar-suplemento' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  <Layers className="h-4 w-4" />
+                  Suplemento
+                </button>
+                <button
+                  onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'crear-suplemento' }))}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear-suplemento' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo Suplemento
+                </button>
+              </div>
+
+              {aprobarModal.modo === 'seleccionar' ? (
+                <div className="space-y-4">
+                  {aprobarModal.loadingContratos ? (
+                    <div className="text-center py-8 text-gray-500">Cargando contratos...</div>
+                  ) : aprobarModal.contratos.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 mb-4">No hay contratos disponibles</p>
+                      <button
+                        onClick={() => {
+                          setAprobarModal(prev => ({ ...prev, modo: 'crear' }));
+                          setFormContrato({ fecha: toISODateLocal(), id_cliente: aprobarModal.solicitud?.id_cliente });
+                          setClienteSearch('');
+                        }}
+                        className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors font-medium text-sm inline-flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Crear Contrato
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <Label className="text-sm font-medium">Seleccionar Contrato</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
+                        value={formContrato.id_contrato_seleccionado || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, id_contrato_seleccionado: e.target.value })}
+                      >
+                        <option value="">Seleccionar...</option>
+                        {aprobarModal.contratos.map(c => (
+                          <option key={c.id_contrato} value={c.id_contrato}>
+                            {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {c.cliente?.nombre || 'Sin cliente'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              ) : aprobarModal.modo === 'crear' ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label className="text-sm font-medium">Nombre del Contrato</Label>
+                      <Input
+                        value={formContrato.nombre || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, nombre: e.target.value })}
+                        className="mt-1"
+                        placeholder="Nombre del contrato"
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex gap-2 items-start">
+                      <div ref={clienteRef} className="relative flex-1">
+                        <Label className="text-sm font-medium">Cliente *</Label>
+                        <div className="relative mt-1">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="Buscar cliente..."
+                            value={
+                              formContrato.id_cliente
+                                ? (clientes.find(c => c.id_cliente === Number(formContrato.id_cliente))?.nombre || '')
+                                : clienteSearch
+                            }
+                            disabled={!!formContrato.id_cliente}
+                            onChange={(e) => {
+                              setClienteSearch(e.target.value);
+                              setFormContrato({ ...formContrato, id_cliente: '' });
+                              setShowClienteDropdown(true);
+                            }}
+                            onFocus={() => setShowClienteDropdown(true)}
+                            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
+                          />
+                          {(aprobarModal.modo === 'crear' ? formContrato.id_cliente : (formContrato.id_cliente || clienteSearch)) && (
+                            <button
+                              type="button"
+                              onClick={() => { setFormContrato({ ...formContrato, id_cliente: '' }); setClienteSearch(''); }}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        {showClienteDropdown && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                            {filteredClientes.length === 0 ? (
+                              <div className="px-4 py-3 text-sm text-gray-500">No se encontraron resultados</div>
+                            ) : (
+                              filteredClientes.map(c => (
+                                <button
+                                  key={c.id_cliente}
+                                  type="button"
+                                  className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                  onClick={() => {
+                                    setFormContrato({ ...formContrato, id_cliente: c.id_cliente });
+                                    setClienteSearch('');
+                                    setShowClienteDropdown(false);
+                                  }}
+                                >
+                                  <span className="font-medium text-gray-900">{c.nombre}</span>
+                                  <span className="text-xs text-gray-400 ml-2">({c.tipo_persona})</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="pt-7">
+                        {aprobarModal.modo !== 'crear' && (
+                          <button
+                            type="button"
+                            onClick={() => { setNuevoClienteTarget('contrato'); setShowNuevoClienteModal(true); }}
+                            className="py-2 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Nuevo Cliente
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Tipo</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
+                        value={formContrato.id_tipo_contrato || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, id_tipo_contrato: e.target.value })}
+                      >
+                        {tiposContrato.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Estado</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
+                        value={formContrato.id_estado || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, id_estado: e.target.value })}
+                      >
+                        {estadosContrato.map(e => <option key={e.id_estado_contrato} value={e.id_estado_contrato}>{e.nombre}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Moneda</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
+                        value={formContrato.id_moneda || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, id_moneda: e.target.value })}
+                      >
+                        <option value="">Seleccionar</option>
+                        {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Fecha</Label>
+                      <DateInput
+                        value={formContrato.fecha || ''}
+                        onChange={(fecha) => setFormContrato({ ...formContrato, fecha })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Vigencia</Label>
+                      <DateInput
+                        value={formContrato.vigencia || ''}
+                        onChange={(vigencia) => setFormContrato({ ...formContrato, vigencia })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Proforma</Label>
+                      <Input
+                        value={formContrato.proforma || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, proforma: e.target.value })}
+                        className="mt-1"
+                        placeholder="Número de proforma"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Documento Final</Label>
+                      <Input
+                        value={formContrato.documento_final || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, documento_final: e.target.value })}
+                        className="mt-1"
+                        placeholder="Número de documento"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Valor</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formContrato.valor_contrato || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, valor_contrato: e.target.value })}
+                        className="mt-1"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : aprobarModal.modo === 'seleccionar-suplemento' ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Seleccionar Contrato</Label>
+                    <select
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                      value={formContrato.id_contrato_suple || ''}
+                      onChange={(e: any) => {
+                        setFormContrato({ ...formContrato, id_contrato_suple: e.target.value, id_suplemento_seleccionado: '' });
+                        if (e.target.value) {
+                          cargarSuplementosPorContrato(Number(e.target.value));
+                        }
+                      }}
+                    >
+                      <option value="">Seleccionar...</option>
+                      {aprobarModal.contratos.map(c => (
+                        <option key={c.id_contrato} value={c.id_contrato}>
+                          {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {c.cliente?.nombre || 'Sin cliente'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {formContrato.id_contrato_suple && (
+                    <div>
+                      <Label className="text-sm font-medium">Seleccionar Suplemento</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                        value={formContrato.id_suplemento_seleccionado || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, id_suplemento_seleccionado: e.target.value })}
+                      >
+                        <option value="">Seleccionar...</option>
+                        {(suplementosPorContrato[Number(formContrato.id_contrato_suple)] || []).map(s => (
+                          <option key={s.id_suplemento} value={s.id_suplemento}>
+                            {s.nombre || s.codigo || `Suplemento #${s.id_suplemento}`} - -
+                          </option>
+                        ))}
+                      </select>
+                      {(suplementosPorContrato[Number(formContrato.id_contrato_suple)] || []).length === 0 && (
+                        <p className="text-sm text-gray-500 mt-2">No hay suplementos para este contrato</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : aprobarModal.modo === 'crear-suplemento' ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label className="text-sm font-medium">Contrato *</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                        value={formContrato.id_contrato_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, id_contrato_suplemento: e.target.value })}
+                      >
+                        <option value="">Seleccionar contrato</option>
+                        {aprobarModal.contratos.map(c => (
+                          <option key={c.id_contrato} value={c.id_contrato}>
+                            {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {c.cliente?.nombre || 'Sin cliente'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label className="text-sm font-medium">Nombre del Suplemento</Label>
+                      <Input
+                        value={formContrato.nombre_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, nombre_suplemento: e.target.value })}
+                        className="mt-1"
+                        placeholder="Nombre del suplemento"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Fecha</Label>
+                      <DateInput
+                        value={formContrato.fecha_suplemento || ''}
+                        onChange={(fecha_suplemento) => setFormContrato({ ...formContrato, fecha_suplemento })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Fecha de vigencia *</Label>
+                      <DateInput
+                        value={formContrato.fecha_vigencia_suplemento || ''}
+                        onChange={(fecha_vigencia_suplemento) => setFormContrato({ ...formContrato, fecha_vigencia_suplemento })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Valor</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formContrato.valor_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, valor_suplemento: e.target.value })}
+                        className="mt-1"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Documento</Label>
+                      <Input
+                        value={formContrato.documento_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, documento_suplemento: e.target.value })}
+                        className="mt-1"
+                        placeholder="Número de documento"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
+              <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl hover:from-brand-600 hover:to-brand-700 shadow-lg hover:shadow-xl transition-all font-medium">Confirmar Aprobación</button>
+            </div>
+          </div>
+      </ModalOverlay>
+
+      <ModalOverlay isOpen={showNuevoClienteModal} onClose={() => setShowNuevoClienteModal(false)} ariaLabel="Nuevo Cliente">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
+                    <User className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Nuevo Cliente</h3>
+                    <p className="text-sm text-gray-500">Crear nuevo cliente para el contrato</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowNuevoClienteModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 md:p-6">
+              <ClienteForm
+                editingCliente={null}
+                isProveedorView={false}
+                onCancel={() => {
+                  setShowNuevoClienteModal(false);
+                }}
+                onSubmit={async (data: any) => {
+                  try {
+                    const nuevoCliente = await casosUso.createCliente(data);
+                    setClientes(prev => [nuevoCliente, ...prev]);
+                    queryClient.invalidateQueries({ queryKey: ['clientes-all'] });
+                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
+                    if (nuevoClienteTarget === 'form') {
+                      setFormData(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
+                    } else {
+                      setFormContrato(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
+                    }
+                    setClienteSearch('');
+                    setShowNuevoClienteModal(false);
+                    toast.success('Cliente creado');
+                  } catch (error: any) {
+                    toast.error(error.message || 'Error al crear cliente');
+                  }
+                }}
+              />
+            </div>
+          </div>
+      </ModalOverlay>
+    </div>
+  );
+}

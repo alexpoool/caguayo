@@ -1,4 +1,4 @@
-import { apiClient } from '../lib/api';
+import { apiClient } from '@/shared/infrastructure/http/api';
 import type { TipoContrato, TipoContratoCreate, TipoContratoUpdate } from '../types/contrato';
 import type { EstadoContrato, EstadoContratoCreate, EstadoContratoUpdate } from '../types/contrato';
 import type {

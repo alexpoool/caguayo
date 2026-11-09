@@ -1,4 +1,4 @@
-import { apiClient } from '../lib/api';
+import { apiClient } from '@/shared/infrastructure/http/api';
 
 const userActionTracker = {
   track: async (modulo: string, accion: string, detalle?: any) => {

@@ -1,0 +1,965 @@
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import type { CasosUsoReportes } from '../application/casos-uso';
+import { useAuth } from '@/shared/ui/auth';
+import { useSearchParams } from "react-router-dom";
+import {
+  BarChart3,
+  LineChart as LineChartIcon,
+  PieChart as PieChartIcon,
+  SlidersHorizontal,
+  Eye,
+  Download,
+  Printer,
+  X,
+  Loader2,
+  AlertCircle,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Boxes,
+  ArrowLeftRight,
+  Users,
+  UserCircle,
+  Layers,
+  Calculator,
+  FileText,
+  ClipboardList,
+} from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import { toast } from "react-hot-toast";
+
+
+
+
+import type { Dependencia } from "../domain/reportes";
+import type { Moneda } from "../domain/reportes";
+import { formatFecha, toISODateLocal } from "@/utils/fecha";
+import { CHART_COLORS, PALETA } from "@/config/paleta";
+import { DateInput } from "@/shared/ui/components";
+import { DependenciaTreeSelect } from "@/shared/ui/components/DependenciaTreeSelect";
+
+
+
+type ChartType = "bar" | "line" | "pie";
+
+
+import { abrirBlob, descargarBlob } from '@/utils/archivos';
+
+interface ReportConfig {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  color: string;
+  colorHex: string;
+  module: string;
+  moduleLabel: string;
+  previewEndpoint: string;
+  buildPreviewParams: (filters: FilterState) => Record<string, string>;
+  transformChartData: (data: any) => Record<string, any>[];
+  computeStats: (data: any) => ChartStats;
+  pdfEndpoint: string;
+  pdfFilename: string;
+  buildPdfParams: (filters: FilterState) => Record<string, string>;
+  needsDependencia: boolean;
+  needsFechas: boolean;
+  showTable?: boolean;
+  showStats?: boolean;
+  needsMoneda?: boolean;
+  chartSeries?: { key: string; name: string; color: string }[];
+  tableColumns?: {
+    key: string;
+    label: string;
+    className?: string;
+    render?: (value: any, row: Record<string, any>) => React.ReactNode;
+  }[];
+}
+
+interface FilterState {
+  id_dependencia: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  notas: string;
+  id_moneda: string;
+}
+
+interface ChartStats {
+  total: number;
+  promedio: number;
+  max: number;
+  min: number;
+  count: number;
+}
+
+function getDefaultFilters(userDepId?: number): FilterState {
+  const now = new Date();
+  const oneMonthAgo = new Date(now);
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+  return {
+    id_dependencia: userDepId ? String(userDepId) : "",
+    fecha_inicio: toISODateLocal(oneMonthAgo),
+    fecha_fin: toISODateLocal(now),
+    notas: "",
+    id_moneda: "",
+  };
+}
+
+const REPORTS: ReportConfig[] = [
+  {
+    id: "existencias",
+    title: "Existencias",
+    description: "Stock actual de productos por dependencia con totales generales.",
+    icon: <Boxes className="h-4 w-4" />,
+    color: "bg-brand-50",
+    colorHex: CHART_COLORS[0],
+    module: "inventario",
+    moduleLabel: "Inventario",
+    previewEndpoint: "/reportes/existencias/preview",
+    buildPreviewParams: (f) => ({ id_dependencia: f.id_dependencia || "1" }),
+    transformChartData: (data) => {
+      const items = data?.items || [];
+      return items.slice(0, 7).map((item: any) => ({
+        name: (item.nombre || item.producto || "Item").substring(0, 12),
+        monto: Number(item.valor_total || item.cantidad || 0),
+        cantidad: Number(item.cantidad || 0),
+      }));
+    },
+    computeStats: (data) => {
+      const items = data?.items || [];
+      const valores = items.map((i: any) => Number(i.valor_total || i.cantidad || 0));
+      return computeBasicStats(valores);
+    },
+    pdfEndpoint: "/reportes/existencias",
+    pdfFilename: "existencias.pdf",
+    buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia || "1", aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    needsDependencia: true,
+    needsFechas: false,
+    showTable: true,
+    tableColumns: [
+      { key: "codigo", label: "Código" },
+      { key: "nombre", label: "Nombre" },
+      { key: "cantidad", label: "Cantidad", className: "text-right" },
+      { key: "dependencia", label: "Dependencia" },
+    ],
+  },
+  {
+    id: "movimientos-dependencia",
+    title: "Movimientos por Dependencia",
+    description: "Historial de movimientos filtrado por dependencia y período.",
+    icon: <ArrowLeftRight className="h-4 w-4" />,
+    color: "bg-green-50",
+    colorHex: CHART_COLORS[1],
+    module: "inventario",
+    moduleLabel: "Inventario",
+    previewEndpoint: "/reportes/movimientos-dependencia/preview",
+    buildPreviewParams: (f) => ({
+      id_dependencia: f.id_dependencia || "1",
+      fecha_inicio: f.fecha_inicio,
+      fecha_fin: f.fecha_fin,
+    }),
+    transformChartData: (data) => {
+      const items = data?.items || [];
+      return items.slice(0, 10).map((item: any) => ({
+        name: (item.nombre || "Producto").substring(0, 12),
+        monto: Number(item.saldo_final || 0),
+        cantidad: Number(item.saldo_final || 0),
+      }));
+    },
+    computeStats: (data) => {
+      const items = data?.items || [];
+      return computeBasicStats(items.map((i: any) => Number(i.saldo_final || 0)));
+    },
+    pdfEndpoint: "/reportes/movimientos-dependencia",
+    pdfFilename: "movimientos_dependencia.pdf",
+    buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia || "1", fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    needsDependencia: true,
+    needsFechas: true,
+    showTable: true,
+    tableColumns: [
+      { key: "codigo", label: "Código" },
+      { key: "nombre", label: "Nombre" },
+      { key: "saldo_inicial", label: "Saldo Inicial", className: "text-right", render: (v: any) => Number(v ?? 0).toFixed(2) },
+      { key: "recepcion", label: "Recepción", className: "text-right" },
+      { key: "compra", label: "Compra", className: "text-right" },
+      { key: "venta", label: "Venta", className: "text-right" },
+      { key: "merma", label: "Merma", className: "text-right" },
+      { key: "donacion", label: "Donación", className: "text-right" },
+      { key: "devolucion", label: "Devolución", className: "text-right" },
+      { key: "saldo_final", label: "Saldo Final", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toFixed(2) },
+    ],
+  },
+  {
+    id: "clientes",
+    title: "Registro de Clientes",
+    description: "Listado de clientes registrados por provincia.",
+    icon: <Users className="h-4 w-4" />,
+    color: "bg-brand-50",
+    colorHex: CHART_COLORS[0],
+    module: "tienda",
+    moduleLabel: "Tienda",
+    previewEndpoint: "/reportes/clientes/preview",
+    buildPreviewParams: () => ({}),
+    transformChartData: (data) => {
+      const items = data?.items || [];
+      const provincias: Record<string, number> = {};
+      items.forEach((c: any) => {
+        const prov = c.provincia || "(Sin provincia)";
+        provincias[prov] = (provincias[prov] || 0) + 1;
+      });
+      return Object.entries(provincias)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([name, cantidad]) => ({ name, cantidad }));
+    },
+    computeStats: (data) => { const items = data?.items || []; return { total: items.length, promedio: 0, max: items.length, min: 0, count: items.length }; },
+    pdfEndpoint: "/reportes/clientes",
+    pdfFilename: "registro_clientes.pdf",
+    buildPdfParams: (f) => ({ aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    needsDependencia: false,
+    needsFechas: false,
+  },
+  {
+    id: "proveedores",
+    title: "Proveedores",
+    description: "Listado de proveedores registrados por provincia.",
+    icon: <UserCircle className="h-4 w-4" />,
+    color: "bg-amber-50",
+    colorHex: CHART_COLORS[2],
+    module: "compra",
+    moduleLabel: "Compra",
+    previewEndpoint: "/reportes/proveedores-dependencia/preview",
+    buildPreviewParams: () => ({}),
+    transformChartData: (data) => {
+      const items = data?.items || [];
+      const provincias: Record<string, number> = {};
+      items.forEach((p: any) => {
+        const prov = p.provincia || "(Sin provincia)";
+        provincias[prov] = (provincias[prov] || 0) + 1;
+      });
+      return Object.entries(provincias)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([name, cantidad]) => ({ name, cantidad }));
+    },
+    computeStats: (data) => { const items = data?.items || []; return { total: items.length, promedio: 0, max: items.length, min: 0, count: items.length }; },
+    pdfEndpoint: "/reportes/proveedores-dependencia",
+    pdfFilename: "proveedores.pdf",
+    buildPdfParams: (f) => ({ aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    needsDependencia: true,
+    needsFechas: false,
+  },
+  {
+    id: "liquidaciones",
+    title: "Resumen de Liquidaciones",
+    description: "Pagado y pendiente por pagar por cliente.",
+    icon: <Calculator className="h-4 w-4" />,
+    color: "bg-pink-50",
+    colorHex: CHART_COLORS[5],
+    module: "compra",
+    moduleLabel: "Compra",
+    previewEndpoint: "/reportes/liquidaciones/preview",
+    buildPreviewParams: (f) => ({
+      fecha_inicio: f.fecha_inicio,
+      fecha_fin: f.fecha_fin,
+      id_moneda: f.id_moneda,
+    }),
+    transformChartData: (data) => {
+      // Barras apiladas por cliente: pendiente (neto_pagar de liquidaciones no
+      // pagadas) + pagado (neto_pagar de liquidaciones liquidadas)
+      const items = data?.items || [];
+      const porCliente: Record<string, { pendiente: number; pagado: number }> = {};
+      items.forEach((it: any) => {
+        const name = (it.cliente_nombre || "Sin cliente").substring(0, 14);
+        const monto = Number(it.neto_pagar || 0);
+        if (!porCliente[name]) porCliente[name] = { pendiente: 0, pagado: 0 };
+        if (it.liquidada) porCliente[name].pagado += monto;
+        else porCliente[name].pendiente += monto;
+      });
+      return Object.entries(porCliente).map(([name, v]) => ({ name, ...v }));
+    },
+    computeStats: (data) => { const items = data?.items || []; return computeBasicStats(items.map((i: any) => Number(i.neto_pagar || 0))); },
+    chartSeries: [
+      { key: "pagado", name: "Pagado", color: CHART_COLORS[1] },
+      { key: "pendiente", name: "Falta por pagar", color: CHART_COLORS[3] },
+    ],
+    pdfEndpoint: "/reportes/liquidaciones",
+    pdfFilename: "resumen_liquidaciones.pdf",
+    buildPdfParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    needsDependencia: false,
+    needsFechas: true,
+    needsMoneda: true,
+  },
+  {
+    id: "proyectos",
+    title: "Registro de Proyectos",
+    description: "Listado de proyectos con estado, fechas y montos.",
+    icon: <Layers className="h-4 w-4" />,
+    color: "bg-brand-50",
+    colorHex: CHART_COLORS[4],
+    module: "proyectos",
+    moduleLabel: "Proyectos",
+    previewEndpoint: "/reportes/proyectos/preview",
+    buildPreviewParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }),
+    transformChartData: () => [],
+    computeStats: () => ({ total: 0, promedio: 0, max: 0, min: 0, count: 0 }),
+    pdfEndpoint: "/reportes/proyectos",
+    pdfFilename: "registro_proyectos.pdf",
+    buildPdfParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    needsDependencia: false,
+    needsFechas: true,
+    showTable: true,
+    showStats: false,
+    tableColumns: [
+      { key: "codigo", label: "Código" },
+      { key: "nombre", label: "Nombre" },
+      { key: "contrato", label: "Contrato" },
+      { key: "cliente", label: "Cliente" },
+      { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
+    ],
+  },
+  {
+    id: "creadores",
+    title: "Registro de Realizadores",
+    description: "Listado de realizadores asignados a etapas de proyecto.",
+    icon: <Users className="h-4 w-4" />,
+    color: "bg-brand-50",
+    colorHex: CHART_COLORS[4],
+    module: "proyectos",
+    moduleLabel: "Proyectos",
+    previewEndpoint: "/reportes/personas",
+    buildPreviewParams: () => ({}),
+    transformChartData: (data) => {
+      const items = Array.isArray(data) ? data : [];
+      const provincias: Record<string, number> = {};
+      items.forEach((item: any) => {
+        const prov = item.provincia || "(Sin provincia)";
+        provincias[prov] = (provincias[prov] || 0) + 1;
+      });
+      return Object.entries(provincias)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([name, cantidad]) => ({ name, cantidad }));
+    },
+    computeStats: (data) => { const items = Array.isArray(data) ? data : []; return { total: items.length, promedio: 0, max: items.length, min: 0, count: items.length }; },
+    pdfEndpoint: "/reportes/desempeno",
+    pdfFilename: "registro_creadores.pdf",
+    buildPdfParams: (f) => ({ aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    needsDependencia: false,
+    needsFechas: false,
+  },
+  {
+    id: "desempeno",
+    title: "Informe de Desempeño",
+    description: "Análisis de rendimiento y productividad por proyecto.",
+    icon: <BarChart3 className="h-4 w-4" />,
+    color: "bg-orange-50",
+    colorHex: CHART_COLORS[2],
+    module: "proyectos",
+    moduleLabel: "Proyectos",
+    previewEndpoint: "/reportes/desempeno/preview",
+    buildPreviewParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }),
+    transformChartData: (data) => {
+      const porPersona = data?.totales_por_persona || {};
+      return Object.entries(porPersona).slice(0, 7).map(([name, total]: [string, any]) => ({ name: name.substring(0, 12), monto: Number(total?.total_valor || total || 0), cantidad: Number(total?.total_cobro || 0) }));
+    },
+    computeStats: (data) => { const porPersona = data?.totales_por_persona || {}; return computeBasicStats(Object.values(porPersona).map((t: any) => Number(t?.total_valor || t || 0))); },
+    pdfEndpoint: "/reportes/desempeno",
+    pdfFilename: "informe_desempeno.pdf",
+    buildPdfParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    needsDependencia: false,
+    needsFechas: true,
+  },
+  {
+    id: "onat",
+    title: "ONAT — Ingresos y Retenciones",
+    description: "Reporte de ingresos y retenciones para ONAT.",
+    icon: <FileText className="h-4 w-4" />,
+    color: "bg-red-50",
+    colorHex: CHART_COLORS[3],
+    module: "ministerios",
+    moduleLabel: "Ministerios",
+    previewEndpoint: "/reportes/onat/preview",
+    buildPreviewParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }),
+    transformChartData: (data) => {
+      const items = data?.items || [];
+      return items.slice(0, 7).map((item: any) => ({ name: (item.creador_nombre || item.concepto || "ONAT").substring(0, 12), monto: Number(item.retenido || item.monto || 0), cantidad: Number(item.retencion || 0) }));
+    },
+    computeStats: (data) => { const items = data?.items || []; return computeBasicStats(items.map((i: any) => Number(i.retenido || i.monto || 0))); },
+    pdfEndpoint: "/reportes/onat",
+    pdfFilename: "reporte_onat.pdf",
+    buildPdfParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    needsDependencia: false,
+    needsFechas: true,
+  },
+  {
+    id: "mincult",
+    title: "MINCULT — Escala de Ingresos",
+    description: "Escala de ingresos para el Ministerio de Cultura.",
+    icon: <ClipboardList className="h-4 w-4" />,
+    color: "bg-fuchsia-50",
+    colorHex: CHART_COLORS[5],
+    module: "ministerios",
+    moduleLabel: "Ministerios",
+    previewEndpoint: "/reportes/mincult/preview",
+    buildPreviewParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }),
+    transformChartData: (data) => {
+      const items = data?.items || [];
+      return items.slice(0, 7).map((item: any) => ({ name: (item.bracket || item.rango || "MINCULT").substring(0, 12), monto: Number(item.total_devengado || item.devengado || 0), cantidad: Number(item.liquidaciones || 1) }));
+    },
+    computeStats: (data) => { const items = data?.items || []; return computeBasicStats(items.map((i: any) => Number(i.total_devengado || i.devengado || 0))); },
+    pdfEndpoint: "/reportes/mincult",
+    pdfFilename: "reporte_mincult.pdf",
+    buildPdfParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    needsDependencia: false,
+    needsFechas: true,
+  },
+];
+
+const PIE_COLORS = [
+  CHART_COLORS[0], CHART_COLORS[1], CHART_COLORS[2], CHART_COLORS[3], CHART_COLORS[4],
+  CHART_COLORS[0], CHART_COLORS[5],
+];
+
+function computeBasicStats(values: number[]): ChartStats {
+  if (values.length === 0) return { total: 0, promedio: 0, max: 0, min: 0, count: 0 };
+
+  let total = 0;
+  let max = -Infinity;
+  let min = Infinity;
+  for (const value of values) {
+    total += value;
+    if (value > max) max = value;
+    if (value < min) min = value;
+  }
+
+  return {
+    total,
+    promedio: Math.round(total / values.length),
+    max,
+    min,
+    count: values.length,
+  };
+}
+
+function buildQueryString(params: Record<string, string>): string {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v) sp.append(k, v); });
+  return sp.toString();
+}
+
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString("es-VE");
+}
+
+export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
+  const [searchParams] = useSearchParams();
+  const reportId = searchParams.get("report");
+  const [chartType, setChartType] = useState<ChartType>("bar");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [prevReportId, setPrevReportId] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Get logged user's dependencia
+  const { user } = useAuth();
+  const userDepId = user?.dependencia?.id_dependencia;
+
+  // Filter state with smart defaults
+  const [filters, setFilters] = useState<FilterState>(() => getDefaultFilters(userDepId));
+  const [dependencias, setDependencias] = useState<Dependencia[]>([]);
+  const [monedas, setMonedas] = useState<Moneda[]>([]);
+
+  // Load dependencias
+  useEffect(() => {
+    casosUso.listarDependencias().then(setDependencias).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const activeReport = useMemo(
+    () => (reportId ? REPORTS.find((r) => r.id === reportId) : null),
+    [reportId]
+  );
+
+  // Load monedas (solo cuando el reporte filtrable por moneda está activo)
+  useEffect(() => {
+    if (!activeReport?.needsMoneda) return;
+    casosUso.listarMonedas().then((data: any) => setMonedas(Array.isArray(data) ? data : [])).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeReport?.needsMoneda]);
+
+  // Reset filters with smart defaults when report changes
+  useEffect(() => {
+    setFilters(getDefaultFilters(userDepId));
+  }, [activeReport?.id, userDepId]);
+
+  // Petición de vista previa (null mientras no haya reporte activo).
+  const previewRequest = useMemo(() => {
+    if (!activeReport) return null;
+    return {
+      endpoint: activeReport.previewEndpoint,
+      params: activeReport.buildPreviewParams(filters),
+    };
+  }, [activeReport, filters]);
+
+  const previewKey = useMemo(() => {
+    if (!previewRequest) return '';
+    const qs = buildQueryString(previewRequest.params);
+    return `${previewRequest.endpoint}${qs ? `?${qs}` : ''}`;
+  }, [previewRequest]);
+
+  // Fetch chart data directly with full control
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [chartError, setChartError] = useState<string | null>(null);
+  const fetchControllerRef = useRef<AbortController | null>(null);
+
+  // Table pagination
+  const TABLE_PAGE_SIZE = 10;
+  const [tablePage, setTablePage] = useState(1);
+  useEffect(() => { setTablePage(1); }, [previewKey, activeReport?.id]);
+
+  useEffect(() => {
+    // Cancel previous request
+    if (fetchControllerRef.current) fetchControllerRef.current.abort();
+    const controller = new AbortController();
+    fetchControllerRef.current = controller;
+
+    if (!previewRequest) {
+      setPreviewData(null);
+      setChartLoading(false);
+      return;
+    }
+
+    setChartLoading(true);
+    setChartError(null);
+
+    const timer = setTimeout(async () => {
+      try {
+        const data = await casosUso.consultarReporte(
+          previewRequest.endpoint,
+          previewRequest.params,
+          controller.signal,
+        );
+        if (!controller.signal.aborted) {
+          setPreviewData(data);
+          setChartLoading(false);
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+        if (!controller.signal.aborted) {
+          setChartError(err?.message || "Error")
+          setChartLoading(false);
+        }
+      }
+    }, 300);
+
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [previewRequest, casosUso]);
+
+  useEffect(() => {
+    if (!previewRequest) {
+      setPreviewData(null);
+      setChartLoading(false);
+    }
+  }, [previewRequest]);
+
+  // Transform chart data
+  const chartData = useMemo(() => {
+    if (!previewData) return null;
+    try {
+      const transformed = activeReport?.transformChartData(previewData);
+      return transformed && transformed.length > 0 ? transformed : null;
+    } catch { return null; }
+  }, [previewData, activeReport]);
+
+  // Compute summary stats
+  const stats = useMemo<ChartStats>(() => {
+    if (!previewData) return { total: 0, promedio: 0, max: 0, min: 0, count: 0 };
+    try { return activeReport?.computeStats(previewData) ?? { total: 0, promedio: 0, max: 0, min: 0, count: 0 }; }
+    catch { return { total: 0, promedio: 0, max: 0, min: 0, count: 0 }; }
+  }, [previewData, activeReport]);
+
+  useEffect(() => {
+    if (prevReportId && prevReportId !== reportId) {
+      setIsTransitioning(true);
+      const timer = setTimeout(() => setIsTransitioning(false), 300);
+      return () => clearTimeout(timer);
+    }
+    setPrevReportId(reportId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportId]);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node) && overlayRef.current && overlayRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [filterOpen]);
+
+  const updateFilter = useCallback((key: string, value: string) => { setFilters((prev) => ({ ...prev, [key]: value })); }, []);
+
+  const handleDownload = useCallback(async () => {
+    if (!activeReport) return;
+    const params = activeReport.buildPdfParams(filters) || {};
+    try {
+      const blob = await casosUso.generarReporte(
+        activeReport.pdfEndpoint,
+        params,
+      );
+      descargarBlob(blob, activeReport.pdfFilename ?? "reporte.pdf");
+      toast.success("Reporte descargado");
+    } catch { toast.error("Error al descargar reporte"); }
+  }, [activeReport, filters, casosUso]);
+
+  const handlePreview = useCallback(async () => {
+    if (!activeReport) return;
+    const params = activeReport.buildPdfParams(filters) || {};
+    try {
+      const blob = await casosUso.generarReporte(
+        activeReport.pdfEndpoint,
+        params,
+      );
+      abrirBlob(blob);
+    } catch { toast.error("Error al generar vista previa"); }
+  }, [activeReport, filters, casosUso]);
+
+  const handlePrint = useCallback(() => { window.print(); }, []);
+
+  const displayData = chartData && chartData.length > 0 ? chartData : [];
+
+  // Table data for inventory reports
+  const tableData = useMemo(() => {
+    if (!activeReport?.showTable || !previewData) return null;
+    const items = previewData?.items || [];
+    return items;
+  }, [activeReport, previewData]);
+
+  // Pantalla de selección cuando aún no hay reporte activo.
+  // IMPORTANTE: debe ir DESPUÉS de todos los hooks (reglas de React); un return
+  // antes provocaría "Rendered more/fewer hooks than during the previous render"
+  // al alternar entre pantalla de selección y un reporte.
+  if (!activeReport) {
+    return (
+      <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center overflow-hidden p-4">
+        <div className="w-full max-w-2xl space-y-5">
+          <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 px-6 py-6 text-white shadow-lg">
+            <div className="flex flex-col items-center justify-center gap-3 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">
+                <BarChart3 className="h-6 w-6" />
+              </div>
+              <h1 className="text-xl font-bold tracking-wide md:text-2xl">MÓDULO DE REPORTES</h1>
+              <p className="text-sm text-gray-200">Selecciona un reporte del menú lateral para comenzar</p>
+            </div>
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-white p-4 md:p-6 text-center shadow-sm">
+            <p className="text-sm text-gray-600">Utiliza la barra lateral para elegir el reporte que deseas visualizar.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const renderTable = () => {
+    if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-brand-500 animate-spin" /></div>;
+    if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
+    if (!tableData || tableData.length === 0) return <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">No hay datos para mostrar</div>;
+
+    const columns = activeReport.tableColumns || [];
+
+    // Paginación local
+    const totalRows = tableData.length;
+    const totalPages = Math.max(1, Math.ceil(totalRows / TABLE_PAGE_SIZE));
+    const safePage = Math.min(tablePage, totalPages);
+    const startIdx = (safePage - 1) * TABLE_PAGE_SIZE;
+    const pageRows = tableData.slice(startIdx, startIdx + TABLE_PAGE_SIZE);
+    const from = totalRows === 0 ? 0 : startIdx + 1;
+    const to = Math.min(startIdx + TABLE_PAGE_SIZE, totalRows);
+
+    return (
+      <div>
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                {columns.map((col) => (
+                  <th key={col.key} className={`px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${col.className || ''}`}>
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {pageRows.map((row: any, idx: number) => (
+                <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                  {columns.map((col) => (
+                    <td key={col.key} className={`px-4 py-3 text-gray-700 ${col.className || ''}`}>
+                      {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-3 mt-3">
+            <p className="text-xs text-gray-500">
+              Mostrando <span className="font-semibold text-gray-700">{from}</span>–<span className="font-semibold text-gray-700">{to}</span> de <span className="font-semibold text-gray-700">{totalRows}</span> registros
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <span className="px-2 text-xs text-gray-500">
+                Página <span className="font-semibold text-gray-700">{safePage}</span> de {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderChart = () => {
+    if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-brand-500 animate-spin" /></div>;
+    if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
+    if (!displayData || displayData.length === 0) return <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">No hay datos para mostrar</div>;
+
+    const gridAndAxis = (
+      <>
+        <CartesianGrid strokeDasharray="3 3" stroke={PALETA.neutral.grid} />
+        <XAxis dataKey="name" stroke={PALETA.neutral.axis} fontSize={11} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
+        <YAxis stroke={PALETA.neutral.axis} fontSize={12} tickLine={false} />
+        <Tooltip contentStyle={{ borderRadius: "8px", border: `1px solid ${PALETA.neutral.grid}`, boxShadow: "0 4px 6px rgba(0,0,0,0.07)" }} />
+        <Legend />
+      </>
+    );
+
+    const hasMonto = displayData.some((d: any) => d.monto !== undefined && d.monto !== null);
+
+    if (chartType === "line") {
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={displayData}>
+            {gridAndAxis}
+            {hasMonto && <Line type="monotone" dataKey="monto" stroke={activeReport?.colorHex} strokeWidth={3} dot={{ fill: activeReport?.colorHex, r: 4 }} activeDot={{ r: 6 }} name="Monto" animationDuration={500} />}
+            <Line type="monotone" dataKey="cantidad" stroke={CHART_COLORS[1]} strokeWidth={2} dot={{ fill: CHART_COLORS[1], r: 3 }} name="Cantidad" animationDuration={500} />
+          </LineChart>
+        </ResponsiveContainer>
+      );
+    }
+    if (chartType === "pie") {
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie data={displayData} cx="50%" cy="50%" innerRadius={60} outerRadius={120} paddingAngle={3} dataKey={hasMonto ? "monto" : "cantidad"} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} animationDuration={500}>
+              {displayData.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+            </Pie>
+            <Tooltip contentStyle={{ borderRadius: "8px", border: `1px solid ${PALETA.neutral.grid}` }} />
+          </PieChart>
+        </ResponsiveContainer>
+      );
+    }
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={displayData}>
+          {gridAndAxis}
+          {activeReport?.chartSeries ? (
+            activeReport?.chartSeries.map((s) => (
+              <Bar key={s.key} dataKey={s.key} stackId="stack" fill={s.color} name={s.name} animationDuration={500} />
+            ))
+          ) : (
+            <>
+              {hasMonto && <Bar dataKey="monto" fill={activeReport?.colorHex} radius={[4, 4, 0, 0]} name="Monto" animationDuration={500} />}
+              <Bar dataKey="cantidad" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} name="Cantidad" animationDuration={500} />
+            </>
+          )}
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  const chartButtons: { type: ChartType; icon: React.ReactNode; label: string }[] = [
+    { type: "bar", icon: <BarChart3 className="w-4 h-4" />, label: "Barras" },
+    { type: "line", icon: <LineChartIcon className="w-4 h-4" />, label: "Línea" },
+    { type: "pie", icon: <PieChartIcon className="w-4 h-4" />, label: "Pastel" },
+  ];
+
+  return (
+    <div className="h-full min-h-0 overflow-auto p-4 md:p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          {/* Left: Chart type icons (invisible spacer for table reports to keep filter centered) */}
+          <div className={`flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm ${activeReport?.showTable ? 'invisible' : ''}`}>
+            {chartButtons.map((btn) => (
+              <button key={btn.type} onClick={() => setChartType(btn.type)} title={btn.label}
+                className={`p-2 rounded-lg transition-all duration-150 ${chartType === btn.type ? "bg-brand-50 text-brand-600 shadow-sm ring-1 ring-brand-200" : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"}`}>
+                {btn.icon}
+              </button>
+            ))}
+          </div>
+
+          {/* Center: Filter icon with dropdown */}
+          <div className="relative" ref={filterRef}>
+            <button onClick={() => setFilterOpen((prev) => !prev)} title="Filtros"
+              className={`p-2.5 rounded-xl border transition-all duration-150 ${filterOpen ? "bg-brand-50 text-brand-600 border-brand-300 shadow-sm ring-2 ring-brand-100" : "bg-white text-gray-500 border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300"}`}>
+              <SlidersHorizontal className="w-5 h-5" />
+            </button>
+
+            {filterOpen && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[calc(100vw-2rem)] max-w-[420px] bg-white rounded-2xl border border-gray-200 shadow-2xl p-4 sm:p-5 z-50">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <h3 className="text-sm font-bold text-gray-900">Filtros — {activeReport?.title}</h3>
+                  <button onClick={() => setFilterOpen(false)} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Unified filter form */}
+                <div className="space-y-3">
+                  {activeReport.needsDependencia && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Dependencia</label>
+                      <DependenciaTreeSelect
+                        dependencias={dependencias}
+                        value={filters.id_dependencia}
+                        onChange={(v) => updateFilter("id_dependencia", v)}
+                        rootId={userDepId}
+                        placeholder="Seleccionar dependencia"
+                      />
+                      {userDepId != null && (
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          Por defecto: su dependencia y toda su descendencia
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {activeReport.needsMoneda && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Moneda</label>
+                      <select value={filters.id_moneda} onChange={(e) => updateFilter("id_moneda", e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none">
+                        <option value="">Todas las monedas</option>
+                        {monedas.map((m) => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {activeReport.needsFechas && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Desde</label>
+                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-brand-500" value={filters.fecha_inicio} onChange={(fecha) => updateFilter("fecha_inicio", fecha)} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
+                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-brand-500" value={filters.fecha_fin} onChange={(fecha) => updateFilter("fecha_fin", fecha)} />
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notas / Observaciones</label>
+                    <textarea rows={2} value={filters.notas} onChange={(e) => updateFilter("notas", e.target.value)}
+                      placeholder="Agregue notas para el reporte..."
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Action icons */}
+          <div className="flex items-center gap-1">
+            <button onClick={handlePreview} title="Vista previa" className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300 transition-all duration-150">
+              <Eye className="w-4 h-4" />
+            </button>
+            <button onClick={handleDownload} title="Descargar PDF" className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300 transition-all duration-150">
+              <Download className="w-4 h-4" />
+            </button>
+            <button onClick={handlePrint} title="Imprimir" className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300 transition-all duration-150">
+              <Printer className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Chart card */}
+        <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm p-4 md:p-6 mb-5 transition-all duration-300 ease-in-out ${isTransitioning ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl ${activeReport?.color} flex items-center justify-center`} style={{ color: activeReport?.colorHex }}>
+                {activeReport?.icon}
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-gray-900">{activeReport?.title}</h2>
+                <p className="text-xs text-gray-400">{activeReport?.description}</p>
+              </div>
+            </div>
+            {!activeReport?.showTable && !activeReport?.chartSeries && (
+              <div className="flex items-center gap-4 text-xs text-gray-400">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: activeReport?.colorHex }} />Monto</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />Cantidad</span>
+              </div>
+            )}
+          </div>
+          <div className="border-t border-gray-100 pt-4">{activeReport?.showTable ? renderTable() : renderChart()}</div>
+
+          {/* Summary statistics */}
+          <div className={`border-t border-gray-100 pt-4 mt-4 ${activeReport?.showStats === false ? "hidden" : ""}`}>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: "Total", value: stats.total, icon: <DollarSign className="w-4 h-4 text-brand-600" />, bg: "bg-brand-100" },
+                { label: "Promedio", value: stats.promedio, icon: <TrendingUp className="w-4 h-4 text-emerald-600" />, bg: "bg-emerald-100" },
+                { label: "Máximo", value: stats.max, icon: <TrendingUp className="w-4 h-4 text-amber-600" />, bg: "bg-amber-100" },
+                { label: "Mínimo", value: stats.min, icon: <TrendingDown className="w-4 h-4 text-red-600" />, bg: "bg-red-100" },
+              ].map((s) => (
+                <div key={s.label} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center`}>{s.icon}</div>
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{s.label}</p>
+                    <p className="text-sm font-bold text-gray-900">{formatNumber(s.value)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

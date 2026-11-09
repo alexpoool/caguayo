@@ -1,8 +1,19 @@
-import type { AuthRepositorio } from "../domain/auth-repositorio";
-import type { CredencialesSesion, Sesion } from "../domain/sesion";
+import type { CasosUsoSesion } from '@/shared/application/auth';
+import type {
+  ConexionBaseDatos,
+  CredencialesSesion,
+  DatosRegistro,
+  DependenciaOpcion,
+  GrupoOpcion,
+  PerfilActualizacion,
+  Sesion,
+} from '@/shared/domain/sesion';
+import type { AuthRepositorio } from '../domain/auth-repositorio';
 
 /** Casos de uso de autenticación, sin React ni HTTP. */
-export function crearCasosUsoAuth(repositorio: AuthRepositorio) {
+export function crearCasosUsoAuth(
+  repositorio: AuthRepositorio,
+): CasosUsoSesion {
   return {
     iniciarSesion(credenciales: CredencialesSesion): Promise<Sesion> {
       return repositorio.iniciarSesion(credenciales);
@@ -30,6 +41,34 @@ export function crearCasosUsoAuth(repositorio: AuthRepositorio) {
 
     cerrarSesion(): Promise<void> {
       return repositorio.cerrarSesion();
+    },
+
+    listarConexiones(): Promise<ConexionBaseDatos[]> {
+      return repositorio.listarConexiones();
+    },
+
+    probarConexion(
+      baseDatos: string,
+      host?: string,
+      puerto?: number,
+    ): Promise<boolean> {
+      return repositorio.probarConexion(baseDatos, host, puerto);
+    },
+
+    listarDependencias(baseDatos: string): Promise<DependenciaOpcion[]> {
+      return repositorio.listarDependencias(baseDatos);
+    },
+
+    listarGrupos(baseDatos: string): Promise<GrupoOpcion[]> {
+      return repositorio.listarGrupos(baseDatos);
+    },
+
+    registrar(datos: DatosRegistro): Promise<Sesion> {
+      return repositorio.registrar(datos);
+    },
+
+    actualizarPerfil(datos: PerfilActualizacion): Promise<void> {
+      return repositorio.actualizarPerfil(datos);
     },
   };
 }

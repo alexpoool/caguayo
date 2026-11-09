@@ -1,0 +1,781 @@
+import { useMemo, useState, useDeferredValue } from "react";
+import type { CasosUsoAdministracion } from '../application/casos-uso';
+import { createPortal } from "react-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
+import {
+  Users,
+  UserPlus,
+  Shield,
+  Edit,
+  Trash2,
+  X,
+  Copy,
+  CheckCircle,
+  User,
+  Building,
+  CreditCard,
+  Search,
+  Lock,
+  AtSign,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  ConfirmModal,
+  FormModal,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  CreateButton,
+} from "@/shared/ui/components";
+import type { Usuario, UsuarioCreate } from "../domain/administracion";
+
+const USUARIO_FORM_ID = "usuario-form";
+
+export function UsuariosPage({ casosUso }: { casosUso: CasosUsoAdministracion }) {
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<"list" | "form">("list");
+  const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const [usuarioForm, setUsuarioForm] = useState<UsuarioCreate>({
+    ci: "",
+    nombre: "",
+    primer_apellido: "",
+    segundo_apellido: "",
+    cargo: "",
+    id_grupo: 0,
+    alias: "",
+    contrasenia: "",
+  });
+  const [confirmarContrasenia, setConfirmarContrasenia] = useState("");
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
+
+  const [createdUserModal, setCreatedUserModal] = useState<{
+    isOpen: boolean;
+    usuario: Usuario | null;
+  }>({ isOpen: false, usuario: null });
+
+  const [detailModal, setDetailModal] = useState<{
+    isOpen: boolean;
+    usuario: Usuario | null;
+  }>({ isOpen: false, usuario: null });
+
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const { data: grupos = [] } = useQuery({
+    queryKey: ["grupos"],
+    queryFn: () => casosUso.getGrupos(),
+  });
+
+  const { data: usuarios = [] } = useQuery({
+    queryKey: ["usuarios"],
+    queryFn: () => casosUso.getUsuarios(),
+  });
+
+  const { data: todasLasDependencias = [], isLoading: isDependenciasLoading } = useQuery({
+    queryKey: ["dependencias", "todas"],
+    queryFn: () => casosUso.getDependencias(true),
+  });
+
+  const filteredUsuarios = useMemo(() => {
+    const termino = normalizarBusqueda(deferredSearchTerm).trim();
+    if (!termino) return usuarios;
+    return usuarios.filter(
+      (u) =>
+        coincideBusqueda(u.nombre, termino) ||
+        coincideBusqueda(u.primer_apellido, termino) ||
+        coincideBusqueda(u.ci, termino),
+    );
+  }, [usuarios, deferredSearchTerm]);
+
+  const createUsuario = useMutation({
+    mutationFn: casosUso.createUsuario,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      toast.success("Usuario creado exitosamente");
+      setView("list");
+      resetUsuarioForm();
+      setCreatedUserModal({
+        isOpen: true,
+        usuario: data,
+      });
+    },
+    onError: (error: Error) =>
+      toast.error(error.message || "Error al crear usuario"),
+  });
+
+  const updateUsuario = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Usuario> }) =>
+      casosUso.updateUsuario(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      toast.success("Usuario actualizado");
+      setView("list");
+      setEditingUsuario(null);
+      resetUsuarioForm();
+    },
+    onError: (error: Error) =>
+      toast.error(error.message || "Error al actualizar usuario"),
+  });
+
+  const deleteUsuario = useMutation({
+    mutationFn: casosUso.deleteUsuario,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      toast.success("Usuario eliminado");
+    },
+  });
+
+  const resetUsuarioForm = () => {
+    setUsuarioForm({
+      ci: "",
+      nombre: "",
+      primer_apellido: "",
+      segundo_apellido: "",
+      cargo: "",
+      id_grupo: 0,
+      alias: "",
+      contrasenia: "",
+    });
+    setConfirmarContrasenia("");
+  };
+
+  const handleUsuarioSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !usuarioForm.ci ||
+      !usuarioForm.nombre ||
+      !usuarioForm.primer_apellido ||
+      !usuarioForm.cargo ||
+      !usuarioForm.id_grupo ||
+      !usuarioForm.alias.trim()
+    ) {
+      toast.error("Todos los campos requeridos deben completarse");
+      return;
+    }
+    if (editingUsuario) {
+      updateUsuario.mutate({
+        id: editingUsuario.id_usuario,
+        data: {
+          ci: usuarioForm.ci,
+          nombre: usuarioForm.nombre,
+          primer_apellido: usuarioForm.primer_apellido,
+          segundo_apellido: usuarioForm.segundo_apellido,
+          cargo: usuarioForm.cargo,
+          id_grupo: usuarioForm.id_grupo,
+          id_dependencia: usuarioForm.id_dependencia,
+          alias: usuarioForm.alias.trim(),
+        },
+      });
+    } else {
+      if (usuarioForm.contrasenia.length < 6) {
+        toast.error("La contraseña debe tener al menos 6 caracteres");
+        return;
+      }
+      if (usuarioForm.contrasenia !== confirmarContrasenia) {
+        toast.error("Las contraseñas no coinciden");
+        return;
+      }
+      createUsuario.mutate({ ...usuarioForm, alias: usuarioForm.alias.trim() });
+    }
+  };
+
+  const handleDeleteUsuario = (usuario: Usuario) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Eliminar Usuario",
+      message: `¿Está seguro de eliminar al usuario "${usuario.nombre} ${usuario.primer_apellido}"?`,
+      onConfirm: () => {
+        deleteUsuario.mutate(usuario.id_usuario);
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+    });
+  };
+
+  const handleEdit = (usuario: Usuario) => {
+    setEditingUsuario(usuario);
+    setUsuarioForm({
+      ci: usuario.ci,
+      nombre: usuario.nombre,
+      primer_apellido: usuario.primer_apellido,
+      segundo_apellido: usuario.segundo_apellido || "",
+      cargo: usuario.cargo,
+      id_grupo: usuario.id_grupo,
+      id_dependencia: usuario.id_dependencia,
+      alias: usuario.alias,
+      contrasenia: "",
+    });
+    setConfirmarContrasenia("");
+    setView("form");
+  };
+
+  const handleCancel = () => {
+    setView("list");
+    setEditingUsuario(null);
+    resetUsuarioForm();
+  };
+
+  const isSaving = createUsuario.isPending || updateUsuario.isPending;
+
+  const formModal = (
+    <FormModal
+      isOpen={view === "form"}
+      onClose={handleCancel}
+      title={editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}
+      subtitle={
+        editingUsuario
+          ? "Modifique los datos del usuario"
+          : "Complete los datos del nuevo usuario"
+      }
+      icon={<Users className="h-6 w-6" />}
+      size="lg"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isSaving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form={USUARIO_FORM_ID}
+            disabled={isSaving}
+            isLoading={isSaving}
+            className="gap-2 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            {editingUsuario ? "Actualizar" : "Guardar"}
+          </Button>
+        </>
+      }
+    >
+      <div className="p-4 md:p-6">
+        <Card className="border-0 shadow-none">
+          <CardHeader className="border-b bg-gradient-to-r from-green-50 to-emerald-50">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg">
+                <UserPlus className="h-5 w-5 text-white" />
+              </div>
+              <CardTitle>Datos del Usuario</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form
+              id={USUARIO_FORM_ID}
+              onSubmit={handleUsuarioSubmit}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+            >
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <CreditCard className="h-5 w-5 text-brand-500" />
+                  CI *
+                </Label>
+                <Input
+                  value={usuarioForm.ci}
+                  onChange={(e) =>
+                    setUsuarioForm({ ...usuarioForm, ci: e.target.value })
+                  }
+                  placeholder="Carnet de identidad"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <User className="h-5 w-5 text-green-500" />
+                  Nombre *
+                </Label>
+                <Input
+                  value={usuarioForm.nombre}
+                  onChange={(e) =>
+                    setUsuarioForm({ ...usuarioForm, nombre: e.target.value })
+                  }
+                  placeholder="Nombre"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <User className="h-5 w-5 text-brand-500" />
+                  Primer Apellido *
+                </Label>
+                <Input
+                  value={usuarioForm.primer_apellido}
+                  onChange={(e) =>
+                    setUsuarioForm({
+                      ...usuarioForm,
+                      primer_apellido: e.target.value,
+                    })
+                  }
+                  placeholder="Primer apellido"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <User className="h-5 w-5 text-pink-500" />
+                  Segundo Apellido
+                </Label>
+                <Input
+                  value={usuarioForm.segundo_apellido || ""}
+                  onChange={(e) =>
+                    setUsuarioForm({
+                      ...usuarioForm,
+                      segundo_apellido: e.target.value,
+                    })
+                  }
+                  placeholder="Segundo apellido (opcional)"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <User className="h-5 w-5 text-brand-500" />
+                  Cargo *
+                </Label>
+                <Input
+                  value={usuarioForm.cargo}
+                  onChange={(e) =>
+                    setUsuarioForm({
+                      ...usuarioForm,
+                      cargo: e.target.value,
+                    })
+                  }
+                  placeholder="Cargo del usuario"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <AtSign className="h-5 w-5 text-brand-500" />
+                  Alias *
+                </Label>
+                <Input
+                  value={usuarioForm.alias}
+                  onChange={(e) =>
+                    setUsuarioForm({
+                      ...usuarioForm,
+                      alias: e.target.value,
+                    })
+                  }
+                  placeholder="Alias de acceso"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+              {!editingUsuario && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <Lock className="h-5 w-5 text-rose-500" />
+                      Contraseña *
+                    </Label>
+                    <Input
+                      type="password"
+                      value={usuarioForm.contrasenia}
+                      onChange={(e) =>
+                        setUsuarioForm({
+                          ...usuarioForm,
+                          contrasenia: e.target.value,
+                        })
+                      }
+                      placeholder="Contraseña (mínimo 6 caracteres)"
+                      className="transition-all duration-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <Lock className="h-5 w-5 text-rose-400" />
+                      Confirmar Contraseña *
+                    </Label>
+                    <Input
+                      type="password"
+                      value={confirmarContrasenia}
+                      onChange={(e) => setConfirmarContrasenia(e.target.value)}
+                      placeholder="Repita la contraseña"
+                      className="transition-all duration-200 focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
+                    />
+                  </div>
+                </>
+              )}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="id_grupo"
+                  className="flex items-center gap-2 text-gray-700"
+                >
+                  <Shield className="h-5 w-5 text-orange-500" />
+                  Grupo *
+                </Label>
+                <select
+                  id="id_grupo"
+                  aria-label="Grupo"
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  value={usuarioForm.id_grupo}
+                  onChange={(e) =>
+                    setUsuarioForm({
+                      ...usuarioForm,
+                      id_grupo: parseInt(e.target.value),
+                    })
+                  }
+                >
+                  <option value={0}>Seleccione un grupo</option>
+                  {grupos.map((g) => (
+                    <option key={g.id_grupo} value={g.id_grupo}>
+                      {g.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="id_dependencia"
+                  className="flex items-center gap-2 text-gray-700"
+                >
+                  <Building className="h-5 w-5 text-brand-500" />
+                  Dependencia
+                </Label>
+                <select
+                  id="id_dependencia"
+                  aria-label="Dependencia"
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                  value={usuarioForm.id_dependencia || ""}
+                  onChange={(e) =>
+                    setUsuarioForm({
+                      ...usuarioForm,
+                      id_dependencia: e.target.value
+                        ? parseInt(e.target.value)
+                        : undefined,
+                    })
+                  }
+                >
+                  <option value="">Sin dependencia</option>
+                  {isDependenciasLoading ? (
+                    <option disabled>Cargando...</option>
+                  ) : (
+                    todasLasDependencias.map((d) => (
+                      <option key={d.id_dependencia} value={d.id_dependencia}>
+                        {d.nombre}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </FormModal>
+  );
+
+  const content = (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded shadow-lg animate-bounce-subtle">
+            <Users className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Usuarios</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              {filteredUsuarios.length === usuarios.length
+                ? `Gestión de usuarios (${usuarios.length} usuarios)`
+                : `Mostrando ${filteredUsuarios.length} de ${usuarios.length} usuarios`}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[12rem] max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            type="text"
+            placeholder="Buscar por nombre, apellido o CI..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <CreateButton label="Nuevo Usuario" onClick={() => { setEditingUsuario(null); resetUsuarioForm(); setView("form"); }} />
+      </div>
+
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>CI</TableHead>
+                <TableHead>Cargo</TableHead>
+                <TableHead>Grupo</TableHead>
+                <TableHead>Dependencia</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsuarios.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-12 text-gray-500"
+                  >
+                    {searchTerm
+                      ? "No se encontraron usuarios que coincidan con la búsqueda"
+                      : "No hay usuarios"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredUsuarios.map((usuario) => (
+                  <TableRow
+                    key={usuario.id_usuario}
+                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                    onClick={() => setDetailModal({ isOpen: true, usuario })}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+                          {usuario.nombre.charAt(0).toUpperCase()}
+                        </div>
+                        {usuario.nombre} {usuario.primer_apellido}{" "}
+                        {usuario.segundo_apellido || ""}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-medium">
+                        {usuario.ci}
+                      </span>
+                    </TableCell>
+                    <TableCell>{usuario.cargo}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-medium">
+                        <Shield className="h-3 w-3" />
+                        {usuario.grupo?.nombre || "Sin grupo"}
+                      </span>
+                    </TableCell>
+                    <TableCell>{usuario.dependencia?.nombre || "-"}</TableCell>
+                    <TableCell
+                      className="text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(usuario)}
+                          className="text-brand-600 hover:bg-brand-50 h-8 w-8"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteUsuario(usuario)}
+                          className="text-red-600 hover:bg-red-50 h-8 w-8"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type="danger"
+      />
+
+      {formModal}
+    </div>
+  );
+
+  const ModalUsuarioCreado = () =>
+    createPortal(
+      createdUserModal.isOpen && createdUserModal.usuario && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b">
+              <h2 className="text-lg font-semibold text-green-700 flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Usuario Creado Exitosamente
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  setCreatedUserModal({ ...createdUserModal, isOpen: false })
+                }
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-green-800 mb-2">
+                  El usuario ha sido creado correctamente. Comparta su alias de
+                  acceso:
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-gray-600">Nombre Completo</Label>
+                  <div className="text-lg font-medium">
+                    {createdUserModal.usuario.nombre}{" "}
+                    {createdUserModal.usuario.primer_apellido}{" "}
+                    {createdUserModal.usuario.segundo_apellido || ""}
+                  </div>
+                </div>
+
+                <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 space-y-3">
+                  <div>
+                    <Label className="text-brand-700 flex items-center gap-2">
+                      Alias (Usuario)
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            createdUserModal.usuario!.alias,
+                          );
+                          setCopiedField("alias");
+                          setTimeout(() => setCopiedField(null), 2000);
+                        }}
+                      >
+                        {copiedField === "alias" ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </Label>
+                    <div className="font-mono font-medium text-lg">
+                      {createdUserModal.usuario.alias}
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  La contraseña es la que se ingresó en el formulario de creación.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 p-4 border-t">
+              <Button
+                onClick={() =>
+                  setCreatedUserModal({ ...createdUserModal, isOpen: false })
+                }
+              >
+                Entendido
+              </Button>
+            </div>
+          </div>
+        </div>
+      ),
+      document.body,
+    );
+
+  const ModalDetalleUsuario = () =>
+    createPortal(
+      detailModal.isOpen && detailModal.usuario && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b">
+              <h2 className="text-lg font-semibold">Detalles del Usuario</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  setDetailModal({ ...detailModal, isOpen: false })
+                }
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-2xl">
+                  {detailModal.usuario.nombre.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">
+                    {detailModal.usuario.nombre}{" "}
+                    {detailModal.usuario.primer_apellido}{" "}
+                    {detailModal.usuario.segundo_apellido || ""}
+                  </h3>
+                  <p className="text-gray-500">{detailModal.usuario.alias}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-gray-600">C.I</Label>
+                  <div className="font-medium">{detailModal.usuario.ci}</div>
+                </div>
+                <div>
+                  <Label className="text-gray-600">Cargo</Label>
+                  <div className="font-medium">{detailModal.usuario.cargo}</div>
+                </div>
+                <div>
+                  <Label className="text-gray-600">Grupo</Label>
+                  <div className="font-medium">
+                    {detailModal.usuario.grupo?.nombre || "-"}
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
+                  <Label className="text-gray-600">Dependencia</Label>
+                  <div className="font-medium">
+                    {detailModal.usuario.dependencia?.nombre ||
+                      "Sin dependencia"}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end p-4 border-t gap-2">
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setDetailModal({ ...detailModal, isOpen: false })
+                }
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      ),
+      document.body,
+    );
+
+  return (
+    <>
+      {content}
+      <ModalUsuarioCreado />
+      <ModalDetalleUsuario />
+    </>
+  );
+}

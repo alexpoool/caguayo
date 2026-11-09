@@ -1,0 +1,1611 @@
+import { useState, useEffect, useRef, useMemo } from "react";
+import type { CasosUsoAdministracion } from '../application/casos-uso';
+import { createPortal } from "react-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Building,
+  Building2,
+  Plus,
+  Edit,
+  Trash2,
+  X,
+  ChevronRight,
+  ChevronDown,
+  Tag,
+  Network,
+  MapPin,
+  Phone,
+  Mail,
+  Globe,
+  Map as MapIcon,
+  Locate,
+  FileText,
+  Wallet,
+  CreditCard,
+  User,
+  Landmark,
+  Store,
+  ArrowLeft,
+  CheckCircle2,
+  Hash,
+  Search,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  ConfirmModal,
+  FormModal,
+  CreateButton,
+} from "@/shared/ui/components";
+import type { Dependencia, DependenciaCreate, DependenciaConCuentasCreate } from "../domain/administracion";
+import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
+
+const DEPENDENCIA_FORM_ID = "dependencia-form";
+
+interface ArbolDependenciaProps {
+  dependenciasPadre: Dependencia[];
+  hijosPorPadre: Map<number, Dependencia[]>;
+  nivel: number;
+  onSelect: (dep: Dependencia) => void;
+  selectedId?: number;
+}
+
+const SIN_HIJOS: Dependencia[] = [];
+
+function ArbolDependencia({
+  dependenciasPadre,
+  hijosPorPadre,
+  nivel,
+  onSelect,
+  selectedId,
+}: ArbolDependenciaProps) {
+  const [expandidos, setExpandidos] = useState<Set<number>>(new Set());
+
+  const toggleExpand = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newExpandidos = new Set(expandidos);
+    if (newExpandidos.has(id)) {
+      newExpandidos.delete(id);
+    } else {
+      newExpandidos.add(id);
+    }
+    setExpandidos(newExpandidos);
+  };
+
+  return (
+    <div className="space-y-1">
+      {dependenciasPadre.map((dep) => {
+        const hijos = hijosPorPadre.get(dep.id_dependencia) ?? SIN_HIJOS;
+        const isExpanded = expandidos.has(dep.id_dependencia);
+        const isSelected = selectedId === dep.id_dependencia;
+
+        return (
+          <div key={dep.id_dependencia}>
+            <div
+              className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                isSelected ? "bg-brand-100 text-brand-800" : "hover:bg-gray-50"
+              }`}
+              style={{ paddingLeft: `${nivel * 20 + 8}px` }}
+              onClick={() => onSelect(dep)}
+            >
+              {hijos.length > 0 && (
+                <button
+                  onClick={(e) => toggleExpand(dep.id_dependencia, e)}
+                  className="p-1 hover:bg-gray-200 rounded"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+              )}
+              {hijos.length === 0 && <span className="w-6" />}
+              {nivel === 0 ? (
+                <Building2 className="h-4 w-4 text-brand-600" />
+              ) : (
+                <Building className="h-4 w-4 text-gray-500" />
+              )}
+              <span className="flex-1">{dep.nombre}</span>
+            </div>
+            {isExpanded && hijos.length > 0 && (
+              <ArbolDependencia
+                dependenciasPadre={hijos}
+                hijosPorPadre={hijosPorPadre}
+                nivel={nivel + 1}
+                onSelect={onSelect}
+                selectedId={selectedId}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function DependenciasPage({ casosUso }: { casosUso: CasosUsoAdministracion }) {
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<"list" | "form">("list");
+  const [editingDependencia, setEditingDependencia] =
+    useState<Dependencia | null>(null);
+  const [selectedPadre, setSelectedPadre] = useState<Dependencia | null>(null);
+  const [formData, setFormData] = useState<DependenciaCreate>({
+    id_tipo_dependencia: 0,
+    nombre: "",
+    denominacion: "",
+    nit: "",
+    reeup: "",
+    base_datos: "",
+    direccion: "",
+    telefono: "",
+  });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
+
+  // Estados para modales de detalle
+  const [detailModal, setDetailModal] = useState<{
+    isOpen: boolean;
+    dependenciaId: number | null;
+  }>({ isOpen: false, dependenciaId: null });
+
+  // Estado para dependencia seleccionada desde el árbol
+  const [dependenciaSeleccionadaArbol, setDependenciaSeleccionadaArbol] =
+    useState<Dependencia | null>(null);
+
+  const { data: dependenciaDetalle } = useQuery({
+    queryKey: ["dependencia-detalle", detailModal.dependenciaId],
+    queryFn: () =>
+      detailModal.dependenciaId
+        ? casosUso.getDependencia(detailModal.dependenciaId)
+        : Promise.resolve(null),
+    enabled: !!detailModal.dependenciaId,
+  });
+
+  const [cuentaDetailModal, setCuentaDetailModal] = useState<{
+    isOpen: boolean;
+    cuenta: any;
+  }>({ isOpen: false, cuenta: null });
+
+  const [databaseCreatedModal, setDatabaseCreatedModal] = useState<{
+    isOpen: boolean;
+    dependencia: Dependencia | null;
+  }>({ isOpen: false, dependencia: null });
+
+  const { data: dependencias = [] } = useQuery({
+    queryKey: ["dependencias"],
+    queryFn: () => casosUso.getDependencias(),
+  });
+
+  const { data: tiposDependencia = [] } = useQuery({
+    queryKey: ["tipos-dependencia"],
+    queryFn: () => casosUso.getTiposDependencia(),
+  });
+
+  const { data: provincias = [] } = useQuery({
+    queryKey: ["provincias"],
+    queryFn: () => casosUso.getProvincias(),
+  });
+
+  const { data: municipios = [], refetch: refetchMunicipios } = useQuery({
+    queryKey: ["municipios", formData.id_provincia],
+    queryFn: () => casosUso.getMunicipios(formData.id_provincia),
+    enabled: !!formData.id_provincia,
+  });
+
+
+
+  const [busquedaPadre, setBusquedaPadre] = useState("");
+  const [showDropdownPadre, setShowDropdownPadre] = useState(false);
+  const padreDropdownRef = useRef<HTMLDivElement>(null);
+
+
+
+  // Refetch municipios when provincia changes
+  useEffect(() => {
+    if (formData.id_provincia) {
+      refetchMunicipios();
+    }
+  }, [formData.id_provincia, refetchMunicipios]);
+
+  // Set default municipio when creating new dependencia and municipios are loaded
+  useEffect(() => {
+    if (
+      view === "form" &&
+      !editingDependencia &&
+      formData.id_provincia &&
+      !formData.id_municipio &&
+      municipios.length > 0
+    ) {
+      const municipioSantiago = municipios.find(
+        (m) => m.nombre === "Santiago de Cuba",
+      );
+      if (municipioSantiago) {
+        setFormData((prev) => ({
+          ...prev,
+          id_municipio: municipioSantiago.id_municipio,
+        }));
+      }
+    }
+  }, [
+    view,
+    editingDependencia,
+    formData.id_provincia,
+    formData.id_municipio,
+    municipios,
+  ]);
+
+  // Cerrar dropdowns al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+
+      if (padreDropdownRef.current && !padreDropdownRef.current.contains(event.target as Node)) {
+        setShowDropdownPadre(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+
+
+  const dependenciasPadreFiltradas = useMemo(() => {
+    const termino = normalizarBusqueda(busquedaPadre).trim();
+    if (!termino) return dependencias;
+    return dependencias.filter((d) => coincideBusqueda(d.nombre, termino));
+  }, [dependencias, busquedaPadre]);
+
+  const createDependencia = useMutation({
+    mutationFn: casosUso.createDependencia,
+    onSuccess: (data) => {
+      console.log("Create dependencia response:", data);
+      queryClient.invalidateQueries({ queryKey: ["dependencias"] });
+      setDatabaseCreatedModal({
+        isOpen: true,
+        dependencia: data,
+      });
+      setView("list");
+    },
+    onError: (error: any) => {
+      console.log("Create dependencia error:", error);
+      if (error?.message === "no_se_puede_crear_dependencia_desde_sucursal") {
+        toast.error("Debe estar en la base de datos central para crear dependencias");
+      } else {
+        toast.error(
+          error?.response?.data?.detail || error?.detail || error?.message || "Error al crear dependencia",
+        );
+      }
+    },
+  });
+
+  const updateDependencia = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Dependencia> }) =>
+      casosUso.updateDependencia(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dependencias"] });
+      toast.success("Dependencia actualizada");
+      setView("list");
+      setEditingDependencia(null);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error("Error al actualizar dependencia");
+      console.error("Error:", error);
+    },
+  });
+
+  const deleteDependencia = useMutation({
+    mutationFn: casosUso.deleteDependencia,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["dependencias"] });
+      if (data.database_dropped) {
+        toast.success(`"${data.dependencia_nombre}" eliminada. BD "${data.database_name}" también.`);
+      } else if (data.database_name) {
+        toast.error(`"${data.dependencia_nombre}" eliminada. Error al eliminar BD "${data.database_name}".`);
+      } else {
+        toast.success("Dependencia eliminada");
+      }
+    },
+  });
+
+  const resetForm = (isNew: boolean = false) => {
+    // Buscar provincia Santiago de Cuba
+    const provinciaSantiago = provincias.find(
+      (p) => p.nombre === "Santiago de Cuba",
+    );
+    const provinciaId = provinciaSantiago?.id_provincia;
+
+    // Buscar municipio Santiago de Cuba de esa provincia
+    let municipioId = undefined;
+    if (provinciaId && municipios.length > 0) {
+      const municipioSantiago = municipios.find(
+        (m) =>
+          m.nombre === "Santiago de Cuba" && m.id_provincia === provinciaId,
+      );
+      municipioId = municipioSantiago?.id_municipio;
+    }
+
+    setFormData({
+      id_tipo_dependencia: 0,
+      nombre: "",
+      denominacion: "",
+      nit: "",
+      reeup: "",
+      base_datos: "",
+      direccion: "",
+      telefono: "",
+      id_provincia: isNew ? provinciaId : undefined,
+      id_municipio: isNew ? municipioId : undefined,
+    });
+    setSelectedPadre(null);
+    setBusquedaPadre("");
+    setShowDropdownPadre(false);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !formData.nombre ||
+      !formData.denominacion ||
+      formData.denominacion.length > 3 ||
+      !formData.direccion ||
+      !formData.telefono ||
+      !formData.id_tipo_dependencia
+    ) {
+      const msg = formData.denominacion.length > 3
+        ? "La denominación no puede tener más de 3 caracteres"
+        : "Todos los campos requeridos deben completarse";
+      toast.error(msg);
+      return;
+    }
+
+    // Concatenar 53 al teléfono si no lo tiene ya
+    const telefonoConPrefijo = formData.telefono.startsWith("53")
+      ? formData.telefono
+      : "53" + formData.telefono;
+
+    if (editingDependencia) {
+      // Al editar, no enviamos las cuentas (se manejan por separado)
+      const data = {
+        ...formData,
+        telefono: telefonoConPrefijo,
+        codigo_padre: formData.codigo_padre,
+      };
+      updateDependencia.mutate({ id: editingDependencia.id_dependencia, data });
+    } else {
+      // Al crear, enviamos dependencia y cuentas separados
+      const dependenciaData = {
+        ...formData,
+        telefono: telefonoConPrefijo,
+        codigo_padre: formData.codigo_padre,
+      };
+      
+      const data: DependenciaConCuentasCreate = {
+        dependencia: dependenciaData,
+      };
+      createDependencia.mutate(data);
+    }
+  };
+
+  const handleEdit = (dep: Dependencia) => {
+    setEditingDependencia(dep);
+    setFormData({
+      id_tipo_dependencia: dep.id_tipo_dependencia,
+      codigo_padre: dep.codigo_padre,
+      nombre: dep.nombre,
+      denominacion: dep.denominacion,
+      nit: dep.nit || "",
+      reeup: dep.reeup || "",
+      base_datos: dep.base_datos || "",
+      direccion: dep.direccion,
+      telefono: dep.telefono,
+      email: dep.email,
+      web: dep.web,
+      id_provincia: dep.id_provincia,
+      id_municipio: dep.id_municipio,
+      descripcion: dep.descripcion,
+    });
+    if (dep.codigo_padre) {
+      const padre = dependencias.find(
+        (d) => d.id_dependencia === dep.codigo_padre,
+      );
+      setSelectedPadre(padre || null);
+      setBusquedaPadre(padre?.nombre || "");
+    } else {
+      setBusquedaPadre("");
+    }
+    setView("form");
+  };
+
+  const handleNuevaSubdependencia = (padre: Dependencia) => {
+    setSelectedPadre(padre);
+    setEditingDependencia(null);
+
+    // Buscar provincia y municipio Santiago de Cuba por defecto
+    const provinciaSantiago = provincias.find(
+      (p) => p.nombre === "Santiago de Cuba",
+    );
+    const provinciaId = provinciaSantiago?.id_provincia;
+
+    let municipioId = undefined;
+    if (provinciaId && municipios.length > 0) {
+      const municipioSantiago = municipios.find(
+        (m) =>
+          m.nombre === "Santiago de Cuba" && m.id_provincia === provinciaId,
+      );
+      municipioId = municipioSantiago?.id_municipio;
+    }
+
+    setFormData({
+      id_tipo_dependencia: 0,
+      nombre: "",
+      denominacion: "",
+      nit: "",
+      reeup: "",
+      base_datos: "",
+      direccion: "",
+      telefono: "",
+      codigo_padre: padre.id_dependencia,
+      id_provincia: provinciaId,
+      id_municipio: municipioId,
+    });
+    setSelectedPadre(padre);
+    setBusquedaPadre(padre.nombre);
+    setView("form");
+  };
+
+  const handleDelete = (dep: Dependencia) => {
+    const hijos = dependencias.filter(
+      (d) => d.codigo_padre === dep.id_dependencia,
+    );
+    if (hijos.length > 0) {
+      toast.error("No se puede eliminar una dependencia con subdependencias");
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      title: "Eliminar Dependencia",
+      message: `¿Está seguro de eliminar la dependencia "${dep.nombre}"?`,
+      onConfirm: () => {
+        deleteDependencia.mutate(dep.id_dependencia);
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+    });
+  };
+
+  const closeForm = () => {
+    setView("list");
+    setEditingDependencia(null);
+    resetForm();
+  };
+
+  const isSaving = createDependencia.isPending || updateDependencia.isPending;
+
+  // Funciones para modales de detalle
+  const handleSelectDependencia = (dep: Dependencia) => {
+    setDependenciaSeleccionadaArbol(dep);
+  };
+
+  const handleVerDetalleDesdeTabla = (dep: Dependencia) => {
+    setDetailModal({ isOpen: true, dependenciaId: dep.id_dependencia });
+  };
+
+  const handleLimpiarSeleccionArbol = () => {
+    setDependenciaSeleccionadaArbol(null);
+  };
+
+  const handleCloseDetailModal = () => {
+    setDetailModal({ isOpen: false, dependenciaId: null });
+  };
+
+  const handleShowCuentaDetail = (cuenta: any) => {
+    setCuentaDetailModal({ isOpen: true, cuenta });
+  };
+
+  const handleCloseCuentaDetailModal = () => {
+    setCuentaDetailModal({ isOpen: false, cuenta: null });
+  };
+
+  const { dependenciasRaiz, hijosPorDependencia } = useMemo(() => {
+    const hijos = new Map<number, Dependencia[]>();
+    const raiz: Dependencia[] = [];
+
+    for (const dependencia of dependencias) {
+      if (!dependencia.codigo_padre) {
+        raiz.push(dependencia);
+        continue;
+      }
+      const lista = hijos.get(dependencia.codigo_padre) ?? [];
+      lista.push(dependencia);
+      hijos.set(dependencia.codigo_padre, lista);
+    }
+
+    return { dependenciasRaiz: raiz, hijosPorDependencia: hijos };
+  }, [dependencias]);
+
+  const formModal = (
+    <FormModal
+      isOpen={view === "form"}
+      onClose={closeForm}
+      title={editingDependencia ? "Editar Dependencia" : "Nueva Dependencia"}
+      subtitle={
+        editingDependencia
+          ? "Actualice la información de la dependencia"
+          : "Complete los datos para crear una nueva dependencia"
+      }
+      icon={<Building className="h-6 w-6" />}
+      size="lg"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={closeForm}
+            disabled={isSaving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form={DEPENDENCIA_FORM_ID}
+            disabled={isSaving}
+            isLoading={isSaving}
+            className="gap-2 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            {editingDependencia ? "Actualizar" : "Guardar"}
+          </Button>
+        </>
+      }
+    >
+      <div className="p-4 md:p-6 space-y-4">
+        {selectedPadre && (
+          <div className="bg-gradient-to-r from-brand-50 to-brand-50 border-l-4 border-brand-500 rounded-lg p-4 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <Network className="h-5 w-5 text-brand-600" />
+              <p className="text-sm text-brand-800">
+                <span className="font-semibold">Dependencia Padre:</span>{" "}
+                {selectedPadre.nombre}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <Card className="hover:shadow-lg transition-shadow duration-300">
+          <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-white">
+            <div className="flex items-center gap-2">
+              <Building className="h-6 w-6 text-brand-600" />
+              <CardTitle>Información de la Dependencia</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form id={DEPENDENCIA_FORM_ID} onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* ===== INFORMACIÓN GENERAL ===== */}
+              <div className="sm:col-span-2">
+                <div className="flex items-center gap-2 pt-2 pb-3">
+                  <FileText className="h-4 w-4 text-brand-500" />
+                  <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Información General</span>
+                  <div className="flex-1 border-t border-gray-200" />
+                </div>
+              </div>
+
+              {/* Nombre, Denominación, NIT, REEUP */}
+              <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-gray-700">
+                    <Building className="h-5 w-5 text-brand-500" />
+                    Nombre 
+                  </Label>
+                  <Input
+                    value={formData.nombre}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nombre: e.target.value })
+                    }
+                    placeholder="Nombre de la dependencia"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-gray-700">
+                    <FileText className="h-5 w-5 text-brand-500" />
+                    Denominación
+                  </Label>
+                  <Input
+                    value={formData.denominacion}
+                    onChange={(e) =>
+                      setFormData({ ...formData, denominacion: e.target.value.toUpperCase().slice(0, 3) })
+                    }
+                    maxLength={3}
+                    placeholder="Máx 3 caracteres"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 uppercase"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-gray-700">
+                    <Hash className="h-5 w-5 text-amber-500" />
+                    NIT
+                  </Label>
+                  <Input
+                    value={formData.nit || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nit: e.target.value })
+                    }
+                    placeholder="Número de Identificación Tributaria"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-gray-700">
+                    <Hash className="h-5 w-5 text-brand-500" />
+                    REEUP
+                  </Label>
+                  <Input
+                    value={formData.reeup || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, reeup: e.target.value })
+                    }
+                    maxLength={15}
+                    placeholder="Código REEUP"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                  />
+                </div>
+              </div>
+
+              {/* Descripción */}
+              <div className="sm:col-span-2 space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <FileText className="h-5 w-5 text-gray-500" />
+                  Descripción
+                </Label>
+                <textarea
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                  value={formData.descripcion || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, descripcion: e.target.value })
+                  }
+                  placeholder="Descripción de la dependencia (opcional)"
+                  rows={3}
+                />
+              </div>
+
+              {/* Dependencia Padre */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Network className="h-5 w-5 text-green-500" />
+                  Dependencia Padre *
+                </Label>
+                <div ref={padreDropdownRef} className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar dependencia padre..."
+                      value={busquedaPadre}
+                      onChange={(e) => {
+                        setBusquedaPadre(e.target.value);
+                        setShowDropdownPadre(true);
+                        if (e.target.value !== selectedPadre?.nombre) {
+                          setFormData({ ...formData, codigo_padre: undefined });
+                          setSelectedPadre(null);
+                        }
+                      }}
+                      onFocus={() => setShowDropdownPadre(true)}
+                      disabled={!editingDependencia && !!selectedPadre}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                    {selectedPadre && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPadre(null);
+                          setBusquedaPadre("");
+                          setFormData({ ...formData, codigo_padre: undefined });
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  {showDropdownPadre && dependenciasPadreFiltradas.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {dependenciasPadreFiltradas.map((d) => (
+                        <button
+                          key={d.id_dependencia}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPadre(d);
+                            setBusquedaPadre(d.nombre);
+                            setFormData({ ...formData, codigo_padre: d.id_dependencia });
+                            setShowDropdownPadre(false);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-green-50 transition-colors border-b border-gray-100 last:border-b-0"
+                        >
+                          <span className="font-medium text-gray-900">{d.nombre}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showDropdownPadre && dependenciasPadreFiltradas.length === 0 && busquedaPadre && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                      No se encontraron dependencias
+                    </div>
+                  )}
+                </div>
+                {selectedPadre && (
+                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    {editingDependencia ? "Dependencia padre actual" : "Pre-seleccionado desde '+ Sub'"}
+                  </p>
+                )}
+              </div>
+
+              {/* Tipo de Dependencia */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Tag className="h-5 w-5 text-brand-500" />
+                  Tipo de Dependencia *
+                </Label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                  value={formData.id_tipo_dependencia}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      id_tipo_dependencia: parseInt(e.target.value),
+                    })
+                  }
+                >
+                  <option value={0}>Seleccione un tipo</option>
+                  {tiposDependencia.map((t) => (
+                    <option
+                      key={t.id_tipo_dependencia}
+                      value={t.id_tipo_dependencia}
+                    >
+                      {t.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* ===== CONTACTO & UBICACIÓN ===== */}
+              <div className="sm:col-span-2">
+                <div className="flex items-center gap-2 pt-4 pb-3">
+                  <Phone className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Contacto &amp; Ubicación</span>
+                  <div className="flex-1 border-t border-gray-200" />
+                </div>
+              </div>
+
+              {/* Teléfono */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Phone className="h-5 w-5 text-green-500" />
+                  Teléfono *
+                </Label>
+                <Input
+                  value={formData.telefono}
+                  onChange={(e) =>
+                    setFormData({ ...formData, telefono: e.target.value })
+                  }
+                  placeholder="+53"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+
+              {/* Dirección */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <MapPin className="h-5 w-5 text-red-500" />
+                  Dirección *
+                </Label>
+                <Input
+                  value={formData.direccion}
+                  onChange={(e) =>
+                    setFormData({ ...formData, direccion: e.target.value })
+                  }
+                  placeholder="Dirección completa"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
+              </div>
+
+              {/* Provincia */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <MapIcon className="h-5 w-5 text-orange-500" />
+                  Provincia
+                </Label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  value={formData.id_provincia || ""}
+                  onChange={(e) => {
+                    const newProvinciaId = e.target.value
+                      ? parseInt(e.target.value)
+                      : undefined;
+                    setFormData({
+                      ...formData,
+                      id_provincia: newProvinciaId,
+                      id_municipio: undefined,
+                    });
+                    if (newProvinciaId) {
+                      queryClient.invalidateQueries({
+                        queryKey: ["municipios"],
+                      });
+                    }
+                  }}
+                >
+                  <option value="">Seleccione provincia</option>
+                  {provincias.map((p) => (
+                    <option key={p.id_provincia} value={p.id_provincia}>
+                      {p.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Municipio */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Locate className="h-5 w-5 text-pink-500" />
+                  Municipio
+                </Label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500 transition-all duration-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                  value={formData.id_municipio || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      id_municipio: e.target.value
+                        ? parseInt(e.target.value)
+                        : undefined,
+                    })
+                  }
+                  disabled={!formData.id_provincia}
+                >
+                  <option value="">
+                    {formData.id_provincia
+                      ? "Seleccione municipio"
+                      : "Primero seleccione una provincia"}
+                  </option>
+                  {municipios.map((m) => (
+                    <option key={m.id_municipio} value={m.id_municipio}>
+                      {m.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Mail className="h-5 w-5 text-brand-500" />
+                  Email
+                </Label>
+                <Input
+                  value={formData.email || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  placeholder="Email (opcional)"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+
+              {/* Web */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Globe className="h-5 w-5 text-brand-500" />
+                  Web
+                </Label>
+                <Input
+                  value={formData.web || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, web: e.target.value })
+                  }
+                  placeholder="Sitio web (opcional)"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </FormModal>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
+            <Building className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Dependencias</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Gestión jerárquica de dependencias
+            </p>
+          </div>
+        </div>
+        <CreateButton label="Nueva Dependencia" onClick={() => { setView("form"); setEditingDependencia(null); resetForm(true); }} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-1 hover:shadow-lg transition-shadow duration-300">
+          <CardHeader>
+            <CardTitle>Estructura Jerárquica</CardTitle>
+          </CardHeader>
+          <CardContent className="max-h-[600px] overflow-auto">
+            {dependenciasRaiz.length > 0 ? (
+              <ArbolDependencia
+                dependenciasPadre={dependenciasRaiz}
+                hijosPorPadre={hijosPorDependencia}
+                nivel={0}
+                onSelect={handleSelectDependencia}
+              />
+            ) : (
+              <p className="text-gray-500 text-center py-2">
+                No hay dependencias registradas
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2">
+                {dependenciaSeleccionadaArbol ? (
+                  <>
+                    <Network className="h-5 w-5 text-brand-600" />
+                    <span>{dependenciaSeleccionadaArbol.nombre}</span>
+                    <span className="text-sm font-normal text-gray-500">
+                      (y sus subdependencias)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Building2 className="h-5 w-5 text-brand-600" />
+                    Listado de Dependencias
+                  </>
+                )}
+              </CardTitle>
+              {dependenciaSeleccionadaArbol && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLimpiarSeleccionArbol}
+                  className="text-gray-600 hover:text-gray-900 border-gray-300 hover:border-gray-400"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Ver todas
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {dependenciaSeleccionadaArbol && (
+              <div className="mb-4 p-3 bg-brand-50 border border-brand-200 rounded-lg flex items-center gap-3">
+                <div className="p-2 bg-brand-100 rounded-lg">
+                  <Building className="h-5 w-5 text-brand-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-brand-900">
+                    {dependenciaSeleccionadaArbol.nombre}
+                  </p>
+                  <p className="text-xs text-brand-700">
+                    Selecciona una fila para ver detalles
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    handleVerDetalleDesdeTabla(dependenciaSeleccionadaArbol)
+                  }
+                  className="text-brand-600 hover:text-brand-800 hover:bg-brand-100"
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Detalles
+                </Button>
+              </div>
+            )}
+            <Table>
+              <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Den.</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(() => {
+                  const depsFiltradas = dependenciaSeleccionadaArbol
+                    ? dependencias.filter(
+                        (dep) =>
+                          dep.codigo_padre ===
+                          dependenciaSeleccionadaArbol.id_dependencia,
+                      )
+                    : dependencias;
+
+                  if (depsFiltradas.length === 0) {
+                    return (
+                      <TableRow>
+                        <TableCell
+                          colSpan={5}
+                          className="text-center py-8 text-gray-500"
+                        >
+                          <Building className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                          <p>No hay subdependencias</p>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+
+                  return depsFiltradas.map((dep) => (
+                    <TableRow
+                      key={dep.id_dependencia}
+                      className="cursor-pointer hover:bg-brand-50 transition-colors"
+                      onClick={() => handleVerDetalleDesdeTabla(dep)}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {dep.codigo_padre && (
+                            <span className="text-gray-400">└─</span>
+                          )}
+                          {dep.nombre}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">
+                          {dep.denominacion}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {dep.tipo_dependencia?.nombre || "-"}
+                      </TableCell>
+                      <TableCell>{dep.telefono}</TableCell>
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleNuevaSubdependencia(dep)}
+                            className="text-green-600"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Sub
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(dep)}
+                            className="text-brand-600"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(dep)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ));
+                })()}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type="danger"
+      />
+
+      {/* Modal de base de datos creada exitosamente */}
+      {databaseCreatedModal.isOpen &&
+        databaseCreatedModal.dependencia &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setDatabaseCreatedModal({
+                  isOpen: false,
+                  dependencia: null,
+                });
+                setView("list");
+                resetForm();
+              }
+            }}
+          >
+            <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl animate-scale-in max-h-[90vh] flex flex-col">
+              <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-md shadow-lg">
+                    <CheckCircle2 className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      Dependencia Creada
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      La dependencia se ha creado exitosamente
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                  setDatabaseCreatedModal({
+                    isOpen: false,
+                    dependencia: null,
+                  });
+                    setView("list");
+                    resetForm();
+                  }}
+                  className="hover:bg-gray-200 rounded-full"
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto p-4 md:p-6">
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-md p-5">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Building className="h-5 w-5 text-green-500" />
+                      Dependencia Creada
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          Nombre
+                        </Label>
+                        <p className="font-semibold text-gray-900">
+                          {databaseCreatedModal.dependencia.nombre}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          Tipo
+                        </Label>
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-brand-100 text-brand-700 rounded-full text-sm font-medium">
+                          {databaseCreatedModal.dependencia.tipo_dependencia
+                            ?.nombre || "-"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+
+                </div>
+              </div>
+              <div className="flex-shrink-0 p-4 md:p-6 border-t bg-gray-50 rounded-b-2xl">
+                <div className="flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setDatabaseCreatedModal({
+                        isOpen: false,
+                        dependencia: null,
+                      });
+                      setView("list");
+                      resetForm();
+                    }}
+                  >
+                    Cerrar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* Modal de detalle de dependencia */}
+      {detailModal.isOpen &&
+        dependenciaDetalle &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-[100] p-4 animate-fade-in overflow-y-auto"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleCloseDetailModal();
+            }}
+          >
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in">
+              <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-brand-50 to-brand-50 rounded-t-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-md shadow-lg">
+                    <Building className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      Detalle de Dependencia
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      Información completa
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCloseDetailModal}
+                  className="hover:bg-gray-200 rounded-full"
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto p-4 md:p-6">
+                <div className="space-y-8">
+                  {/* Información básica */}
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-md p-5">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Building className="h-5 w-5 text-brand-500" />
+                      Información General
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <Building className="h-4 w-4" />
+                          Nombre
+                        </Label>
+                        <p className="font-semibold text-gray-900 text-lg">
+                          {dependenciaDetalle.nombre}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <Tag className="h-4 w-4" />
+                          Tipo
+                        </Label>
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-brand-100 text-brand-700 rounded-full text-sm font-medium">
+                          {dependenciaDetalle.tipo_dependencia?.nombre || "-"}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <Hash className="h-4 w-4" />
+                          NIT
+                        </Label>
+                        <p className="font-medium text-gray-900">
+                          {dependenciaDetalle.nit || "-"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <Hash className="h-4 w-4" />
+                          REEUP
+                        </Label>
+                        <p className="font-medium text-gray-900">
+                          {dependenciaDetalle.reeup || "-"}
+                        </p>
+                      </div>
+                      <div className="sm:col-span-2 space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <MapPin className="h-4 w-4" />
+                          Dirección
+                        </Label>
+                        <p className="font-medium text-gray-900">
+                          {dependenciaDetalle.direccion}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <Phone className="h-4 w-4" />
+                          Teléfono
+                        </Label>
+                        <p className="font-medium text-gray-900">
+                          {dependenciaDetalle.telefono}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <Mail className="h-4 w-4" />
+                          Email
+                        </Label>
+                        <p className="font-medium text-gray-900">
+                          {dependenciaDetalle.email || "-"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <Globe className="h-4 w-4" />
+                          Web
+                        </Label>
+                        <p className="font-medium text-gray-900">
+                          {dependenciaDetalle.web || "-"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <MapIcon className="h-4 w-4" />
+                          Ubicación
+                        </Label>
+                        <p className="font-medium text-gray-900">
+                          {dependenciaDetalle.provincia?.nombre || "-"},{" "}
+                          {dependenciaDetalle.municipio?.nombre || "-"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cuentas bancarias */}
+                  {dependenciaDetalle.cuentas &&
+                    dependenciaDetalle.cuentas.length > 0 && (
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-5">
+                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <Wallet className="h-5 w-5 text-green-600" />
+                          Cuentas Bancarias
+                          <span className="ml-2 px-2 py-0.5 bg-green-200 text-green-800 rounded-full text-xs">
+                            {dependenciaDetalle.cuentas.length}
+                          </span>
+                        </h3>
+                        <div className="rounded-lg overflow-hidden border border-green-200">
+                          <Table>
+                            <TableHeader className="bg-green-100/50">
+                              <TableRow>
+                                <TableHead className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-brand-500" />
+                                  Titular
+                                </TableHead>
+                                <TableHead>
+                                  <div className="flex items-center gap-2">
+                                    <Landmark className="h-4 w-4 text-brand-500" />
+                                    Banco
+                                  </div>
+                                </TableHead>
+                                <TableHead>
+                                  <div className="flex items-center gap-2">
+                                    <CreditCard className="h-4 w-4 text-brand-500" />
+                                    Tipo
+                                  </div>
+                                </TableHead>
+                                <TableHead className="text-right">
+                                  Ver
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {dependenciaDetalle.cuentas.map(
+                                (cuenta, index) => {
+                                  return (
+                                    <TableRow
+                                      key={index}
+                                      className="hover:bg-green-50/50 transition-colors"
+                                    >
+                                      <TableCell className="font-medium">
+                                        {cuenta.titular}
+                                      </TableCell>
+                                      <TableCell>{cuenta.banco}</TableCell>
+                                      <TableCell>
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded-full text-xs">
+                                          <CreditCard className="h-3 w-3" />
+                                          -
+                                        </span>
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() =>
+                                            handleShowCuentaDetail(cuenta)
+                                          }
+                                          className="text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all"
+                                        >
+                                          <Building className="h-4 w-4" />
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                },
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Subdependencias */}
+                  {(() => {
+                    const hijos = dependencias.filter(
+                      (d) =>
+                        d.codigo_padre === dependenciaDetalle!.id_dependencia,
+                    );
+                    if (hijos.length === 0) return null;
+                    return (
+                      <div className="bg-gradient-to-br from-brand-50 to-brand-50 rounded-md p-5">
+                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <Network className="h-5 w-5 text-brand-600" />
+                          Subdependencias
+                          <span className="ml-2 px-2 py-0.5 bg-brand-200 text-brand-800 rounded-full text-xs">
+                            {hijos.length}
+                          </span>
+                        </h3>
+                        <div className="grid grid-cols-1 gap-2">
+                          {hijos.map((hijo) => (
+                            <div
+                              key={hijo.id_dependencia}
+                              className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              <div className="p-2 bg-brand-100 rounded-lg">
+                                <Building2 className="h-4 w-4 text-brand-600" />
+                              </div>
+                              <span className="font-medium text-gray-900">
+                                {hijo.nombre}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Cuentas Bancarias (tabla cuenta_dependencias) */}
+                  {dependenciaDetalle.cuentas_dependencias &&
+                    dependenciaDetalle.cuentas_dependencias.length > 0 && (
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-5">
+                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <Wallet className="h-5 w-5 text-green-600" />
+                          Cuentas Bancarias
+                          <span className="ml-2 px-2 py-0.5 bg-green-200 text-green-800 rounded-full text-xs">
+                            {dependenciaDetalle.cuentas_dependencias.length}
+                          </span>
+                        </h3>
+                        <div className="rounded-lg overflow-hidden border border-green-200">
+                          <Table>
+                            <TableHeader className="bg-green-100/50">
+                              <TableRow>
+                                <TableHead>Titular</TableHead>
+                                <TableHead>Banco</TableHead>
+                                <TableHead>Núm. Cuenta</TableHead>
+                                <TableHead>Moneda</TableHead>
+                                <TableHead>Sucursal</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {dependenciaDetalle.cuentas_dependencias.map(
+                                (cuenta, index) => (
+                                  <TableRow
+                                    key={index}
+                                    className="hover:bg-green-50/50 transition-colors"
+                                  >
+                                    <TableCell className="font-medium">
+                                      {cuenta.titular}
+                                    </TableCell>
+                                    <TableCell>{cuenta.banco}</TableCell>
+                                    <TableCell>{cuenta.numero_cuenta || "-"}</TableCell>
+                                    <TableCell>
+                                      {cuenta.moneda?.nombre || "-"}
+                                    </TableCell>
+                                    <TableCell>{cuenta.sucursal || "-"}</TableCell>
+                                  </TableRow>
+                                ),
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* Modal de detalle de cuenta */}
+      {cuentaDetailModal.isOpen &&
+        cuentaDetailModal.cuenta &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-[100] p-4 animate-fade-in overflow-y-auto"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleCloseCuentaDetailModal();
+            }}
+          >
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-md shadow-lg">
+                    <CreditCard className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      Detalle de Cuenta
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      Información bancaria
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCloseCuentaDetailModal}
+                  className="hover:bg-gray-200 rounded-full"
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+              <div className="p-4 md:p-6 space-y-5">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 rounded-md p-4 space-y-1">
+                  <Label className="flex items-center gap-2 text-brand-600 text-sm font-medium">
+                    <User className="h-4 w-4" />
+                    Titular
+                  </Label>
+                  <p className="font-bold text-gray-900 text-lg">
+                    {cuentaDetailModal.cuenta.titular}
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-brand-50 to-pink-50 rounded-md p-4 space-y-1">
+                    <Label className="flex items-center gap-2 text-brand-600 text-sm font-medium">
+                      <Landmark className="h-4 w-4" />
+                      Banco
+                    </Label>
+                    <p className="font-semibold text-gray-900">
+                      {cuentaDetailModal.cuenta.banco}
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-md p-4 space-y-1">
+                    <Label className="flex items-center gap-2 text-orange-600 text-sm font-medium">
+                      <Store className="h-4 w-4" />
+                      Sucursal
+                    </Label>
+                    <p className="font-semibold text-gray-900">
+                      {cuentaDetailModal.cuenta.sucursal || "-"}
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-md p-4 space-y-1">
+                  <Label className="flex items-center gap-2 text-red-600 text-sm font-medium">
+                    <MapPin className="h-4 w-4" />
+                    Dirección
+                  </Label>
+                  <p className="font-semibold text-gray-900">
+                    {cuentaDetailModal.cuenta.direccion}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {formModal}
+    </div>
+  );
+}

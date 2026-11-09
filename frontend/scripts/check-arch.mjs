@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 
 const SRC = 'src';
 const violations = [];
@@ -24,6 +24,13 @@ function importsOf(text) {
   return imports;
 }
 
+/** Normaliza imports relativos y el alias `@/` a una ruta lógica `src/...`. */
+function importPath(file, specifier) {
+  if (specifier.startsWith('@/')) return `${SRC}/${specifier.slice(2)}`;
+  if (!specifier.startsWith('.')) return specifier;
+  return relative('.', resolve(dirname(file), specifier)).replaceAll('\\', '/');
+}
+
 function featureOf(path) {
   const parts = path.split(/[\\/]/);
   const index = parts.indexOf('features');
@@ -41,34 +48,52 @@ for (const file of walk(SRC)) {
   const imports = importsOf(text);
   const feature = featureOf(file);
   const layer = layerOf(file);
-  const isShared = file.includes(`${SRC}/shared/`) || file.includes(`${SRC}${'\\'}shared${'\\'}`);
+  const isShared = file.includes(`${SRC}/shared/`) || file.includes(`${SRC}\\shared\\`);
   const isSharedDomain = file.includes('shared/domain') || file.includes('shared\\domain');
+  const isSharedUi = file.includes('shared/ui') || file.includes('shared\\ui');
 
   for (const specifier of imports) {
-    if (!specifier.startsWith('.')) continue;
+    const resolved = importPath(file, specifier);
 
     if (feature) {
-      const other = specifier.match(/features[\\/]([^/\\]+)/);
+      const other = resolved.match(/(?:^|\/)features\/([^/]+)/);
       if (other && other[1] !== feature) {
         violations.push(`${relative('.', file)}: importa la feature ${other[1]} desde ${feature}`);
       }
-      if (layer === 'ui' && (specifier.includes('infrastructure') || specifier.includes('/services/'))) {
+      if (
+        layer === 'ui' &&
+        (resolved.includes('infrastructure') || resolved.includes('/services/'))
+      ) {
         violations.push(`${relative('.', file)}: ui importa infraestructura (${specifier})`);
       }
-      if (layer === 'application' && (specifier.includes('infrastructure') || specifier.includes('/services/'))) {
+      if (
+        layer === 'application' &&
+        (resolved.includes('infrastructure') || resolved.includes('/services/'))
+      ) {
         violations.push(`${relative('.', file)}: application importa infraestructura (${specifier})`);
       }
-      if (layer === 'domain' && (specifier.includes('infrastructure') || specifier.includes('/services/') || specifier.includes('/ui/'))) {
+      if (
+        layer === 'domain' &&
+        (resolved.includes('infrastructure') ||
+          resolved.includes('/services/') ||
+          resolved.includes('/ui/'))
+      ) {
         violations.push(`${relative('.', file)}: domain importa una capa externa (${specifier})`);
       }
     }
 
-    if (isShared && specifier.includes('features')) {
+    if (isShared && resolved.includes('features')) {
       violations.push(`${relative('.', file)}: shared importa una feature (${specifier})`);
     }
 
-    if (isSharedDomain && /^(react|react-dom|axios)$/.test(specifier)) {
-      violations.push(`${relative('.', file)}: domain importa ${specifier}`);
+    if (
+      isSharedUi &&
+      (resolved.includes('/infrastructure/') ||
+        resolved.includes('/services/') ||
+        resolved.includes('/pages/') ||
+        resolved.includes('/context/'))
+    ) {
+      violations.push(`${relative('.', file)}: shared/ui importa una capa no compartida (${specifier})`);
     }
   }
 

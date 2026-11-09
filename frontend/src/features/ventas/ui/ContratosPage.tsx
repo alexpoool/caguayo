@@ -1,0 +1,734 @@
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal,
+  CreateButton,
+} from '@/shared/ui/components';
+import { ClienteFormContainer as ClienteForm } from '@/app/container/terceros-cliente-form';
+import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
+import type { CasosUsoVentas } from '../application/casos-uso';
+import type {
+  Cliente,
+  ContratoCreate,
+  ContratoWithDetails,
+  Moneda,
+} from '../domain/ventas';
+import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, User, Tag, X, Layers, Receipt } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { formatFecha, toISODateLocal} from '@/utils/fecha';
+import { DateInput } from '@/shared/ui/components';
+
+type View = 'list' | 'form';
+
+const CONTRATO_FORM_ID = 'contrato-form';
+
+export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialClienteId = searchParams.get('cliente');
+  const solicitudParam = searchParams.get('solicitud');
+  const [view, setView] = useState<View>(searchParams.get('solicitud') ? 'form' : 'list');
+  
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [monedas, setMonedas] = useState<Moneda[]>([]);
+  const [tiposContrato, setTiposContrato] = useState<{id_tipo_contrato: number, nombre: string}[]>([]);
+  const [estados, setEstados] = useState<{id_estado_contrato: number, nombre: string}[]>([]);
+  
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [filtroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
+  const clienteRef = useRef<HTMLDivElement | null>(null);
+
+  const hoy = toISODateLocal();
+
+  const addDays = (dateStr: string, days: number) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + days);
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${dt.getFullYear()}-${mm}-${dd}`;
+  };
+
+  const handleFechaChange = (fecha: string) => {
+    setFormData(prev => {
+      let nuevaVigencia = prev.vigencia;
+      if (fecha) {
+        if (!prev.vigencia || prev.vigencia <= fecha) {
+          nuevaVigencia = addDays(fecha, 1);
+        }
+      } else {
+        nuevaVigencia = '';
+      }
+      return { ...prev, fecha, vigencia: nuevaVigencia };
+    });
+  };
+
+  const filteredClientes = useMemo(() => {
+    if (!clienteSearch) return clientes;
+    const term = clienteSearch.toLowerCase();
+    return clientes.filter(c => c.nombre.toLowerCase().includes(term));
+  }, [clientes, clienteSearch]);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  const {
+    items: contratos,
+    isLoading,
+    isFetchingMore,
+    isError,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
+    reset,
+    searchTerm,
+    setSearch,
+    total: totalContratos,
+  } = useInfiniteList<ContratoWithDetails>({
+    queryKeyBase: 'contratos',
+    queryFn: (skip, limit, search, onTotal) =>
+      casosUso.listarContratos(skip, limit, filtroCliente || undefined, search, onTotal),
+    extraQueryKeyParams: [filtroCliente],
+    limit: 100,
+  });
+
+  // Reiniciar scroll infinito cuando cambia el filtro de cliente
+  useEffect(() => {
+    reset();
+  }, [filtroCliente]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // IntersectionObserver para infinite scroll
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetchingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
+  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: ContratoWithDetails | null }>({ isOpen: false, item: null });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'danger'
+  });
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadInitialData(); }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) {
+        setShowClienteDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      const [clientesRes, monedasRes, estadosRes, tiposRes] = await Promise.all([
+        casosUso.listarClientes(0, 1000, "CLIENTE,AMBAS"),
+        casosUso.listarMonedas(),
+        casosUso.obtenerEstadosContrato(),
+        casosUso.obtenerTiposContrato()
+      ]);
+      setClientes(clientesRes);
+      setMonedas(monedasRes);
+      setEstados(estadosRes);
+      setTiposContrato(tiposRes);
+    } catch (error) { console.error('Error:', error); }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const fecha = formData.fecha || hoy;
+      const vigencia = formData.vigencia || addDays(fecha, 1);
+      if (!fecha || !vigencia || vigencia <= fecha) {
+        toast.error('La fecha de vigencia debe ser posterior a la fecha');
+        return;
+      }
+      const data: ContratoCreate = { 
+        nombre: formData.nombre || '',
+        id_cliente: Number(formData.id_cliente) || 0, 
+        id_estado: estados.length > 0 ? estados[0].id_estado_contrato : 1, 
+        id_tipo_contrato: Number(formData.id_tipo_contrato) || (tiposContrato.length > 0 ? tiposContrato[0].id_tipo_contrato : 1), 
+        id_moneda: Number(formData.id_moneda) || 1,
+        fecha,
+        vigencia,
+        monto: Number(formData.monto) || 0,
+        proforma: formData.proforma,
+        documento_final: formData.documento_final
+      };
+      if (editingId) {
+        await casosUso.actualizarContrato(editingId, data);
+        toast.success('Actualizado');
+      } else {
+        const nuevoContrato = await casosUso.crearContrato(data);
+        if (solicitudParam) {
+          try {
+            await casosUso.actualizarSolicitud(Number(solicitudParam), {
+              id_contrato: nuevoContrato.id_contrato,
+              id_cliente: Number(formData.id_cliente) || 0
+            });
+          } catch (e) { console.error('Error updating solicitud:', e); }
+        }
+        toast.success('Creado');
+      }
+      setView('list');
+      resetForm();
+      refresh();
+    } catch (error: any) { toast.error(error.message || 'Error'); } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: number, nombre: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Eliminar contrato?',
+      message: `¿Está seguro de eliminar el contrato "${nombre}"?`,
+      onConfirm: async () => {
+        try {
+          await casosUso.eliminarContrato(id);
+          toast.success('Eliminado');
+          refresh();
+        } catch (error: any) { toast.error(error.message || 'Error'); }
+      },
+      type: 'danger'
+    });
+  };
+
+  const resetForm = () => { setFormData({ fecha: hoy, monto: '' }); setEditingId(null); };
+
+  const openForm = (item?: ContratoWithDetails) => {
+    if (item) {
+      setEditingId(item.id_contrato);
+      setFormData({ 
+        nombre: item.nombre, 
+        proforma: item.proforma, 
+        id_cliente: item.id_cliente, 
+        id_tipo_contrato: item.id_tipo_contrato, 
+        fecha: item.fecha, 
+        vigencia: item.vigencia, 
+        id_moneda: item.id_moneda, 
+        monto: item.monto,
+        documento_final: item.documento_final 
+      });
+    } else { 
+      resetForm();
+      if (initialClienteId) {
+        setFormData(prev => ({ ...prev, id_cliente: Number(initialClienteId) }));
+      }
+    }
+    setView('form');
+  };
+
+  const renderList = () => (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
+            <FileText className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Contratos</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              {`Gestión de contratos (${totalContratos ?? contratos.length} items)`}
+            </p>
+          </div>
+        </div>
+        <CreateButton label="Nuevo Contrato" onClick={() => openForm()} />
+      </div>
+
+      <div className="flex gap-2">
+        <div className="flex-1 relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Buscar contratos..."
+            value={searchTerm}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
+              <TableRow>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-brand-600" />
+                    Código
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-brand-600" />
+                    Nombre
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-brand-600" />
+                    Cliente
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-brand-600" />
+                    Facturas
+                  </div>
+                </TableHead>
+                <TableHead>Suplementos</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-5 w-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                      Cargando contratos...
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : isError ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-red-500">
+                    Error al cargar contratos: {(error as Error)?.message || 'Error desconocido'}
+                  </TableCell>
+                </TableRow>
+              ) : contratos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                    {searchTerm ? 'No se encontraron contratos que coincidan con la búsqueda' : 'No hay contratos'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                contratos.map((item) => (
+                  <TableRow key={item.id_contrato} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-sm font-mono font-medium">
+                        <Tag className="h-3 w-3" />
+                        {item.codigo || 'N/A'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium text-gray-900">{item.nombre}</span>
+                    </TableCell>
+                    <TableCell className="text-right text-gray-700">{Number(item.monto || 0).toFixed(2)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-gray-400" />
+                        {item.cliente?.nombre || 'N/A'}
+                      </div>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/ventas/facturas?contrato=${item.id_contrato}`)}
+                        className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                      >
+                        <Receipt className="h-3.5 w-3.5" />
+                        Ver
+                      </Button>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/ventas/suplementos?contrato=${item.id_contrato}`)}
+                        className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                      >
+                        <Layers className="h-3.5 w-3.5" />
+                        Suplemento
+                      </Button>
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openForm(item)}
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(item.id_contrato, item.nombre)}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {/* Sentinel para infinite scroll */}
+        {!isLoading && contratos.length > 0 && (hasMore || isFetchingMore) && (
+          <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
+            {isFetchingMore ? (
+              <span className="text-sm text-brand-600 flex items-center gap-2">
+                <div className="h-4 w-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                Cargando más...
+              </span>
+            ) : (
+              <span className="text-sm text-gray-400">Desplázate para cargar más</span>
+            )}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+
+  const renderForm = () => (
+    <form
+      id={CONTRATO_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Fila 1: Nombre + Tipo */}
+            <div>
+              <Label className="text-sm font-medium">Nombre *</Label>
+              <Input value={formData.nombre || ''} onChange={(e: any) => setFormData({...formData, nombre: e.target.value})} className="mt-1" placeholder="Nombre del contrato" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Tipo</Label>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white" value={formData.id_tipo_contrato || ''} onChange={(e: any) => setFormData({...formData, id_tipo_contrato: e.target.value})}>
+                <option value="">Seleccionar tipo</option>
+                {tiposContrato.map(t => <option key={t.id_tipo_contrato} value={t.id_tipo_contrato}>{t.nombre}</option>)}
+              </select>
+            </div>
+
+            {/* Fila 2: Cliente (buscador) + Nuevo Cliente */}
+            <div className="md:col-span-2 flex gap-2 items-start">
+              <div ref={clienteRef} className="relative flex-1">
+                <Label className="text-sm font-medium">Cliente *</Label>
+                {initialClienteId ? (
+                  <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                    {clientes.find(c => c.id_cliente === Number(initialClienteId))?.nombre || `Cliente #${initialClienteId}`}
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative mt-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Buscar cliente..."
+                        value={
+                          formData.id_cliente
+                            ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
+                            : clienteSearch
+                        }
+                        disabled={!!formData.id_cliente}
+                        onChange={(e) => {
+                          setClienteSearch(e.target.value);
+                          setFormData({ ...formData, id_cliente: '' });
+                          setShowClienteDropdown(true);
+                        }}
+                        onFocus={() => setShowClienteDropdown(true)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white disabled:bg-gray-100"
+                      />
+                      {(formData.id_cliente || clienteSearch) && (
+                        <button
+                          type="button"
+                          onClick={() => { setFormData({ ...formData, id_cliente: '' }); setClienteSearch(''); }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    {showClienteDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        {filteredClientes.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-500">No se encontraron resultados</div>
+                        ) : (
+                          filteredClientes.map(c => (
+                            <button
+                              key={c.id_cliente}
+                              type="button"
+                              className="w-full text-left px-4 py-2 hover:bg-brand-50 transition-colors border-b border-gray-100 last:border-b-0"
+                              onClick={() => {
+                                setFormData({ ...formData, id_cliente: c.id_cliente });
+                                setClienteSearch('');
+                                setShowClienteDropdown(false);
+                              }}
+                            >
+                              <span className="font-medium text-gray-900">{c.nombre}</span>
+                              <span className="text-xs text-gray-400 ml-2">({c.tipo_persona})</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="pt-7">
+                <button
+                  type="button"
+                  onClick={() => setShowNuevoClienteModal(true)}
+                  className="py-2 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo Cliente
+                </button>
+              </div>
+            </div>
+
+            {/* Fila 3: Valor + Moneda */}
+            <div>
+              <Label className="text-sm font-medium">Valor</Label>
+              <Input type="number" min="0" step="0.01" value={formData.monto ?? ''} onChange={(e: any) => setFormData({...formData, monto: e.target.value})} className="mt-1" placeholder="0.00" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Moneda</Label>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
+                <option value="">Seleccionar moneda</option>
+                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
+              </select>
+            </div>
+
+            {/* Fila 4: Fecha + Vigencia */}
+            <div>
+              <Label className="text-sm font-medium">Fecha</Label>
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                value={formData.fecha || ''}
+                min={hoy}
+                onChange={(fecha) => handleFechaChange(fecha)}
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Fecha Vigencia</Label>
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                value={formData.vigencia || ''}
+                min={formData.fecha ? addDays(formData.fecha, 1) : hoy}
+                onChange={(vigencia) => setFormData({...formData, vigencia})}
+              />
+            </div>
+
+            {/* Fila 5: Proforma + Documento Final */}
+            <div>
+              <Label className="text-sm font-medium">Proforma</Label>
+              <Input value={formData.proforma || ''} onChange={(e: any) => setFormData({...formData, proforma: e.target.value})} className="mt-1" placeholder="Número de proforma" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Documento Final</Label>
+              <Input value={formData.documento_final || ''} onChange={(e: any) => setFormData({...formData, documento_final: e.target.value})} className="mt-1" placeholder="Número de documento" />
+            </div>
+          </div>
+    </form>
+  );
+
+  return (
+    <div className="p-4 md:p-6">
+      {renderList()}
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Contrato' : 'Nuevo Contrato'}
+        subtitle="Complete los datos del contrato"
+        icon={<FileText className="h-6 w-6" />}
+        size="xl"
+        footer={
+          <>
+            {solicitudParam && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => navigate('/proyectos/solicitudes')}
+                disabled={isSaving}
+                className="gap-2 mr-auto"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Volver a Solicitudes
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={CONTRATO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingId ? 'Actualizar' : 'Guardar'}
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        onConfirm={() => confirmModal.onConfirm()}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+
+      {showNuevoClienteModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
+                    <User className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Nuevo Cliente</h3>
+                    <p className="text-sm text-gray-500">Crear nuevo cliente para el contrato</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowNuevoClienteModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 md:p-6">
+              <ClienteForm
+                editingCliente={null}
+                isProveedorView={false}
+                onCancel={() => {
+                  setShowNuevoClienteModal(false);
+                }}
+                onSubmit={async (data: any) => {
+                  try {
+                    const nuevoCliente = await casosUso.crearCliente(data);
+                    setClientes(prev => [nuevoCliente, ...prev]);
+                    setFormData(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
+                    setClienteSearch('');
+                    setShowNuevoClienteModal(false);
+                    toast.success('Cliente creado');
+                  } catch (error: any) {
+                    toast.error(error.message || 'Error al crear cliente');
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {detailModal.isOpen && detailModal.item && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg">
+                    <FileText className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.nombre}</h3>
+                    <p className="text-sm text-gray-500 font-mono">{detailModal.item.codigo || 'Sin código'}</p>
+                  </div>
+                </div>
+                <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Cliente</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.cliente?.nombre || 'N/A'}</p>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Monto</p>
+                  <p className="font-bold text-green-900 text-xl">${Number(detailModal.item.monto).toFixed(2)}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Tipo</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.tipo_contrato?.nombre || 'N/A'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
+                  <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    detailModal.item.estado?.nombre === 'ACTIVO' ? 'bg-green-100 text-green-800' :
+                    detailModal.item.estado?.nombre === 'CANCELADO' ? 'bg-red-100 text-red-800' :
+                    detailModal.item.estado?.nombre === 'FINALIZADO' ? 'bg-brand-100 text-brand-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {detailModal.item.estado?.nombre || 'N/A'}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-brand-50 to-pink-50 p-4 rounded-xl border border-brand-100">
+                  <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Fecha</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
+                </div>
+                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
+                  <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">Vigencia</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.vigencia) || 'N/A'}</p>
+                </div>
+              </div>
+              {detailModal.item.proforma && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Proforma</p>
+                  <p className="text-gray-700">{detailModal.item.proforma}</p>
+                </div>
+              )}
+            </div>
+            <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}

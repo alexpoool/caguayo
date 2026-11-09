@@ -5,11 +5,11 @@ const root = process.cwd();
 const src = join(root, 'src');
 
 const printFiles = new Set([
-  'src/pages/compra/LiquidacionesPage.tsx',
-  'src/pages/proyecto/LiquidacionesPage.tsx',
-  'src/pages/proyecto/facturaDocumento.ts',
-  'src/pages/ventas/facturas/FacturasPage.tsx',
-  'src/pages/ventas/ofertas/OfertasPage.tsx',
+  'src/features/compra/ui/LiquidacionesPage.tsx',
+  'src/features/proyectos/ui/LiquidacionesPage.tsx',
+  'src/features/proyectos/ui/facturaDocumento.ts',
+  'src/features/ventas/ui/facturas/FacturasPage.tsx',
+  'src/features/ventas/ui/ofertas/OfertasPage.tsx',
 ]);
 
 const allowedHex = (file) =>

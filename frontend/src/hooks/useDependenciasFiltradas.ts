@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "@/shared/ui/auth";
 import { dependenciasService } from "../services/administracion";
 import type { Dependencia } from "../types/dependencia";
 

@@ -1,0 +1,686 @@
+import { useMemo, useState, useDeferredValue } from "react";
+import type { CasosUsoAdministracion } from '../application/casos-uso';
+import { createPortal } from "react-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
+import {
+  Shield,
+  Edit,
+  Trash2,
+  X,
+  Search,
+  FileText,
+  Check,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  ConfirmModal,
+  FormModal,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  CreateButton,
+} from "@/shared/ui/components";
+import type { Grupo, GrupoCreate, GrupoUpdate } from "../domain/administracion";
+
+const GRUPO_FORM_ID = "grupo-form";
+
+interface Modulo {
+  nombre: string;
+  funcionalidades: string[];
+}
+
+const MODULOS: Modulo[] = [
+  {
+    nombre: "Compra",
+    funcionalidades: [
+      "proveedores",
+      "convenios",
+      "anexos",
+      "productos_liquidacion",
+      "liquidaciones",
+    ],
+  },
+  {
+    nombre: "Venta",
+    funcionalidades: [
+      "clientes",
+      "contratos",
+      "suplementos",
+      "facturas",
+      "venta_efectivo",
+    ],
+  },
+  {
+    nombre: "Proyectos",
+    funcionalidades: [
+      "servicios",
+      "solicitudes",
+      "realizadores",
+      "proyectos",
+      "facturas_servicio",
+      "ofertas",
+      "pre_facturas",
+      "liquidaciones_servicio",
+    ],
+  },
+  {
+    nombre: "Inventario",
+    funcionalidades: ["movimientos", "pendientes", "productos"],
+  },
+  {
+    nombre: "Administración",
+    funcionalidades: ["usuarios", "grupos", "monedas", "dependencias", "configuracion", "cuentas", "backups"],
+  },
+  {
+    nombre: "Reportes",
+    funcionalidades: [
+      "reporte_existencias",
+      "reporte_movimientos_dependencia",
+      "reporte_movimientos_producto",
+      "reporte_proveedores",
+      "reporte_clientes",
+      "reporte_proyectos",
+      "reporte_creadores",
+      "reporte_desempeno",
+      "reporte_liquidaciones",
+      "reporte_onat",
+      "reporte_mincult",
+    ],
+  },
+  {
+    nombre: "RRHH",
+    funcionalidades: [
+      "rrhh_empleados",
+      "rrhh_departamentos",
+      "rrhh_puestos",
+      "rrhh_asistencia",
+      "rrhh_solicitudes",
+      "rrhh_deducciones",
+      "rrhh_bonificaciones",
+      "rrhh_nomina",
+      "rrhh_pagos",
+      "rrhh_evaluaciones",
+      "rrhh_catalogos",
+      "rrhh_reportes",
+      "rrhh_auditoria",
+    ],
+  },
+];
+
+export function GruposPage({ casosUso }: { casosUso: CasosUsoAdministracion }) {
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<"list" | "form">("list");
+  const [editingGrupo, setEditingGrupo] = useState<Grupo | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const [grupoForm, setGrupoForm] = useState<GrupoCreate>({
+    nombre: "",
+    descripcion: "",
+    funcionalidades: [],
+  });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
+
+  const [detailModal, setDetailModal] = useState<{
+    isOpen: boolean;
+    grupo: Grupo | null;
+  }>({ isOpen: false, grupo: null });
+
+  const { data: grupos = [] } = useQuery({
+    queryKey: ["grupos"],
+    queryFn: () => casosUso.getGrupos(),
+  });
+
+  const { data: funcionalidades = [] } = useQuery({
+    queryKey: ["funcionalidades"],
+    queryFn: () => casosUso.getFuncionalidades(),
+  });
+
+  const { data: usuarios = [] } = useQuery({
+    queryKey: ["usuarios"],
+    queryFn: () => casosUso.getUsuarios(),
+  });
+
+  const filteredGrupos = useMemo(() => {
+    const termino = normalizarBusqueda(deferredSearchTerm).trim();
+    if (!termino) return grupos;
+    return grupos.filter(
+      (g) =>
+        coincideBusqueda(g.nombre, termino) ||
+        coincideBusqueda(g.descripcion, termino),
+    );
+  }, [grupos, deferredSearchTerm]);
+
+  const usuariosPorGrupo = useMemo(() => {
+    const conteo = new Map<number, number>();
+    for (const usuario of usuarios) {
+      conteo.set(usuario.id_grupo, (conteo.get(usuario.id_grupo) ?? 0) + 1);
+    }
+    return conteo;
+  }, [usuarios]);
+
+  const getUsuariosCountByGrupo = (grupoId: number) =>
+    usuariosPorGrupo.get(grupoId) ?? 0;
+
+  const createGrupo = useMutation({
+    mutationFn: casosUso.createGrupo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["grupos"] });
+      toast.success("Grupo creado exitosamente");
+      setView("list");
+      resetGrupoForm();
+    },
+    onError: () => toast.error("Error al crear grupo"),
+  });
+
+  const updateGrupo = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: GrupoUpdate }) =>
+      casosUso.updateGrupo(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["grupos"] });
+      toast.success("Grupo actualizado");
+      setView("list");
+      setEditingGrupo(null);
+      resetGrupoForm();
+    },
+  });
+
+  const deleteGrupo = useMutation({
+    mutationFn: casosUso.deleteGrupo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["grupos"] });
+      toast.success("Grupo eliminado");
+    },
+  });
+
+  const resetGrupoForm = () =>
+    setGrupoForm({ nombre: "", descripcion: "", funcionalidades: [] });
+
+  const handleFuncionalidadChange = (
+    funcionalidadId: number,
+    checked: boolean,
+  ) => {
+    const current = grupoForm.funcionalidades || [];
+    if (checked) {
+      setGrupoForm({
+        ...grupoForm,
+        funcionalidades: [...current, funcionalidadId],
+      });
+    } else {
+      setGrupoForm({
+        ...grupoForm,
+        funcionalidades: current.filter((id) => id !== funcionalidadId),
+      });
+    }
+  };
+
+  const handleModuloChange = (modulo: Modulo, checked: boolean) => {
+    const funcsDelModulo = funcionalidades
+      .filter((f) => modulo.funcionalidades.includes(f.nombre))
+      .map((f) => f.id_funcionalidad);
+    const current = grupoForm.funcionalidades || [];
+    if (checked) {
+      const newFuncionalidades = [...new Set([...current, ...funcsDelModulo])];
+      setGrupoForm({ ...grupoForm, funcionalidades: newFuncionalidades });
+    } else {
+      const newFuncionalidades = current.filter(
+        (id) => !funcsDelModulo.includes(id)
+      );
+      setGrupoForm({ ...grupoForm, funcionalidades: newFuncionalidades });
+    }
+  };
+
+  const handleGrupoSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!grupoForm.nombre) {
+      toast.error("El nombre es requerido");
+      return;
+    }
+    if (editingGrupo) {
+      updateGrupo.mutate({ id: editingGrupo.id_grupo, data: grupoForm });
+    } else {
+      createGrupo.mutate(grupoForm);
+    }
+  };
+
+  const handleDeleteGrupo = (grupo: Grupo) => {
+    const usuariosCount = getUsuariosCountByGrupo(grupo.id_grupo);
+    setConfirmModal({
+      isOpen: true,
+      title: "Eliminar Grupo",
+      message:
+        usuariosCount > 0
+          ? `El grupo "${grupo.nombre}" tiene ${usuariosCount} usuario(s) asignado(s). ¿Está seguro de eliminarlo?`
+          : `¿Está seguro de eliminar el grupo "${grupo.nombre}"?`,
+      onConfirm: () => {
+        deleteGrupo.mutate(grupo.id_grupo);
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+    });
+  };
+
+  const handleEdit = (grupo: Grupo) => {
+    setEditingGrupo(grupo);
+    const funcs = grupo.funcionalidades;
+    const funcIds = Array.isArray(funcs)
+      ? funcs.map((f) => (typeof f === "number" ? f : f.id_funcionalidad))
+      : [];
+    setGrupoForm({
+      nombre: grupo.nombre,
+      descripcion: grupo.descripcion,
+      funcionalidades: funcIds,
+    });
+    setView("form");
+  };
+
+  const handleCancel = () => {
+    setView("list");
+    setEditingGrupo(null);
+    resetGrupoForm();
+  };
+
+  const isSaving = createGrupo.isPending || updateGrupo.isPending;
+
+  const content = (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-brand-500 to-brand-600 rounded shadow-lg animate-bounce-subtle">
+            <Shield className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Grupos</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              {filteredGrupos.length === grupos.length
+                ? `Gestión de grupos (${grupos.length} grupos)`
+                : `Mostrando ${filteredGrupos.length} de ${grupos.length} grupos`}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[12rem] max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            type="text"
+            placeholder="Buscar por nombre o descripción..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <CreateButton label="Nuevo Grupo" onClick={() => { setEditingGrupo(null); resetGrupoForm(); setView("form"); }} className="ml-auto" />
+      </div>
+
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-brand-50 to-pink-50">
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead>Usuarios</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredGrupos.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-12 text-gray-500"
+                  >
+                    {searchTerm
+                      ? "No se encontraron grupos que coincidan con la búsqueda"
+                      : "No hay grupos"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredGrupos.map((grupo) => (
+                  <TableRow
+                    key={grupo.id_grupo}
+                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                    onClick={() => setDetailModal({ isOpen: true, grupo })}
+                  >
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-100 text-brand-700 rounded text-xs font-medium">
+                        #{grupo.id_grupo}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-brand-500" />
+                        {grupo.nombre}
+                      </div>
+                    </TableCell>
+                    <TableCell>{grupo.descripcion || "-"}</TableCell>
+                    <TableCell>
+                      <span className="text-sm">
+                        {getUsuariosCountByGrupo(grupo.id_grupo)} usuario(s)
+                      </span>
+                    </TableCell>
+                    <TableCell
+                      className="text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(grupo)}
+                          className="text-brand-600 hover:bg-brand-50 h-8 w-8"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteGrupo(grupo)}
+                          className="text-red-600 hover:bg-red-50 h-8 w-8"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type="danger"
+      />
+
+      <FormModal
+        isOpen={view === "form"}
+        onClose={handleCancel}
+        title={editingGrupo ? "Editar Grupo" : "Nuevo Grupo"}
+        subtitle={
+          editingGrupo
+            ? "Modifique los datos del grupo"
+            : "Complete los datos del nuevo grupo"
+        }
+        icon={<Shield className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={GRUPO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingGrupo ? "Actualizar" : "Guardar"}
+            </Button>
+          </>
+        }
+      >
+        <form id={GRUPO_FORM_ID} onSubmit={handleGrupoSubmit} className="p-4 md:p-6 space-y-4">
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-gray-700">
+              <Shield className="h-5 w-5 text-brand-500" />
+              Nombre *
+            </Label>
+            <Input
+              value={grupoForm.nombre}
+              onChange={(e) =>
+                setGrupoForm({ ...grupoForm, nombre: e.target.value })
+              }
+              placeholder="Nombre del grupo"
+              className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-gray-700">
+              <FileText className="h-5 w-5 text-brand-500" />
+              Descripción
+            </Label>
+            <Input
+              value={grupoForm.descripcion || ""}
+              onChange={(e) =>
+                setGrupoForm({ ...grupoForm, descripcion: e.target.value })
+              }
+              placeholder="Descripción opcional"
+              className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+            />
+          </div>
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2 text-gray-700">
+              <Check className="h-5 w-5 text-green-500" />
+              Funcionalidades por Módulo
+            </Label>
+            {MODULOS.map((modulo) => {
+              const funcsDelModulo = funcionalidades.filter((f) =>
+                modulo.funcionalidades.includes(f.nombre)
+              );
+              const todasSeleccionadas = funcsDelModulo.every((f) =>
+                grupoForm.funcionalidades?.includes(f.id_funcionalidad)
+              );
+              const algunasSeleccionadas = funcsDelModulo.some((f) =>
+                grupoForm.funcionalidades?.includes(f.id_funcionalidad)
+              );
+              return (
+                <div
+                  key={modulo.nombre}
+                  className="border rounded-lg overflow-hidden"
+                >
+                  <label
+                    className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
+                      todasSeleccionadas
+                        ? "bg-green-50 border-green-500"
+                        : "bg-gray-50 hover:bg-gray-100"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={todasSeleccionadas}
+                      onChange={(e) =>
+                        handleModuloChange(modulo, e.target.checked)
+                      }
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-5 h-5 rounded border flex items-center justify-center ${
+                        todasSeleccionadas
+                          ? "bg-green-500 border-green-500"
+                          : algunasSeleccionadas
+                            ? "bg-green-100 border-green-500"
+                            : "border-gray-300"
+                      }`}
+                    >
+                      {todasSeleccionadas && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                      {algunasSeleccionadas && !todasSeleccionadas && (
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                      )}
+                    </div>
+                    <span className="font-semibold text-gray-800 flex-1">
+                      {modulo.nombre}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      ({funcsDelModulo.length})
+                    </span>
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-white">
+                    {funcsDelModulo.map((func) => (
+                      <label
+                        key={func.id_funcionalidad}
+                        className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-all duration-200 ${
+                          grupoForm.funcionalidades?.includes(
+                            func.id_funcionalidad,
+                          )
+                            ? "border-green-500 bg-green-50 text-green-700"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={
+                            grupoForm.funcionalidades?.includes(
+                              func.id_funcionalidad,
+                            ) || false
+                          }
+                          onChange={(e) =>
+                            handleFuncionalidadChange(
+                              func.id_funcionalidad,
+                              e.target.checked,
+                            )
+                          }
+                          className="sr-only"
+                        />
+                        <div
+                          className={`w-4 h-4 rounded border flex items-center justify-center ${
+                            grupoForm.funcionalidades?.includes(
+                              func.id_funcionalidad,
+                            )
+                              ? "bg-green-500 border-green-500"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {grupoForm.funcionalidades?.includes(
+                            func.id_funcionalidad,
+                          ) && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <span className="text-sm font-medium capitalize">
+                          {func.nombre.replace(/_/g, " ")}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </form>
+      </FormModal>
+    </div>
+  );
+
+  const ModalDetalle = () =>
+    createPortal(
+      detailModal.isOpen && detailModal.grupo && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b">
+              <h2 className="text-lg font-semibold">Detalles del Grupo</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  setDetailModal({ ...detailModal, isOpen: false })
+                }
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white">
+                  <Shield className="h-8 w-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">
+                    {detailModal.grupo.nombre}
+                  </h3>
+                  <p className="text-gray-500">
+                    ID: {detailModal.grupo.id_grupo}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-gray-600">Descripción</Label>
+                <div className="font-medium">
+                  {detailModal.grupo.descripcion || "Sin descripción"}
+                </div>
+              </div>
+              <div>
+                <Label className="text-gray-600">Usuarios asignados</Label>
+                <div className="font-medium">
+                  {getUsuariosCountByGrupo(detailModal.grupo.id_grupo)}{" "}
+                  usuario(s)
+                </div>
+              </div>
+              <div>
+                <Label className="text-gray-600">Funcionalidades</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {detailModal.grupo.funcionalidades &&
+                  detailModal.grupo.funcionalidades.length > 0 ? (
+                    detailModal.grupo.funcionalidades.map((func) => {
+                      const f =
+                        typeof func === "number" ? func : func.id_funcionalidad;
+                      return (
+                        <span
+                          key={f}
+                          className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium"
+                        >
+                          {typeof func === "number"
+                            ? funcionalidades.find(
+                                (fn) => fn.id_funcionalidad === func,
+                              )?.nombre || "Desconocido"
+                            : func.nombre}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <span className="text-gray-400">
+                      Sin funcionalidades asignadas
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end p-4 border-t gap-2">
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setDetailModal({ ...detailModal, isOpen: false })
+                }
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      ),
+      document.body,
+    );
+
+  return (
+    <>
+      {content}
+      <ModalDetalle />
+    </>
+  );
+}
