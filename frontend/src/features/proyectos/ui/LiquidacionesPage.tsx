@@ -6,6 +6,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button, Card, Label, Input, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ModalOverlay, FormModal, ConfirmModal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 import { 
   Search, 
@@ -988,7 +990,77 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
             </div>
           </div>
 
-          <Card className="overflow-hidden shadow-sm border-gray-200">
+          <div className="space-y-3 md:hidden">
+            {isLoading ? (
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">Cargando...</div>
+            ) : filteredLiquidaciones.length === 0 ? (
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">No hay liquidaciones</div>
+            ) : (
+              filteredLiquidaciones.map((liquidacion: PersonaLiquidacion) => (
+                <MobileRecordCard
+                  key={liquidacion.id_liquidacion}
+                  title={liquidacion.numero || `#${liquidacion.id_liquidacion}`}
+                  subtitle={getPersonaNombre(liquidacion.id_persona)}
+                  icon={<Tag className="h-4 w-4" />}
+                  badges={
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      liquidacion.confirmado ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {liquidacion.confirmado ? 'Confirmada' : 'Pendiente'}
+                    </span>
+                  }
+                  fields={[
+                    { label: 'Fecha', value: formatFecha(liquidacion.fecha_emision) },
+                    { label: 'Importe', value: `${getMonedaSimbolo(liquidacion.id_moneda)} ${formatCifra(liquidacion.importe)}` },
+                    { label: 'Neto pagar', value: `${getMonedaSimbolo(liquidacion.id_moneda)} ${formatCifra(liquidacion.neto_pagar)}` },
+                  ]}
+                  onOpen={() => setDetailModal({ isOpen: true, item: liquidacion })}
+                  openLabel={`Ver detalle de la liquidación ${liquidacion.numero || liquidacion.id_liquidacion}`}
+                  actions={
+                    <>
+                      {!liquidacion.confirmado && (
+                        <IconButton
+                          label="Confirmar liquidación"
+                          icon={<Check className="h-4 w-4" />}
+                          onClick={() => handleConfirmar(liquidacion)}
+                        />
+                      )}
+                      <IconButton
+                        label="Ver documento"
+                        icon={<Eye className="h-4 w-4" />}
+                        onClick={() => handleViewDocument(liquidacion)}
+                      />
+                      <IconButton
+                        label="Imprimir liquidación"
+                        icon={<Printer className="h-4 w-4" />}
+                        onClick={() => setPrintModal({
+                          isOpen: true,
+                          liquidacion: liquidacion,
+                          autorizado_por_id: null,
+                          autorizado_por: '',
+                          cargo_autorizado: '',
+                          revisado_por: ''
+                        })}
+                      />
+                      <IconButton
+                        label="Editar liquidación"
+                        icon={<Edit className="h-4 w-4" />}
+                        onClick={() => openForm(liquidacion)}
+                      />
+                      <IconButton
+                        label="Eliminar liquidación"
+                        icon={<Trash2 className="h-4 w-4" />}
+                        variant="danger"
+                        onClick={() => setEliminarModal({ isOpen: true, item: liquidacion })}
+                      />
+                    </>
+                  }
+                />
+              ))
+            )}
+          </div>
+
+          <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -1125,15 +1197,15 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                 </TableBody>
               </Table>
             </div>
-            <div ref={loadMoreRef} className="flex justify-center py-2">
-              {isFetchingMore && (
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Cargando más...</span>
-                </div>
-              )}
-            </div>
           </Card>
+          <div ref={loadMoreRef} className="flex justify-center py-2">
+            {isFetchingMore && (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Cargando más...</span>
+              </div>
+            )}
+          </div>
         </>
       <FormModal
         isOpen={view === 'form'}

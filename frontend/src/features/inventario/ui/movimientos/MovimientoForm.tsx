@@ -15,6 +15,7 @@ import {
   Input,
   Label,
   DateInput,
+  ModalOverlay,
 } from "@/shared/ui/components";
 import {
   Truck,
@@ -1408,10 +1409,13 @@ export function MovimientoRecepcionForm({
         </div>
 
       {/* Modal Nuevo Producto */}
-      {showNuevoProductoModal &&
-        createPortal(
-          <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto">
+      {showNuevoProductoModal && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setShowNuevoProductoModal(false)}
+          ariaLabel="Nuevo producto"
+        >
+            <div className="bg-white shadow-2xl w-full sm:max-w-lg max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto sm:rounded-xl">
               <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   Nuevo Producto
@@ -1611,15 +1615,17 @@ export function MovimientoRecepcionForm({
                 </Button>
               </div>
             </div>
-          </div>,
-          document.body,
-        )}
+        </ModalOverlay>
+      )}
 
       {/* Modal Precios Adicionales */}
-      {showPreciosModal &&
-        createPortal(
-          <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+      {showPreciosModal && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setShowPreciosModal(false)}
+          ariaLabel="Precio adicional"
+        >
+            <div className="bg-white shadow-2xl w-full sm:max-w-md max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto sm:rounded-xl">
               <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b">
                 <h3 className="text-lg font-bold text-gray-900">
                   {editingPrecioIndex !== null ? "Editar" : "Agregar"} Precio
@@ -1735,9 +1741,8 @@ export function MovimientoRecepcionForm({
                 </Button>
               </div>
             </div>
-          </div>,
-          document.body,
-        )}
+        </ModalOverlay>
+      )}
     </form>
   );
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import type { CasosUsoProyectos } from '../application/casos-uso';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 import { ClienteFormContainer as ClienteForm } from '@/app/container/terceros-cliente-form';
 
@@ -489,7 +489,81 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      <div className="space-y-3 md:hidden">
+        {filteredSolicitudes.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm ? 'No se encontraron solicitudes que coincidan con la búsqueda' : 'No hay solicitudes'}
+          </div>
+        ) : (
+          filteredSolicitudes.map((item) => {
+            const ofertas = conteosPorSolicitud.ofertasPorSolicitud.get(item.id_solicitud_servicio) || { total: 0, pendientes: 0, confirmadas: 0 };
+            const etapasCount = conteosPorSolicitud.etapasPorSolicitud.get(item.id_solicitud_servicio) || 0;
+            return (
+              <MobileRecordCard
+                key={item.id_solicitud_servicio}
+                title={item.codigo_solicitud || 'Sin código'}
+                subtitle={formatFecha(item.fecha_solicitud) || 'N/A'}
+                icon={<ClipboardList className="h-4 w-4" />}
+                badges={
+                  <>
+                    {item.estado ? (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        item.estado === 'TERMINADA' ? 'bg-green-100 text-green-800' :
+                        item.estado === 'CANCELADA' ? 'bg-red-100 text-red-800' :
+                        item.estado === 'EN PROCESO' ? 'bg-brand-100 text-brand-800' :
+                        item.estado === 'EN NEGOCIACION' ? 'bg-brand-100 text-brand-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {item.estado}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">Sin estado</span>
+                    )}
+                  </>
+                }
+                fields={[
+                  { label: 'Cliente', value: clientes.find(c => c.id_cliente === item.id_cliente)?.nombre || 'N/A' },
+                  { label: 'Ofertas', value: ofertas.total },
+                  { label: 'Etapas', value: etapasCount },
+                ]}
+                onOpen={() => setDetailModal({ isOpen: true, item })}
+                openLabel={`Ver detalle de la solicitud ${item.codigo_solicitud || item.id_solicitud_servicio}`}
+                actions={
+                  <>
+                    {item.estado === 'PENDIENTE' && (
+                      <IconButton
+                        label="Aceptar solicitud"
+                        icon={<CheckCircle className="h-4 w-4" />}
+                        onClick={() => handleToggleAprobado(item)}
+                      />
+                    )}
+                    {item.estado === 'EN NEGOCIACION' && (
+                      <IconButton
+                        label="Asignar contrato"
+                        icon={<FileText className="h-4 w-4" />}
+                        onClick={() => handleAsignarContrato(item)}
+                      />
+                    )}
+                    <IconButton
+                      label="Editar solicitud"
+                      icon={<Edit className="h-4 w-4" />}
+                      onClick={() => openForm(item)}
+                    />
+                    <IconButton
+                      label="Eliminar solicitud"
+                      icon={<Trash2 className="h-4 w-4" />}
+                      variant="danger"
+                      onClick={() => handleDelete(item.id_solicitud_servicio, item.codigo_solicitud || 'N/A')}
+                    />
+                  </>
+                }
+              />
+            );
+          })
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -651,15 +725,15 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
             </TableBody>
           </Table>
         </div>
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
       </Card>
+      <div ref={loadMoreRef} className="flex justify-center py-2">
+        {isFetchingMore && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Cargando más...</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 

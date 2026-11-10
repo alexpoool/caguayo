@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button, Card, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal, ConfirmModal,
-  CreateButton, IconButton, MobileRecordCard,
+  CreateButton, IconButton, MobileRecordCard, ModalOverlay,
 } from '@/shared/ui/components';
 import { 
   Search, 
@@ -774,8 +773,12 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
       </FormModal>
 
       {showDetailModal && selectedLiquidacion && (
-        <div className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+        <ModalOverlay
+          isOpen
+          onClose={() => { setShowDetailModal(false); setSelectedLiquidacion(null); }}
+          ariaLabel="Detalle de liquidación"
+        >
+          <div className="bg-white shadow-xl w-full sm:max-w-2xl max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto sm:rounded-xl">
             <div className="px-6 py-4 border-b flex justify-between items-center bg-gradient-to-r from-brand-50 to-brand-50">
               <h2 className="text-xl font-bold">Detalle de Liquidación</h2>
               <button onClick={() => { setShowDetailModal(false); setSelectedLiquidacion(null); }} className="text-gray-400 hover:text-gray-600">
@@ -862,12 +865,16 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setDetailModal({ isOpen: false, item: null })}
+          ariaLabel="Detalle de liquidación"
+        >
+          <div className="bg-white shadow-2xl w-full sm:max-w-lg max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -970,13 +977,16 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
 
-      {printModal.isOpen && printModal.liquidacion && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+      {printModal.isOpen && printModal.liquidacion && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setPrintModal({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })}
+          ariaLabel="Imprimir liquidación"
+        >
+          <div className="bg-white shadow-2xl w-full sm:max-w-md max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200">
               <div className="flex items-center gap-3">
                 <Printer className="h-6 w-6 text-gray-600" />
@@ -1029,13 +1039,16 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
               </button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
 
-      {approveModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in">
+      {approveModal.isOpen && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setApproveModal({ isOpen: false, id_liquidacion: null })}
+          ariaLabel="Aprobar liquidación"
+        >
+          <div className="bg-white shadow-2xl w-full sm:max-w-sm max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200">
               <div className="flex items-center gap-3">
                 <CheckCircle className="h-6 w-6 text-green-600" />
@@ -1069,8 +1082,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
               </button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </div>
   );

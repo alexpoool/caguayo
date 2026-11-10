@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Search, X, Eye } from 'lucide-react';
-import { Input, Label } from '@/shared/ui/components';
+import { Input, Label, ModalOverlay } from '@/shared/ui/components';
 import type { Productos } from '@/types';
 import type { SelectedProduct } from '../hooks/useProductSelection';
 import type { CasosUsoVentas } from '../../../application/casos-uso';
@@ -217,15 +216,13 @@ export function ProductSelector({
       )}
 
       {/* Modal de todos los productos */}
-      {showAllModal && createPortal(
-        <div
-          className="fixed inset-0 z-[110] flex items-start sm:items-center justify-center bg-black/40 overflow-y-auto"
-          onClick={() => setShowAllModal(false)}
+      {showAllModal && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setShowAllModal(false)}
+          ariaLabel="Todos los productos disponibles"
         >
-          <div
-            className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col"
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="bg-white shadow-2xl sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80dvh] flex flex-col sm:rounded-xl">
             <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Todos los productos disponibles</h3>
               <button
@@ -268,8 +265,7 @@ export function ProductSelector({
               )}
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </div>
   );

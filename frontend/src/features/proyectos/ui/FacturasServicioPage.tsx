@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import type { CasosUsoProyectos } from '../application/casos-uso';
 import { useAuth } from '@/shared/ui/auth';
 import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 import { SignToggle } from '@/shared/ui/components/SignToggle';
 
@@ -722,7 +722,74 @@ export function FacturasServicioPage({ casosUso }: { casosUso: CasosUsoProyectos
         />
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      <div className="space-y-3 md:hidden">
+        {isLoadingFacturas ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">Cargando...</div>
+        ) : filteredDocs.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? 'No se encontraron facturas que coincidan con la búsqueda'
+              : 'No hay facturas registradas'}
+          </div>
+        ) : (
+          filteredDocs.map((item) => {
+            const saldo = Number(item.importe || 0) - Number(item.pagado || 0);
+            return (
+              <MobileRecordCard
+                key={item.id_factura_servicio}
+                title={item.codigo_factura || 'Sin código'}
+                subtitle={getEtapaName(item.id_etapa)}
+                icon={<FileText className="h-4 w-4" />}
+                badges={
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-xs font-mono font-medium">
+                    <Hash className="h-3 w-3" />
+                    {item.codigo_factura || 'N/A'}
+                  </span>
+                }
+                fields={[
+                  { label: 'Importe', value: `${getMonedaSymbol(item.id_moneda)} ${formatCifra(item.importe || 0)}` },
+                  { label: 'Pagado', value: <span className="text-green-700">{getMonedaSymbol(item.id_moneda)} {formatCifra(item.pagado || 0)}</span> },
+                  { label: 'Por pagar', value: <span className={saldo > 0 ? 'text-red-600' : 'text-green-600'}>{getMonedaSymbol(item.id_moneda)} {formatCifra(saldo)}</span> },
+                ]}
+                onOpen={() => setDetailModal({ isOpen: true, item })}
+                openLabel={`Ver detalle de la factura ${item.codigo_factura || item.id_factura_servicio}`}
+                actions={
+                  <>
+                    <IconButton
+                      label="Ver pagos"
+                      icon={<DollarSign className="h-4 w-4" />}
+                      onClick={() => navigate(`/proyectos/pagos-factura-servicio?factura=${item.id_factura_servicio}`)}
+                    />
+                    <IconButton
+                      label="Ver documento"
+                      icon={<Eye className="h-4 w-4" />}
+                      onClick={() => handleViewDocument(item)}
+                    />
+                    <IconButton
+                      label="Imprimir factura"
+                      icon={<Printer className="h-4 w-4" />}
+                      onClick={() => handlePrintDirect(item)}
+                    />
+                    <IconButton
+                      label="Editar factura"
+                      icon={<Edit className="h-4 w-4" />}
+                      onClick={() => openForm(item)}
+                    />
+                    <IconButton
+                      label="Eliminar factura"
+                      icon={<Trash2 className="h-4 w-4" />}
+                      variant="danger"
+                      onClick={() => handleDelete(item)}
+                    />
+                  </>
+                }
+              />
+            );
+          })
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -871,15 +938,15 @@ export function FacturasServicioPage({ casosUso }: { casosUso: CasosUsoProyectos
             </TableBody>
           </Table>
         </div>
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
       </Card>
+      <div ref={loadMoreRef} className="flex justify-center py-2">
+        {isFetchingMore && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Cargando más...</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 

@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import ReactDOM from 'react-dom';
 import { 
   Search, 
   RefreshCw, 
@@ -22,7 +21,8 @@ import {
   TableBody, 
   TableRow, 
   TableHead, 
-  TableCell 
+  TableCell,
+  ModalOverlay,
 } from '@/shared/ui/components';
 import { formatFechaHora } from '../utils/fecha';
 
@@ -53,21 +53,6 @@ export function LoggerPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
-
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedLog(null);
-    };
-    if (selectedLog) {
-      document.addEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.removeEventListener('keydown', handleEsc);
-        document.body.style.overflow = 'auto';
-      };
-    }
-  }, [selectedLog]);
 
   const { data: stats } = useQuery<LogStats>({
     queryKey: ['log-stats'],
@@ -390,15 +375,13 @@ export function LoggerPage() {
       )}
 
       {/* Modal with React Portal */}
-      {selectedLog && ReactDOM.createPortal(
-        <div 
-          className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto"
-          onClick={() => setSelectedLog(null)}
+      {selectedLog && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setSelectedLog(null)}
+          ariaLabel={`Detalles del log ${selectedLog.id}`}
         >
-          <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="bg-white shadow-xl sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[85dvh] overflow-hidden flex flex-col sm:rounded-lg">
             <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-gray-200 bg-gray-50">
               <h2 className="text-lg font-bold text-gray-800">Detalles del Log #{selectedLog.id}</h2>
               <button 
@@ -471,8 +454,7 @@ export function LoggerPage() {
               </div>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </div>
   );

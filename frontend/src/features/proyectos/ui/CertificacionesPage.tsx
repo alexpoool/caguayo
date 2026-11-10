@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useDeferredValue } from 'react';
 import type { CasosUsoProyectos } from '../application/casos-uso';
 import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 
 import type { Certificacion, CertificacionCreate, Etapa } from '../domain/proyectos';
@@ -361,7 +361,52 @@ export function CertificacionesPage({ casosUso }: { casosUso: CasosUsoProyectos 
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      <div className="space-y-3 md:hidden">
+        {filteredCertificaciones.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            No hay certificaciones registradas
+          </div>
+        ) : (
+          filteredCertificaciones.map(cert => (
+            <MobileRecordCard
+              key={cert.id_certificacion}
+              title={cert.nombre}
+              subtitle={formatFecha(cert.fecha) || 'Sin fecha'}
+              icon={<FileText className="h-4 w-4" />}
+              badges={
+                <span className="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+                  ${Number(cert.a_cobrar).toLocaleString('es-ES', { maximumFractionDigits: 15 })}
+                </span>
+              }
+              fields={[
+                { label: 'Constructor', value: cert.constructor || '-' },
+                { label: 'Inversionista', value: cert.inversionista || '-' },
+                { label: 'Obra', value: cert.obra || '-' },
+                { label: 'A cobrar', value: `$${Number(cert.a_cobrar).toLocaleString('es-ES', { maximumFractionDigits: 15 })}` },
+              ]}
+              onOpen={() => openDetail(cert)}
+              openLabel={`Ver detalle de la certificación ${cert.nombre}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Editar certificación"
+                    icon={<Edit className="h-4 w-4" />}
+                    onClick={() => handleEdit(cert)}
+                  />
+                  <IconButton
+                    label="Eliminar certificación"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDelete(cert)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
         <Table>
           <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -419,15 +464,15 @@ export function CertificacionesPage({ casosUso }: { casosUso: CasosUsoProyectos 
           </TableBody>
         </Table>
         </div>
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
       </Card>
+      <div ref={loadMoreRef} className="flex justify-center py-2">
+        {isFetchingMore && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Cargando más...</span>
+          </div>
+        )}
+      </div>
 
       {confirmModal.isOpen && (
         <ConfirmModal
@@ -446,7 +491,7 @@ export function CertificacionesPage({ casosUso }: { casosUso: CasosUsoProyectos 
           onClose={() => setDetailModal({ isOpen: false, item: null })}
           ariaLabel="Certificación"
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl w-full sm:max-w-lg max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

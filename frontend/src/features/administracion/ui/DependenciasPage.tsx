@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { CasosUsoAdministracion } from '../application/casos-uso';
-import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Building,
@@ -48,6 +47,7 @@ import {
   ConfirmModal,
   FormModal,
   CreateButton,
+  ModalOverlay,
 } from "@/shared/ui/components";
 import type { Dependencia, DependenciaCreate, DependenciaConCuentasCreate } from "../domain/administracion";
 import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
@@ -1135,22 +1135,17 @@ export function DependenciasPage({ casosUso }: { casosUso: CasosUsoAdministracio
 
       {/* Modal de base de datos creada exitosamente */}
       {databaseCreatedModal.isOpen &&
-        databaseCreatedModal.dependencia &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setDatabaseCreatedModal({
-                  isOpen: false,
-                  dependencia: null,
-                });
-                setView("list");
-                resetForm();
-              }
+        databaseCreatedModal.dependencia && (
+          <ModalOverlay
+            isOpen
+            onClose={() => {
+              setDatabaseCreatedModal({ isOpen: false, dependencia: null });
+              setView("list");
+              resetForm();
             }}
+            ariaLabel="Dependencia creada"
           >
-            <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl animate-scale-in max-h-[90dvh] flex flex-col">
+            <div className="relative w-full sm:max-w-xl bg-white shadow-2xl animate-scale-in max-h-[100dvh] sm:max-h-[90dvh] flex flex-col sm:rounded-2xl">
               <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-2xl">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-md shadow-lg">
@@ -1230,21 +1225,18 @@ export function DependenciasPage({ casosUso }: { casosUso: CasosUsoAdministracio
                 </div>
               </div>
             </div>
-          </div>,
-          document.body,
+          </ModalOverlay>
         )}
 
       {/* Modal de detalle de dependencia */}
       {detailModal.isOpen &&
-        dependenciaDetalle &&
-        createPortal(
-          <div
-            className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-[100] p-4 animate-fade-in overflow-y-auto"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) handleCloseDetailModal();
-            }}
+        dependenciaDetalle && (
+          <ModalOverlay
+            isOpen
+            onClose={handleCloseDetailModal}
+            ariaLabel="Detalle de dependencia"
           >
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90dvh] flex flex-col animate-scale-in">
+            <div className="bg-white shadow-2xl sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[90dvh] flex flex-col animate-scale-in sm:rounded-2xl">
               <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-brand-50 to-brand-50 rounded-t-2xl">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-md shadow-lg">
@@ -1522,21 +1514,18 @@ export function DependenciasPage({ casosUso }: { casosUso: CasosUsoAdministracio
                 </div>
               </div>
             </div>
-          </div>,
-          document.body,
+          </ModalOverlay>
         )}
 
       {/* Modal de detalle de cuenta */}
       {cuentaDetailModal.isOpen &&
-        cuentaDetailModal.cuenta &&
-        createPortal(
-          <div
-            className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-[100] p-4 animate-fade-in overflow-y-auto"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) handleCloseCuentaDetailModal();
-            }}
+        cuentaDetailModal.cuenta && (
+          <ModalOverlay
+            isOpen
+            onClose={handleCloseCuentaDetailModal}
+            ariaLabel="Detalle de cuenta"
           >
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+            <div className="bg-white shadow-2xl w-full sm:max-w-md max-h-[100dvh] sm:max-h-[90dvh] overflow-auto animate-scale-in sm:rounded-2xl">
               <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-2xl">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-md shadow-lg">
@@ -1601,8 +1590,7 @@ export function DependenciasPage({ casosUso }: { casosUso: CasosUsoAdministracio
                 </div>
               </div>
             </div>
-          </div>,
-          document.body,
+          </ModalOverlay>
         )}
 
       {formModal}

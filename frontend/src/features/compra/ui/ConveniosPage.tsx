@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useInfiniteList } from "@/shared/ui/hooks/useInfiniteList";
@@ -36,6 +35,7 @@ import {
   CreateButton,
   IconButton,
   MobileRecordCard,
+  ModalOverlay,
 } from "@/shared/ui/components";
 import { formatFecha } from "@/utils/fecha";
 
@@ -684,9 +684,13 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
         onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
       />
 
-      {detailModal.isOpen && detailModal.convenio && createPortal(
-        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto animate-in zoom-in-95 duration-200">
+      {detailModal.isOpen && detailModal.convenio && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setDetailModal({ isOpen: false, convenio: null })}
+          ariaLabel="Detalle del convenio"
+        >
+          <div className="bg-white shadow-2xl w-full sm:max-w-2xl max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto sm:rounded-xl animate-in zoom-in-95 duration-200">
             <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-gradient-to-r from-brand-50 to-brand-50 border-b border-brand-100">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 bg-white rounded-lg shadow-sm">
@@ -776,8 +780,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
               </div>
             </div>
           </div>
-        </div>,
-        document.body,
+        </ModalOverlay>
       )}
     </div>
   );

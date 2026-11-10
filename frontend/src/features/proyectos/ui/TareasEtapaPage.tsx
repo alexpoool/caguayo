@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { CasosUsoProyectos } from '../application/casos-uso';
 import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 
 import type { TareaEtapa, TareaEtapaCreate, TareaEtapaUpdate, Etapa, Servicio, ServicioCreate } from '../domain/proyectos';
@@ -285,7 +285,52 @@ export function TareasEtapaPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      <div className="space-y-3 md:hidden">
+        {filteredTareas.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm ? 'No se encontraron tareas que coincidan con la búsqueda' : 'No hay tareas registradas'}
+          </div>
+        ) : (
+          filteredTareas.map((item) => (
+            <MobileRecordCard
+              key={item.id_tarea_etapa}
+              title={item.codigo_extendido || 'Sin código'}
+              subtitle={item.concepto_modificado || 'Sin concepto'}
+              icon={<FileText className="h-4 w-4" />}
+              badges={
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-brand-50 text-brand-700 rounded text-xs font-mono font-medium">
+                  <Hash className="h-3 w-3" />
+                  {item.codigo_extendido || 'N/A'}
+                </span>
+              }
+              fields={[
+                { label: 'Cantidad', value: item.cantidad },
+                { label: 'Precio ajustado', value: `${getMonedaSymbol(item.id_moneda)} ${Number(item.precio_ajustado).toFixed(2)}` },
+                { label: 'Moneda', value: getMonedaDenominacion(item.id_moneda) || 'N/A' },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item })}
+              openLabel={`Ver detalle de la tarea ${item.codigo_extendido || item.id_tarea_etapa}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Editar tarea"
+                    icon={<Edit className="h-4 w-4" />}
+                    onClick={() => openForm(item)}
+                  />
+                  <IconButton
+                    label="Eliminar tarea"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDelete(item.id_tarea_etapa, item.concepto_modificado || '')}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">

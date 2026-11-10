@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useInfiniteList } from "@/shared/ui/hooks/useInfiniteList";
@@ -64,6 +63,7 @@ import {
   TableCell,
   FormModal,
   CreateButton,
+  ModalOverlay,
 } from "@/shared/ui/components";
 import { formatFecha, toISODateLocal} from "@/utils/fecha";
 
@@ -1054,10 +1054,13 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
         </form>
 
         {/* ── Modal Nuevo Producto ── */}
-        {showNuevoProductoModal &&
-          createPortal(
-            <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto animate-in zoom-in-95 duration-200">
+        {showNuevoProductoModal && (
+          <ModalOverlay
+            isOpen
+            onClose={() => setShowNuevoProductoModal(false)}
+            ariaLabel="Nuevo producto"
+          >
+              <div className="bg-white shadow-2xl w-full sm:max-w-lg max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto sm:rounded-xl animate-in zoom-in-95 duration-200">
                 <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-gradient-to-r from-brand-50 to-brand-50 border-b border-brand-100">
                   <div className="flex items-center gap-3">
                     <div className="p-1.5 bg-white rounded-lg shadow-sm">
@@ -1188,15 +1191,17 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                   </Button>
                 </div>
               </div>
-            </div>,
-            document.body,
-          )}
+          </ModalOverlay>
+        )}
 
         {/* ── Modal Precios Adicionales ── */}
-        {showPreciosModal &&
-          createPortal(
-            <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
+        {showPreciosModal && (
+          <ModalOverlay
+            isOpen
+            onClose={() => setShowPreciosModal(false)}
+            ariaLabel="Precio adicional"
+          >
+              <div className="bg-white shadow-2xl w-full sm:max-w-md max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto sm:rounded-xl animate-in zoom-in-95 duration-200">
                 <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-gradient-to-r from-amber-50 to-amber-100/50 border-b border-amber-200">
                   <div className="flex items-center gap-3">
                     <div className="p-1.5 bg-white rounded-lg shadow-sm">
@@ -1278,9 +1283,8 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                   </Button>
                 </div>
               </div>
-            </div>,
-            document.body,
-          )}
+          </ModalOverlay>
+        )}
     </FormModal>
   );
 
@@ -1404,9 +1408,13 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
         </div>
       </Card>
 
-      {anexoDetailModal.isOpen && anexoDetailModal.anexo && createPortal(
-        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto animate-in zoom-in-95 duration-200">
+      {anexoDetailModal.isOpen && anexoDetailModal.anexo && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setAnexoDetailModal({ isOpen: false, anexo: null })}
+          ariaLabel="Detalle del anexo"
+        >
+          <div className="bg-white shadow-2xl w-full sm:max-w-2xl max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto sm:rounded-xl animate-in zoom-in-95 duration-200">
             <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-gradient-to-r from-brand-50 to-brand-50 border-b border-brand-100">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 bg-white rounded-lg shadow-sm">
@@ -1526,8 +1534,7 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
               )}
             </div>
           </div>
-        </div>,
-        document.body,
+        </ModalOverlay>
       )}
 
       {formModal}

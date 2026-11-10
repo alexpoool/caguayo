@@ -16,6 +16,8 @@ import {
   ModalOverlay,
   FormModal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import { ClienteFormContainer as ClienteForm } from '@/app/container/terceros-cliente-form';
 
@@ -576,7 +578,63 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      <div className="space-y-3 md:hidden">
+        {filteredPersonas.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? "No se encontraron realizadores que coincidan con la búsqueda"
+              : "No hay realizadores registrados"}
+          </div>
+        ) : (
+          filteredPersonas.map((item) => {
+            const pagado = totalesPagado.get(`${item.id_etapa}-${item.id_persona}`) || 0;
+            const saldo = Number(item.cobro || 0) - Number(pagado);
+            return (
+              <MobileRecordCard
+                key={`${item.id_etapa}-${item.id_persona}`}
+                title={getPersonaName(item.id_persona)}
+                subtitle={getLabelTipo(item.id_persona)}
+                icon={<Users className="h-4 w-4" />}
+                badges={
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    getTipoPersona(item.id_persona) === "natural"
+                      ? "bg-brand-100 text-brand-800"
+                      : getTipoPersona(item.id_persona) === "tcp"
+                        ? "bg-brand-100 text-brand-800"
+                        : "bg-green-100 text-green-800"
+                  }`}>
+                    {getLabelTipo(item.id_persona)}
+                  </span>
+                }
+                fields={[
+                  { label: 'Cobro', value: `${getMonedaSymbol(item.id_moneda)} ${formatCifra(item.cobro)}` },
+                  { label: 'Pagado', value: `${getMonedaSymbol(item.id_moneda)} ${formatCifra(pagado)}` },
+                  { label: 'Por pagar', value: <span className={saldo > 0 ? 'text-red-600' : 'text-green-600'}>{getMonedaSymbol(item.id_moneda)} {formatCifra(saldo)}</span> },
+                ]}
+                onOpen={() => setDetailModal({ isOpen: true, item })}
+                openLabel={`Ver detalle del realizador ${getPersonaName(item.id_persona)}`}
+                actions={
+                  <>
+                    <IconButton
+                      label="Ver liquidaciones"
+                      icon={<DollarSign className="h-4 w-4" />}
+                      onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${getSolicitudByEtapa(item.id_etapa) || ""}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
+                    />
+                    <IconButton
+                      label="Eliminar realizador"
+                      icon={<Trash2 className="h-4 w-4" />}
+                      variant="danger"
+                      onClick={() => handleDelete(item.id_etapa, item.id_persona, getPersonaName(item.id_persona))}
+                    />
+                  </>
+                }
+              />
+            );
+          })
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
