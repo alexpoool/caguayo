@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { TipoMovimiento } from '../domain/inventario';
 import type { CasosUsoInventario } from '../application/casos-uso';
@@ -40,6 +39,7 @@ import {
   FormModal,
   IconButton,
   MobileRecordCard,
+  ModalOverlay,
 } from '@/shared/ui/components';
 import { formatFecha, formatFechaHora } from '@/utils/fecha';
 
@@ -561,9 +561,13 @@ export function MovimientosPage({ casosUso }: { casosUso: CasosUsoInventario }) 
 
   const ModalConfirmacion = () => {
     if (!confirmModal.isOpen) return null;
-    return createPortal(
-      <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+    return (
+      <ModalOverlay
+        isOpen
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        ariaLabel={confirmModal.title}
+      >
+        <div className="bg-white shadow-2xl w-full sm:max-w-md max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
           <div className="p-4 md:p-6">
             <h3 className="text-2xl font-bold text-gray-900 text-center mb-4">
               {confirmModal.title}
@@ -588,16 +592,19 @@ export function MovimientosPage({ casosUso }: { casosUso: CasosUsoInventario }) 
             </div>
           </div>
         </div>
-      </div>,
-      document.body
+      </ModalOverlay>
     );
   };
 
   const ModalDetalle = () => {
     if (!detailModal.isOpen || !detailModal.movimiento) return null;
-    return createPortal(
-      <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90dvh] overflow-auto animate-scale-in">
+    return (
+      <ModalOverlay
+        isOpen
+        onClose={() => setDetailModal({ isOpen: false, movimiento: null })}
+        ariaLabel="Detalle del movimiento"
+      >
+        <div className="bg-white shadow-2xl w-full sm:max-w-2xl max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
           {(() => {
             const config = getTipoConfig(detailModal.movimiento?.tipo_movimiento?.tipo || 'RECEPCION');
             const Icon = config.icon;
@@ -878,8 +885,7 @@ export function MovimientosPage({ casosUso }: { casosUso: CasosUsoInventario }) 
             );
           })()}
         </div>
-      </div>,
-      document.body
+      </ModalOverlay>
     );
   };
 
