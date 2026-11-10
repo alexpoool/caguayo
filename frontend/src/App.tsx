@@ -623,11 +623,17 @@ function App() {
   const [ventaSeccionesAbiertas, setVentaSeccionesAbiertas] = useState<Record<string, boolean>>({});
   const [proyectoSeccionesAbiertas, setProyectoSeccionesAbiertas] = useState<Record<string, boolean>>({});
   const [reportesSeccionesAbiertas, setReportesSeccionesAbiertas] = useState<Record<string, boolean>>({});
-  const [slimSidebar, setSlimSidebar] = useState(false);
+  const [slimSidebarManual, setSlimSidebar] = useState(false);
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
   const [esMovil, setEsMovil] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
   );
+  // Entre 1024 y 1279 px el sidebar queda como riel para no robar ancho al contenido.
+  const [esRail, setEsRail] = useState(() =>
+    typeof window !== 'undefined' &&
+    window.matchMedia('(min-width: 1024px) and (max-width: 1279px)').matches
+  );
+  const slimSidebar = slimSidebarManual || esRail;
   const sidebarRef = useRef<HTMLElement>(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -669,6 +675,14 @@ function App() {
       setEsMovil(mq.matches);
       if (!mq.matches) setSidebarAbierto(false);
     };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // Detecta el rango de escritorio estrecho (riel) frente al escritorio ancho.
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px) and (max-width: 1279px)');
+    const onChange = () => setEsRail(mq.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
@@ -752,7 +766,7 @@ function App() {
   // rutas valida la funcionalidad concreta de cada pantalla.
   return (
     <>
-      <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-1 lg:grid-cols-[4.5rem_minmax(0,1fr)]' : 'grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)]'} grid-rows-[auto_minmax(0,1fr)] app-height overflow-hidden bg-surface w-full`}>
+      <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-1 lg:grid-cols-[4.5rem_minmax(0,1fr)]' : 'grid-cols-1 lg:grid-cols-[4.5rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]'} grid-rows-[auto_minmax(0,1fr)] app-height overflow-hidden bg-surface w-full`}>
         {!hideSidebar && sidebarAbierto && (
           <button
             type="button"
@@ -782,7 +796,7 @@ function App() {
               onClick={handleToggleSlim}
               title={slimSidebar ? 'Expandir sidebar' : 'Contraer sidebar'}
               aria-label={slimSidebar ? 'Expandir sidebar' : 'Contraer sidebar'}
-              className={`hidden p-1 rounded-full hover:bg-white/10 transition-colors lg:inline-flex ${slimSidebar ? '' : 'ml-2'}`}
+              className={`hidden p-1 rounded-full hover:bg-white/10 transition-colors xl:inline-flex ${slimSidebar ? '' : 'ml-2'}`}
             >
               {slimSidebar ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
             </button>
@@ -1265,7 +1279,7 @@ function App() {
                 aria-controls="sidebar-mobile"
                 aria-expanded={sidebarAbierto}
                 title="Abrir menú"
-                className="p-2 rounded-lg hover:bg-white/10 transition-colors lg:hidden"
+                className="p-2.5 rounded-lg hover:bg-white/10 transition-colors lg:hidden"
               >
                 <Menu className="w-6 h-6" />
               </button>
@@ -1273,14 +1287,15 @@ function App() {
             <Link
               to="/"
               onClick={() => setModuloActivo('home')}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+              className="p-2.5 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Inicio"
+              aria-label="Inicio"
             >
               <Home className="w-6 h-6 text-gray-200 group-hover:text-white transition-colors" />
             </Link>
           </div>
 
-          <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto md:gap-6" aria-label="Módulos">
+          <nav className="hide-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto md:gap-4" aria-label="Módulos">
             {modulos.map((modulo) => {
               const isActive = moduloActivo === modulo.id;
               const isBlocked = modulo.id !== 'home' && modulo.id !== 'dj08' && !hasModuloAccess(modulo.id);
@@ -1290,18 +1305,20 @@ function App() {
                   key={modulo.id}
                   onClick={() => !isBlocked && handleModuloClick(modulo.id)}
                   disabled={isBlocked}
-                  title={isBlocked ? 'No tienes acceso a este módulo' : undefined}
-                  className={`shrink-0 text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 pb-1 flex items-center gap-1.5
+                  aria-label={modulo.label}
+                  aria-current={isActive ? 'page' : undefined}
+                  title={isBlocked ? 'No tienes acceso a este módulo' : modulo.label}
+                  className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 sm:px-3
                     ${isBlocked
                       ? 'text-gray-500 cursor-not-allowed hover:translate-y-0'
                       : isActive
-                        ? 'text-white font-semibold border-b-2 border-brand-500'
-                        : 'text-gray-300 hover:text-white'
+                        ? 'bg-white/10 text-white font-semibold'
+                        : 'text-gray-300 hover:bg-white/10 hover:text-white'
                     }
                   `}
                 >
                   <Icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{modulo.label}</span>
+                  <span>{modulo.label}</span>
                   {isBlocked && <Lock className="w-3 h-3 text-gray-300" />}
                 </button>
               );
@@ -1315,12 +1332,13 @@ function App() {
                 handleModuloClick('administracion')
               }
               disabled={!hasModuloAccess('administracion')}
+              aria-label="Administración"
               title={
                 hasModuloAccess('administracion')
                   ? 'Administración'
                   : 'No tienes acceso a este módulo'
               }
-              className={`p-2 rounded-lg transition-all duration-300 ease-out hover:scale-110 active:scale-95 group
+              className={`p-2.5 rounded-lg transition-all duration-300 ease-out hover:scale-110 active:scale-95 group
                 ${!hasModuloAccess('administracion')
                   ? 'text-gray-500 cursor-not-allowed hover:scale-100'
                   : moduloActivo === 'administracion'
@@ -1334,7 +1352,7 @@ function App() {
         </header>
         <div className={`col-span-1 ${hideSidebar ? '' : 'lg:col-start-2 lg:col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col w-full`}>
           <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:p-8 w-full`}>
-            <div className="animate-fade-in-up animation-fill-both">
+            <div className="mx-auto w-full max-w-[1600px] animate-fade-in-up [animation-fill-mode:both]">
               <Routes>
                 <Route
                   path="/"

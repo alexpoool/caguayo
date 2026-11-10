@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 import type { CasosUsoVentas } from '../application/casos-uso';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
@@ -224,7 +224,79 @@ export function SuplementosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
         />
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-12 text-gray-500">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+            Cargando suplementos...
+          </div>
+        ) : isError ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-12 text-center text-red-600">
+            Error al cargar suplementos: {(error as Error)?.message || 'Error desconocido'}
+          </div>
+        ) : filteredSuplementos.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? 'No se encontraron suplementos que coincidan con la búsqueda'
+              : 'No hay suplementos'}
+          </div>
+        ) : (
+          filteredSuplementos.map((item) => (
+            <MobileRecordCard
+              key={item.id_suplemento}
+              title={item.nombre}
+              subtitle={item.codigo || undefined}
+              icon={<Layers className="h-4 w-4" />}
+              badges={
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    item.estado?.nombre === 'ACTIVO'
+                      ? 'bg-green-100 text-green-800'
+                      : item.estado?.nombre === 'CANCELADO'
+                        ? 'bg-red-100 text-red-800'
+                        : item.estado?.nombre === 'FINALIZADO'
+                          ? 'bg-brand-100 text-brand-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                  }`}
+                >
+                  {item.estado?.nombre || 'N/A'}
+                </span>
+              }
+              fields={[
+                {
+                  label: 'Valor',
+                  value: Number(item.monto || 0).toFixed(2),
+                },
+                {
+                  label: 'Vigencia',
+                  value: formatFecha(item.fecha_vigencia) || 'N/A',
+                },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item })}
+              openLabel={`Ver detalle del suplemento ${item.nombre}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Editar"
+                    icon={<Edit className="h-4 w-4" />}
+                    onClick={() => openForm(item)}
+                    className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                  />
+                  <IconButton
+                    label="Eliminar"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDelete(item.id_suplemento, item.nombre)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -302,12 +374,18 @@ export function SuplementosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
                       <TableCell className="text-gray-500">{formatFecha(item.fecha_vigencia) || 'N/A'}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => openForm(item)} className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8" title="Editar">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id_suplemento, item.nombre)} className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8" title="Eliminar">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <IconButton
+                            label="Editar"
+                            icon={<Edit className="h-4 w-4" />}
+                            onClick={() => openForm(item)}
+                            className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                          />
+                          <IconButton
+                            label="Eliminar"
+                            icon={<Trash2 className="h-4 w-4" />}
+                            variant="danger"
+                            onClick={() => handleDelete(item.id_suplemento, item.nombre)}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -316,22 +394,23 @@ export function SuplementosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
               </TableBody>
             </Table>
           </div>
-          {/* Sentinel para infinite scroll */}
-          {!isLoading && filteredSuplementos.length > 0 && (
-            <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
-              {isFetchingMore ? (
-                <span className="text-sm text-brand-600 flex items-center gap-2">
-                  <div className="h-4 w-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-                  Cargando más...
-                </span>
-              ) : hasMore ? (
-                <span className="text-sm text-gray-400">Desplázate para cargar más</span>
-              ) : (
-                <span className="text-sm text-gray-400">— Fin de los resultados —</span>
-              )}
-            </div>
-          )}
         </Card>
+
+        {/* Sentinel para infinite scroll: fuera de las vistas para que funcione en móvil y escritorio */}
+        {!isLoading && filteredSuplementos.length > 0 && (
+          <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
+            {isFetchingMore ? (
+              <span className="text-sm text-brand-600 flex items-center gap-2">
+                <div className="h-4 w-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                Cargando más...
+              </span>
+            ) : hasMore ? (
+              <span className="text-sm text-gray-400">Desplázate para cargar más</span>
+            ) : (
+              <span className="text-sm text-gray-400">— Fin de los resultados —</span>
+            )}
+          </div>
+        )}
     </div>
   );
 
@@ -472,7 +551,7 @@ export function SuplementosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
 
       {detailModal.isOpen && detailModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

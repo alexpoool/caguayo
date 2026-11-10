@@ -1150,7 +1150,7 @@ export function DependenciasPage({ casosUso }: { casosUso: CasosUsoAdministracio
               }
             }}
           >
-            <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl animate-scale-in max-h-[90vh] flex flex-col">
+            <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl animate-scale-in max-h-[90dvh] flex flex-col">
               <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-2xl">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-md shadow-lg">
@@ -1244,7 +1244,7 @@ export function DependenciasPage({ casosUso }: { casosUso: CasosUsoAdministracio
               if (e.target === e.currentTarget) handleCloseDetailModal();
             }}
           >
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90dvh] flex flex-col animate-scale-in">
               <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b bg-gradient-to-r from-brand-50 to-brand-50 rounded-t-2xl">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-gradient-to-br from-brand-500 to-brand-600 rounded-md shadow-lg">

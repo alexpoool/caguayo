@@ -10,7 +10,9 @@ import {
   TableBody, 
   TableRow, 
   TableHead, 
-  TableCell 
+  TableCell,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 import { RefObject } from 'react';
 
@@ -135,7 +137,65 @@ export function ProductListView({
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {productos.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? 'No se encontraron productos que coincidan con la búsqueda'
+              : 'No se encontraron productos'}
+          </div>
+        ) : (
+          productos.map((producto) => (
+            <MobileRecordCard
+              key={producto.id_producto}
+              title={producto.nombre}
+              subtitle={producto.descripcion || undefined}
+              icon={<Package className="h-4 w-4" />}
+              badges={
+                <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                  {producto.subcategoria?.nombre || `ID: ${producto.id_subcategoria}`}
+                </span>
+              }
+              fields={[
+                {
+                  label: 'Precio venta',
+                  value: `$${producto.precio_venta.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+                },
+                {
+                  label: 'Precio mínimo',
+                  value: `$${producto.precio_minimo.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+                },
+              ]}
+              actions={
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit(producto)}
+                    className="gap-1 text-green-700 border-green-200 hover:bg-green-50"
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                    Editar
+                  </Button>
+                  <IconButton
+                    label="Eliminar"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => {
+                      if (confirm('¿Estás seguro de eliminar este producto?')) {
+                        onDelete(producto.id_producto);
+                      }
+                    }}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -183,28 +243,22 @@ export function ProductListView({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Editar"
+                          icon={<Edit className="h-4 w-4" />}
                           onClick={() => onEdit(producto)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                          className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                        />
+                        <IconButton
+                          label="Eliminar"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
                           onClick={() => {
                             if (confirm('¿Estás seguro de eliminar este producto?')) {
                                 onDelete(producto.id_producto);
                             }
                           }}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -213,18 +267,19 @@ export function ProductListView({
             </TableBody>
           </Table>
         </div>
-        {/* Elemento para scroll infinito */}
-        {loadMoreRef && (
-          <div ref={loadMoreRef} className="flex justify-center py-2">
-            {isFetchingMore && (
-              <div className="flex items-center gap-2 text-gray-500">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Cargando más productos...</span>
-              </div>
-            )}
-          </div>
-        )}
       </Card>
+
+      {/* Elemento para scroll infinito: fuera de las vistas para que funcione en móvil y escritorio */}
+      {loadMoreRef && (
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más productos...</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

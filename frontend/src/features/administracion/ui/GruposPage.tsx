@@ -1,6 +1,5 @@
 import { useMemo, useState, useDeferredValue } from "react";
 import type { CasosUsoAdministracion } from '../application/casos-uso';
-import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
 import {
@@ -20,6 +19,7 @@ import {
   Card,
   ConfirmModal,
   FormModal,
+  ModalOverlay,
   Table,
   TableHeader,
   TableBody,
@@ -589,10 +589,13 @@ export function GruposPage({ casosUso }: { casosUso: CasosUsoAdministracion }) {
   );
 
   const ModalDetalle = () =>
-    createPortal(
-      detailModal.isOpen && detailModal.grupo && (
-        <div className="fixed inset-0 z-[100] bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+    detailModal.isOpen && detailModal.grupo ? (
+      <ModalOverlay
+        isOpen
+        onClose={() => setDetailModal({ ...detailModal, isOpen: false })}
+        ariaLabel="Detalles del grupo"
+      >
+        <div className="bg-white shadow-xl w-full overflow-auto sm:max-w-lg max-h-[100dvh] sm:max-h-[90dvh] sm:rounded-lg">
             <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b">
               <h2 className="text-lg font-semibold">Detalles del Grupo</h2>
               <Button
@@ -671,11 +674,9 @@ export function GruposPage({ casosUso }: { casosUso: CasosUsoAdministracion }) {
                 Cerrar
               </Button>
             </div>
-          </div>
         </div>
-      ),
-      document.body,
-    );
+      </ModalOverlay>
+    ) : null;
 
   return (
     <>

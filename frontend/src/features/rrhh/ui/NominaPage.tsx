@@ -51,6 +51,8 @@ import {
   ConfirmModal,
   Modal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 import { ModalNuevoPeriodo } from './components/ModalNuevoPeriodo';
 import { getCachedNumberFormat } from '@/utils/formato';
@@ -385,6 +387,130 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
               onNueva={hayFiltros ? undefined : onNueva}
             />
           ) : (
+            <>
+            {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+            <div className="space-y-3 md:hidden">
+              {filas.map((fila) => (
+                <MobileRecordCard
+                  key={fila.id}
+                  title={fila.descripcion}
+                  subtitle={`${fila.cantidad_empleados} empleado${fila.cantidad_empleados === 1 ? '' : 's'}`}
+                  icon={<Wallet className="h-4 w-4" />}
+                  badges={
+                    <span
+                      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${COLOR_ESTADO_NOMINA[fila.estado]}`}
+                    >
+                      {ETIQUETA_ESTADO_NOMINA[fila.estado]}
+                    </span>
+                  }
+                  fields={[
+                    { label: 'Periodo', value: fila.periodo_nombre || '—' },
+                    {
+                      label: 'Rango',
+                      value: `${fmtFecha(fila.inicio_periodo)} – ${fmtFecha(fila.fin_periodo)}`,
+                    },
+                    { label: 'Impuesto', value: fmtMoneda(fila.total_impuesto) },
+                    {
+                      label: 'Pagos',
+                      value:
+                        fila.cantidad_pagos > 0
+                          ? `${fila.cantidad_pagos} · ${fmtMoneda(fila.total_pagado)}`
+                          : '—',
+                    },
+                  ]}
+                  actions={
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const r = (
+                            e.currentTarget as HTMLButtonElement
+                          ).getBoundingClientRect();
+                          setMenuPagos(
+                            menuPagos && menuPagos.id === fila.id
+                              ? null
+                              : {
+                                  id: fila.id,
+                                  estado: fila.estado,
+                                  periodoId: fila.periodo_id,
+                                  pagoResultadoId:
+                                    fila.pago_resultado_id ?? null,
+                                  cantidadPagos: fila.cantidad_pagos,
+                                  totalPagado: fila.total_pagado,
+                                  x: r.left,
+                                  y: r.bottom + 4,
+                                  anchor: {
+                                    top: r.top,
+                                    left: r.left,
+                                    right: r.right,
+                                    bottom: r.bottom,
+                                  },
+                                }
+                          );
+                        }}
+                        className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                        Pagos
+                      </Button>
+                      <IconButton
+                        label="Descargar nómina"
+                        icon={
+                          descargando === fila.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileDown className="h-4 w-4" />
+                          )
+                        }
+                        onClick={() => descargarNomina(fila)}
+                        disabled={descargando !== null}
+                      />
+                      {fila.pago_resultado_id && (
+                        <IconButton
+                          label="Descargar pago por resultado"
+                          icon={
+                            descargandoResultado === fila.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <FileText className="h-4 w-4" />
+                            )
+                          }
+                          onClick={() => descargarPagoResultado(fila)}
+                          disabled={descargandoResultado !== null}
+                        />
+                      )}
+                      <IconButton
+                        label={
+                          fila.estado === 'nomina'
+                            ? 'Ver detalle (solo lectura)'
+                            : 'Editar nómina'
+                        }
+                        icon={<Pencil className="h-4 w-4" />}
+                        onClick={() => navigate(`/rrhh/nomina/${fila.id}`)}
+                      />
+                      {fila.estado === 'pre_nomina' && (
+                        <IconButton
+                          label="Confirmar nómina"
+                          icon={<CheckCircle2 className="h-4 w-4" />}
+                          onClick={() => setAConfirmar(fila)}
+                          className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                        />
+                      )}
+                      <IconButton
+                        label="Eliminar nómina"
+                        icon={<Trash2 className="h-4 w-4" />}
+                        variant="danger"
+                        onClick={() => setAEliminar(fila)}
+                      />
+                    </>
+                  }
+                />
+              ))}
+            </div>
+
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -531,6 +657,8 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                 ))}
               </TableBody>
             </Table>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

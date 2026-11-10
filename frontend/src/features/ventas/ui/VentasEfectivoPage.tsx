@@ -14,6 +14,8 @@ import {
   ConfirmModal,
   FormModal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import type { CasosUsoVentas } from '../application/casos-uso';
 import { useDependenciasFiltradas } from "@/hooks/useDependenciasFiltradas";
@@ -390,7 +392,58 @@ const loadInitialData = async () => {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {filteredVentas.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? "No se encontraron ventas que coincidan con la búsqueda"
+              : "No hay ventas en efectivo"}
+          </div>
+        ) : (
+          filteredVentas.map((item) => (
+            <MobileRecordCard
+              key={item.id_venta_efectivo}
+              title={item.slip || "Sin slip"}
+              subtitle={item.codigo || undefined}
+              icon={<Wallet className="h-4 w-4" />}
+              badges={
+                <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">
+                  ${Number(item.monto).toFixed(2)}
+                </span>
+              }
+              fields={[
+                { label: "Cajero", value: item.cajero || "N/A" },
+                { label: "Fecha", value: formatFecha(item.fecha) },
+                {
+                  label: "Dependencia",
+                  value: item.dependencia?.nombre || "N/A",
+                },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item })}
+              openLabel={`Ver detalle de la venta ${item.slip}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Editar"
+                    icon={<Edit className="h-4 w-4" />}
+                    onClick={() => openForm(item)}
+                    className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                  />
+                  <IconButton
+                    label="Eliminar"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDelete(item.id_venta_efectivo, item.slip)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -474,26 +527,20 @@ const loadInitialData = async () => {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Editar"
+                          icon={<Edit className="h-4 w-4" />}
                           onClick={() => openForm(item)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                          className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                        />
+                        <IconButton
+                          label="Eliminar"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
                           onClick={() =>
                             handleDelete(item.id_venta_efectivo, item.slip)
                           }
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -655,7 +702,7 @@ const loadInitialData = async () => {
         detailModal.item) &&
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
               <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">

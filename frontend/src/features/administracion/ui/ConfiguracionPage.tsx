@@ -1,6 +1,5 @@
 import { useState, useEffect, useDeferredValue, useMemo } from "react";
 import type { CasosUsoAdministracion } from '../application/casos-uso';
-import { createPortal } from "react-dom";
 import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -43,6 +42,7 @@ import {
   TableCell,
   DateInput,
   FormModal,
+  ModalOverlay,
   CreateButton,
 } from "@/shared/ui/components";
 import type {
@@ -1776,10 +1776,15 @@ const {
       </div>
 
       {/* Confirm Delete Modal */}
-      {confirmDelete.isOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+      {confirmDelete.isOpen && (
+        <ModalOverlay
+          isOpen
+          onClose={() =>
+            setConfirmDelete({ isOpen: false, type: null, item: null })
+          }
+          ariaLabel="Confirmar eliminación"
+        >
+            <div className="bg-white shadow-2xl w-full sm:max-w-md max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
               <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-rose-50">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-md bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
@@ -1823,16 +1828,17 @@ const {
                 </Button>
               </div>
             </div>
-          </div>,
-          document.body,
-        )}
+        </ModalOverlay>
+      )}
 
       {/* Detail Modal */}
-      {detailModal.isOpen &&
-        detailModal.item &&
-        createPortal(
-          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-auto animate-scale-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setDetailModal({ isOpen: false, item: null })}
+          ariaLabel="Detalle del registro"
+        >
+            <div className="bg-white shadow-2xl w-full sm:max-w-md max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
               <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -1970,9 +1976,8 @@ const {
                 </Button>
               </div>
             </div>
-          </div>,
-          document.body,
-        )}
+        </ModalOverlay>
+      )}
     </div>
   );
 }

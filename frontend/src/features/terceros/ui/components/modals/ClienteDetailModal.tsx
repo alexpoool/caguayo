@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { User, X, Loader2 } from "lucide-react";
 import {
+  ModalOverlay,
   Table,
   TableHeader,
   TableBody,
@@ -145,9 +145,13 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
         ? "Cliente y Proveedor"
         : "Cliente";
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+  return (
+    <ModalOverlay
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel={`Detalle de ${cliente.nombre || "cliente"}`}
+    >
+      <div className="bg-white shadow-2xl w-full overflow-auto animate-scale-in sm:max-w-2xl sm:rounded-2xl max-h-[100dvh] sm:max-h-[90dvh]">
         {/* Header */}
         <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
           <div className="flex flex-wrap items-center justify-between gap-3 gap-4">
@@ -392,8 +396,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </ModalOverlay>
   );
 };
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useLayoutEffect, useDeferredValue
 import type { CasosUsoProyectos } from '../application/casos-uso';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, DateInput, Card, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 
 import type { Etapa, EtapaCreate, EtapaUpdate } from '../domain/proyectos';
@@ -265,7 +265,95 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {filteredEtapas.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? 'No se encontraron etapas que coincidan con la búsqueda'
+              : 'No hay etapas'}
+          </div>
+        ) : (
+          filteredEtapas.map((item) => (
+            <MobileRecordCard
+              key={item.id_etapa}
+              title={item.nombre_etapa || 'N/A'}
+              subtitle={formatFecha(item.fecha_pago) || 'Sin fecha de pago'}
+              icon={<Layers className="h-4 w-4" />}
+              badges={
+                item.pagada ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                    Pagada
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                    Pendiente
+                  </span>
+                )
+              }
+              fields={[
+                {
+                  label: 'Valor',
+                  value: `$${Number(item.valor).toFixed(2)}`,
+                },
+                { label: 'Moneda', value: getMonedaNombre(item.id_moneda) },
+                {
+                  label: 'Fecha de pago',
+                  value: formatFecha(item.fecha_pago) || 'N/A',
+                },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item })}
+              openLabel={`Ver detalle de la etapa ${item.nombre_etapa || ''}`}
+              actions={
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const r = (
+                        e.currentTarget as HTMLButtonElement
+                      ).getBoundingClientRect();
+                      setMenu(
+                        menu && menu.id === item.id_etapa
+                          ? null
+                          : {
+                              id: item.id_etapa,
+                              x: r.left,
+                              y: r.bottom + 4,
+                              anchor: {
+                                top: r.top,
+                                left: r.left,
+                                right: r.right,
+                                bottom: r.bottom,
+                              },
+                            }
+                      );
+                    }}
+                    className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                    Opciones
+                  </Button>
+                  <IconButton
+                    label="Eliminar"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() =>
+                      handleDelete(
+                        item.id_etapa,
+                        item.nombre_etapa || String(item.numero_etapa) || 'N/A'
+                      )
+                    }
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -337,15 +425,19 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(item.id_etapa, item.nombre_etapa || String(item.numero_etapa) || 'N/A')}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <IconButton
+                          label="Eliminar"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
+                          onClick={() =>
+                            handleDelete(
+                              item.id_etapa,
+                              item.nombre_etapa ||
+                                String(item.numero_etapa) ||
+                                'N/A'
+                            )
+                          }
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -475,7 +567,7 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
           isOpen={true}
           onClose={() => setDetailModal({ isOpen: false, item: null })}
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

@@ -114,14 +114,14 @@ const ReporteMovimientosDependencia: React.FC<{ casosUso: CasosUsoReportes }> = 
                   </select>
                   {selectedDep?.direccion && <p className="flex items-center gap-1 mt-1 text-[10px] text-gray-400"><Building2 className="w-3 h-3 flex-shrink-0" />{selectedDep.direccion}</p>}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Desde <span className="text-red-500">*</span></label>
-                    <DateInput className="h-8 focus:ring-2 focus:ring-brand-500" value={fechaInicio} onChange={(fecha) => { setFechaInicio(fecha); setPreviewData(null); }} />
+                    <DateInput className="h-11 sm:h-8 focus:ring-2 focus:ring-brand-500" value={fechaInicio} onChange={(fecha) => { setFechaInicio(fecha); setPreviewData(null); }} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Hasta <span className="text-red-500">*</span></label>
-                    <DateInput className="h-8 focus:ring-2 focus:ring-brand-500" value={fechaFin} onChange={(fecha) => { setFechaFin(fecha); setPreviewData(null); }} />
+                    <DateInput className="h-11 sm:h-8 focus:ring-2 focus:ring-brand-500" value={fechaFin} onChange={(fecha) => { setFechaFin(fecha); setPreviewData(null); }} />
                   </div>
                 </div>
               </div>

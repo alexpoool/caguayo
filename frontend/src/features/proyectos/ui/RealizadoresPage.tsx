@@ -1014,7 +1014,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
             isOpen={true}
             onClose={() => setDetailModal({ isOpen: false, item: null })}
           >
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
               <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-4">
@@ -1130,7 +1130,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
         onClose={() => setShowNuevoClienteModal(false)}
         ariaLabel="Nuevo Cliente"
       >
-            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90dvh] overflow-auto animate-scale-in">
               <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-4">

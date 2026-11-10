@@ -1,4 +1,5 @@
 export * from './Button';
+export * from './IconButton';
 export * from './CreateButton';
 export * from './BackButton';
 export * from './PageHeader';
@@ -6,6 +7,7 @@ export * from './Input';
 export * from './DateInput';
 export * from './Label';
 export * from './Card';
+export * from './MobileRecordCard';
 export * from './Table';
 export * from './ConfirmModal';
 export * from './Modal';

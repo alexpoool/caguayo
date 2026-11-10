@@ -26,6 +26,8 @@ import {
   TableCell,
   Select,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import { ClienteDetailModal } from "../modals/ClienteDetailModal";
 import type {
@@ -205,8 +207,128 @@ export function ClientesList({
         </div>
       </div>
 
-      {/* Tabla de clientes */}
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-12 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
+            Cargando {isProveedorView ? "proveedores" : "clientes"}...
+          </div>
+        ) : clientes.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm || filtroTipo !== "TODOS"
+              ? `No se encontraron ${isProveedorView ? "proveedores" : "clientes"} que coincidan con la búsqueda`
+              : isProveedorView
+                ? "No hay proveedores registrados"
+                : "No hay clientes registrados"}
+          </div>
+        ) : (
+          clientes.map((cliente) => (
+            <MobileRecordCard
+              key={cliente.id_cliente}
+              title={cliente.nombre || "(Sin nombre)"}
+              subtitle={
+                cliente.valido === false
+                  ? `CI/NIT: ${cliente.nit}`
+                  : cliente.codigo || undefined
+              }
+              icon={<User className="h-4 w-4" />}
+              tone={cliente.valido === false ? "warning" : "default"}
+              badges={
+                <>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      cliente.tipo_persona === "NATURAL"
+                        ? "bg-brand-100 text-brand-800"
+                        : cliente.tipo_persona === "JURIDICA"
+                          ? "bg-brand-100 text-brand-800"
+                          : "bg-orange-100 text-orange-800"
+                    }`}
+                  >
+                    {getTipoLabel(cliente)}
+                  </span>
+                  {cliente.valido === false && (
+                    <span className="inline-flex items-center gap-1 text-xs text-amber-700">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Revisar datos
+                    </span>
+                  )}
+                </>
+              }
+              fields={[
+                { label: "Código", value: cliente.codigo || "-" },
+                { label: "CI/NIT", value: cliente.nit || "-" },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, cliente })}
+              openLabel={`Ver detalle de ${cliente.nombre || "cliente"}`}
+              actions={
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      navigate(
+                        isProveedorView
+                          ? `/compra/cuentas?proveedor=${cliente.id_cliente}`
+                          : `/ventas/cuentas?cliente=${cliente.id_cliente}`,
+                      )
+                    }
+                    className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Cuentas
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      isProveedorView
+                        ? navigate(`/compra/convenios?proveedor=${cliente.id_cliente}`)
+                        : navigate(`/ventas/contratos?cliente=${cliente.id_cliente}`)
+                    }
+                    className={`gap-1 ${
+                      isProveedorView
+                        ? "text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                        : "text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                    }`}
+                  >
+                    <ScrollText className="h-3.5 w-3.5" />
+                    {isProveedorView ? "Convenio" : "Contrato"}
+                  </Button>
+                  {isProveedorView && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        navigate(`/compra/liquidaciones?proveedor=${cliente.id_cliente}`)
+                      }
+                      className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                    >
+                      <DollarSign className="h-3.5 w-3.5" />
+                      Liquidación
+                    </Button>
+                  )}
+                  <IconButton
+                    label="Editar"
+                    icon={<Edit className="h-4 w-4" />}
+                    onClick={() => handleEdit(cliente)}
+                    className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                  />
+                  <IconButton
+                    label="Eliminar"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    onClick={() => handleDelete(cliente)}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-800"
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      {/* Tabla de clientes (tablet y escritorio) */}
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -369,24 +491,18 @@ export function ClientesList({
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Editar"
+                          icon={<Edit className="h-4 w-4" />}
                           onClick={() => handleEdit(cliente)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                          className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                        />
+                        <IconButton
+                          label="Eliminar"
+                          icon={<Trash2 className="h-4 w-4" />}
                           onClick={() => handleDelete(cliente)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                          className="text-red-600 hover:bg-red-50 hover:text-red-800"
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -395,18 +511,19 @@ export function ClientesList({
             </TableBody>
           </Table>
         </div>
-        {/* Elemento para scroll infinito */}
-        {loadMoreRef && (
-          <div ref={loadMoreRef} className="flex justify-center py-2">
-            {isFetchingMore && (
-              <div className="flex items-center gap-2 text-gray-500">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Cargando más clientes...</span>
-              </div>
-            )}
-          </div>
-        )}
       </Card>
+
+      {/* Elemento para scroll infinito: fuera de las vistas para que funcione en móvil y escritorio */}
+      {loadMoreRef && (
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más clientes...</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <ClienteDetailModal
         isOpen={detailModal.isOpen}

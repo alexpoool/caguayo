@@ -1,6 +1,5 @@
 import { useMemo, useState, useDeferredValue } from "react";
 import type { CasosUsoAdministracion } from '../application/casos-uso';
-import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
 import {
@@ -30,6 +29,7 @@ import {
   CardTitle,
   ConfirmModal,
   FormModal,
+  ModalOverlay,
   Table,
   TableHeader,
   TableBody,
@@ -37,6 +37,8 @@ import {
   TableHead,
   TableCell,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import type { Usuario, UsuarioCreate } from "../domain/administracion";
 
@@ -515,7 +517,63 @@ export function UsuariosPage({ casosUso }: { casosUso: CasosUsoAdministracion })
         <CreateButton label="Nuevo Usuario" onClick={() => { setEditingUsuario(null); resetUsuarioForm(); setView("form"); }} />
       </div>
 
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {filteredUsuarios.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? "No se encontraron usuarios que coincidan con la búsqueda"
+              : "No hay usuarios"}
+          </div>
+        ) : (
+          filteredUsuarios.map((usuario) => (
+            <MobileRecordCard
+              key={usuario.id_usuario}
+              title={`${usuario.nombre} ${usuario.primer_apellido} ${usuario.segundo_apellido || ""}`.trim()}
+              subtitle={usuario.cargo}
+              icon={<User className="h-4 w-4" />}
+              badges={
+                <>
+                  <span className="inline-flex items-center gap-1 rounded bg-brand-100 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+                    CI: {usuario.ci}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-brand-100 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+                    <Shield className="h-3 w-3" />
+                    {usuario.grupo?.nombre || "Sin grupo"}
+                  </span>
+                </>
+              }
+              fields={[
+                {
+                  label: "Dependencia",
+                  value: usuario.dependencia?.nombre || "-",
+                },
+                { label: "Usuario", value: usuario.alias || "-" },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, usuario })}
+              openLabel={`Ver detalle de ${usuario.nombre} ${usuario.primer_apellido}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Editar"
+                    icon={<Edit className="h-4 w-4" />}
+                    onClick={() => handleEdit(usuario)}
+                    className="text-brand-600 hover:bg-brand-50 hover:text-brand-800"
+                  />
+                  <IconButton
+                    label="Eliminar"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDeleteUsuario(usuario)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden hover:shadow-lg transition-shadow duration-300 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
@@ -574,22 +632,18 @@ export function UsuariosPage({ casosUso }: { casosUso: CasosUsoAdministracion })
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Editar"
+                          icon={<Edit className="h-4 w-4" />}
                           onClick={() => handleEdit(usuario)}
-                          className="text-brand-600 hover:bg-brand-50 h-8 w-8"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                          className="text-brand-600 hover:bg-brand-50 hover:text-brand-800"
+                        />
+                        <IconButton
+                          label="Eliminar"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
                           onClick={() => handleDeleteUsuario(usuario)}
-                          className="text-red-600 hover:bg-red-50 h-8 w-8"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -614,10 +668,15 @@ export function UsuariosPage({ casosUso }: { casosUso: CasosUsoAdministracion })
   );
 
   const ModalUsuarioCreado = () =>
-    createPortal(
-      createdUserModal.isOpen && createdUserModal.usuario && (
-        <div className="fixed inset-0 z-[100] bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+    createdUserModal.isOpen && createdUserModal.usuario ? (
+      <ModalOverlay
+        isOpen
+        onClose={() =>
+          setCreatedUserModal({ ...createdUserModal, isOpen: false })
+        }
+        ariaLabel="Usuario creado"
+      >
+        <div className="bg-white shadow-xl w-full overflow-auto sm:max-w-md max-h-[100dvh] sm:max-h-[90dvh] sm:rounded-lg">
             <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b">
               <h2 className="text-lg font-semibold text-green-700 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5" />
@@ -694,17 +753,18 @@ export function UsuariosPage({ casosUso }: { casosUso: CasosUsoAdministracion })
                 Entendido
               </Button>
             </div>
-          </div>
         </div>
-      ),
-      document.body,
-    );
+      </ModalOverlay>
+    ) : null;
 
   const ModalDetalleUsuario = () =>
-    createPortal(
-      detailModal.isOpen && detailModal.usuario && (
-        <div className="fixed inset-0 z-[100] bg-black/50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+    detailModal.isOpen && detailModal.usuario ? (
+      <ModalOverlay
+        isOpen
+        onClose={() => setDetailModal({ ...detailModal, isOpen: false })}
+        ariaLabel="Detalles del usuario"
+      >
+        <div className="bg-white shadow-xl w-full overflow-auto sm:max-w-lg max-h-[100dvh] sm:max-h-[90dvh] sm:rounded-lg">
             <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b">
               <h2 className="text-lg font-semibold">Detalles del Usuario</h2>
               <Button
@@ -765,11 +825,9 @@ export function UsuariosPage({ casosUso }: { casosUso: CasosUsoAdministracion })
                 Cerrar
               </Button>
             </div>
-          </div>
         </div>
-      ),
-      document.body,
-    );
+      </ModalOverlay>
+    ) : null;
 
   return (
     <>

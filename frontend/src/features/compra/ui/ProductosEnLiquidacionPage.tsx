@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal, ConfirmModal, SearchSelect } from '@/shared/ui/components';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal, ConfirmModal, SearchSelect, IconButton, MobileRecordCard } from '@/shared/ui/components';
 import type { SearchSelectOption } from '@/shared/ui/components';
 import type { CasosUsoCompra } from '../application/casos-uso';
 import type {
@@ -271,7 +271,82 @@ export function ProductosEnLiquidacionPage({ casosUso }: { casosUso: CasosUsoCom
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          <div className="flex justify-center rounded-xl border border-gray-200 bg-white px-4 py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" />
+          </div>
+        ) : filteredProductos.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? 'No se encontraron productos que coincidan con la búsqueda'
+              : 'No hay productos'}
+          </div>
+        ) : (
+          filteredProductos.map((item) => (
+            <MobileRecordCard
+              key={item.id_producto_en_liquidacion}
+              title={item.producto?.nombre || `${item.id_producto}`}
+              subtitle={`Cantidad: ${item.cantidad}`}
+              icon={<Package className="h-4 w-4" />}
+              badges={
+                <>
+                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                    {getTipoLabel(item.tipo_compra)}
+                  </span>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      item.liquidada
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {item.liquidada ? 'Liquidada' : 'Pendiente'}
+                  </span>
+                </>
+              }
+              fields={[
+                {
+                  label: 'Precio compra',
+                  value: `$${Number(item.precio).toFixed(2)}`,
+                },
+                {
+                  label: 'Precio venta',
+                  value: `$${Number(item.producto?.precio_venta || 0).toFixed(2)}`,
+                },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item })}
+              openLabel={`Ver detalle de ${item.producto?.nombre || 'el producto'}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Editar"
+                    icon={<Edit className="h-4 w-4" />}
+                    onClick={() => openForm(item)}
+                    className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                  />
+                  <IconButton
+                    label={
+                      item.liquidada
+                        ? 'No se puede eliminar: ya está liquidada'
+                        : 'Eliminar'
+                    }
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() =>
+                      handleDelete(item.id_producto_en_liquidacion, item.liquidada)
+                    }
+                    disabled={item.liquidada}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -345,25 +420,25 @@ export function ProductosEnLiquidacionPage({ casosUso }: { casosUso: CasosUsoCom
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Editar"
+                          icon={<Edit className="h-4 w-4" />}
                           onClick={() => openForm(item)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(item.id_producto_en_liquidacion, item.liquidada)}
+                          className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                        />
+                        <IconButton
+                          label={
+                            item.liquidada
+                              ? 'No se puede eliminar: ya está liquidada'
+                              : 'Eliminar'
+                          }
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
+                          onClick={() =>
+                            handleDelete(item.id_producto_en_liquidacion, item.liquidada)
+                          }
                           disabled={item.liquidada}
-                          className={`${item.liquidada ? 'text-gray-300 cursor-not-allowed' : 'text-red-600 hover:text-red-800 hover:bg-red-50'} h-8 w-8`}
-                          title={item.liquidada ? 'No se puede eliminar: ya está liquidada' : 'Eliminar'}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -372,18 +447,19 @@ export function ProductosEnLiquidacionPage({ casosUso }: { casosUso: CasosUsoCom
             </TableBody>
           </Table>
         </div>
-        {/* Sentinel para scroll infinito */}
-        {hasMore && (
-          <div ref={loadMoreRef} className="flex justify-center py-2">
-            {isFetchingMore && (
-              <div className="flex items-center gap-2 text-gray-500">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Cargando más...</span>
-              </div>
-            )}
-          </div>
-        )}
       </Card>
+
+      {/* Sentinel para scroll infinito: fuera de las vistas para que funcione en móvil y escritorio */}
+      {hasMore && (
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -495,7 +571,7 @@ export function ProductosEnLiquidacionPage({ casosUso }: { casosUso: CasosUsoCom
 
       {detailModal.isOpen && detailModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

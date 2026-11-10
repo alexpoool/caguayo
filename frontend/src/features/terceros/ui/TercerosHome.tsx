@@ -3,7 +3,7 @@ import { UserCircle, FilePlus, Briefcase, FileText } from 'lucide-react';
 /** Portada del módulo Terceros: clientes, contratos, proveedores y convenios. */
 export function TercerosHome() {
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center overflow-hidden p-4">
+    <div className="flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center overflow-hidden p-4">
       <div className="w-full max-w-3xl space-y-5">
         <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 px-8 py-8 text-center text-white shadow-lg md:px-10">
           <div className="mx-auto mb-3 inline-flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 import { ClienteFormContainer as ClienteForm } from '@/app/container/terceros-cliente-form';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
@@ -274,7 +274,92 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-12 text-gray-500">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+            Cargando contratos...
+          </div>
+        ) : isError ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-12 text-center text-red-600">
+            Error al cargar contratos: {(error as Error)?.message || 'Error desconocido'}
+          </div>
+        ) : contratos.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? 'No se encontraron contratos que coincidan con la búsqueda'
+              : 'No hay contratos'}
+          </div>
+        ) : (
+          contratos.map((item) => (
+            <MobileRecordCard
+              key={item.id_contrato}
+              title={item.nombre}
+              subtitle={item.vigencia ? `Vigencia: ${formatFecha(item.vigencia)}` : undefined}
+              icon={<FileText className="h-4 w-4" />}
+              badges={
+                <>
+                  <span className="inline-flex items-center gap-1 rounded bg-brand-50 px-2.5 py-0.5 font-mono text-xs font-medium text-brand-700">
+                    <Tag className="h-3 w-3" />
+                    {item.codigo || 'N/A'}
+                  </span>
+                  {item.estado?.nombre && (
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                      {item.estado.nombre}
+                    </span>
+                  )}
+                </>
+              }
+              fields={[
+                {
+                  label: 'Valor',
+                  value: `${item.moneda?.simbolo || '$'}${Number(item.monto || 0).toFixed(2)}`,
+                },
+                { label: 'Cliente', value: item.cliente?.nombre || 'N/A' },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item })}
+              openLabel={`Ver detalle del contrato ${item.nombre}`}
+              actions={
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/ventas/facturas?contrato=${item.id_contrato}`)}
+                    className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    <Receipt className="h-3.5 w-3.5" />
+                    Facturas
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/ventas/suplementos?contrato=${item.id_contrato}`)}
+                    className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    Suplemento
+                  </Button>
+                  <IconButton
+                    label="Editar"
+                    icon={<Edit className="h-4 w-4" />}
+                    onClick={() => openForm(item)}
+                    className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                  />
+                  <IconButton
+                    label="Eliminar"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDelete(item.id_contrato, item.nombre)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -373,24 +458,18 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Editar"
+                          icon={<Edit className="h-4 w-4" />}
                           onClick={() => openForm(item)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                          className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                        />
+                        <IconButton
+                          label="Eliminar"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
                           onClick={() => handleDelete(item.id_contrato, item.nombre)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -399,20 +478,21 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
             </TableBody>
           </Table>
         </div>
-        {/* Sentinel para infinite scroll */}
-        {!isLoading && contratos.length > 0 && (hasMore || isFetchingMore) && (
-          <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
-            {isFetchingMore ? (
-              <span className="text-sm text-brand-600 flex items-center gap-2">
-                <div className="h-4 w-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-                Cargando más...
-              </span>
-            ) : (
-              <span className="text-sm text-gray-400">Desplázate para cargar más</span>
-            )}
-          </div>
-        )}
       </Card>
+
+      {/* Sentinel para infinite scroll: fuera de las vistas para que funcione en móvil y escritorio */}
+      {!isLoading && contratos.length > 0 && (hasMore || isFetchingMore) && (
+        <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
+          {isFetchingMore ? (
+            <span className="text-sm text-brand-600 flex items-center gap-2">
+              <div className="h-4 w-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+              Cargando más...
+            </span>
+          ) : (
+            <span className="text-sm text-gray-400">Desplázate para cargar más</span>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -617,7 +697,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
 
       {showNuevoClienteModal && createPortal(
         <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -662,7 +742,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
 
       {detailModal.isOpen && detailModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

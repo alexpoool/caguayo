@@ -8,6 +8,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { formatFecha } from '@/utils/fecha';
+import { IconButton, MobileRecordCard } from '@/shared/ui/components';
 import type { OfertaTiendaWithDetails, ContratoWithDetails } from '@/types/contrato';
 
 interface OfertasTableProps {
@@ -44,7 +45,94 @@ export function OfertasTable({
   }
 
   return (
-    <div className="bg-white shadow-md rounded-lg overflow-hidden overflow-x-auto">
+    <>
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {ofertas.map((oferta) => {
+          const contrato = contratos.find(
+            (c) => c.id_contrato === oferta.id_contrato
+          );
+          return (
+            <MobileRecordCard
+              key={oferta.id_oferta_tienda}
+              title={oferta.codigo_oferta || `#${oferta.id_oferta_tienda}`}
+              subtitle={formatFecha(oferta.fecha)}
+              icon={<ShoppingBag className="h-4 w-4" />}
+              badges={
+                oferta.estado === 'CONVERTIDA' ? (
+                  <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                    Convertida
+                  </span>
+                ) : oferta.estado === 'ANULADA' ? (
+                  <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+                    Anulada
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                    Activa
+                  </span>
+                )
+              }
+              fields={[
+                {
+                  label: 'Contrato',
+                  value: contrato?.nombre || `#${oferta.id_contrato}`,
+                },
+                {
+                  label: 'Monto',
+                  value: `${contrato?.moneda?.simbolo || '$'}${Number(oferta.monto || 0).toFixed(2)}`,
+                },
+              ]}
+              onOpen={() => onViewDetails(oferta)}
+              openLabel={`Ver detalle de ${oferta.codigo_oferta || 'la oferta'}`}
+              actions={
+                <>
+                  {oferta.estado === 'ACTIVA' && (
+                    <>
+                      <IconButton
+                        label="Editar"
+                        icon={<Pencil className="h-4 w-4" />}
+                        onClick={() => onEdit(oferta)}
+                        className="text-brand-600 hover:bg-brand-50 hover:text-brand-800"
+                      />
+                      <IconButton
+                        label="Confirmar oferta"
+                        icon={<CheckCircle2 className="h-4 w-4" />}
+                        onClick={() => onConvertir(oferta)}
+                        className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                      />
+                    </>
+                  )}
+                  <IconButton
+                    label="Ver documento"
+                    icon={<FileText className="h-4 w-4" />}
+                    onClick={() => onViewDocument(oferta)}
+                    className="text-amber-600 hover:bg-amber-50 hover:text-amber-800"
+                  />
+                  <IconButton
+                    label="Imprimir"
+                    icon={<Printer className="h-4 w-4" />}
+                    onClick={() => onPrintDocument(oferta)}
+                    className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-800"
+                  />
+                  {oferta.estado === 'ACTIVA' && (
+                    <IconButton
+                      label="Anular oferta"
+                      icon={<Trash2 className="h-4 w-4" />}
+                      variant="danger"
+                      onClick={() =>
+                        onDelete(oferta.id_oferta_tienda, oferta.codigo_oferta)
+                      }
+                    />
+                  )}
+                </>
+              }
+            />
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-hidden overflow-x-auto rounded-lg bg-white shadow-md md:block">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
@@ -128,59 +216,47 @@ export function OfertasTable({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-center gap-1">
-                    <button
-                      type="button"
+                    <IconButton
+                      label="Ver detalles"
+                      icon={<Eye className="h-4 w-4" />}
                       onClick={() => onViewDetails(oferta)}
-                      title="Ver detalles"
-                      className="p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
+                      className="text-gray-500 hover:bg-brand-50 hover:text-brand-600"
+                    />
                     {oferta.estado === 'ACTIVA' && (
                       <>
-                        <button
-                          type="button"
+                        <IconButton
+                          label="Editar"
+                          icon={<Pencil className="h-4 w-4" />}
                           onClick={() => onEdit(oferta)}
-                          title="Editar"
-                          className="p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
+                          className="text-gray-500 hover:bg-brand-50 hover:text-brand-600"
+                        />
+                        <IconButton
+                          label="Confirmar oferta"
+                          icon={<CheckCircle2 className="h-4 w-4" />}
                           onClick={() => onConvertir(oferta)}
-                          title="Confirmar oferta"
-                          className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                        </button>
+                          className="text-gray-500 hover:bg-green-50 hover:text-green-600"
+                        />
                       </>
                     )}
-                    <button
-                      type="button"
+                    <IconButton
+                      label="Ver documento"
+                      icon={<FileText className="h-4 w-4" />}
                       onClick={() => onViewDocument(oferta)}
-                      title="Ver documento"
-                      className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
-                    >
-                      <FileText className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
+                      className="text-gray-500 hover:bg-amber-50 hover:text-amber-600"
+                    />
+                    <IconButton
+                      label="Imprimir"
+                      icon={<Printer className="h-4 w-4" />}
                       onClick={() => onPrintDocument(oferta)}
-                      title="Imprimir"
-                      className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
-                    >
-                      <Printer className="h-4 w-4" />
-                    </button>
+                      className="text-gray-500 hover:bg-emerald-50 hover:text-emerald-600"
+                    />
                     {oferta.estado === 'ACTIVA' && (
-                      <button
-                        type="button"
+                      <IconButton
+                        label="Anular oferta"
+                        icon={<Trash2 className="h-4 w-4" />}
+                        variant="danger"
                         onClick={() => onDelete(oferta.id_oferta_tienda, oferta.codigo_oferta)}
-                        title="Anular oferta"
-                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      />
                     )}
                   </div>
                 </td>
@@ -189,6 +265,7 @@ export function OfertasTable({
           })}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }

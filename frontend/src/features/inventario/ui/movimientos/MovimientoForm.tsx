@@ -1411,7 +1411,7 @@ export function MovimientoRecepcionForm({
       {showNuevoProductoModal &&
         createPortal(
           <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto">
               <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:p-6 border-b">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   Nuevo Producto

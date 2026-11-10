@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button, Card, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal, ConfirmModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 import { 
   Search, 
@@ -517,7 +517,106 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
         </div>
       )}
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            Cargando...
+          </div>
+        ) : filteredLiquidaciones.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {filtroCliente
+              ? 'No hay liquidaciones de este proveedor'
+              : 'No hay liquidaciones'}
+          </div>
+        ) : (
+          filteredLiquidaciones.map((liquidacion: Liquidacion) => (
+            <MobileRecordCard
+              key={liquidacion.id_liquidacion}
+              title={liquidacion.codigo}
+              subtitle={
+                liquidacion.cliente?.nombre ||
+                getClienteNombre(liquidacion.id_cliente) ||
+                'N/A'
+              }
+              icon={<Receipt className="h-4 w-4" />}
+              badges={
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    liquidacion.liquidada
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}
+                >
+                  {liquidacion.liquidada ? 'Liquidada' : 'Pendiente'}
+                </span>
+              }
+              fields={[
+                {
+                  label: 'Importe',
+                  value: liquidacion.importe?.toLocaleString(),
+                },
+                {
+                  label: 'Neto a pagar',
+                  value: liquidacion.neto_pagar?.toLocaleString(),
+                },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item: liquidacion })}
+              openLabel={`Ver detalle de la liquidación ${liquidacion.codigo}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Ver documento"
+                    icon={<Eye className="h-4 w-4" />}
+                    onClick={() => handleViewDocument(liquidacion)}
+                    className="text-brand-600 hover:bg-brand-50 hover:text-brand-800"
+                  />
+                  <IconButton
+                    label="Imprimir"
+                    icon={<Printer className="h-4 w-4" />}
+                    onClick={() =>
+                      setPrintModal({
+                        isOpen: true,
+                        liquidacion: liquidacion,
+                        autorizado_por: '',
+                        cargo_autorizado: '',
+                        revisado_por: '',
+                      })
+                    }
+                    className="text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                  />
+                  {!liquidacion.liquidada && (
+                    <IconButton
+                      label="Aprobar liquidación"
+                      icon={<CheckCircle className="h-4 w-4" />}
+                      onClick={() =>
+                        setApproveModal({
+                          isOpen: true,
+                          id_liquidacion: liquidacion.id_liquidacion,
+                        })
+                      }
+                      className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                    />
+                  )}
+                  <IconButton
+                    label="Eliminar"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() =>
+                      setEliminarModal({
+                        isOpen: true,
+                        id_liquidacion: liquidacion.id_liquidacion,
+                      })
+                    }
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -575,48 +674,34 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Ver documento"
+                          icon={<Eye className="h-4 w-4" />}
                           onClick={() => handleViewDocument(liquidacion)}
-                          className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8"
-                          title="Ver documento"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                          className="text-brand-600 hover:bg-brand-50 hover:text-brand-800"
+                        />
+                        <IconButton
+                          label="Imprimir"
+                          icon={<Printer className="h-4 w-4" />}
                           onClick={() => setPrintModal({ isOpen: true, liquidacion: liquidacion, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })}
-                          className="text-gray-600 hover:text-gray-800 hover:bg-gray-50 h-8 w-8"
-                          title="Imprimir"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </Button>
-                        {/* Botón Aprobar - solo si está pendiente */}
+                          className="text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                        />
                         {!liquidacion.liquidada && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                          <IconButton
+                            label="Aprobar liquidación"
+                            icon={<CheckCircle className="h-4 w-4" />}
                             onClick={() => setApproveModal({ isOpen: true, id_liquidacion: liquidacion.id_liquidacion })}
-                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                            title="Aprobar liquidación"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
+                            className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                          />
                         )}
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Eliminar"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
                           onClick={() =>
                             setEliminarModal({ isOpen: true, id_liquidacion: liquidacion.id_liquidacion })
                           }
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -782,7 +867,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
 
       {detailModal.isOpen && detailModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

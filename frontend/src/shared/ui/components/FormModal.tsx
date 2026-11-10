@@ -19,10 +19,10 @@ interface FormModalProps {
 }
 
 const SIZE_CLASSES: Record<FormModalSize, string> = {
-  sm: 'w-full max-w-md h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[90vh] sm:rounded-2xl',
-  md: 'w-full max-w-2xl h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[90vh] sm:rounded-2xl',
-  lg: 'w-full max-w-4xl h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[90vh] sm:rounded-2xl',
-  xl: 'w-full max-w-6xl h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[90vh] sm:rounded-2xl',
+  sm: 'w-full max-w-md h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[90dvh] sm:rounded-2xl',
+  md: 'w-full max-w-2xl h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[90dvh] sm:rounded-2xl',
+  lg: 'w-full max-w-4xl h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[90dvh] sm:rounded-2xl',
+  xl: 'w-full max-w-6xl h-[100dvh] max-h-[100dvh] rounded-none sm:h-auto sm:max-h-[90dvh] sm:rounded-2xl',
   full: 'w-full h-[100dvh] max-w-none rounded-none',
 };
 

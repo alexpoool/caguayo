@@ -54,10 +54,24 @@
   }
 }
 
-/* Transiciones suaves globales */
+/* Transiciones suaves globales. Se desactivan si el sistema pide menos movimiento. */
 @layer base {
-  * {
-    @apply transition-colors duration-200;
+  @media (prefers-reduced-motion: no-preference) {
+    * {
+      transition-property: color, background-color, border-color, fill, stroke;
+      transition-duration: 200ms;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -68,6 +82,34 @@
   textarea {
     font-size: 16px !important;
   }
+}
+
+/* En móvil, cualquier botón cuadrado de icono conserva al menos 44 px de área táctil. */
+@media (max-width: 767px) {
+  button.h-8.w-8,
+  button.h-9.w-9,
+  a.h-8.w-8,
+  a.h-9.w-9 {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+}
+
+/*
+ * Tablas de 5 o más columnas: en móvil conservan un ancho legible y se
+ * desplazan en horizontal dentro de su contenedor, en vez de aplastar columnas.
+ */
+@media (max-width: 767px) {
+  .overflow-x-auto > table:has(thead th:nth-child(5)) {
+    min-width: 44rem;
+  }
+}
+
+/* Elimina el retardo de 300 ms en controles táctiles. */
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
 }
 
 /* Ocultar scrollbar manteniendo scroll */

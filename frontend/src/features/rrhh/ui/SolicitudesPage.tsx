@@ -868,6 +868,8 @@ function VistaCalendario() {
           <ErrorState mensaje="No se pudo cargar el calendario" onReintentar={refetch} />
         ) : (
           <>
+            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <div className="min-w-[420px]">
             <div className="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-400">
               {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => (
                 <div key={d} className="py-1">
@@ -881,7 +883,7 @@ function VistaCalendario() {
                 return (
                   <div
                     key={dia}
-                    className="min-h-20 rounded-md border border-gray-100 bg-gray-50 p-1"
+                    className="min-h-16 rounded-md border border-gray-100 bg-gray-50 p-1 sm:min-h-20"
                   >
                     <div className="text-xs font-medium text-gray-500">{dia}</div>
                     <div className="mt-1 space-y-0.5">
@@ -905,6 +907,8 @@ function VistaCalendario() {
                   </div>
                 );
               })}
+            </div>
+            </div>
             </div>
 
             <div className="mt-4 flex items-center gap-4 border-t border-gray-100 pt-3 text-xs text-gray-500">

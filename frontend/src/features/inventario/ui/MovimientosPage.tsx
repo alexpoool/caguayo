@@ -38,6 +38,8 @@ import {
   TableHead,
   TableCell,
   FormModal,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 import { formatFecha, formatFechaHora } from '@/utils/fecha';
 
@@ -361,7 +363,78 @@ export function MovimientosPage({ casosUso }: { casosUso: CasosUsoInventario }) 
           </div>
         </div>
       ) : (
-        <Card className="overflow-hidden shadow-sm border-gray-200">
+        <>
+          {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+          <div className="space-y-3 md:hidden">
+            {isLoading ? (
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+                Cargando movimientos...
+              </div>
+            ) : movimientos.length === 0 ? (
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+                {searchTerm
+                  ? 'No se encontraron movimientos que coincidan con la búsqueda'
+                  : 'No se encontraron movimientos'}
+              </div>
+            ) : (
+              movimientos.map((mov) => {
+                const config = getTipoConfig(mov.tipo_movimiento?.tipo || 'RECEPCION');
+                const ImpactoIcon = config.impactoIcon;
+                return (
+                  <MobileRecordCard
+                    key={mov.id_movimiento}
+                    title={mov.producto?.nombre || 'Producto no disponible'}
+                    subtitle={formatFecha(mov.fecha)}
+                    icon={<Package className="h-4 w-4" />}
+                    badges={
+                      <>
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${config.bgColor} ${config.impactoColor}`}
+                        >
+                          <ImpactoIcon className="h-3 w-3" />
+                          {config.impacto}
+                        </span>
+                        <span className={`text-xs font-semibold ${config.textColor}`}>
+                          {mov.tipo_movimiento?.tipo?.toUpperCase() || 'MOVIMIENTO'}
+                        </span>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            mov.estado === 'CONFIRMADO'
+                              ? 'bg-green-100 text-green-800'
+                              : mov.estado === 'PENDIENTE'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {mov.estado}
+                        </span>
+                      </>
+                    }
+                    fields={[
+                      { label: 'Cantidad', value: mov.cantidad },
+                      {
+                        label: 'Dependencia',
+                        value: mov.dependencia?.nombre || 'Sin dependencia',
+                      },
+                    ]}
+                    onOpen={() => handleVerDetalle(mov)}
+                    openLabel={`Ver detalle del movimiento ${mov.id_movimiento}`}
+                    actions={
+                      <IconButton
+                        label="Eliminar movimiento"
+                        icon={<Trash2 className="h-4 w-4" />}
+                        variant="danger"
+                        disabled={isDeleting}
+                        onClick={() => handleEliminarMovimiento(mov.id_movimiento)}
+                      />
+                    }
+                  />
+                );
+              })
+            )}
+          </div>
+
+          <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -463,16 +536,13 @@ export function MovimientosPage({ casosUso }: { casosUso: CasosUsoInventario }) 
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
+                            <IconButton
+                              label="Eliminar movimiento"
+                              icon={<Trash2 className="h-4 w-4" />}
+                              variant="danger"
                               onClick={() => handleEliminarMovimiento(mov.id_movimiento)}
                               disabled={isDeleting}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                              title="Eliminar movimiento"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            />
                           </div>
                         </TableCell>
                       </TableRow>
@@ -482,8 +552,9 @@ export function MovimientosPage({ casosUso }: { casosUso: CasosUsoInventario }) 
               </TableBody>
             </Table>
           </div>
+          </Card>
           <div ref={loadMoreRef} className="h-4" />
-        </Card>
+        </>
       )}
     </div>
   );
@@ -526,7 +597,7 @@ export function MovimientosPage({ casosUso }: { casosUso: CasosUsoInventario }) 
     if (!detailModal.isOpen || !detailModal.movimiento) return null;
     return createPortal(
       <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90dvh] overflow-auto animate-scale-in">
           {(() => {
             const config = getTipoConfig(detailModal.movimiento?.tipo_movimiento?.tipo || 'RECEPCION');
             const Icon = config.icon;

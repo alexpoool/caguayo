@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import type { CasosUsoProyectos } from '../application/casos-uso';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 import { ClienteFormContainer as ClienteForm } from '@/app/container/terceros-cliente-form';
 
@@ -603,7 +603,151 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {solicitudes.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? 'No se encontraron solicitudes que coincidan con la búsqueda'
+              : 'No hay solicitudes'}
+          </div>
+        ) : (
+          solicitudes.map((item) => (
+            <MobileRecordCard
+              key={item.id_solicitud_servicio}
+              title={item.codigo_proyecto || 'N/A'}
+              subtitle={formatFecha(item.fecha_solicitud) || 'N/A'}
+              icon={<ClipboardList className="h-4 w-4" />}
+              tone={item.estado_por_revisar ? 'warning' : 'default'}
+              badges={
+                <>
+                  {item.estado ? (
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        item.estado === 'TERMINADA'
+                          ? 'bg-green-100 text-green-800'
+                          : item.estado === 'CANCELADA'
+                            ? 'bg-red-100 text-red-800'
+                            : item.estado === 'EN PROCESO'
+                              ? 'bg-brand-100 text-brand-800'
+                              : item.estado === 'EN NEGOCIACION'
+                                ? 'bg-brand-100 text-brand-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                      }`}
+                    >
+                      {item.estado}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400">—</span>
+                  )}
+                  {item.estado_por_revisar && (
+                    <span
+                      className="inline-flex items-center gap-1 text-xs text-amber-700"
+                      title={item.motivo_revision || 'Estado puesto a EN PROCESO por la migración del legacy.'}
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Revisar estado
+                    </span>
+                  )}
+                </>
+              }
+              fields={[
+                {
+                  label: 'Fecha',
+                  value: formatFecha(item.fecha_solicitud) || 'N/A',
+                },
+                {
+                  label: 'Solicitud',
+                  value: `#${item.id_solicitud_servicio}`,
+                },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item })}
+              openLabel={`Ver detalle de ${item.codigo_proyecto || 'la solicitud'}`}
+              actions={
+                <>
+                  {item.id_contrato &&
+                    (item.id_suplemento ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => item.id_suplemento && openSuplementoModal(item.id_suplemento)}
+                        className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                      >
+                        <FilePlus className="h-3.5 w-3.5" />
+                        Suplemento
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => item.id_contrato && openContratoModal(item.id_contrato)}
+                        className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        Contrato
+                      </Button>
+                    ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/proyectos/etapas?solicitud=${item.id_solicitud_servicio}`)}
+                    className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    Etapas
+                  </Button>
+                  {item.estado === 'PENDIENTE' && (
+                    <IconButton
+                      label="Aceptar solicitud"
+                      icon={<CheckCircle className="h-4 w-4" />}
+                      onClick={() => handleToggleAprobado(item)}
+                      className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                    />
+                  )}
+                  {item.estado === 'EN NEGOCIACION' && (
+                    <IconButton
+                      label="Asignar contrato"
+                      icon={<FileText className="h-4 w-4" />}
+                      onClick={() => handleAsignarContrato(item)}
+                      className="text-brand-600 hover:bg-brand-50 hover:text-brand-800"
+                    />
+                  )}
+                  <IconButton
+                    label="Editar"
+                    icon={<Edit className="h-4 w-4" />}
+                    onClick={() => openForm(item)}
+                    className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                  />
+                  {item.estado === 'EN PROCESO' && (
+                    <>
+                      <IconButton
+                        label="Cancelar"
+                        icon={<X className="h-4 w-4" />}
+                        onClick={() => handleCancelarSolicitud(item)}
+                        className="text-red-600 hover:bg-red-50 hover:text-red-800"
+                      />
+                      <IconButton
+                        label="Terminar"
+                        icon={<CheckSquare className="h-4 w-4" />}
+                        onClick={() => handleTerminarSolicitud(item)}
+                        className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                      />
+                    </>
+                  )}
+                  <IconButton
+                    label="Eliminar"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDelete(item.id_solicitud_servicio, item.codigo_proyecto || 'N/A')}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -700,78 +844,56 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
                         {item.estado === 'PENDIENTE' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                          <IconButton
+                            label="Aceptar solicitud"
+                            icon={<CheckCircle className="h-4 w-4" />}
                             onClick={() => handleToggleAprobado(item)}
-                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                            title="Aceptar solicitud"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
+                            className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                          />
                         )}
                         {item.estado === 'EN NEGOCIACION' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                          <IconButton
+                            label="Asignar contrato"
+                            icon={<FileText className="h-4 w-4" />}
                             onClick={() => handleAsignarContrato(item)}
-                            className="text-brand-600 hover:text-brand-800 hover:bg-brand-50 h-8 w-8"
-                            title="Asignar contrato"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
+                            className="text-brand-600 hover:bg-brand-50 hover:text-brand-800"
+                          />
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Editar"
+                          icon={<Edit className="h-4 w-4" />}
                           onClick={() => openForm(item)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                          className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                        />
                         {item.estado === 'EN PROCESO' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                          <IconButton
+                            label="Cancelar"
+                            icon={<X className="h-4 w-4" />}
                             onClick={() => handleCancelarSolicitud(item)}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                            title="Cancelar"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                            className="text-red-600 hover:bg-red-50 hover:text-red-800"
+                          />
                         )}
                         {item.estado === 'EN PROCESO' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                          <IconButton
+                            label="Terminar"
+                            icon={<CheckSquare className="h-4 w-4" />}
                             onClick={() => handleTerminarSolicitud(item)}
-                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                            title="Terminar"
-                          >
-                            <CheckSquare className="h-4 w-4" />
-                          </Button>
+                            className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                          />
                         )}
                         {item.estado === 'TERMINADA' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                          <IconButton
+                            label="Terminada"
+                            icon={<CheckSquare className="h-4 w-4" />}
                             disabled
-                            className="text-gray-400 cursor-not-allowed h-8 w-8"
-                            title="Terminada"
-                          >
-                            <CheckSquare className="h-4 w-4" />
-                          </Button>
+                          />
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Eliminar"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
                           onClick={() => handleDelete(item.id_solicitud_servicio, item.codigo_proyecto || 'N/A')}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -780,15 +902,17 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
             </TableBody>
           </Table>
         </div>
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
       </Card>
+
+      {/* Sentinel para scroll infinito: fuera de las vistas para que funcione en móvil y escritorio */}
+      <div ref={loadMoreRef} className="flex justify-center py-2">
+        {isFetchingMore && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Cargando más...</span>
+          </div>
+        )}
+      </div>
     </div>
     );
   };
@@ -946,7 +1070,7 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
 
       {detailModal.isOpen && detailModal.item && (
         <ModalOverlay isOpen={true} onClose={() => setDetailModal({ isOpen: false, item: null })} ariaLabel="Detalle de proyecto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -1021,7 +1145,7 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
       )}
 
       <ModalOverlay isOpen={contratoModal.isOpen} onClose={() => setContratoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Contrato">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -1077,7 +1201,7 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
       </ModalOverlay>
 
       <ModalOverlay isOpen={suplementoModal.isOpen} onClose={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Suplemento">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -1125,7 +1249,7 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
       </ModalOverlay>
 
       <ModalOverlay isOpen={aprobarModal.isOpen} onClose={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setCreacionPendiente(null); setPendingClientData(null); setView('list'); }} ariaLabel="Aprobar Proyecto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -1481,7 +1605,7 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
       </ModalOverlay>
 
       <ModalOverlay isOpen={showNuevoClienteModal} onClose={() => setShowNuevoClienteModal(false)} ariaLabel="Nuevo Cliente">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90dvh] overflow-auto animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

@@ -661,7 +661,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
   // al alternar entre pantalla de selección y un reporte.
   if (!activeReport) {
     return (
-      <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center overflow-hidden p-4">
+      <div className="flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center overflow-hidden p-4">
         <div className="w-full max-w-2xl space-y-5">
           <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 px-6 py-6 text-white shadow-lg">
             <div className="flex flex-col items-center justify-center gap-3 text-center">

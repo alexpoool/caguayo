@@ -639,7 +639,7 @@ export function FichaCostoModal({ isOpen, casosUso, producto, cantidad = 1, fech
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[520px] max-h-[92vh] flex flex-col overflow-hidden animate-scale-in">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[520px] max-h-[92dvh] flex flex-col overflow-hidden animate-scale-in">
         {/* Header — mismo estilo que el modal de Nuevo Cliente */}
         <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
           <div className="flex flex-wrap items-center justify-between gap-3">

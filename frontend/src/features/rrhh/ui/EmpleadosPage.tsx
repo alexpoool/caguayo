@@ -61,6 +61,8 @@ import {
   Modal,
   SearchSelect,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 import { getCachedNumberFormat } from '@/utils/formato';
 
@@ -513,7 +515,82 @@ export function EmpleadosPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
                 <CreateButton label="Nuevo empleado" onClick={handleNuevo} />
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+              <div className="space-y-3 md:hidden">
+                {empleados.map((emp) => (
+                  <MobileRecordCard
+                    key={emp.id}
+                    title={`${emp.apellido}, ${emp.nombre}`}
+                    subtitle={emp.carnet_identidad ?? undefined}
+                    icon={<Users className="h-4 w-4" />}
+                    badges={
+                      <span className="inline-flex items-center gap-1 rounded bg-brand-100 px-2.5 py-0.5 font-mono text-xs font-medium text-brand-700">
+                        <Hash className="h-3 w-3" />
+                        {emp.codigo_empleado ?? '—'}
+                      </span>
+                    }
+                    fields={[
+                      { label: 'Puesto', value: emp.puesto_nombre ?? '—' },
+                      {
+                        label: 'Departamento',
+                        value: emp.departamento_nombre ?? '—',
+                      },
+                    ]}
+                    onOpen={() => setDetalle(emp)}
+                    openLabel={`Ver detalle de ${emp.nombre} ${emp.apellido}`}
+                    actions={
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const r = (
+                              e.currentTarget as HTMLButtonElement
+                            ).getBoundingClientRect();
+                            setMenu(
+                              menu && menu.id === emp.id
+                                ? null
+                                : {
+                                    id: emp.id,
+                                    x: r.left,
+                                    y: r.bottom + 4,
+                                    anchor: {
+                                      top: r.top,
+                                      left: r.left,
+                                      right: r.right,
+                                      bottom: r.bottom,
+                                    },
+                                  }
+                            );
+                          }}
+                          className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                          Más
+                        </Button>
+                        <IconButton
+                          label="Editar"
+                          icon={<Edit className="h-4 w-4" />}
+                          onClick={() => handleEditar(emp)}
+                          className="text-brand-600 hover:bg-brand-50 hover:text-brand-800"
+                        />
+                        <IconButton
+                          label="Eliminar"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
+                          onClick={() =>
+                            setConfirmModal({ isOpen: true, empleado: emp })
+                          }
+                        />
+                      </>
+                    }
+                  />
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
                 <Table>
                   <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-100">
                     <TableRow>
@@ -641,6 +718,7 @@ export function EmpleadosPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
             {/* Sentinel del scroll infinito */}
             <div ref={loadMoreRef} className="flex justify-center py-2">

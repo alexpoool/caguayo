@@ -28,6 +28,7 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
+  ModalOverlay,
 } from "@/shared/ui/components";
 import { useAuth } from "@/shared/ui/auth";
 import type { BackupInfo, BackupJob } from "../domain/administracion";
@@ -423,8 +424,12 @@ export function RespaldosPage({ casosUso }: { casosUso: CasosUsoAdministracion }
 
       {/* Modal de restauración con confirmación exigente */}
       {restaurarModal.isOpen && restaurarModal.backup && (
-        <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-[100] p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full animate-scale-in">
+        <ModalOverlay
+          isOpen
+          onClose={() => setRestaurarModal({ isOpen: false, backup: null })}
+          ariaLabel="Restaurar backup"
+        >
+          <div className="bg-white shadow-2xl w-full sm:max-w-lg max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
             <div className="flex items-start justify-between p-4 md:p-6 border-b rounded-t-2xl bg-gradient-to-r from-red-50 to-rose-50">
               <div>
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -507,7 +512,7 @@ export function RespaldosPage({ casosUso }: { casosUso: CasosUsoAdministracion }
               </Button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Confirmación de eliminación de backup */}

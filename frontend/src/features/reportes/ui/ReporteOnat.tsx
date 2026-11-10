@@ -96,14 +96,14 @@ const ReporteOnat: React.FC<{ casosUso: CasosUsoReportes }> = ({ casosUso }) => 
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Filtros</p>
               <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Desde <span className="text-red-500">*</span></label>
-                    <DateInput className="h-8 focus:ring-2 focus:ring-rose-500" value={fechaInicio} onChange={(fecha) => setFechaInicio(fecha)} />
+                    <DateInput className="h-11 sm:h-8 focus:ring-2 focus:ring-rose-500" value={fechaInicio} onChange={(fecha) => setFechaInicio(fecha)} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Hasta <span className="text-red-500">*</span></label>
-                    <DateInput className="h-8 focus:ring-2 focus:ring-rose-500" value={fechaFin} onChange={(fecha) => setFechaFin(fecha)} />
+                    <DateInput className="h-11 sm:h-8 focus:ring-2 focus:ring-rose-500" value={fechaFin} onChange={(fecha) => setFechaFin(fecha)} />
                   </div>
                 </div>
                 <div>

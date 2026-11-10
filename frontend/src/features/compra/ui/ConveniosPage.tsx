@@ -34,6 +34,8 @@ import {
   DateInput,
   FormModal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import { formatFecha } from "@/utils/fecha";
 
@@ -351,7 +353,70 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      {/* Listado móvil: tarjetas en lugar de tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            Cargando...
+          </div>
+        ) : convenios.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            No hay convenios registrados
+          </div>
+        ) : (
+          convenios.map((convenio) => (
+            <MobileRecordCard
+              key={convenio.id_convenio}
+              title={convenio.nombre_convenio}
+              subtitle={convenio.codigo || undefined}
+              icon={<ScrollText className="h-4 w-4" />}
+              badges={
+                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                  {convenio.tipo_convenio?.nombre || "N/A"}
+                </span>
+              }
+              fields={[
+                {
+                  label: "Proveedor",
+                  value: convenio.cliente?.nombre || "Sin cliente",
+                },
+                { label: "Código", value: convenio.codigo || "-" },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, convenio })}
+              openLabel={`Ver detalle del convenio ${convenio.nombre_convenio}`}
+              actions={
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      navigate(`/compra/anexos?convenio=${convenio.id_convenio}`)
+                    }
+                    className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                  >
+                    <ScrollText className="h-3.5 w-3.5" />
+                    Anexos
+                  </Button>
+                  <IconButton
+                    label="Editar"
+                    icon={<Edit className="h-4 w-4" />}
+                    onClick={() => handleEdit(convenio)}
+                    className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                  />
+                  <IconButton
+                    label="Eliminar"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDelete(convenio)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -415,24 +480,18 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <IconButton
+                          label="Editar"
+                          icon={<Edit className="h-4 w-4" />}
                           onClick={() => handleEdit(convenio)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                          className="text-green-600 hover:bg-green-50 hover:text-green-800"
+                        />
+                        <IconButton
+                          label="Eliminar"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
                           onClick={() => handleDelete(convenio)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -441,16 +500,17 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
             </TableBody>
           </Table>
         </div>
-        {/* Sentinel para scroll infinito */}
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
       </Card>
+
+      {/* Sentinel para scroll infinito: fuera de las vistas para que funcione en móvil y escritorio */}
+      <div ref={loadMoreRef} className="flex justify-center py-2">
+        {isFetchingMore && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Cargando más...</span>
+          </div>
+        )}
+      </div>
 
       <FormModal
         isOpen={isFormOpen}
@@ -626,7 +686,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
 
       {detailModal.isOpen && detailModal.convenio && createPortal(
         <div className="fixed inset-0 bg-black/50 z-[9999] flex items-start sm:items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 bg-gradient-to-r from-brand-50 to-brand-50 border-b border-brand-100">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 bg-white rounded-lg shadow-sm">
