@@ -40,6 +40,8 @@ import {
   ConfirmModal,
   Modal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 
 type Pestana = 'solicitudes' | 'calendario';
@@ -221,6 +223,58 @@ function ListaSolicitudes({
               }
             />
           ) : (
+            <>
+              <div className="space-y-3 md:hidden">
+                {filas.map((fila) => (
+                  <MobileRecordCard
+                    key={fila.id}
+                    title={fila.empleado_nombre ?? '—'}
+                    subtitle={`${TIPO_ETIQUETA[fila.tipo]} · ${fmtFecha(fila.fecha_inicio)} – ${fmtFecha(fila.fecha_fin)}`}
+                    icon={<ClipboardList className="h-4 w-4" />}
+                    badges={
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${COLOR_ESTADO_SOLICITUD[fila.estado]}`}>
+                        {fila.estado}
+                      </span>
+                    }
+                    fields={[
+                      { label: 'Tipo', value: TIPO_ETIQUETA[fila.tipo] },
+                      { label: 'Días', value: fila.dias },
+                      { label: 'Decisor', value: fila.aprobador_nombre ?? fila.supervisor_nombre ?? '—' },
+                    ]}
+                    actions={
+                      <>
+                        <IconButton
+                          label="Ver detalle de la solicitud"
+                          icon={<Search className="h-4 w-4" />}
+                          onClick={() => setAVer(fila.id)}
+                        />
+                        {fila.estado === 'pendiente' && (
+                          <>
+                            <IconButton
+                              label="Aprobar solicitud"
+                              icon={<Check className="h-4 w-4" />}
+                              onClick={() => setAAprobar(fila)}
+                            />
+                            <IconButton
+                              label="Rechazar solicitud"
+                              icon={<X className="h-4 w-4" />}
+                              variant="danger"
+                              onClick={() => setARechazar(fila)}
+                            />
+                            <IconButton
+                              label="Cancelar solicitud"
+                              icon={<Trash2 className="h-4 w-4" />}
+                              variant="danger"
+                              onClick={() => setACancelar(fila)}
+                            />
+                          </>
+                        )}
+                      </>
+                    }
+                  />
+                ))}
+              </div>
+              <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -299,6 +353,8 @@ function ListaSolicitudes({
                 ))}
               </TableBody>
             </Table>
+              </div>
+            </>
           )}
           {/* Sentinel del scroll infinito */}
           <div ref={loadMoreRef} className="flex justify-center py-2">

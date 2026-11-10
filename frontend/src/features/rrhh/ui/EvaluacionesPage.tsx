@@ -43,6 +43,8 @@ import {
   ConfirmModal,
   Modal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import { ModalNuevoPeriodo } from "./components/ModalNuevoPeriodo";
 
@@ -284,7 +286,44 @@ export function EvaluacionesPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
               <CreateButton label="Nueva evaluación" onClick={abrirForm} />
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <div className="space-y-3 md:hidden">
+                {evaluaciones.map((ev) => (
+                  <MobileRecordCard
+                    key={ev.id}
+                    title={ev.empleado_nombre || "—"}
+                    subtitle={ev.periodo}
+                    icon={<ClipboardCheck className="h-4 w-4" />}
+                    badges={
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                        <Star className="h-3 w-3" />
+                        {ev.promedio_objetivos === null ? 'Sin puntuar' : `${fmtPromedio5(ev.promedio_objetivos)} / 5`}
+                      </span>
+                    }
+                    fields={[
+                      { label: 'Rango', value: ev.inicio_periodo && ev.fin_periodo ? formatRangoFechasCorto(ev.inicio_periodo, ev.fin_periodo) : '—' },
+                      { label: 'Tipo', value: ev.tipo_evaluacion ?? '—' },
+                      { label: 'Objetivos', value: `${ev.cantidad_seleccionados}/${ev.cantidad_objetivos}` },
+                    ]}
+                    actions={
+                      <>
+                        <IconButton
+                          label="Editar evaluación"
+                          icon={<Pencil className="h-4 w-4" />}
+                          onClick={() => navigate(`/rrhh/evaluaciones/${ev.id}`)}
+                        />
+                        <IconButton
+                          label="Eliminar evaluación"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
+                          onClick={() => setConfirmDelete(ev)}
+                        />
+                      </>
+                    }
+                  />
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-100">
                   <TableRow>
@@ -393,7 +432,8 @@ export function EvaluacionesPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

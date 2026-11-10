@@ -29,6 +29,8 @@ import {
   ConfirmModal,
   Modal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 import { getCachedNumberFormat } from '@/utils/formato';
 
@@ -220,6 +222,40 @@ export function PuestosPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
                 }
               />
             ) : (
+              <>
+                <div className="space-y-3 md:hidden">
+                  {puestos.map((p: RrhhPuestoListado) => (
+                    <MobileRecordCard
+                      key={p.id_puesto}
+                      title={p.nombre}
+                      subtitle={p.departamento_nombre || 'Sin departamento'}
+                      icon={<Briefcase className="h-4 w-4" />}
+                      badges={<EstadoBadge activo={p.activo} />}
+                      fields={[
+                        { label: 'Descripción', value: p.descripcion || '—' },
+                        { label: 'Empleados', value: p.total_empleados },
+                        { label: 'Salario mínimo', value: fmtMoneda(p.salario_minimo) },
+                        { label: 'Salario máximo', value: fmtMoneda(p.salario_maximo) },
+                      ]}
+                      actions={
+                        <>
+                          <IconButton
+                            label="Editar puesto"
+                            icon={<Edit className="h-4 w-4" />}
+                            onClick={() => handleEditar(p)}
+                          />
+                          <IconButton
+                            label="Eliminar puesto"
+                            icon={<Trash2 className="h-4 w-4" />}
+                            variant="danger"
+                            onClick={() => setConfirmModal({ isOpen: true, puesto: p })}
+                          />
+                        </>
+                      }
+                    />
+                  ))}
+                </div>
+                <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -273,6 +309,8 @@ export function PuestosPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
                   ))}
                 </TableBody>
               </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

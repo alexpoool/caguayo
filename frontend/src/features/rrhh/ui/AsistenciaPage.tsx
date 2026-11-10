@@ -44,6 +44,8 @@ import {
   ConfirmModal,
   Modal,
   SearchSelect,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 
 const hoyISO = () => toISODateLocal();
@@ -687,6 +689,45 @@ export function AsistenciaPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
               }
             />
           ) : (
+            <>
+              <div className="space-y-3 md:hidden">
+                {asistencias.map((fila) => (
+                  <MobileRecordCard
+                    key={fila.id}
+                    title={fila.empleado_nombre ?? '—'}
+                    subtitle={`${fmtFecha(fila.fecha)}${fila.departamento_nombre ? ` · ${fila.departamento_nombre}` : ''}`}
+                    icon={<Clock className="h-4 w-4" />}
+                    badges={
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${badgeEstadoTabla(fila)}`}>
+                        {etiquetaEstadoTabla(fila)}
+                      </span>
+                    }
+                    fields={[
+                      { label: 'Entrada', value: fmtHora(fila.hora_entrada) ?? '—' },
+                      { label: 'Salida', value: fmtHora(fila.hora_salida) ?? '—' },
+                      { label: 'Tardanza', value: fila.tardanza_minutos > 0 ? formatearMinutos(fila.tardanza_minutos) : '—' },
+                      { label: 'Trabajadas', value: fila.horas_trabajadas_minutos > 0 ? formatearMinutos(fila.horas_trabajadas_minutos) : '—' },
+                      { label: 'Extras', value: fila.horas_extras_minutos > 0 ? formatearMinutos(fila.horas_extras_minutos) : '—' },
+                    ]}
+                    actions={
+                      <>
+                        <IconButton
+                          label="Corregir marcación"
+                          icon={<Edit className="h-4 w-4" />}
+                          onClick={() => abrirCorreccion(fila)}
+                        />
+                        <IconButton
+                          label="Eliminar marcación"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
+                          onClick={() => setAEliminar(fila)}
+                        />
+                      </>
+                    }
+                  />
+                ))}
+              </div>
+              <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -775,6 +816,8 @@ export function AsistenciaPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
                 ))}
               </TableBody>
             </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
