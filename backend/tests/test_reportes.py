@@ -10,7 +10,7 @@ Cubre:
   6. PDFTemplate unit test (construcción, empty state, firmas, landscape, format_quantity)
 
 Estrategia:
-  - Usa ``app.dependency_overrides`` para reemplazar ``get_optional_user`` (en
+  - Usa ``app.dependency_overrides`` para reemplazar ``Current user required`` (en
     ambos routers: ``reportes_router`` y ``proyecto_router``) y ``get_session``
     (con async generator), evitando depender de BD real para la autenticación.
   - Usa ``unittest.mock.patch.object`` para interceptar las funciones del
@@ -74,7 +74,7 @@ def mock_db_session():
 @pytest.fixture
 def auth_success(mock_usuario, mock_db_session):
     """
-    Override ``get_optional_user`` en ambos routers (reportes y proyecto)
+    Override ``Current user required`` en ambos routers (reportes y proyecto)
     y ``get_session`` (async generator) → flujo de autenticación exitosa sin BD real.
     """
 
@@ -86,8 +86,8 @@ def auth_success(mock_usuario, mock_db_session):
 
     app.dependency_overrides.update(
         {
-            reportes_router.get_optional_user: _override_optional_user,
-            proyecto_router.get_optional_user: _override_optional_user,
+            reportes_router.get_current_user_required: _override_optional_user,
+            proyecto_router.get_current_user_required: _override_optional_user,
             get_session: _override_get_session,
         }
     )
@@ -98,7 +98,7 @@ def auth_success(mock_usuario, mock_db_session):
 @pytest.fixture
 def auth_fail(mock_db_session):
     """
-    Override ``get_optional_user`` en ambos routers → lanza ``HTTPException(401)``.
+    Override ``Current user required`` en ambos routers → lanza ``HTTPException(401)``.
     También mockea ``get_session`` para evitar dependencia de BD.
     """
 
@@ -110,8 +110,8 @@ def auth_fail(mock_db_session):
 
     app.dependency_overrides.update(
         {
-            reportes_router.get_optional_user: _override_optional_user_401,
-            proyecto_router.get_optional_user: _override_optional_user_401,
+            reportes_router.get_current_user_required: _override_optional_user_401,
+            proyecto_router.get_current_user_required: _override_optional_user_401,
             get_session: _override_get_session,
         }
     )

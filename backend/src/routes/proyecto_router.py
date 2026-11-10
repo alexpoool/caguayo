@@ -15,29 +15,22 @@ from src.utils.pdf_generator import generar_pdf_creadores
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/proyecto", tags=["proyecto"])
 
-DUMMY_USER = UsuarioInfo(
-    id_usuario=0,
-    ci="00000000000",
-    nombre="Anónimo",
-    primer_apellido="",
-    alias="anonimo",
-)
-
-
-async def get_optional_user(
+async def get_current_user_required(
     authorization: Optional[str] = Header(None),
     db_auth: AsyncSession = Depends(get_auth_session),
 ) -> UsuarioInfo:
+    """Auth obligatoria para el reporte de creadores."""
     if not authorization or not authorization.startswith("Bearer "):
-        return DUMMY_USER
+        raise HTTPException(
+            status_code=401, detail="Token de autenticación requerido"
+        )
     token = authorization.replace("Bearer ", "")
-    try:
-        usuario = await get_current_user(db_auth, token)
-        if usuario:
-            return usuario
-    except Exception:
-        pass
-    return DUMMY_USER
+    usuario = await get_current_user(db_auth, token)
+    if not usuario:
+        raise HTTPException(
+            status_code=401, detail="Token inválido o expirado"
+        )
+    return usuario
 
 
 @router.get("/")
@@ -50,7 +43,7 @@ async def obtener_reporte_creadores(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_registro_creadores(
@@ -101,7 +94,7 @@ async def preview_creadores(
     vigencia: Optional[str] = Query(None, description="Vigencia (activo/inactivo)"),
     texto_busqueda: Optional[str] = Query(None, description="Texto de búsqueda"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_registro_creadores(

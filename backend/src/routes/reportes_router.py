@@ -40,31 +40,22 @@ from src.utils.pdf_generator import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reportes", tags=["reportes"])
 
-# Usuario dummy para cuando los previews se acceden sin token
-DUMMY_USER = UsuarioInfo(
-    id_usuario=0,
-    ci="00000000000",
-    nombre="Anónimo",
-    primer_apellido="",
-    alias="anonimo",
-)
-
-
-async def get_optional_user(
+async def get_current_user_required(
     authorization: Optional[str] = Header(None),
     db_auth: AsyncSession = Depends(get_auth_session),
 ) -> UsuarioInfo:
-    """Auth opcional: valida el token si está presente, retorna dummy si no."""
+    """Auth obligatoria para reportes: sin token válido nunca expone datos."""
     if not authorization or not authorization.startswith("Bearer "):
-        return DUMMY_USER
+        raise HTTPException(
+            status_code=401, detail="Token de autenticación requerido"
+        )
     token = authorization.replace("Bearer ", "")
-    try:
-        usuario = await get_current_user(db_auth, token)
-        if usuario:
-            return usuario
-    except Exception:
-        pass
-    return DUMMY_USER
+    usuario = await get_current_user(db_auth, token)
+    if not usuario:
+        raise HTTPException(
+            status_code=401, detail="Token inválido o expirado"
+        )
+    return usuario
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +66,7 @@ async def get_optional_user(
 @router.get("/personas")
 async def listar_personas(
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         personas = await get_personas_list(db)
@@ -103,7 +94,7 @@ async def listar_personas(
 async def buscar_productos_item_anexo_endpoint(
     q: str = Query("", description="Texto a buscar (nombre o código)"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     """Sugiere productos únicos registrados en item_anexo."""
     try:
@@ -129,7 +120,7 @@ async def obtener_reporte_proveedores_dependencia(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         proveedores, dependencia_info = await get_proveedores_por_dependencia(
@@ -179,7 +170,7 @@ async def obtener_reporte_existencias(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         existencias, dependencia_info = await get_existencias(db, id_dependencia)
@@ -226,7 +217,7 @@ async def obtener_reporte_movimientos_dependencia(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         movimientos, dependencia_info = await get_movimientos_dependencia(
@@ -282,7 +273,7 @@ async def obtener_reporte_movimientos_producto(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         movimientos, dependencia_info, producto_info = await get_movimientos_producto(
@@ -341,7 +332,7 @@ async def obtener_reporte_clientes(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_registro_clientes(db)
@@ -391,7 +382,7 @@ async def obtener_reporte_proyectos(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_registro_proyectos(db, fecha_inicio, fecha_fin)
@@ -447,7 +438,7 @@ async def obtener_reporte_desempeno(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_informe_desempeno(
@@ -505,7 +496,7 @@ async def obtener_reporte_onat(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_reporte_onat(
@@ -559,7 +550,7 @@ async def obtener_reporte_mincult(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_reporte_mincult(db, fecha_inicio, fecha_fin)
@@ -613,7 +604,7 @@ async def obtener_reporte_liquidaciones(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_resumen_liquidaciones(
@@ -665,7 +656,7 @@ async def obtener_reporte_liquidaciones(
 async def preview_existencias(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         existencias, dependencia_info = await get_existencias(db, id_dependencia)
@@ -703,7 +694,7 @@ async def preview_movimientos_dependencia(
     fecha_inicio: date = Query(..., description="Fecha Inicio"),
     fecha_fin: date = Query(..., description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         movimientos, dependencia_info = await get_movimientos_dependencia(
@@ -761,7 +752,7 @@ async def preview_movimientos_producto(
     fecha_inicio: date = Query(..., description="Fecha Inicio"),
     fecha_fin: date = Query(..., description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         movimientos, dependencia_info, producto_info = await get_movimientos_producto(
@@ -819,7 +810,7 @@ async def preview_proveedores_dependencia(
     id_dependencia: Optional[int] = Query(None, description="ID de la Dependencia (opcional)"),
     id_provincia: Optional[int] = Query(None, description="Filtrar por provincia (opcional)"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         proveedores, dependencia_info = await get_proveedores_por_dependencia(
@@ -858,7 +849,7 @@ async def preview_proveedores_dependencia(
 @router.get("/clientes/preview")
 async def preview_clientes(
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_registro_clientes(db)
@@ -893,7 +884,7 @@ async def preview_proyectos(
     fecha_inicio: Optional[date] = Query(None, description="Fecha Inicio"),
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_registro_proyectos(db, fecha_inicio, fecha_fin)
@@ -944,7 +935,7 @@ async def preview_desempeno(
     id_persona: Optional[int] = Query(None, description="Filtrar por creador"),
     estado: Optional[str] = Query(None, description="Estado (pagada/pendiente)"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_informe_desempeno(
@@ -1003,7 +994,7 @@ async def preview_onat(
     id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
     id_persona: Optional[int] = Query(None, description="Filtrar por creador"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_reporte_onat(
@@ -1058,7 +1049,7 @@ async def preview_mincult(
     fecha_inicio: Optional[date] = Query(None, description="Fecha Inicio"),
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_reporte_mincult(db, fecha_inicio, fecha_fin)
@@ -1101,7 +1092,7 @@ async def preview_liquidaciones(
     id_cliente: Optional[int] = Query(None, description="Filtrar por cliente"),
     id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
         data, meta = await get_resumen_liquidaciones(

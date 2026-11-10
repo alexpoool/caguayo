@@ -564,7 +564,7 @@ def generar_pdf_desempeno(
     # cada uno). Va como nota al pie porque este PDF es donde el número se va
     # del sistema: si sólo se avisara en la pantalla, el documento saldría sin
     # explicación.
-    notas = list(notas or [])
+    notas = [notas] if notas else []
     notas.append(
         "La columna VALOR ETAPA y los subtotales por persona suman el valor de "
         "la etapa una vez por cada realizador que tenga. En los contratos "
@@ -573,7 +573,7 @@ def generar_pdf_desempeno(
         "ese total queda multiplicado por el número de realizadores. El COBRO "
         "y el POR COBRAR sí son correctos."
     )
-    template.add_notes_section(notas)
+    template.add_notes_section("\n\n".join(str(n) for n in notas))
 
     template.add_signature_section(
         created_by=usuario_actual,
