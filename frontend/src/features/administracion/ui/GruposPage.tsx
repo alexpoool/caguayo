@@ -27,6 +27,8 @@ import {
   TableHead,
   TableCell,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import type { Grupo, GrupoCreate, GrupoUpdate } from "../domain/administracion";
 
@@ -325,7 +327,54 @@ export function GruposPage({ casosUso }: { casosUso: CasosUsoAdministracion }) {
         <CreateButton label="Nuevo Grupo" onClick={() => { setEditingGrupo(null); resetGrupoForm(); setView("form"); }} className="ml-auto" />
       </div>
 
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <div className="space-y-3 md:hidden">
+        {filteredGrupos.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white py-10 text-center text-gray-500">
+            {searchTerm
+              ? "No se encontraron grupos que coincidan con la búsqueda"
+              : "No hay grupos"}
+          </div>
+        ) : (
+          filteredGrupos.map((grupo) => (
+            <MobileRecordCard
+              key={grupo.id_grupo}
+              title={grupo.nombre}
+              subtitle={grupo.descripcion || "Sin descripción"}
+              icon={<Shield className="h-4 w-4" />}
+              badges={
+                <>
+                  <span className="inline-flex items-center rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+                    #{grupo.id_grupo}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                    {getUsuariosCountByGrupo(grupo.id_grupo)} usuario(s)
+                  </span>
+                </>
+              }
+              onOpen={() => setDetailModal({ isOpen: true, grupo })}
+              openLabel={`Ver detalle del grupo ${grupo.nombre}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Editar grupo"
+                    icon={<Edit className="h-4 w-4" />}
+                    className="text-brand-600"
+                    onClick={() => handleEdit(grupo)}
+                  />
+                  <IconButton
+                    label="Eliminar grupo"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDeleteGrupo(grupo)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden hover:shadow-lg transition-shadow duration-300 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-pink-50">

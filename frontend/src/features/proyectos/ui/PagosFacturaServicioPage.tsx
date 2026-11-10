@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import type { CasosUsoProyectos } from '../application/casos-uso';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 
 import type { PagoFacturaServicio, PagoFacturaServicioCreate, FacturaServicio } from '../domain/proyectos';
@@ -259,7 +259,47 @@ export function PagosFacturaServicioPage({ casosUso }: { casosUso: CasosUsoProye
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      <div className="space-y-3 md:hidden">
+        {filteredPagos.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white py-10 text-center text-gray-500">
+            {searchTerm ? 'No se encontraron pagos que coincidan con la búsqueda' : 'No hay pagos registrados'}
+          </div>
+        ) : (
+          filteredPagos.map((pago) => (
+            <MobileRecordCard
+              key={pago.id_pago_factura_servicio}
+              title={`Pago ${formatFecha(pago.fecha) || 'sin fecha'}`}
+              subtitle={pago.doc_traza || 'Sin documento de traza'}
+              icon={<CreditCard className="h-4 w-4" />}
+              fields={[
+                { label: 'Monto', value: `$${formatCifra(pago.monto)}` },
+                { label: 'Moneda', value: getMonedaNombre(pago.id_moneda) },
+                { label: 'Documento', value: pago.doc_traza || 'N/A' },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item: pago })}
+              openLabel={`Ver detalle del pago ${pago.doc_traza || pago.id_pago_factura_servicio}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Ver detalle del pago"
+                    icon={<Eye className="h-4 w-4" />}
+                    className="text-brand-600"
+                    onClick={() => setDetailModal({ isOpen: true, item: pago })}
+                  />
+                  <IconButton
+                    label="Eliminar pago"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDelete(pago.id_pago_factura_servicio)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -458,7 +498,7 @@ export function PagosFacturaServicioPage({ casosUso }: { casosUso: CasosUsoProye
           onClose={() => setDetailModal({ isOpen: false, item: null })}
           ariaLabel="Detalle del Pago"
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl max-w-lg w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

@@ -35,6 +35,8 @@ import {
   ConfirmModal,
   FormModal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import type { Cuenta } from "../domain/terceros";
 import type { CasosUsoTerceros } from "../application/casos-uso";
@@ -321,7 +323,58 @@ export function CuentasClientePage({ casosUso }: { casosUso: CasosUsoTerceros })
         />
       </div>
 
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <div className="space-y-3 md:hidden">
+        {filteredCuentas.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white py-10 text-center text-gray-500">
+            <Wallet className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+            <p className="font-medium">No se encontraron cuentas</p>
+            <p className="mt-1 text-sm">Comience creando una nueva cuenta bancaria</p>
+            <div className="mt-4 flex justify-center">
+              <CreateButton label="Crear Cuenta" onClick={() => { resetForm(); setEditingCuenta(null); setView("form"); }} />
+            </div>
+          </div>
+        ) : (
+          filteredCuentas.map((cuenta) => (
+            <MobileRecordCard
+              key={cuenta.id_cuenta}
+              title={cuenta.titular}
+              subtitle={cuenta.banco}
+              icon={<Wallet className="h-4 w-4" />}
+              badges={
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+                  <CreditCard className="h-3 w-3" />
+                  {getMonedaNombre(cuenta)}
+                </span>
+              }
+              fields={[
+                { label: 'Núm. cuenta', value: cuenta.numero_cuenta },
+                { label: 'Sucursal', value: cuenta.sucursal || '-' },
+                { label: 'Banco', value: cuenta.banco },
+              ]}
+              onOpen={() => handleEdit(cuenta)}
+              openLabel={`Editar cuenta de ${cuenta.titular}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Editar cuenta"
+                    icon={<Edit className="h-4 w-4" />}
+                    className="text-brand-600"
+                    onClick={() => handleEdit(cuenta)}
+                  />
+                  <IconButton
+                    label="Eliminar cuenta"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleEliminar(cuenta)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden hover:shadow-lg transition-shadow duration-300 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-emerald-50 to-brand-50">

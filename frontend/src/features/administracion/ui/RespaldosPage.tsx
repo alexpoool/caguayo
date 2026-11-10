@@ -29,6 +29,8 @@ import {
   TableCell,
   ConfirmModal,
   ModalOverlay,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import { useAuth } from "@/shared/ui/auth";
 import type { BackupInfo, BackupJob } from "../domain/administracion";
@@ -358,6 +360,51 @@ export function RespaldosPage({ casosUso }: { casosUso: CasosUsoAdministracion }
               </p>
             </div>
           ) : (
+            <>
+            <div className="space-y-3 md:hidden">
+              {backups.map((backup) => (
+                <MobileRecordCard
+                  key={backup.archivo}
+                  title={backup.archivo}
+                  subtitle={backup.fecha}
+                  icon={<DatabaseBackup className="h-4 w-4" />}
+                  badges={
+                    <>
+                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                        {formatoTamano(backup.tamano_bytes)}
+                      </span>
+                      <BadgeIntegridad backup={backup} />
+                    </>
+                  }
+                  fields={[
+                    { label: 'Fecha', value: backup.fecha },
+                    { label: 'Tamaño', value: formatoTamano(backup.tamano_bytes) },
+                  ]}
+                  actions={
+                    <>
+                      <IconButton
+                        label="Restaurar backup"
+                        icon={<RotateCcw className="h-4 w-4" />}
+                        className="text-brand-600"
+                        disabled={backup.cabecera_ok === false}
+                        onClick={() => {
+                          setTextoConfirmacion("");
+                          setRestaurarModal({ isOpen: true, backup });
+                        }}
+                      />
+                      <IconButton
+                        label="Eliminar backup"
+                        icon={<Trash2 className="h-4 w-4" />}
+                        variant="danger"
+                        onClick={() => setDeleteModal({ isOpen: true, backup })}
+                      />
+                    </>
+                  }
+                />
+              ))}
+            </div>
+
+            <div className="hidden md:block">
             <Table>
               <TableHeader className="bg-gradient-to-r from-brand-50 to-gray-50">
                 <TableRow>
@@ -418,6 +465,8 @@ export function RespaldosPage({ casosUso }: { casosUso: CasosUsoAdministracion }
                 ))}
               </TableBody>
             </Table>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

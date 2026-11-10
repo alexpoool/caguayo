@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import type { CasosUsoProyectos } from '../application/casos-uso';
 import { useAuth } from '@/shared/ui/auth';
 import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 import { SignToggle } from '@/shared/ui/components/SignToggle';
 
@@ -644,7 +644,84 @@ export function PreFacturasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
         />
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      <div className="space-y-3 md:hidden">
+        {isLoadingFacturas ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-10 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Cargando...
+          </div>
+        ) : filteredDocs.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white py-10 text-center text-gray-500">
+            {searchTerm
+              ? 'No se encontraron pre-facturas que coincidan con la búsqueda'
+              : 'No hay pre-facturas registradas'}
+          </div>
+        ) : (
+          filteredDocs.map((item) => (
+            <MobileRecordCard
+              key={item.id_factura_servicio}
+              title={`Pre-factura ${item.codigo_factura || 'sin código'}`}
+              subtitle={getEtapaName(item.id_etapa)}
+              icon={<FileText className="h-4 w-4" />}
+              badges={
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+                    <Hash className="h-3 w-3" />
+                    {item.codigo_factura || 'N/A'}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+                    Pre-factura
+                  </span>
+                </>
+              }
+              fields={[
+                { label: 'Etapa', value: getEtapaName(item.id_etapa) },
+                {
+                  label: 'Importe',
+                  value: `${getMonedaSymbol(item.id_moneda)} ${formatCifra(item.importe)}`,
+                },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item })}
+              openLabel={`Ver detalle de la pre-factura ${item.codigo_factura || item.id_factura_servicio}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Aprobar pre-factura"
+                    icon={<CheckCircle2 className="h-4 w-4" />}
+                    className="text-green-600"
+                    onClick={() => handleConfirm(item)}
+                  />
+                  <IconButton
+                    label="Ver documento"
+                    icon={<Eye className="h-4 w-4" />}
+                    className="text-brand-600"
+                    onClick={() => openDocument(item, false)}
+                  />
+                  <IconButton
+                    label="Imprimir pre-factura"
+                    icon={<Printer className="h-4 w-4" />}
+                    onClick={() => openDocument(item, true)}
+                  />
+                  <IconButton
+                    label="Editar pre-factura"
+                    icon={<Edit className="h-4 w-4" />}
+                    className="text-green-600"
+                    onClick={() => openForm(item)}
+                  />
+                  <IconButton
+                    label="Eliminar pre-factura"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDelete(item)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -771,15 +848,15 @@ export function PreFacturasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
             </TableBody>
           </Table>
         </div>
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
       </Card>
+      <div ref={loadMoreRef} className="flex justify-center py-2">
+        {isFetchingMore && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Cargando más...</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -1201,7 +1278,7 @@ export function PreFacturasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
           isOpen={true}
           onClose={() => setDetailModal({ isOpen: false, item: null })}
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl max-w-lg w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

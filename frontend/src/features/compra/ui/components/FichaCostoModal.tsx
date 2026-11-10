@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   X,
@@ -30,6 +29,7 @@ import {
   Input,
   SearchSelect,
   DateInput,
+  ModalOverlay,
 } from "@/shared/ui/components";
 import type { SearchSelectOption } from "@/shared/ui/components";
 import type { CasosUsoCompra } from "../../application/casos-uso";
@@ -637,9 +637,9 @@ export function FichaCostoModal({ isOpen, casosUso, producto, cantidad = 1, fech
     { fila: "14", label: "PRECIO O TARIFA", valor: m.precioTarifa, fuerte: true },
   ];
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[520px] max-h-[92dvh] flex flex-col overflow-hidden animate-scale-in">
+  return (
+    <ModalOverlay isOpen onClose={handleClose} ariaLabel="Ficha de costo">
+      <div className="bg-white shadow-2xl max-w-5xl w-full h-[100dvh] max-h-[100dvh] sm:h-[520px] sm:max-h-[92dvh] sm:rounded-2xl flex flex-col overflow-hidden animate-scale-in">
         {/* Header — mismo estilo que el modal de Nuevo Cliente */}
         <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1306,8 +1306,13 @@ export function FichaCostoModal({ isOpen, casosUso, producto, cantidad = 1, fech
 
       {/* Diálogo de firmas para exportación */}
       {showFirmasModal && (
-        <div className="fixed inset-0 z-[130] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+        <ModalOverlay
+          isOpen
+          onClose={() => setShowFirmasModal(false)}
+          ariaLabel="Firmas del documento"
+          className="z-[130]"
+        >
+          <div className="bg-white shadow-2xl max-w-md w-full max-h-[100dvh] overflow-y-auto sm:max-h-[90dvh] sm:rounded-2xl animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -1362,9 +1367,8 @@ export function FichaCostoModal({ isOpen, casosUso, producto, cantidad = 1, fech
               </Button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
-    </div>,
-    document.body
+    </ModalOverlay>
   );
 }

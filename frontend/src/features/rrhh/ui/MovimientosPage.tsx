@@ -45,6 +45,8 @@ import {
   Modal,
   SearchSelect,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 import { getCachedNumberFormat } from '@/utils/formato';
 
@@ -571,6 +573,60 @@ function TablaMovimientos({
               }
             />
           ) : (
+            <>
+            <div className="space-y-3 md:hidden">
+              {filas.map((fila) => (
+                <MobileRecordCard
+                  key={fila.id}
+                  title={fila.empleado_nombre ?? 'Empleado'}
+                  subtitle={`${fila.empleado_codigo ?? '—'}${fila.departamento_nombre ? ` · ${fila.departamento_nombre}` : ''}`}
+                  icon={tipo === 'bonificaciones' ? <PlusCircle className="h-4 w-4" /> : <MinusCircle className="h-4 w-4" />}
+                  badges={
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        fila.es_porcentaje
+                          ? 'bg-brand-100 text-brand-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {fila.tipo_nombre ?? '—'}
+                      {fila.es_porcentaje ? ' %' : ''}
+                    </span>
+                  }
+                  fields={[
+                    {
+                      label: 'Valor',
+                      value: fila.es_porcentaje ? `${fila.valor} %` : fmtMoneda(fila.valor),
+                    },
+                    { label: 'Monto', value: fmtMoneda(fila.monto) },
+                    {
+                      label: 'Periodo',
+                      value: `${fmtFecha(fila.inicio_periodo)} – ${fmtFecha(fila.fin_periodo)}`,
+                    },
+                  ]}
+                  onOpen={() => abrirEditar(fila)}
+                  openLabel={`Editar ${cfg.etiqueta.toLowerCase()} de ${fila.empleado_nombre ?? 'empleado'}`}
+                  actions={
+                    <>
+                      <IconButton
+                        label="Editar movimiento"
+                        icon={<Edit className="h-4 w-4" />}
+                        className="text-brand-600"
+                        onClick={() => abrirEditar(fila)}
+                      />
+                      <IconButton
+                        label="Eliminar movimiento"
+                        icon={<Trash2 className="h-4 w-4" />}
+                        variant="danger"
+                        onClick={() => setAEliminar(fila)}
+                      />
+                    </>
+                  }
+                />
+              ))}
+            </div>
+
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -633,6 +689,8 @@ function TablaMovimientos({
                 ))}
               </TableBody>
             </Table>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

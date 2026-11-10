@@ -20,6 +20,8 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 
 export function UsuariosCredencialesPage({ casosUso }: { casosUso: CasosUsoAdministracion }) {
@@ -92,7 +94,73 @@ export function UsuariosCredencialesPage({ casosUso }: { casosUso: CasosUsoAdmin
         </div>
       </div>
 
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <div className="space-y-3 md:hidden">
+        {filteredUsuarios.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white py-10 text-center text-gray-500">
+            {searchTerm ? "No se encontraron usuarios" : "No hay usuarios"}
+          </div>
+        ) : (
+          filteredUsuarios.map((usuario) => (
+            <MobileRecordCard
+              key={usuario.id_usuario}
+              title={`${usuario.nombre} ${usuario.primer_apellido} ${usuario.segundo_apellido || ""}`.trim()}
+              subtitle={usuario.cargo || "Sin cargo"}
+              icon={<Key className="h-4 w-4" />}
+              badges={
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+                    <Shield className="h-3 w-3" />
+                    {usuario.grupo_nombre || "-"}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                    <Building className="h-3 w-3" />
+                    {usuario.dependencia_nombre || "-"}
+                  </span>
+                </>
+              }
+              fields={[
+                { label: 'Alias', value: usuario.alias },
+                { label: 'Contraseña', value: usuario.contrasenia_plana || '(hash)' },
+                { label: 'Cargo', value: usuario.cargo || '-' },
+                { label: 'Dependencia', value: usuario.dependencia_nombre || '-' },
+              ]}
+              actions={
+                <>
+                  <IconButton
+                    label="Copiar alias"
+                    icon={
+                      copiedField === `alias-${usuario.id_usuario}` ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )
+                    }
+                    onClick={() => handleCopy(usuario.alias, `alias-${usuario.id_usuario}`)}
+                  />
+                  <IconButton
+                    label="Copiar contraseña"
+                    icon={
+                      copiedField === `pass-${usuario.id_usuario}` ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )
+                    }
+                    onClick={() =>
+                      handleCopy(
+                        usuario.contrasenia_plana || usuario.contrasenia,
+                        `pass-${usuario.id_usuario}`,
+                      )
+                    }
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden hover:shadow-lg transition-shadow duration-300 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-amber-50 to-orange-50">

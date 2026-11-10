@@ -888,7 +888,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
 
       {detailModal.isOpen && detailModal.item && (
         <ModalOverlay isOpen={true} onClose={() => setDetailModal({ isOpen: false, item: null })} ariaLabel="Detalle de solicitud">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl max-w-lg w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -963,7 +963,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
       )}
 
       <ModalOverlay isOpen={contratoModal.isOpen} onClose={() => setContratoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Contrato">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl max-w-lg w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -1019,7 +1019,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
       </ModalOverlay>
 
       <ModalOverlay isOpen={suplementoModal.isOpen} onClose={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Suplemento">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl max-w-lg w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -1067,7 +1067,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
       </ModalOverlay>
 
       <ModalOverlay isOpen={aprobarModal.isOpen} onClose={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); }} ariaLabel="Aprobar Solicitud">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl max-w-3xl w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -1436,7 +1436,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
       </ModalOverlay>
 
       <ModalOverlay isOpen={showNuevoClienteModal} onClose={() => setShowNuevoClienteModal(false)} ariaLabel="Nuevo Cliente">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl max-w-4xl w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

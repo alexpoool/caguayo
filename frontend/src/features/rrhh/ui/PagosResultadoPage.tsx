@@ -28,6 +28,8 @@ import {
   TableHeader,
   TableRow,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 import { getCachedNumberFormat } from '@/utils/formato';
 
@@ -219,7 +221,77 @@ export function PagosResultadoPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
               />
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="space-y-3 md:hidden">
+              {pagos.map((pago) => (
+                <MobileRecordCard
+                  key={pago.id_pago_x_resultado}
+                  title={pago.periodo_nombre || 'Periodo eliminado'}
+                  subtitle={pago.descripcion || `Lote #${pago.id_pago_x_resultado}`}
+                  icon={<Target className="h-4 w-4" />}
+                  badges={
+                    <>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
+                        <Users className="h-3 w-3" />
+                        {pago.empleados_count} empleado(s)
+                      </span>
+                      {pago.nomina_id && (
+                        <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600">
+                          Nómina #{pago.nomina_id}
+                        </span>
+                      )}
+                    </>
+                  }
+                  fields={[
+                    {
+                      label: 'Rango',
+                      value: `${fmtFecha(pago.inicio_periodo)} – ${fmtFecha(pago.fin_periodo)}`,
+                    },
+                    { label: 'Monto', value: fmtMoneda(pago.monto) },
+                    { label: 'Promedio', value: fmtNumero(pago.promedio_general) },
+                    { label: 'Devengado', value: fmtMoneda(pago.total_pagado) },
+                    { label: 'Impuesto', value: fmtMoneda(pago.total_impuesto) },
+                    { label: 'Neto', value: fmtMoneda(pago.total_neto) },
+                  ]}
+                  onOpen={() =>
+                    navigate(`/rrhh/pagos-resultado/${pago.id_pago_x_resultado}`)
+                  }
+                  openLabel={`Ver detalle del pago ${pago.periodo_nombre || pago.id_pago_x_resultado}`}
+                  actions={
+                    <>
+                      <IconButton
+                        label="Ver detalle"
+                        icon={<Eye className="h-4 w-4" />}
+                        className="text-brand-600"
+                        onClick={() =>
+                          navigate(`/rrhh/pagos-resultado/${pago.id_pago_x_resultado}`)
+                        }
+                      />
+                      <IconButton
+                        label="Descargar documento"
+                        icon={
+                          descargando === pago.id_pago_x_resultado ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileDown className="h-4 w-4" />
+                          )
+                        }
+                        disabled={descargando !== null}
+                        onClick={() => descargarDocumento(pago)}
+                      />
+                      <IconButton
+                        label="Eliminar pago"
+                        icon={<Trash2 className="h-4 w-4" />}
+                        variant="danger"
+                        onClick={() => setConfirmDelete(pago)}
+                      />
+                    </>
+                  }
+                />
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -335,6 +407,7 @@ export function PagosResultadoPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -33,6 +33,8 @@ import {
   ConfirmModal,
   FormModal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 
 const MONEDA_FORM_ID = "moneda-form";
@@ -279,7 +281,60 @@ export function MonedasPage({ casosUso }: { casosUso: CasosUsoAdministracion }) 
         <CreateButton label="Nueva Moneda" onClick={() => { resetForm(); setEditingMoneda(null); setView("form"); }} />
       </div>
 
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <div className="space-y-3 md:hidden">
+        {monedas.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white py-10 text-center text-gray-500">
+            <Coins className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+            <p className="font-medium">No se encontraron monedas</p>
+            <p className="mt-1 text-sm">Comience creando una nueva moneda</p>
+            <div className="mt-4 flex justify-center">
+              <CreateButton label="Crear Moneda" onClick={() => { resetForm(); setEditingMoneda(null); setView("form"); }} />
+            </div>
+          </div>
+        ) : (
+          monedas.map((moneda) => (
+            <MobileRecordCard
+              key={moneda.id_moneda}
+              title={moneda.nombre}
+              subtitle={moneda.denominacion}
+              icon={<Coins className="h-4 w-4" />}
+              badges={
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-700">
+                    <Wallet className="h-3 w-3" />#{moneda.id_moneda}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-bold text-brand-700">
+                    <CircleDollarSign className="h-3 w-3" />
+                    {moneda.simbolo}
+                  </span>
+                </>
+              }
+              fields={[
+                { label: 'Denominación', value: moneda.denominacion },
+                { label: 'Símbolo', value: moneda.simbolo },
+              ]}
+              actions={
+                <>
+                  <IconButton
+                    label="Editar moneda"
+                    icon={<Edit className="h-4 w-4" />}
+                    className="text-brand-600"
+                    onClick={() => handleEdit(moneda)}
+                  />
+                  <IconButton
+                    label="Eliminar moneda"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleEliminar(moneda)}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden hover:shadow-lg transition-shadow duration-300 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-yellow-50 to-amber-50">
@@ -376,16 +431,16 @@ export function MonedasPage({ casosUso }: { casosUso: CasosUsoAdministracion }) 
             </TableBody>
           </Table>
         </div>
-        {/* Elemento para scroll infinito */}
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
       </Card>
+      {/* Elemento para scroll infinito */}
+      <div ref={loadMoreRef} className="flex justify-center py-2">
+        {isFetchingMore && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Cargando más...</span>
+          </div>
+        )}
+      </div>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

@@ -44,6 +44,8 @@ import {
   FormModal,
   ModalOverlay,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import type {
   ActividadEconomicaInput,
@@ -1405,6 +1407,87 @@ const {
         {/* Tabla (oculta para catálogos DJ-08: la lista se ve en la vista principal) */}
         {!isDj08Catalogo && (
         <div className="rounded-md border border-gray-200 overflow-hidden shadow-sm">
+          <div className="space-y-3 p-3 md:hidden">
+            {items.length === 0 ? (
+              <div className="py-8 text-center text-gray-400">
+                <AlertCircle className="mx-auto mb-3 h-10 w-10 opacity-50" />
+                <p className="font-medium">No hay elementos registrados</p>
+                <p className="mt-1 text-sm">Agregue elementos usando el formulario superior</p>
+              </div>
+            ) : (
+              items.map((item: any) => (
+                <MobileRecordCard
+                  key={getItemId(item)}
+                  title={item.nombre}
+                  subtitle={item.descripcion || (isSubcategoria ? item.categoria?.nombre : undefined)}
+                  icon={<Package className="h-4 w-4" />}
+                  badges={
+                    <>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                        <Package className="h-3 w-3" />#{getItemId(item)}
+                      </span>
+                      {isEspecialidades && (
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            item.activo
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-200 text-gray-600"
+                          }`}
+                        >
+                          {item.activo ? "Activa" : "Desactivada"}
+                        </span>
+                      )}
+                    </>
+                  }
+                  fields={[
+                    ...(isSubcategoria
+                      ? [{ label: 'Categoría', value: item.categoria?.nombre || '-' }]
+                      : []),
+                    ...(isEspecialidades
+                      ? [{ label: 'Artistas', value: item.artistas ?? 0 }]
+                      : []),
+                    ...(!isDj08Catalogo
+                      ? [{ label: 'Descripción', value: item.descripcion || '-' }]
+                      : []),
+                  ]}
+                  onOpen={() => {
+                    setEditingItem(item);
+                    setFormData(item);
+                  }}
+                  openLabel={`Editar ${item.nombre}`}
+                  actions={
+                    <>
+                      <IconButton
+                        label="Editar elemento"
+                        icon={<Edit className="h-4 w-4" />}
+                        className="text-brand-600"
+                        onClick={() => {
+                          setEditingItem(item);
+                          setFormData(item);
+                        }}
+                      />
+                      {isEspecialidades && !item.activo ? (
+                        <IconButton
+                          label="Reactivar especialidad"
+                          icon={<ToggleLeft className="h-4 w-4" />}
+                          className="text-green-600"
+                          onClick={() => reactivarEspecialidad.mutate(item.id_especialidad)}
+                        />
+                      ) : (
+                        <IconButton
+                          label={isEspecialidades ? "Desactivar especialidad" : "Eliminar elemento"}
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
+                          onClick={() => handleDelete(modalType!, item)}
+                        />
+                      )}
+                    </>
+                  }
+                />
+              ))
+            )}
+          </div>
+          <div className="hidden md:block">
           <Table>
             <TableHeader className={getTableHeaderGradient()}>
               <TableRow>
@@ -1547,6 +1630,7 @@ const {
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
         )}
       </div>
@@ -1576,7 +1660,76 @@ const {
         {/* Tabla */}
         <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="space-y-3 p-3 md:hidden">
+              {filteredItems.length === 0 ? (
+                <div className="py-8 text-center text-gray-400">
+                  <AlertCircle className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                  <p className="font-medium">No hay elementos registrados</p>
+                  <p className="mt-1 text-sm">Agregue elementos usando el botón "Nuevo"</p>
+                </div>
+              ) : (
+                filteredItems.map((item: any) => (
+                  <MobileRecordCard
+                    key={getItemId(item)}
+                    title={item.nombre}
+                    subtitle={item.descripcion || item.categoria?.nombre}
+                    icon={<Package className="h-4 w-4" />}
+                    badges={
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${getListBadgeColors().bg} ${getListBadgeColors().text}`}
+                      >
+                        <Package className="h-3 w-3" />#{getItemId(item)}
+                      </span>
+                    }
+                    fields={[
+                      ...(activeConfigSubTab === "dj08-actividades"
+                        ? [
+                            { label: 'Código', value: item.codigo || '-' },
+                            {
+                              label: 'Período',
+                              value: `${fmtFechaCorta(item.fecha_inicio)} — ${fmtFechaCorta(item.fecha_fin)}`,
+                            },
+                            { label: 'Ingresos', value: fmtMonto(item.ingresos) },
+                            { label: 'Gastos', value: fmtMonto(item.gastos) },
+                          ]
+                        : []),
+                      ...(activeConfigSubTab === "dj08-tributos"
+                        ? [{ label: 'Importe', value: fmtMonto(item.importe) }]
+                        : []),
+                      ...(activeConfigSubTab === "subcategorias"
+                        ? [{ label: 'Categoría', value: item.categoria?.nombre || '-' }]
+                        : []),
+                      ...(!isDj08Catalogo
+                        ? [{ label: 'Descripción', value: item.descripcion || '-' }]
+                        : []),
+                    ]}
+                    onOpen={() => setDetailModal({ isOpen: true, item })}
+                    openLabel={`Ver detalle de ${item.nombre}`}
+                    actions={
+                      <>
+                        <IconButton
+                          label="Editar elemento"
+                          icon={<Edit className="h-4 w-4" />}
+                          className="text-brand-600"
+                          onClick={() => {
+                            setEditingItem(item);
+                            setFormData(item);
+                            setModalType(activeConfigSubTab);
+                          }}
+                        />
+                        <IconButton
+                          label="Eliminar elemento"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
+                          onClick={() => handleDelete(activeConfigSubTab, item)}
+                        />
+                      </>
+                    }
+                  />
+                ))
+              )}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <Table>
                 <TableHeader className={getListHeaderGradient()}>
                   <TableRow>

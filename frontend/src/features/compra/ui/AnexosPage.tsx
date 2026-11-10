@@ -64,6 +64,8 @@ import {
   FormModal,
   CreateButton,
   ModalOverlay,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import { formatFecha, toISODateLocal} from "@/utils/fecha";
 
@@ -1317,7 +1319,58 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-md border-gray-200">
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-10 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Cargando anexos...
+          </div>
+        ) : anexos.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white py-10 text-center text-gray-500">
+            <Package className="mx-auto mb-2 h-10 w-10 text-gray-300" />
+            <p className="font-medium">No hay anexos registrados</p>
+          </div>
+        ) : (
+          anexos.map((anexo) => (
+            <MobileRecordCard
+              key={anexo.id_anexo}
+              title={anexo.nombre_anexo}
+              subtitle={anexo.convenios?.nombre_convenio || 'Sin convenio'}
+              icon={<Package className="h-4 w-4" />}
+              badges={
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+                    <Hash className="h-3 w-3" />
+                    {anexo.codigo_anexo || '-'}
+                  </span>
+                  {anexo.comision ? (
+                    <span className="inline-flex rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
+                      {anexo.comision}%
+                    </span>
+                  ) : null}
+                </>
+              }
+              fields={[
+                { label: 'Convenio', value: anexo.convenios?.nombre_convenio || 'Sin convenio' },
+                { label: 'Fecha', value: formatFecha(anexo.fecha) },
+                { label: 'Comisión', value: anexo.comision ? `${anexo.comision}%` : '-' },
+              ]}
+              onOpen={() => setAnexoDetailModal({ isOpen: true, anexo })}
+              openLabel={`Ver detalle del anexo ${anexo.nombre_anexo}`}
+              actions={
+                <IconButton
+                  label="Editar anexo"
+                  icon={<Edit className="h-4 w-4" />}
+                  className="text-brand-600"
+                  onClick={() => handleEdit(anexo)}
+                />
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-md border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50 sticky top-0 z-10">
@@ -1397,16 +1450,16 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
             </TableBody>
           </Table>
         </div>
-        {/* Sentinel para scroll infinito */}
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
       </Card>
+      {/* Sentinel para scroll infinito */}
+      <div ref={loadMoreRef} className="flex justify-center py-2">
+        {isFetchingMore && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Cargando más...</span>
+          </div>
+        )}
+      </div>
 
       {anexoDetailModal.isOpen && anexoDetailModal.anexo && (
         <ModalOverlay

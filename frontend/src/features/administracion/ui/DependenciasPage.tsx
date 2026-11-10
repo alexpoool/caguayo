@@ -48,6 +48,8 @@ import {
   FormModal,
   CreateButton,
   ModalOverlay,
+  IconButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import type { Dependencia, DependenciaCreate, DependenciaConCuentasCreate } from "../domain/administracion";
 import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
@@ -1026,6 +1028,72 @@ export function DependenciasPage({ casosUso }: { casosUso: CasosUsoAdministracio
                 </Button>
               </div>
             )}
+            <div className="space-y-3 md:hidden">
+              {(() => {
+                const depsMovil = dependenciaSeleccionadaArbol
+                  ? dependencias.filter(
+                      (dep) =>
+                        dep.codigo_padre ===
+                        dependenciaSeleccionadaArbol.id_dependencia,
+                    )
+                  : dependencias;
+
+                if (depsMovil.length === 0) {
+                  return (
+                    <div className="rounded-xl border border-gray-200 bg-white py-8 text-center text-gray-500">
+                      <Building className="mx-auto mb-2 h-8 w-8 text-gray-300" />
+                      <p>No hay subdependencias</p>
+                    </div>
+                  );
+                }
+
+                return depsMovil.map((dep) => (
+                  <MobileRecordCard
+                    key={dep.id_dependencia}
+                    title={dep.nombre}
+                    subtitle={dep.tipo_dependencia?.nombre || 'Sin tipo'}
+                    icon={<Building className="h-4 w-4" />}
+                    badges={
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 font-mono text-xs text-gray-600">
+                        <Hash className="h-3 w-3" />
+                        {dep.denominacion}
+                      </span>
+                    }
+                    fields={[
+                      { label: 'Tipo', value: dep.tipo_dependencia?.nombre || '-' },
+                      { label: 'Teléfono', value: dep.telefono || '-' },
+                      { label: 'Denominación', value: dep.denominacion },
+                    ]}
+                    onOpen={() => handleVerDetalleDesdeTabla(dep)}
+                    openLabel={`Ver detalle de ${dep.nombre}`}
+                    actions={
+                      <>
+                        <IconButton
+                          label="Nueva subdependencia"
+                          icon={<Plus className="h-4 w-4" />}
+                          className="text-green-600"
+                          onClick={() => handleNuevaSubdependencia(dep)}
+                        />
+                        <IconButton
+                          label="Editar dependencia"
+                          icon={<Edit className="h-4 w-4" />}
+                          className="text-brand-600"
+                          onClick={() => handleEdit(dep)}
+                        />
+                        <IconButton
+                          label="Eliminar dependencia"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
+                          onClick={() => handleDelete(dep)}
+                        />
+                      </>
+                    }
+                  />
+                ));
+              })()}
+            </div>
+
+            <div className="hidden md:block">
             <Table>
               <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
                 <TableRow>
@@ -1120,6 +1188,7 @@ export function DependenciasPage({ casosUso }: { casosUso: CasosUsoAdministracio
                 })()}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

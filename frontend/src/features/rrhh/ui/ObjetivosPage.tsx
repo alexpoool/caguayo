@@ -38,6 +38,8 @@ import {
   ConfirmModal,
   Modal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 
 /** Rango del periodo (inicio – fin) en formato legible. */
@@ -306,7 +308,54 @@ export function ObjetivosPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
               <CreateButton label="Nuevo objetivo" onClick={() => abrir()} />
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="space-y-3 md:hidden">
+              {objetivos.map((obj) => (
+                <MobileRecordCard
+                  key={obj.id_objetivos}
+                  title={obj.nombre}
+                  subtitle={obj.observaciones || nombreEmpleado}
+                  icon={<Target className="h-4 w-4" />}
+                  badges={
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                      <Hash className="h-3 w-3" />
+                      Peso {fmtPeso(obj.peso)}
+                    </span>
+                  }
+                  fields={[
+                    {
+                      label: 'Empleado',
+                      value: `${nombreEmpleado}${empleado?.codigo_empleado ? ` · ${empleado.codigo_empleado}` : ''}`,
+                    },
+                    {
+                      label: 'Periodo',
+                      value: rangoFechas(obj.periodo_inicio, obj.periodo_fin),
+                    },
+                    { label: 'Peso', value: fmtPeso(obj.peso) },
+                  ]}
+                  onOpen={() => abrir(obj)}
+                  openLabel={`Editar objetivo ${obj.nombre}`}
+                  actions={
+                    <>
+                      <IconButton
+                        label="Editar objetivo"
+                        icon={<Pencil className="h-4 w-4" />}
+                        className="text-brand-600"
+                        onClick={() => abrir(obj)}
+                      />
+                      <IconButton
+                        label="Eliminar objetivo"
+                        icon={<Trash2 className="h-4 w-4" />}
+                        variant="danger"
+                        onClick={() => setConfirm(obj)}
+                      />
+                    </>
+                  }
+                />
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
               <Table>
                 <TableHeader className="bg-gradient-to-r from-emerald-50 to-emerald-100">
                   <TableRow>
@@ -393,6 +442,7 @@ export function ObjetivosPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

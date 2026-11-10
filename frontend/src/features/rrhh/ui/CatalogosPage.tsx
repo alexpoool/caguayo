@@ -38,6 +38,8 @@ import {
   ConfirmModal,
   Modal,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 
 /** Filas del formulario según el catálogo seleccionado. */
@@ -325,6 +327,76 @@ export function CatalogosPage({ casosUso, tabInicial, onCambiarTab }: CatalogosP
                 }
               />
             ) : (
+              <>
+              <div className="space-y-3 md:hidden">
+                {items.map((item) => {
+                  const registro = comoRegistro(item);
+                  return (
+                    <MobileRecordCard
+                      key={idDe(item)}
+                      title={registro.nombre as string}
+                      subtitle={(registro.descripcion as string | null) || 'Sin descripción'}
+                      icon={<Settings className="h-4 w-4" />}
+                      badges={
+                        <>
+                          {config.tieneValor && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                              <Star className="h-3 w-3" />
+                              {registro.valor as number}
+                            </span>
+                          )}
+                          {config.tienePorcentaje && (
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                registro.es_porcentaje
+                                  ? 'bg-brand-50 text-brand-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {registro.es_porcentaje ? (
+                                <>
+                                  <Percent className="h-3 w-3" /> Porcentaje
+                                </>
+                              ) : (
+                                'Fijo'
+                              )}
+                            </span>
+                          )}
+                          {config.tieneActivo && (
+                            <EstadoBadge activo={registro.activo as boolean} />
+                          )}
+                        </>
+                      }
+                      fields={[
+                        { label: 'Descripción', value: (registro.descripcion as string | null) || '—' },
+                        ...(config.tieneValor
+                          ? [{ label: 'Valor', value: registro.valor as number }]
+                          : []),
+                      ]}
+                      onOpen={() => handleEditar(item)}
+                      openLabel={`Editar ${registro.nombre as string}`}
+                      actions={
+                        <>
+                          <IconButton
+                            label="Editar registro"
+                            icon={<Edit className="h-4 w-4" />}
+                            className="text-brand-600"
+                            onClick={() => handleEditar(item)}
+                          />
+                          <IconButton
+                            label="Eliminar registro"
+                            icon={<Trash2 className="h-4 w-4" />}
+                            variant="danger"
+                            onClick={() => setConfirmModal({ isOpen: true, item })}
+                          />
+                        </>
+                      }
+                    />
+                  );
+                })}
+              </div>
+
+              <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -404,6 +476,8 @@ export function CatalogosPage({ casosUso, tabInicial, onCambiarTab }: CatalogosP
                   })}
                 </TableBody>
               </Table>
+              </div>
+              </>
             )}
           </CardContent>
         </Card>

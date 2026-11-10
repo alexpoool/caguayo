@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { CasosUsoProyectos } from '../application/casos-uso';
 import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal,
-  CreateButton,
+  CreateButton, IconButton, MobileRecordCard,
 } from '@/shared/ui/components';
 
 import type { Servicio, ServicioCreate, ServicioUpdate } from '../domain/proyectos';
@@ -196,7 +196,53 @@ export function ServiciosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      <div className="space-y-3 md:hidden">
+        {filteredServicios.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white py-10 text-center text-gray-500">
+            {searchTerm ? 'No se encontraron servicios que coincidan con la búsqueda' : 'No hay servicios'}
+          </div>
+        ) : (
+          filteredServicios.map((item) => (
+            <MobileRecordCard
+              key={item.id_servicio}
+              title={item.concepto || 'Servicio sin concepto'}
+              subtitle={item.codigo_servicio || 'Sin código'}
+              icon={<Wrench className="h-4 w-4" />}
+              badges={
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+                  <Tag className="h-3 w-3" />
+                  {item.codigo_servicio || 'N/A'}
+                </span>
+              }
+              fields={[
+                { label: 'Unidad', value: item.unidad_medida || 'N/A' },
+                { label: 'Precio', value: `$${Number(item.precio).toFixed(2)}` },
+                { label: 'Moneda', value: getMonedaNombre(item.id_moneda) },
+              ]}
+              onOpen={() => setDetailModal({ isOpen: true, item })}
+              openLabel={`Ver detalle del servicio ${item.codigo_servicio || item.id_servicio}`}
+              actions={
+                <>
+                  <IconButton
+                    label="Editar servicio"
+                    icon={<Edit className="h-4 w-4" />}
+                    className="text-green-600"
+                    onClick={() => openForm(item)}
+                  />
+                  <IconButton
+                    label="Eliminar servicio"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    variant="danger"
+                    onClick={() => handleDelete(item.id_servicio, item.concepto || 'N/A')}
+                  />
+                </>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden shadow-sm border-gray-200 md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
@@ -276,15 +322,15 @@ export function ServiciosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
             </TableBody>
           </Table>
         </div>
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
       </Card>
+      <div ref={loadMoreRef} className="flex justify-center py-2">
+        {isFetchingMore && (
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Cargando más...</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -372,7 +418,7 @@ export function ServiciosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
           isOpen={true}
           onClose={() => setDetailModal({ isOpen: false, item: null })}
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl max-w-lg w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">

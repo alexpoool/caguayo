@@ -35,6 +35,8 @@ import {
   Modal,
   SearchSelect,
   CreateButton,
+  IconButton,
+  MobileRecordCard,
 } from '@/shared/ui/components';
 
 interface Props {
@@ -218,6 +220,67 @@ export function DepartamentosPage({ casosUso, onIrADetalle }: Props) {
                 }
               />
             ) : (
+              <>
+              <div className="space-y-3 md:hidden">
+                {departamentos.map((dep: RrhhDepartamentoListado) => (
+                  <MobileRecordCard
+                    key={dep.id_departamento}
+                    title={dep.nombre}
+                    subtitle={dep.descripcion || 'Sin descripción'}
+                    icon={<Building2 className="h-4 w-4" />}
+                    badges={
+                      <>
+                        <EstadoBadge activo={dep.activo} />
+                        <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600">
+                          {dep.total_puestos} puesto(s)
+                        </span>
+                        <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600">
+                          {dep.total_empleados} empleado(s)
+                        </span>
+                      </>
+                    }
+                    fields={[
+                      { label: 'Responsable', value: dep.responsable_nombre || 'Sin asignar' },
+                      { label: 'Puestos', value: dep.total_puestos },
+                      { label: 'Empleados', value: dep.total_empleados },
+                    ]}
+                    onOpen={
+                      onIrADetalle
+                        ? () => onIrADetalle(dep.id_departamento)
+                        : undefined
+                    }
+                    openLabel={`Ver detalle del departamento ${dep.nombre}`}
+                    actions={
+                      <>
+                        {onIrADetalle && (
+                          <IconButton
+                            label="Ver detalle"
+                            icon={<Eye className="h-4 w-4" />}
+                            className="text-brand-600"
+                            onClick={() => onIrADetalle(dep.id_departamento)}
+                          />
+                        )}
+                        <IconButton
+                          label="Editar departamento"
+                          icon={<Edit className="h-4 w-4" />}
+                          className="text-brand-600"
+                          onClick={() => handleEditar(dep)}
+                        />
+                        <IconButton
+                          label="Eliminar departamento"
+                          icon={<Trash2 className="h-4 w-4" />}
+                          variant="danger"
+                          onClick={() =>
+                            setConfirmModal({ isOpen: true, departamento: dep })
+                          }
+                        />
+                      </>
+                    }
+                  />
+                ))}
+              </div>
+
+              <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -277,6 +340,8 @@ export function DepartamentosPage({ casosUso, onIrADetalle }: Props) {
                   ))}
                 </TableBody>
               </Table>
+              </div>
+              </>
             )}
           </CardContent>
         </Card>

@@ -37,7 +37,7 @@ export function PagoModal({
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose} ariaLabel="Pagos">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90dvh] overflow-auto animate-scale-in">
+      <div className="bg-white shadow-2xl max-w-2xl w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
         {/* Header */}
         <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
           <div className="flex flex-wrap items-center justify-between gap-3">

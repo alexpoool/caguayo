@@ -1367,7 +1367,7 @@ export function FacturasServicioPage({ casosUso }: { casosUso: CasosUsoProyectos
           isOpen={true}
           onClose={() => setDetailModal({ isOpen: false, item: null })}
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl max-w-lg w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -1454,7 +1454,7 @@ export function FacturasServicioPage({ casosUso }: { casosUso: CasosUsoProyectos
           onClose={() => setItemsModal({ isOpen: false, factura: null, items: [] })}
           ariaLabel="Items de Factura"
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90dvh] overflow-auto animate-scale-in">
+          <div className="bg-white shadow-2xl max-w-2xl w-full max-h-[100dvh] overflow-auto animate-scale-in sm:max-h-[90dvh] sm:rounded-2xl">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
