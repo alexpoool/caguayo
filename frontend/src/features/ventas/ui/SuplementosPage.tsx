@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal,
-  CreateButton, IconButton, MobileRecordCard,
+  CreateButton, IconButton, MobileRecordCard, ModalOverlay,
 } from '@/shared/ui/components';
 import type { CasosUsoVentas } from '../application/casos-uso';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
@@ -549,9 +548,13 @@ export function SuplementosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setDetailModal({ isOpen: false, item: null })}
+          ariaLabel="Detalle del suplemento"
+        >
+          <div className="bg-white shadow-2xl w-full sm:max-w-lg max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
             <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4">
@@ -605,8 +608,7 @@ export function SuplementosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </div>
   );

@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { createPortal } from "react-dom";
 import {
   Button,
   Input,
@@ -16,6 +15,7 @@ import {
   CreateButton,
   IconButton,
   MobileRecordCard,
+  ModalOverlay,
 } from "@/shared/ui/components";
 import type { CasosUsoVentas } from '../application/casos-uso';
 import { useDependenciasFiltradas } from "@/hooks/useDependenciasFiltradas";
@@ -698,11 +698,13 @@ const loadInitialData = async () => {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {(detailModal.isOpen &&
-        detailModal.item) &&
-        createPortal(
-          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 bg-black/60 animate-fade-in overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90dvh] overflow-auto animate-scale-in">
+      {(detailModal.isOpen && detailModal.item) && (
+        <ModalOverlay
+          isOpen
+          onClose={() => setDetailModal({ isOpen: false, item: null })}
+          ariaLabel="Detalle de venta en efectivo"
+        >
+            <div className="bg-white shadow-2xl w-full sm:max-w-lg max-h-[100dvh] sm:max-h-[90dvh] overflow-auto sm:rounded-2xl animate-scale-in">
               <div className="p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-brand-50 to-brand-50">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -832,9 +834,8 @@ const loadInitialData = async () => {
                 </button>
               </div>
             </div>
-          </div>,
-          document.body,
-        )}
+        </ModalOverlay>
+      )}
     </div>
   );
 }
