@@ -3,7 +3,11 @@ package com.itemli.mobile.app.navigation
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -15,12 +19,33 @@ import com.itemli.mobile.features.auth.presentation.screens.LoginScreen
 import com.itemli.mobile.features.reports.presentation.screens.ReportDetailScreen
 import com.itemli.mobile.features.reports.presentation.screens.ReportsCatalogScreen
 import com.itemli.mobile.features.settings.presentation.screens.SettingsScreen
+import com.itemli.mobile.shared.infrastructure.SessionManager
+import com.itemli.mobile.shared.ui.components.LoadingView
+import kotlinx.coroutines.flow.collectLatest
+import org.koin.core.context.GlobalContext
 
 /**
- * Raíz de navegación. Une [AdaptiveAppScaffold] con el [NavHost].
- *
- * Las features llamadas aquí son las de presentación de la feature que corresponde.
+ * Raíz de la app: resuelve el destino inicial según la sesión guardada
+ * (Reportes si hay token, Login si no) y reacciona al cierre de sesión.
  */
+@Composable
+fun ItemliAppRoot(windowSizeClass: WindowSizeClass) {
+    val sessionManager = remember { GlobalContext.get().get<SessionManager>() }
+    var startDestination by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        startDestination = if (sessionManager.currentToken() != null) {
+            AppDestination.Reports.route
+        } else {
+            AppDestination.Login.route
+        }
+    }
+
+    when (val destination = startDestination) {
+        null -> LoadingView("Cargando…")
+        else -> AppRoot(windowSizeClass = windowSizeClass, startDestination = destination)
+    }
+}
 @Composable
 fun AppRoot(
     windowSizeClass: WindowSizeClass,
@@ -29,6 +54,16 @@ fun AppRoot(
     val navController: NavHostController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: startDestination
+
+    // Seguridad: si la sesión se cierra (logout o 401), volver al Login y limpiar el backstack.
+    val sessionManager = remember { GlobalContext.get().get<SessionManager>() }
+    LaunchedEffect(Unit) {
+        sessionManager.sessionCleared.collectLatest {
+            navController.navigate(AppDestination.Login.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
 
     AdaptiveAppScaffold(
         windowSizeClass = windowSizeClass,

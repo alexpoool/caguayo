@@ -24,6 +24,16 @@ android {
             // Red local en desarrollo: se permite HTTP de forma explícita.
             // TODO: restringir cleartext cuando exista HTTPS en producción.
         }
+        release {
+            // Seguridad: ofuscación + shrink + resource shrinking.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            // Firma: se define en gradle.properties / CI, nunca en el repo.
+        }
     }
 
     compileOptions {

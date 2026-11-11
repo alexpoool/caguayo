@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.itemli.mobile.features.auth.presentation.adaptive.LoginAdaptiveLayout
 import com.itemli.mobile.features.auth.presentation.viewmodels.LoginViewModel
+import com.itemli.mobile.shared.ui.components.SecureScreen
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -26,6 +27,7 @@ fun LoginScreen(
     onLogged: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
+    SecureScreen()
     val viewModel: LoginViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
 

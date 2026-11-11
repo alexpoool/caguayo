@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.itemli.mobile.features.settings.presentation.adaptive.SettingsAdaptiveLayout
 import com.itemli.mobile.features.settings.presentation.viewmodels.SettingsViewModel
+import com.itemli.mobile.shared.ui.components.SecureScreen
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -22,6 +23,7 @@ fun SettingsScreen(
     windowSizeClass: WindowSizeClass? = null,
     onBack: () -> Unit,
 ) {
+    SecureScreen()
     val viewModel: SettingsViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
 
