@@ -2,10 +2,12 @@ package com.itemli.mobile.features.reports.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.itemli.mobile.features.reports.application.usecases.DownloadReportPdfUseCase
 import com.itemli.mobile.features.reports.application.usecases.GetReportPreviewUseCase
 import com.itemli.mobile.features.reports.application.usecases.GetReportsCatalogUseCase
 import com.itemli.mobile.features.reports.domain.entities.ReportDefinition
 import com.itemli.mobile.features.reports.domain.entities.ReportPreview
+import com.itemli.mobile.features.reports.infrastructure.storage.ReportPdfStorage
 import com.itemli.mobile.shared.domain.AppResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,14 +22,22 @@ data class ReportDetailUiState(
     val preview: ReportPreview? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
+    /** true mientras se descarga el PDF. */
+    val isPdfLoading: Boolean = false,
+    /** content:// del PDF guardado, listo para abrir con ACTION_VIEW. */
+    val pdfUri: String? = null,
+    val pdfError: String? = null,
 )
 
 /**
- * ViewModel de un reporte: carga su definición y pide el preview con los filtros.
+ * ViewModel de un reporte: carga su definición, pide el preview con los filtros
+ * y gestiona la descarga del PDF.
  */
 class ReportDetailViewModel(
     private val getPreviewUseCase: GetReportPreviewUseCase,
     private val getCatalogUseCase: GetReportsCatalogUseCase,
+    private val downloadPdfUseCase: DownloadReportPdfUseCase,
+    private val pdfStorage: ReportPdfStorage,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ReportDetailUiState())
@@ -83,5 +93,34 @@ class ReportDetailViewModel(
                 )
             }
         }
+    }
+
+    /** Descarga el PDF con los filtros actuales y lo guarda en cacheDir/pdf. */
+    fun downloadPdf() {
+        val definition = _state.value.definition ?: return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isPdfLoading = true, pdfError = null)
+            when (val result = downloadPdfUseCase(definition, _state.value.filters)) {
+                is AppResult.Success -> {
+                    val uri = runCatching {
+                        pdfStorage.openUri(pdfStorage.save(result.value, "${definition.id}.pdf"))
+                    }.getOrNull()
+                    _state.value = if (uri == null) {
+                        _state.value.copy(isPdfLoading = false, pdfError = "No se pudo guardar el PDF")
+                    } else {
+                        _state.value.copy(isPdfLoading = false, pdfUri = uri.toString())
+                    }
+                }
+                is AppResult.Failure -> _state.value = _state.value.copy(
+                    isPdfLoading = false,
+                    pdfError = result.error.message ?: "No se pudo descargar el PDF",
+                )
+            }
+        }
+    }
+
+    /** Llamar tras abrir el PDF para permitir descargarlo de nuevo. */
+    fun onPdfOpened() {
+        _state.value = _state.value.copy(pdfUri = null)
     }
 }

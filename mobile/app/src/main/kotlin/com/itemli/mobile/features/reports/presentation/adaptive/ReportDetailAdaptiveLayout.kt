@@ -17,13 +17,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.itemli.mobile.features.reports.presentation.components.ReportFilterForm
+import com.itemli.mobile.features.reports.presentation.components.ReportPdfButton
 import com.itemli.mobile.features.reports.presentation.components.ReportPreviewTable
 import com.itemli.mobile.features.reports.presentation.viewmodels.ReportDetailUiState
 
 /**
  * Layout adaptativo del detalle de un reporte.
  *
- * - Compact  → filtros y preview en columna.
+ * - Compact  → filtros, PDF y preview en columna.
  * - Medium   → filtros a la izquierda y preview a la derecha.
  * - Expanded → igual a Medium con más padding.
  */
@@ -33,6 +34,7 @@ fun ReportDetailAdaptiveLayout(
     state: ReportDetailUiState,
     onFilterChange: (String, String) -> Unit,
     onRefresh: () -> Unit,
+    onDownloadPdf: () -> Unit = {},
 ) {
     val definition = state.definition ?: return
     val isPane = when (windowSizeClass?.widthSizeClass) {
@@ -69,6 +71,10 @@ fun ReportDetailAdaptiveLayout(
                             onRefresh = onRefresh,
                             modifier = Modifier.fillMaxWidth(),
                         )
+                        ReportPdfButton(
+                            state = state,
+                            onDownload = onDownloadPdf,
+                        )
                     }
                     Column(
                         Modifier.weight(0.65f).fillMaxWidth(),
@@ -94,6 +100,10 @@ fun ReportDetailAdaptiveLayout(
                         onFilterChange = onFilterChange,
                         onRefresh = onRefresh,
                         modifier = Modifier.widthIn(max = maxWidth).fillMaxWidth(),
+                    )
+                    ReportPdfButton(
+                        state = state,
+                        onDownload = onDownloadPdf,
                     )
                     state.error?.let {
                         Text(text = it, color = MaterialTheme.colorScheme.error)

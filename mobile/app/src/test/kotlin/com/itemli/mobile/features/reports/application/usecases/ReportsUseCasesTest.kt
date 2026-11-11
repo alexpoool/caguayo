@@ -33,4 +33,16 @@ class ReportsUseCasesTest {
         assertTrue(result is AppResult.Success)
         assertEquals(0, (result as AppResult.Success).value.size)
     }
+
+    @Test
+    fun `descarga de PDF delega en el repositorio`() = runTest {
+        val useCase = DownloadReportPdfUseCase(FakeRepository())
+        val result = useCase(ReportDefinition(
+            id = "existencias", title = "", description = "",
+            module = com.itemli.mobile.features.reports.domain.entities.ReportModule.Inventory,
+            filters = emptyList(), columns = emptyList(),
+            previewPath = "", pdfPath = "",
+        ), emptyMap())
+        assertTrue(result is AppResult.Failure)
+    }
 }

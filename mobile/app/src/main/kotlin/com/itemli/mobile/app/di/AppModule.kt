@@ -4,12 +4,14 @@ import com.itemli.mobile.features.auth.application.usecases.LoginUseCase
 import com.itemli.mobile.features.auth.application.usecases.SearchAliasUseCase
 import com.itemli.mobile.features.auth.domain.repositories.AuthRepository
 import com.itemli.mobile.features.auth.infrastructure.repositories.AuthRepositoryImpl
+import com.itemli.mobile.features.reports.application.usecases.DownloadReportPdfUseCase
 import com.itemli.mobile.features.reports.application.usecases.GetReportsCatalogUseCase
 import com.itemli.mobile.features.reports.application.usecases.GetReportPreviewUseCase
 import com.itemli.mobile.features.reports.domain.repositories.ReportsRepository
 import com.itemli.mobile.features.reports.infrastructure.local.ItemliDatabase
 import com.itemli.mobile.features.reports.infrastructure.local.ReportPreviewDao
 import com.itemli.mobile.features.reports.infrastructure.repositories.ReportsRepositoryImpl
+import com.itemli.mobile.features.reports.infrastructure.storage.ReportPdfStorage
 import com.itemli.mobile.features.settings.application.usecases.LoadServerConfigUseCase
 import com.itemli.mobile.features.settings.application.usecases.SaveServerConfigUseCase
 import com.itemli.mobile.features.settings.domain.repositories.SettingsRepository
@@ -89,9 +91,12 @@ val appModule: Module = module {
     }
     factory { GetReportsCatalogUseCase(get()) }
     factory { GetReportPreviewUseCase(get()) }
+    factory { DownloadReportPdfUseCase(get()) }
+
+    single { ReportPdfStorage(androidApplication()) }
 
     viewModel { LoginViewModel(searchAliasUseCase = get(), loginUseCase = get()) }
     viewModel { ReportsCatalogViewModel(get()) }
-    viewModel { ReportDetailViewModel(get(), get()) }
+    viewModel { ReportDetailViewModel(get(), get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }
 }

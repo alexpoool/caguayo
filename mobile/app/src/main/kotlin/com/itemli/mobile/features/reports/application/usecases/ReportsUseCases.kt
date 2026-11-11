@@ -25,3 +25,15 @@ class GetReportPreviewUseCase(
         filters: Map<String, String>,
     ): AppResult<ReportPreview> = repository.preview(definition, filters)
 }
+
+/**
+ * Descarga el PDF de un reporte con los filtros aplicados.
+ */
+class DownloadReportPdfUseCase(
+    private val repository: ReportsRepository,
+) {
+    suspend operator fun invoke(
+        definition: ReportDefinition,
+        filters: Map<String, String>,
+    ): AppResult<ByteArray> = repository.pdf(definition, filters)
+}
