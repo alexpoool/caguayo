@@ -18,6 +18,8 @@ data class ReportFilter(
     val id: String,
     val label: String,
     val type: ReportFilterType = ReportFilterType.TEXT,
+    /** Los filtros opcionales pueden dejarse vacíos (no se envían al backend). */
+    val required: Boolean = true,
 )
 
 data class ReportColumn(

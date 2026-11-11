@@ -61,8 +61,8 @@ class ReportDetailViewModel(
 
     fun refresh() {
         val definition = _state.value.definition ?: return
-        val missingFilter = definition.filters.firstOrNull {
-            _state.value.filters[it.id].isNullOrBlank()
+        val missingFilter = definition.filters.firstOrNull { filter ->
+            filter.required && _state.value.filters[filter.id].isNullOrBlank()
         }
         if (missingFilter != null) {
             _state.value = _state.value.copy(error = "Falta un filtro obligatorio")
