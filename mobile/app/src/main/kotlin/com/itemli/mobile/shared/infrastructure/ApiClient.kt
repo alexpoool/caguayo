@@ -1,14 +1,17 @@
 package com.itemli.mobile.shared.infrastructure
 
+import com.itemli.mobile.BuildConfig
 import com.itemli.mobile.shared.domain.AppConfig
 import kotlinx.serialization.json.Json
 import okhttp3.Authenticator
 import okhttp3.Credentials
+import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
@@ -16,13 +19,16 @@ import java.util.concurrent.TimeUnit
 /**
  * Cliente HTTP central de la app.
  *
- * Diseñado para trabajar con servidores on-premise: la URL base y el proxy de red
- * corporativa se leen dinámicamente, y `reset()` invalida la caché para que la
- * siguiente llamada use la configuración recién guardada.
+ * Reglas de seguridad:
+ * - Logging HTTP solo en debug y solo `HEADERS` (nunca BODY: el login viaja ahí).
+ * - Las URLs se redactan antes de loguear (el token va en query de algunos endpoints).
+ * - Ante un 401 se invoca [onUnauthorized] para cerrar sesión limpiamente.
  */
 class ApiClient(
     private val configProvider: suspend () -> AppConfig.ServerConfig,
     private val tokenProvider: suspend () -> String?,
+    /** Callback global al recibir 401: cierra sesión y manda a Login. */
+    var onUnauthorized: (() -> Unit)? = null,
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -34,6 +40,13 @@ class ApiClient(
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+
+        if (BuildConfig.DEBUG) {
+            // Solo HEADERS: BODY contendría el password del login.
+            val logging = HttpLoggingInterceptor { message -> android.util.Log.d(TAG, redact(message)) }
+                .apply { level = HttpLoggingInterceptor.Level.HEADERS }
+            builder.addInterceptor(logging)
+        }
 
         config.proxy?.let { proxy ->
             val sockAddr = java.net.InetSocketAddress(proxy.host, proxy.port)
@@ -58,6 +71,16 @@ class ApiClient(
                 chain.proceed(req)
             }
         }
+
+        // 401 → sesión expirada/inválida: avisa una sola vez por respuesta.
+        builder.addInterceptor { chain ->
+            val response = chain.proceed(chain.request())
+            if (response.code == 401 && response.request.header(AUTH_BYPASS) == null) {
+                onUnauthorized?.invoke()
+            }
+            response
+        }
+
         return builder.build()
     }
 
@@ -84,8 +107,6 @@ class ApiClient(
 
     suspend fun <T> createService(clazz: Class<T>): T = retrofit().create(clazz)
 
-    suspend inline fun <reified T : Any> create(): T = createService(T::class.java)
-
     /** Ping simple al servidor. Devuelve Failure si el host/proxy es inválido. */
     suspend fun ping(): Result<Unit> = runCatching {
         val config = configProvider()
@@ -96,4 +117,21 @@ class ApiClient(
             Unit
         }
     }
+
+    companion object {
+        private const val TAG = "ItemliHttp"
+        const val AUTH_BYPASS = "X-Itemli-No-Auth-Handler"
+
+        /**
+         * Quita valores sensibles de una línea de log HTTP:
+         * Authorization, Proxy-Authorization y parámetros token/password.
+         */
+        fun redact(message: String): String = message
+            .replace(Regex("(?i)(Authorization: Bearer)\\s+\\S+"), "$1 [REDACTED]")
+            .replace(Regex("(?i)(Proxy-Authorization: Basic)\\s+\\S+"), "$1 [REDACTED]")
+            .replace(Regex("(?i)(token|password|contrasenia)=([^&\\s]+)"), "$1=[REDACTED]")
+    }
 }
+
+/** Redacta la URL completa para logs: sin query strings sensibles. */
+fun HttpUrl.redacted(): String = buildUpon().query(null).build().toString()

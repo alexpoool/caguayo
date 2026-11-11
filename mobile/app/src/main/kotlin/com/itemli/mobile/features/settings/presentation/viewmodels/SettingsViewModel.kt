@@ -2,6 +2,7 @@ package com.itemli.mobile.features.settings.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.itemli.mobile.BuildConfig
 import com.itemli.mobile.features.settings.application.usecases.LoadServerConfigUseCase
 import com.itemli.mobile.features.settings.application.usecases.SaveServerConfigUseCase
 import com.itemli.mobile.shared.domain.AppConfig
@@ -33,6 +34,8 @@ class SettingsViewModel(
     private val loadServerConfigUseCase: LoadServerConfigUseCase,
     private val saveServerConfigUseCase: SaveServerConfigUseCase,
     private val apiClient: ApiClient,
+    /** En release se exige HTTPS (network_security_config lo bloquea igual, esto da feedback claro). */
+    private val requireHttps: Boolean = !BuildConfig.DEBUG,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsUiState())
@@ -90,6 +93,17 @@ class SettingsViewModel(
             _state.value = _state.value.copy(message = "Proxy inválido: host y puerto son obligatorios")
             return
         }
+        val url = _state.value.baseUrl.trim()
+        if (url.isBlank() || !url.startsWith("http")) {
+            _state.value = _state.value.copy(message = "URL base inválida")
+            return
+        }
+        if (requireHttps && !url.startsWith("https://")) {
+            _state.value = _state.value.copy(
+                message = "En producción se exige HTTPS. Configura la URL del servidor con https://",
+            )
+            return
+        }
 
         viewModelScope.launch {
             val proxy = if (_state.value.useProxy) {
@@ -104,7 +118,7 @@ class SettingsViewModel(
             }
             val result = saveServerConfigUseCase(
                 AppConfig.ServerConfig(
-                    baseUrl = _state.value.baseUrl.trim(),
+                    baseUrl = url,
                     proxy = proxy,
                 ),
             )

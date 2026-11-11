@@ -6,10 +6,12 @@
     <application
         android:name=".ItemliApplication"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:label="Itemli"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Itemli"
-        android:usesCleartextTraffic="true">
+        android:theme="@style/Theme.Itemli">
 
         <activity
             android:name=".MainActivity"

@@ -6,32 +6,35 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.itemli.mobile.shared.domain.AppConfig
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 
 /**
  * Configuración global (URL base, proxy). Persistida en DataStore.
  *
- * La app debe adoptar una configuración distinta según el despliegue:
- * la URL base es editada desde la pantalla de Ajustes.
+ * Reglas de seguridad:
+ * - La URL base NO es secreta y va en DataStore (solo la app la lee).
+ * - El usuario/password del proxy SÍ son secretos: se guardan cifrados en
+ *   [EncryptedSecretStore], nunca en DataStore.
  */
-class ConfigStore(private val context: Context) {
+class ConfigStore(
+    private val context: Context,
+    private val secretStore: EncryptedSecretStore? = null,
+) {
 
     suspend fun current(): AppConfig.ServerConfig {
         val prefs = context.configStore.data.first()
-        val proxyHost = prefs[KEY_PROXY_HOST]
-        val proxyPort = prefs[KEY_PROXY_PORT]
-        val proxy = proxyHost?.let {
-            AppConfig.ProxyConfig(
-                host = it,
-                port = proxyPort ?: 0,
-                user = prefs[KEY_PROXY_USER],
-                password = prefs[KEY_PROXY_PASS],
-            )
-        }
+        val proxyHost = prefs[KEY_PROXY_HOST] ?: return AppConfig.ServerConfig(
+            baseUrl = prefs[KEY_BASE_URL] ?: DEFAULT_BASE_URL,
+            proxy = null,
+        )
+        val proxy = AppConfig.ProxyConfig(
+            host = proxyHost,
+            port = prefs[KEY_PROXY_PORT] ?: 0,
+            user = secretStore?.get(EncryptedSecretStore.KEY_PROXY_USER),
+            password = secretStore?.get(EncryptedSecretStore.KEY_PROXY_PASSWORD),
+        )
         return AppConfig.ServerConfig(
-            baseUrl = prefs[KEY_BASE_URL] ?: AppConfig.ServerConfig().baseUrl,
+            baseUrl = prefs[KEY_BASE_URL] ?: DEFAULT_BASE_URL,
             proxy = proxy,
         )
     }
@@ -43,13 +46,13 @@ class ConfigStore(private val context: Context) {
             if (proxy == null) {
                 prefs.remove(KEY_PROXY_HOST)
                 prefs.remove(KEY_PROXY_PORT)
-                prefs.remove(KEY_PROXY_USER)
-                prefs.remove(KEY_PROXY_PASS)
+                secretStore?.set(EncryptedSecretStore.KEY_PROXY_USER, null)
+                secretStore?.set(EncryptedSecretStore.KEY_PROXY_PASSWORD, null)
             } else {
                 prefs[KEY_PROXY_HOST] = proxy.host
                 prefs[KEY_PROXY_PORT] = proxy.port
-                prefs[KEY_PROXY_USER] = proxy.user
-                prefs[KEY_PROXY_PASS] = proxy.password
+                secretStore?.set(EncryptedSecretStore.KEY_PROXY_USER, proxy.user)
+                secretStore?.set(EncryptedSecretStore.KEY_PROXY_PASSWORD, proxy.password)
             }
         }
     }
@@ -59,8 +62,6 @@ class ConfigStore(private val context: Context) {
         private val KEY_BASE_URL = stringPreferencesKey("base_url")
         private val KEY_PROXY_HOST = stringPreferencesKey("proxy_host")
         private val KEY_PROXY_PORT = intPreferencesKey("proxy_port")
-        private val KEY_PROXY_USER = stringPreferencesKey("proxy_user")
-        private val KEY_PROXY_PASS = stringPreferencesKey("proxy_pass")
     }
 }
 
