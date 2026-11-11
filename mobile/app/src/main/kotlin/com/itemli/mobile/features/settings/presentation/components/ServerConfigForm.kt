@@ -28,8 +28,11 @@ fun ServerConfigForm(
     useProxy: Boolean,
     isLoading: Boolean,
     isTesting: Boolean,
+    appLockEnabled: Boolean = false,
+    appLockSupported: Boolean = true,
     onBaseUrlChange: (String) -> Unit,
     onProxyChange: (Boolean, String, String, String, String) -> Unit,
+    onAppLockChange: (Boolean) -> Unit = {},
     onSave: () -> Unit,
     onTest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -49,6 +52,16 @@ fun ServerConfigForm(
                 onCheckedChange = { checked -> onProxyChange(checked, proxyHost, proxyPort, proxyUser, proxyPassword) },
             )
             Text("Usar proxy corporativo")
+        }
+
+        if (appLockSupported) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = appLockEnabled,
+                    onCheckedChange = onAppLockChange,
+                )
+                Text("Bloquear la app con biometría")
+            }
         }
 
         if (useProxy) {

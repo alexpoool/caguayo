@@ -29,6 +29,7 @@ private fun SettingsAdaptiveLayoutPreview() {
         state = state(),
         onBaseUrlChange = {},
         onProxyChange = { _, _, _, _, _ -> },
+        onAppLockChange = {},
         onSave = {},
         onTest = {},
     )

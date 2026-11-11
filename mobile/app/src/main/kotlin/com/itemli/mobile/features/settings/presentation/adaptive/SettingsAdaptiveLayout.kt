@@ -27,6 +27,7 @@ fun SettingsAdaptiveLayout(
     state: SettingsUiState,
     onBaseUrlChange: (String) -> Unit,
     onProxyChange: (Boolean, String, String, String, String) -> Unit,
+    onAppLockChange: (Boolean) -> Unit,
     onSave: () -> Unit,
     onTest: () -> Unit,
 ) {
@@ -61,8 +62,11 @@ fun SettingsAdaptiveLayout(
                 useProxy = state.useProxy,
                 isLoading = state.isLoading,
                 isTesting = state.isTesting,
+                appLockEnabled = state.appLockEnabled,
+                appLockSupported = state.appLockSupported,
                 onBaseUrlChange = onBaseUrlChange,
                 onProxyChange = onProxyChange,
+                onAppLockChange = onAppLockChange,
                 onSave = onSave,
                 onTest = onTest,
             )

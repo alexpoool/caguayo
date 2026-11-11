@@ -2,14 +2,15 @@ package com.itemli.mobile
 
 import android.os.Bundle
 import android.os.SystemClock
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.itemli.mobile.app.navigation.ItemliAppRoot
 import com.itemli.mobile.shared.infrastructure.SessionManager
+import com.itemli.mobile.shared.ui.components.AppLockGate
 import com.itemli.mobile.shared.ui.theme.ItemliTheme
 import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
@@ -18,10 +19,11 @@ import org.koin.core.context.GlobalContext
  * Único Activity de la app. Aquí se calcula el WindowSizeClass una sola vez y
  * se reparte a la navegación y a las pantallas adaptativas.
  *
- * Seguridad: si la app pasa más de [SESSION_TIMEOUT_MS] en background,
- * la sesión se cierra y la app vuelve al Login al reabrirse.
+ * Seguridad:
+ * - AppLockGate: bloqueo biométrico opcional al abrir la app.
+ * - Timeout de sesión tras [SESSION_TIMEOUT_MS] en background.
  */
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private var pausedAt: Long = 0L
 
@@ -33,7 +35,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
             ItemliTheme {
-                ItemliAppRoot(windowSizeClass = windowSizeClass)
+                AppLockGate {
+                    ItemliAppRoot(windowSizeClass = windowSizeClass)
+                }
             }
         }
     }

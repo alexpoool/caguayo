@@ -37,7 +37,7 @@ import org.koin.dsl.module
 val appModule: Module = module {
 
     single<TokenStorage> { EncryptedTokenStorage(androidApplication()) }
-    single { ConfigStore(androidApplication()) }
+    single { ConfigStore(androidApplication(), get()) }
 
     single {
         ApiClient(
