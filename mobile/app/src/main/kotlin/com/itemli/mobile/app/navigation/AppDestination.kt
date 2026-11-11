@@ -1,7 +1,7 @@
 package com.itemli.mobile.app.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
  */
 sealed class AppDestination(val route: String, val label: String, val icon: ImageVector?) {
     data object Login : AppDestination("login", "Login", null)
-    data object Reports : AppDestination("reports", "Reportes", Icons.Filled.Description)
+    data object Reports : AppDestination("reports", "Reportes", Icons.Filled.List)
     data object Settings : AppDestination("settings", "Ajustes", Icons.Filled.Settings)
 
     /** Detalle de un reporte, no se muestra en la navegación principal. */

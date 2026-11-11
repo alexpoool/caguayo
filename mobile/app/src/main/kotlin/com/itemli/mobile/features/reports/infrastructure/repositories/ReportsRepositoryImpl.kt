@@ -19,7 +19,9 @@ class ReportsRepositoryImpl(
 ) : ReportsRepository {
 
     override suspend fun catalog(): AppResult<List<ReportDefinition>> =
-        AppResult.Success(listOf(ReportCatalog.existencias))    override suspend fun preview(
+        AppResult.Success(listOf(ReportCatalog.existencias))
+
+    override suspend fun preview(
         definition: ReportDefinition,
         filters: Map<String, String>,
     ): AppResult<ReportPreview> {

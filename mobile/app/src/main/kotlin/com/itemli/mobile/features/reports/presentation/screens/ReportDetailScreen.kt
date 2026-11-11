@@ -29,7 +29,11 @@ fun ReportDetailScreen(
 
     if (state.definition == null) {
         Box(Modifier.fillMaxSize()) {
-            ErrorView("Reporte no encontrado: $reportId")
+            if (state.error != null) {
+                ErrorView(state.error ?: "Reporte no encontrado: $reportId")
+            } else {
+                LoadingView("Cargando reporte…")
+            }
         }
         return
     }

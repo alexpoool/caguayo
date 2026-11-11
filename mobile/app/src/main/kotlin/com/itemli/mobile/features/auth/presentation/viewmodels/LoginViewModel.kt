@@ -48,7 +48,7 @@ class LoginViewModel(
         viewModelScope.launch {
             val result = searchAliasUseCase(_state.value.alias.trim())
             _state.value = when (result) {
-                is AppResult.Success -> result.value.copy(bases = result.value)
+                is AppResult.Success -> _state.value.copy(bases = result.value)
                 is AppResult.Failure -> _state.value.copy(
                     bases = emptyList(),
                     error = result.error.message ?: "Error al buscar el alias",

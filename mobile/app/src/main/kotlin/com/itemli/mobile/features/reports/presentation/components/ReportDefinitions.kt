@@ -29,7 +29,7 @@ fun ReportCard(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                "Sur: ${definition.module.label}",
+                "Módulo: ${definition.module.label}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.tertiary,
             )

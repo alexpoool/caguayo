@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -77,7 +77,7 @@ fun AdaptiveAppScaffold(
                     label = { Text("Reportes") },
                     selected = currentRoute == AppDestination.Reports.route,
                     onClick = { onNavigate(AppDestination.Reports) },
-                    icon = { Icon(Icons.Filled.Description, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.List, contentDescription = null) },
                 )
                 NavigationDrawerItem(
                     label = { Text("Ajustes") },

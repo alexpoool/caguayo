@@ -1,3 +1,5 @@
+package com.itemli.mobile.shared.domain
+
 sealed class AppResult<out T> {
     data class Success<T>(val value: T) : AppResult<T>()
     data class Failure(val error: Throwable) : AppResult<Nothing>()

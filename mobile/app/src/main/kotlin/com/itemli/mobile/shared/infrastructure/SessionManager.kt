@@ -9,7 +9,7 @@ import com.itemli.mobile.shared.domain.TokenStorage
  */
 class SessionManager(
     private val tokenStorage: TokenStorage,
-    private val configProvider: () -> AppConfig.ServerConfig,
+    private val configProvider: suspend () -> AppConfig.ServerConfig,
 ) {
     var token: String? = null
         private set

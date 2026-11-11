@@ -3,6 +3,7 @@ package com.itemli.mobile.features.reports.presentation.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.itemli.mobile.features.reports.application.usecases.GetReportPreviewUseCase
+import com.itemli.mobile.features.reports.application.usecases.GetReportsCatalogUseCase
 import com.itemli.mobile.features.reports.domain.entities.ReportDefinition
 import com.itemli.mobile.features.reports.domain.entities.ReportPreview
 import com.itemli.mobile.shared.domain.AppResult

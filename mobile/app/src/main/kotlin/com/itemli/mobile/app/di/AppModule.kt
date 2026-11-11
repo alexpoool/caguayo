@@ -12,12 +12,17 @@ import com.itemli.mobile.features.settings.application.usecases.LoadServerConfig
 import com.itemli.mobile.features.settings.application.usecases.SaveServerConfigUseCase
 import com.itemli.mobile.features.settings.domain.repositories.SettingsRepository
 import com.itemli.mobile.features.settings.infrastructure.SettingsRepositoryImpl
+import com.itemli.mobile.features.auth.presentation.viewmodels.LoginViewModel
+import com.itemli.mobile.features.reports.presentation.viewmodels.ReportsCatalogViewModel
+import com.itemli.mobile.features.reports.presentation.viewmodels.ReportDetailViewModel
+import com.itemli.mobile.features.settings.presentation.viewmodels.SettingsViewModel
 import com.itemli.mobile.shared.domain.TokenStorage
 import com.itemli.mobile.shared.infrastructure.ApiClient
 import com.itemli.mobile.shared.infrastructure.ConfigStore
 import com.itemli.mobile.shared.infrastructure.EncryptedTokenStorage
 import com.itemli.mobile.shared.infrastructure.SessionManager
 import org.koin.android.ext.koin.androidApplication
+import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -62,7 +67,17 @@ val appModule: Module = module {
     factory { SearchAliasUseCase(get()) }
     factory { LoginUseCase(get()) }
     factory { LoadServerConfigUseCase(get()) }
-    factory { SaveServerConfigUseCase(get()) }
+    factory {
+        SaveServerConfigUseCase(
+            repository = get(),
+            onConfigChanged = { get<ApiClient>().reset() },
+        )
+    }
     factory { GetReportsCatalogUseCase(get()) }
     factory { GetReportPreviewUseCase(get()) }
+
+    viewModel { LoginViewModel(searchAliasUseCase = get(), loginUseCase = get()) }
+    viewModel { ReportsCatalogViewModel(get()) }
+    viewModel { ReportDetailViewModel(get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get()) }
 }

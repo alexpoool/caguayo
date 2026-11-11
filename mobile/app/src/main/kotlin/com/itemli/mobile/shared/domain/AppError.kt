@@ -1,3 +1,5 @@
+package com.itemli.mobile.shared.domain
+
 sealed class AppError : Exception() {
     class NoInternet(prefix: String? = null) : AppError()
     object Network : AppError()

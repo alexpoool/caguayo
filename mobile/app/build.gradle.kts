@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlinCompose)
+    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.ksp)
 }
 
@@ -22,7 +23,6 @@ android {
             isMinifyEnabled = false
             // Red local en desarrollo: se permite HTTP de forma explícita.
             // TODO: restringir cleartext cuando exista HTTPS en producción.
-            isProfileable = false
         }
     }
 

@@ -33,7 +33,7 @@ fun SettingsScreen(
             state = state,
             onBaseUrlChange = viewModel::onBaseUrlChange,
             onProxyChange = viewModel::onProxyChange,
-            onSave = viewModel::save,
+            onSave = { viewModel.save() },
             onTest = { viewModel.testConnection { ok, msg ->
                 /* snackbar pendiente */
             } },
