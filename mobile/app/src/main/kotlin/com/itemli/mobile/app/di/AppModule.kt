@@ -7,6 +7,8 @@ import com.itemli.mobile.features.auth.infrastructure.repositories.AuthRepositor
 import com.itemli.mobile.features.reports.application.usecases.GetReportsCatalogUseCase
 import com.itemli.mobile.features.reports.application.usecases.GetReportPreviewUseCase
 import com.itemli.mobile.features.reports.domain.repositories.ReportsRepository
+import com.itemli.mobile.features.reports.infrastructure.local.ItemliDatabase
+import com.itemli.mobile.features.reports.infrastructure.local.ReportPreviewDao
 import com.itemli.mobile.features.reports.infrastructure.repositories.ReportsRepositoryImpl
 import com.itemli.mobile.features.settings.application.usecases.LoadServerConfigUseCase
 import com.itemli.mobile.features.settings.application.usecases.SaveServerConfigUseCase
@@ -57,8 +59,20 @@ val appModule: Module = module {
     }
 
     single<ReportsRepository> {
-        ReportsRepositoryImpl(apiClient = get())
+        ReportsRepositoryImpl(
+            apiClient = get(),
+            previewDao = get(),
+        )
     }
+
+    single {
+        androidx.room.Room.databaseBuilder(
+            androidApplication(),
+            ItemliDatabase::class.java,
+            ItemliDatabase.NAME,
+        ).fallbackToDestructiveMigration().build()
+    }
+    single<ReportPreviewDao> { get<ItemliDatabase>().reportPreviewDao() }
 
     single<SettingsRepository> {
         SettingsRepositoryImpl(configStore = get())

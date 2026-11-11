@@ -45,4 +45,6 @@ data class ReportDefinition(
 data class ReportPreview(
     val rows: List<Map<String, Any?>>,
     val totals: Map<String, Any?>,
+    /** true cuando el resultado salió de la caché local (Room) por falta de red. */
+    val fromCache: Boolean = false,
 )
