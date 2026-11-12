@@ -69,6 +69,7 @@ fun SettingsAdaptiveLayout(
                 onAppLockChange = onAppLockChange,
                 onSave = onSave,
                 onTest = onTest,
+                windowSizeClass = windowSizeClass,
             )
             state.message?.let {
                 Text(text = it, color = MaterialTheme.colorScheme.error)

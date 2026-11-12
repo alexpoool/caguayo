@@ -4,13 +4,24 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -36,7 +47,10 @@ fun ServerConfigForm(
     onSave: () -> Unit,
     onTest: () -> Unit,
     modifier: Modifier = Modifier,
+    windowSizeClass: androidx.compose.material3.windowsizeclass.WindowSizeClass? = null,
 ) {
+    var showProxyHelp by remember { mutableStateOf(false) }
+
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
             value = baseUrl,
@@ -52,6 +66,14 @@ fun ServerConfigForm(
                 onCheckedChange = { checked -> onProxyChange(checked, proxyHost, proxyPort, proxyUser, proxyPassword) },
             )
             Text("Usar proxy corporativo")
+            IconButton(onClick = { showProxyHelp = true }) {
+                Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = "Cómo conectarse al proxy",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
 
         if (appLockSupported) {
@@ -108,5 +130,12 @@ fun ServerConfigForm(
                 if (isTesting) CircularProgressIndicator() else Text("Probar conexión")
             }
         }
+    }
+
+    if (showProxyHelp) {
+        ProxyHelpDialog(
+            windowSizeClass = windowSizeClass,
+            onDismiss = { showProxyHelp = false },
+        )
     }
 }
