@@ -47,6 +47,8 @@ android {
 
     buildFeatures {
         compose = true
+        // Usamos BuildConfig.DEBUG en ApiClient/Settings/DeviceIntegrity.
+        buildConfig = true
     }
 
     packaging {

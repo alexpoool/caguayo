@@ -98,5 +98,5 @@ val appModule: Module = module {
     viewModel { LoginViewModel(searchAliasUseCase = get(), loginUseCase = get()) }
     viewModel { ReportsCatalogViewModel(get()) }
     viewModel { ReportDetailViewModel(get(), get(), get(), get()) }
-    viewModel { SettingsViewModel(get(), get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get(), get()) }
 }

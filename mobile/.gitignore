@@ -11,3 +11,4 @@
 *.aab
 # no ignorar el wrapper jar:
 !gradle/wrapper/gradle-wrapper.jar
+.kotlin/

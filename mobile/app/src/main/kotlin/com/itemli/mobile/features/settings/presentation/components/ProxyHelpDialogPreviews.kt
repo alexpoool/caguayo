@@ -1,10 +1,10 @@
 package com.itemli.mobile.features.settings.presentation.components
 
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 
 /**
@@ -12,8 +12,9 @@ import androidx.compose.ui.unit.dp
  * Las WindowSizeClass se construyen a mano porque el Dialog no respeta
  * widthDp del preview directamente.
  */
+@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 private fun sizeClass(width: Int): WindowSizeClass = WindowSizeClass.calculateFromSize(
-    androidx.compose.ui.size.Size(width.toFloat(), 800f),
+    DpSize(width.dp, 800.dp),
 )
 
 @Preview(name = "Compact 360dp", widthDp = 360)

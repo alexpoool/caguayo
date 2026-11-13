@@ -134,4 +134,4 @@ class ApiClient(
 }
 
 /** Redacta la URL completa para logs: sin query strings sensibles. */
-fun HttpUrl.redacted(): String = buildUpon().query(null).build().toString()
+fun HttpUrl.redacted(): String = toString().substringBefore("?")

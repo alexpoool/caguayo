@@ -5,6 +5,6 @@ sealed class AppError : Exception() {
     object Network : AppError()
     object Timeout : AppError()
     object Auth : AppError()
-    data class Api(val code: Int, val message: String) : AppError()
+    data class Api(val code: Int, override val message: String) : AppError()
     object Unknown : AppError()
 }

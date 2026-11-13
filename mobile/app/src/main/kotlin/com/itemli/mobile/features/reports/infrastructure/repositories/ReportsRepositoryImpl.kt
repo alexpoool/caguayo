@@ -217,7 +217,7 @@ class ReportsRepositoryImpl(
         totals = ReportPreviewJson.decodeTotals(entity.totalsJson),
     )
 
-    private fun api(): ReportsApi = apiClient.createService(ReportsApi::class.java)
+    private suspend fun api(): ReportsApi = apiClient.createService(ReportsApi::class.java)
 }
 
 /** Clave de caché: id del reporte + filtros ordenados. */
