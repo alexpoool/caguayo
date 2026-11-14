@@ -27,8 +27,12 @@ fun AppLockGate(
     var locked by remember { mutableStateOf<Boolean?>(null) }
 
     LaunchedEffect(Unit) {
-        val manager = GlobalContext.get().get<AppLockManager>()
-        locked = manager.isEnabled() && manager.isSupported()
+        // Blindaje: un fallo del almacén cifrado/Keystore no debe tumbar la app;
+        // simplemente se considera que el app-lock está desactivado.
+        locked = runCatching {
+            val manager = GlobalContext.get().get<AppLockRepository>()
+            (manager as? AppLockManager)?.let { it.isEnabled() && it.isSupported() } ?: manager.isEnabled()
+        }.getOrDefault(false)
     }
 
     when (val isLocked = locked) {

@@ -16,7 +16,9 @@ import org.koin.dsl.module
 val securityModule: Module = module {
 
     single { EncryptedSecretStore(androidApplication()) }
-    single<AppLockRepository> { AppLockManager(androidApplication(), get()) }
+    // El tipo concreto se registra (lo pide AppLockGate) y la interfaz es su alias.
+    single { AppLockManager(androidApplication(), get()) }
+    single<AppLockRepository> { get<AppLockManager>() }
 
     factory { GetAppLockUseCase(get()) }
     factory { SetAppLockUseCase(get()) }

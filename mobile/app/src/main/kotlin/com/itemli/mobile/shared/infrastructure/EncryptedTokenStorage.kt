@@ -24,14 +24,19 @@ class EncryptedTokenStorage(context: Context) : TokenStorage {
         )
     }
 
-    override suspend fun token(): String? = prefs.getString(KEY_TOKEN, null)
+    override suspend fun token(): String? =
+        // Blindaje: si el almacén cifrado falla (Keystore, prefs corruptas),
+        // se devuelve null y el usuario vuelve al Login; la app no muere.
+        runCatching { prefs.getString(KEY_TOKEN, null) }.getOrNull()
 
     override suspend fun setToken(token: String?) {
-        prefs.edit().putString(KEY_TOKEN, token).apply()
+        runCatching { prefs.edit().putString(KEY_TOKEN, token).apply() }
+            .onFailure { android.util.Log.e("ItemliSecurity", "No se pudo guardar el token", it) }
     }
 
     override suspend fun clear() {
-        prefs.edit().clear().apply()
+        runCatching { prefs.edit().clear().apply() }
+            .onFailure { android.util.Log.e("ItemliSecurity", "No se pudo borrar el token", it) }
     }
 
     private companion object { const val KEY_TOKEN = "auth_token" }
