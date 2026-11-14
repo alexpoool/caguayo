@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- DEBUG: permite HTTP solo a servidores internos de desarrollo (on-premise). -->
+<!-- DEBUG: HTTP en claro permitido: los servidores de desarrollo son LAN
+     con IP DHCP que cambia. RELEASE (res/main) sigue HTTPS-only. -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">10.0.0.15</domain>
-        <domain includeSubdomains="true">192.168.0.1</domain>
-        <domain includeSubdomains="true">192.168.1.1</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

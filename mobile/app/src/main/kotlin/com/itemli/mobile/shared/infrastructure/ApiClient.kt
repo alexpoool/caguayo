@@ -14,6 +14,8 @@ import okhttp3.Route
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 /**
@@ -108,13 +110,15 @@ class ApiClient(
     suspend fun <T> createService(clazz: Class<T>): T = retrofit().create(clazz)
 
     /** Ping simple al servidor. Devuelve Failure si el host/proxy es inválido. */
-    suspend fun ping(): Result<Unit> = runCatching {
-        val config = configProvider()
-        val token = tokenProvider()
-        val request = Request.Builder().url(config.baseUrl).build()
-        okHttp(config, token).newCall(request).execute().use { resp ->
-            require(resp.isSuccessful) { "HTTP ${resp.code}" }
-            Unit
+    suspend fun ping(): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val config = configProvider()
+            val token = tokenProvider()
+            val request = Request.Builder().url(config.baseUrl).build()
+            okHttp(config, token).newCall(request).execute().use { resp ->
+                require(resp.isSuccessful) { "HTTP ${resp.code}" }
+                Unit
+            }
         }
     }
 
