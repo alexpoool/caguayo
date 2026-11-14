@@ -11,6 +11,8 @@ import com.itemli.mobile.features.reports.infrastructure.mappers.ReportCatalog
 import com.itemli.mobile.features.reports.infrastructure.mappers.toRows
 import com.itemli.mobile.shared.domain.AppResult
 import com.itemli.mobile.shared.infrastructure.ApiClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.IOException
 
 /**
@@ -52,7 +54,10 @@ class ReportsRepositoryImpl(
         val result = runCatching {
             if (definition.pdfPath.isBlank()) throw IOException("PDF no disponible")
             val response = api().downloadPdf(definition.pdfPath, pdfQueries(filters))
-            response.bytes()
+            // El cuerpo de un ResponseBody se lee de red bajo demanda: si se
+            // lee en el hilo principal (el ViewModel corre en Main) lanza
+            // NetworkOnMainThreadException y el cuerpo queda filtrado.
+            withContext(Dispatchers.IO) { response.use { it.bytes() } }
         }
         return if (result.isSuccess) {
             AppResult.Success(result.getOrThrow())

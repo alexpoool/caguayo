@@ -33,8 +33,11 @@ fun ReportDetailScreen(
     // Al terminar la descarga se abre el PDF con un lector externo.
     LaunchedEffect(state.pdfUri) {
         state.pdfUri?.let { uri ->
-            openPdf(context, uri)
-            viewModel.onPdfOpened()
+            if (!openPdf(context, uri)) {
+                viewModel.onPdfOpenFailed("No hay un visor de PDF instalado en el teléfono")
+            } else {
+                viewModel.onPdfOpened()
+            }
         }
     }
 

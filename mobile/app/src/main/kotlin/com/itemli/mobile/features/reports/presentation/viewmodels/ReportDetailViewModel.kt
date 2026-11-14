@@ -123,4 +123,9 @@ class ReportDetailViewModel(
     fun onPdfOpened() {
         _state.value = _state.value.copy(pdfUri = null)
     }
+
+    /** La descarga fue bien pero no se pudo abrir (p.ej. sin visor de PDF). */
+    fun onPdfOpenFailed(message: String) {
+        _state.value = _state.value.copy(pdfUri = null, pdfError = message)
+    }
 }
