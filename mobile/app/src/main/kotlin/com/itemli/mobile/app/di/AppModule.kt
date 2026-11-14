@@ -97,6 +97,14 @@ val appModule: Module = module {
 
     viewModel { LoginViewModel(searchAliasUseCase = get(), loginUseCase = get()) }
     viewModel { ReportsCatalogViewModel(get()) }
-    viewModel { ReportDetailViewModel(get(), get(), get(), get()) }
+    viewModel {
+        ReportDetailViewModel(
+            getPreviewUseCase = get(),
+            getCatalogUseCase = get(),
+            downloadPdfUseCase = get(),
+            pdfStorage = get(),
+            pdfDirProvider = { get<ConfigStore>().current().pdfDirUri },
+        )
+    }
     viewModel { SettingsViewModel(get(), get(), get(), get(), get()) }
 }

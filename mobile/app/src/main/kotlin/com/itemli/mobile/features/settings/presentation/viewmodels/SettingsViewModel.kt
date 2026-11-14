@@ -29,6 +29,8 @@ data class SettingsUiState(
     val isTesting: Boolean = false,
     val appLockEnabled: Boolean = false,
     val appLockSupported: Boolean = false,
+    /** Carpeta de descargas de PDF (tree URI de SAF) o null = carpeta interna. */
+    val pdfDirUri: String? = null,
 )
 
 /**
@@ -65,6 +67,7 @@ class SettingsViewModel(
                     useProxy = config.value.proxy != null,
                     appLockEnabled = getAppLockUseCase(),
                     appLockSupported = biometricsSupported,
+                    pdfDirUri = config.value.pdfDirUri,
                     message = null,
                 )
                 is AppResult.Failure -> _state.value = _state.value.copy(
@@ -166,6 +169,26 @@ class SettingsViewModel(
                 }
                 is AppResult.Failure -> _state.value = _state.value.copy(
                     message = result.error.message ?: "No se pudo guardar",
+                )
+            }
+        }
+    }
+
+    /** Carpeta de PDFs elegida con el selector del sistema (SAF). */
+    fun onPdfDirPicked(uri: String?) {
+        viewModelScope.launch {
+            // Se parte de la configuración YA guardada: los cambios del
+            // formulario que el usuario no haya confirmado no se aplican aquí.
+            val saved = (loadServerConfigUseCase() as? AppResult.Success)?.value
+                ?: AppConfig.ServerConfig()
+            when (val result = saveServerConfigUseCase(saved.copy(pdfDirUri = uri))) {
+                is AppResult.Success -> _state.value = _state.value.copy(
+                    pdfDirUri = uri,
+                    message = if (uri == null) "Los PDF se guardarán en la carpeta interna de la app"
+                    else "Los PDF se guardarán en la carpeta elegida",
+                )
+                is AppResult.Failure -> _state.value = _state.value.copy(
+                    message = result.error.message ?: "No se pudo guardar la carpeta",
                 )
             }
         }

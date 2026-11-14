@@ -28,8 +28,12 @@ fun SettingsAdaptiveLayout(
     onBaseUrlChange: (String) -> Unit,
     onProxyChange: (Boolean, String, String, String, String) -> Unit,
     onAppLockChange: (Boolean) -> Unit,
+    onPickPdfDir: () -> Unit = {},
+    onResetPdfDir: () -> Unit = {},
     onSave: () -> Unit,
     onTest: () -> Unit,
+    /** Nombre visible de la carpeta de PDFs (null = interna). */
+    pdfDirName: String? = null,
 ) {
     val maxWidth = when (windowSizeClass?.widthSizeClass) {
         WindowWidthSizeClass.Expanded -> 600.dp
@@ -64,9 +68,12 @@ fun SettingsAdaptiveLayout(
                 isTesting = state.isTesting,
                 appLockEnabled = state.appLockEnabled,
                 appLockSupported = state.appLockSupported,
+                pdfDirName = pdfDirName,
                 onBaseUrlChange = onBaseUrlChange,
                 onProxyChange = onProxyChange,
                 onAppLockChange = onAppLockChange,
+                onPickPdfDir = onPickPdfDir,
+                onResetPdfDir = onResetPdfDir,
                 onSave = onSave,
                 onTest = onTest,
                 windowSizeClass = windowSizeClass,

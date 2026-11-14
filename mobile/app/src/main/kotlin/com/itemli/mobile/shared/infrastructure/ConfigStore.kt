@@ -23,9 +23,11 @@ class ConfigStore(
 
     suspend fun current(): AppConfig.ServerConfig {
         val prefs = context.configStore.data.first()
+        val pdfDirUri = prefs[KEY_PDF_DIR_URI]?.takeIf { it.isNotBlank() }
         val proxyHost = prefs[KEY_PROXY_HOST] ?: return AppConfig.ServerConfig(
             baseUrl = prefs[KEY_BASE_URL] ?: DEFAULT_BASE_URL,
             proxy = null,
+            pdfDirUri = pdfDirUri,
         )
         val proxy = AppConfig.ProxyConfig(
             host = proxyHost,
@@ -36,12 +38,15 @@ class ConfigStore(
         return AppConfig.ServerConfig(
             baseUrl = prefs[KEY_BASE_URL] ?: DEFAULT_BASE_URL,
             proxy = proxy,
+            pdfDirUri = pdfDirUri,
         )
     }
 
     suspend fun save(config: AppConfig.ServerConfig) {
         context.configStore.edit { prefs ->
             prefs[KEY_BASE_URL] = config.baseUrl
+            if (config.pdfDirUri.isNullOrBlank()) prefs.remove(KEY_PDF_DIR_URI)
+            else prefs[KEY_PDF_DIR_URI] = config.pdfDirUri
             val proxy = config.proxy
             if (proxy == null) {
                 prefs.remove(KEY_PROXY_HOST)
@@ -62,6 +67,7 @@ class ConfigStore(
         private val KEY_BASE_URL = stringPreferencesKey("base_url")
         private val KEY_PROXY_HOST = stringPreferencesKey("proxy_host")
         private val KEY_PROXY_PORT = intPreferencesKey("proxy_port")
+        private val KEY_PDF_DIR_URI = stringPreferencesKey("pdf_dir_uri")
     }
 }
 

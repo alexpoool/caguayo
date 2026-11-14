@@ -41,9 +41,13 @@ fun ServerConfigForm(
     isTesting: Boolean,
     appLockEnabled: Boolean = false,
     appLockSupported: Boolean = true,
+    /** Nombre visible de la carpeta de PDFs (null = carpeta interna de la app). */
+    pdfDirName: String? = null,
     onBaseUrlChange: (String) -> Unit,
     onProxyChange: (Boolean, String, String, String, String) -> Unit,
     onAppLockChange: (Boolean) -> Unit = {},
+    onPickPdfDir: () -> Unit = {},
+    onResetPdfDir: () -> Unit = {},
     onSave: () -> Unit,
     onTest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -83,6 +87,23 @@ fun ServerConfigForm(
                     onCheckedChange = onAppLockChange,
                 )
                 Text("Bloquear la app con biometría")
+            }
+        }
+
+        Text("Descargas de PDF", style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = pdfDirName?.let { "Carpeta: $it" }
+                ?: "Carpeta interna de la app (privada). Elige una carpeta para verlos con el explorador de archivos.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onPickPdfDir) {
+                Text("Elegir carpeta…")
+            }
+            if (pdfDirName != null) {
+                OutlinedButton(onClick = onResetPdfDir) {
+                    Text("Restablecer")
+                }
             }
         }
 

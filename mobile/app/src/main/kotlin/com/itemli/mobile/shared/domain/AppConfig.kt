@@ -9,6 +9,8 @@ object AppConfig {
     data class ServerConfig(
         val baseUrl: String = "http://10.0.0.15:8000/api/v1/",
         val proxy: ProxyConfig? = null,
+        /** Carpeta (SAF tree URI) donde se guardan los PDF descargados. */
+        val pdfDirUri: String? = null,
     )
 
     data class ProxyConfig(
