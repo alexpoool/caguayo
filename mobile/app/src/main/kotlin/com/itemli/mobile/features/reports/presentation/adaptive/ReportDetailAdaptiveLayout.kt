@@ -90,6 +90,7 @@ fun ReportDetailAdaptiveLayout(
                             ReportFilterForm(
                                 definition = definition,
                                 values = state.filters,
+                                options = state.filterOptions,
                                 onFilterChange = onFilterChange,
                                 onRefresh = onRefresh,
                                 modifier = Modifier.fillMaxWidth(),
@@ -136,6 +137,7 @@ fun ReportDetailAdaptiveLayout(
                         ReportFilterForm(
                             definition = definition,
                             values = state.filters,
+                            options = state.filterOptions,
                             onFilterChange = onFilterChange,
                             onRefresh = onRefresh,
                             modifier = Modifier.fillMaxWidth(),
