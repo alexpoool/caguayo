@@ -25,28 +25,21 @@ import com.itemli.mobile.shared.ui.components.LoadingView
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.core.context.GlobalContext
 
-/**
- * Raíz de la app: resuelve el destino inicial según la sesión guardada
- * (Reportes si hay token, Login si no) y reacciona al cierre de sesión.
- */
 @Composable
 fun ItemliAppRoot(windowSizeClass: WindowSizeClass) {
     val sessionManager = remember { GlobalContext.get().get<SessionManager>() }
     var startDestination by remember { mutableStateOf<String?>(null) }
-
     LaunchedEffect(Unit) {
         startDestination = if (sessionManager.currentToken() != null) {
             AppDestination.Home.route
-        } else {
-            AppDestination.Login.route
-        }
+        } else AppDestination.Login.route
     }
-
     when (val destination = startDestination) {
         null -> LoadingView("Cargando…")
         else -> AppRoot(windowSizeClass = windowSizeClass, startDestination = destination)
     }
 }
+
 @Composable
 fun AppRoot(
     windowSizeClass: WindowSizeClass,
@@ -55,9 +48,8 @@ fun AppRoot(
     val navController: NavHostController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: startDestination
-
-    // Seguridad: si la sesión se cierra (logout o 401), volver al Login y limpiar el backstack.
     val sessionManager = remember { GlobalContext.get().get<SessionManager>() }
+
     LaunchedEffect(Unit) {
         sessionManager.sessionCleared.collectLatest {
             navController.navigate(AppDestination.Login.route) {
@@ -69,9 +61,7 @@ fun AppRoot(
     AdaptiveAppScaffold(
         windowSizeClass = windowSizeClass,
         currentRoute = currentRoute,
-        onNavigate = { dest ->
-            navController.navigate(dest.route) { launchSingleTop = true }
-        },
+        onNavigate = { dest -> navController.navigate(dest.route) { launchSingleTop = true } },
     ) {
         NavHost(
             navController = navController,
@@ -89,8 +79,14 @@ fun AppRoot(
                     onOpenSettings = { navController.navigate(AppDestination.Settings.route) },
                 )
             }
-
-            composable(AppDestination.Home.route) {\n                HomeScreen(\n                    windowSizeClass = windowSizeClass,\n                    onOpenReports = { navController.navigate(AppDestination.Reports.route) },\n                    onOpenSettings = { navController.navigate(AppDestination.Settings.route) },\n                )\n            }\n\n            composable(AppDestination.Reports.route) {
+            composable(AppDestination.Home.route) {
+                HomeScreen(
+                    windowSizeClass = windowSizeClass,
+                    onOpenReports = { navController.navigate(AppDestination.Reports.route) },
+                    onOpenSettings = { navController.navigate(AppDestination.Settings.route) },
+                )
+            }
+            composable(AppDestination.Reports.route) {
                 ReportsCatalogScreen(
                     windowSizeClass = windowSizeClass,
                     onOpenReport = { reportId ->
@@ -98,18 +94,15 @@ fun AppRoot(
                     },
                 )
             }
-
             composable(
                 AppDestination.ReportDetail.route,
                 arguments = listOf(navArgument("reportId") { defaultValue = "" }),
             ) { entry ->
-                val reportId = entry.arguments?.getString("reportId").orEmpty()
                 ReportDetailScreen(
                     windowSizeClass = windowSizeClass,
-                    reportId = reportId,
+                    reportId = entry.arguments?.getString("reportId").orEmpty(),
                 )
             }
-
             composable(AppDestination.Settings.route) {
                 SettingsScreen(
                     windowSizeClass = windowSizeClass,
