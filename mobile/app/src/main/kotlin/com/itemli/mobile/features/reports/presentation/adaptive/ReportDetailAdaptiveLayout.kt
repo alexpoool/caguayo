@@ -8,6 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -15,19 +20,15 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.itemli.mobile.features.reports.presentation.components.ReportFilterForm
 import com.itemli.mobile.features.reports.presentation.components.ReportPdfButton
 import com.itemli.mobile.features.reports.presentation.components.ReportPreviewTable
 import com.itemli.mobile.features.reports.presentation.viewmodels.ReportDetailUiState
+import com.itemli.mobile.shared.ui.theme.TextSecondary
 
-/**
- * Layout adaptativo del detalle de un reporte.
- *
- * - Compact  → filtros, PDF y preview en columna.
- * - Medium   → filtros a la izquierda y preview a la derecha.
- * - Expanded → igual a Medium con más padding.
- */
+/** Pantalla de parámetros y resultado de un informe. */
 @Composable
 fun ReportDetailAdaptiveLayout(
     windowSizeClass: WindowSizeClass?,
@@ -37,33 +38,101 @@ fun ReportDetailAdaptiveLayout(
     onDownloadPdf: () -> Unit = {},
 ) {
     val definition = state.definition ?: return
-    val isPane = when (windowSizeClass?.widthSizeClass) {
-        WindowWidthSizeClass.Compact -> false
-        else -> true
-    }
-    val padding = when (windowSizeClass?.widthSizeClass) {
-        WindowWidthSizeClass.Compact -> 12.dp
-        WindowWidthSizeClass.Medium -> 16.dp
-        else -> 24.dp
+    val isPane = windowSizeClass?.widthSizeClass != WindowWidthSizeClass.Compact
+    val horizontalPadding = when (windowSizeClass?.widthSizeClass) {
+        WindowWidthSizeClass.Compact -> 18.dp
+        WindowWidthSizeClass.Medium -> 22.dp
+        else -> 30.dp
     }
     val maxWidth = when (windowSizeClass?.widthSizeClass) {
-        WindowWidthSizeClass.Expanded -> 900.dp
-        WindowWidthSizeClass.Medium -> 720.dp
-        else -> 480.dp
+        WindowWidthSizeClass.Expanded -> 960.dp
+        WindowWidthSizeClass.Medium -> 760.dp
+        else -> 520.dp
     }
 
-    Box(Modifier.fillMaxSize().padding(padding)) {
-        Column(Modifier.fillMaxWidth().align(Alignment.TopCenter)) {
-            Text(definition.title, style = MaterialTheme.typography.headlineMedium)
-            if (isPane) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = horizontalPadding)
+            .padding(top = 22.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text("Parámetros del informe", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                definition.title,
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                definition.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+            )
+        }
+
+        if (isPane) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(
+                    Modifier.weight(0.38f).widthIn(max = 360.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Column(
-                        Modifier.weight(0.35f).widthIn(max = 324.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
                     ) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("Filtros", style = MaterialTheme.typography.titleMedium)
+                            ReportFilterForm(
+                                definition = definition,
+                                values = state.filters,
+                                onFilterChange = onFilterChange,
+                                onRefresh = onRefresh,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                    ReportPdfButton(state = state, onDownload = onDownloadPdf)
+                }
+                Column(
+                    Modifier.weight(0.62f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    state.error?.let {
+                        Text(text = it, color = MaterialTheme.colorScheme.error)
+                    }
+                    state.preview?.let { preview ->
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                        ) {
+                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Vista previa", style = MaterialTheme.typography.titleMedium)
+                                ReportPreviewTable(
+                                    definition = definition,
+                                    rows = preview.rows,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Column(
+                Modifier.widthIn(max = maxWidth).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                ) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Filtros", style = MaterialTheme.typography.titleMedium)
                         ReportFilterForm(
                             definition = definition,
                             values = state.filters,
@@ -71,19 +140,19 @@ fun ReportDetailAdaptiveLayout(
                             onRefresh = onRefresh,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        ReportPdfButton(
-                            state = state,
-                            onDownload = onDownloadPdf,
-                        )
                     }
-                    Column(
-                        Modifier.weight(0.65f).fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                }
+                ReportPdfButton(state = state, onDownload = onDownloadPdf)
+                state.error?.let {
+                    Text(text = it, color = MaterialTheme.colorScheme.error)
+                }
+                state.preview?.let { preview ->
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
                     ) {
-                        state.error?.let {
-                            Text(text = it, color = MaterialTheme.colorScheme.error)
-                        }
-                        state.preview?.let { preview ->
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("Vista previa", style = MaterialTheme.typography.titleMedium)
                             ReportPreviewTable(
                                 definition = definition,
                                 rows = preview.rows,
@@ -92,31 +161,8 @@ fun ReportDetailAdaptiveLayout(
                         }
                     }
                 }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ReportFilterForm(
-                        definition = definition,
-                        values = state.filters,
-                        onFilterChange = onFilterChange,
-                        onRefresh = onRefresh,
-                        modifier = Modifier.widthIn(max = maxWidth).fillMaxWidth(),
-                    )
-                    ReportPdfButton(
-                        state = state,
-                        onDownload = onDownloadPdf,
-                    )
-                    state.error?.let {
-                        Text(text = it, color = MaterialTheme.colorScheme.error)
-                    }
-                    state.preview?.let { preview ->
-                        ReportPreviewTable(
-                            definition = definition,
-                            rows = preview.rows,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
             }
         }
+        Box(Modifier.fillMaxWidth().padding(bottom = 12.dp))
     }
 }
