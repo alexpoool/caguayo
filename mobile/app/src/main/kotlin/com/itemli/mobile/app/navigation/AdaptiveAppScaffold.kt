@@ -30,41 +30,46 @@ fun AdaptiveAppScaffold(
     onNavigate: (AppDestination) -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val destinations = listOf(AppDestination.Home, AppDestination.Reports, AppDestination.Settings)
-    val selectedRoute = when {
-        currentRoute.startsWith("report-detail") -> AppDestination.Reports.route
-        else -> currentRoute
-    }
+    val destinations = if (currentRoute == AppDestination.Login.route) emptyList() else
+        listOf(AppDestination.Home, AppDestination.Reports, AppDestination.Settings)
+    val selectedRoute = if (currentRoute.startsWith("report-detail")) {
+        AppDestination.Reports.route
+    } else currentRoute
+
     when (windowSizeClass.widthSizeClass) {
         WindowWidthSizeClass.Compact -> Scaffold(
             containerColor = Color(0xFFF5F7FB),
             bottomBar = {
-                NavigationBar(containerColor = Color.White, contentColor = BrandPrimary, tonalElevation = 8.dp) {
-                    destinations.forEach { dest ->
-                        NavigationBarItem(
-                            selected = selectedRoute == dest.route,
-                            onClick = { onNavigate(dest) },
-                            icon = { dest.icon?.let { Icon(it, contentDescription = dest.label) } },
-                            label = { Text(dest.label) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = BrandPrimary, selectedTextColor = BrandPrimary,
-                                indicatorColor = Color(0xFFEAF1FF),
-                                unselectedIconColor = Color(0xFF667085), unselectedTextColor = Color(0xFF667085),
-                            ),
-                        )
+                if (destinations.isNotEmpty()) {
+                    NavigationBar(containerColor = Color.White, contentColor = BrandPrimary, tonalElevation = 8.dp) {
+                        destinations.forEach { dest ->
+                            NavigationBarItem(
+                                selected = selectedRoute == dest.route,
+                                onClick = { onNavigate(dest) },
+                                icon = { dest.icon?.let { Icon(it, contentDescription = dest.label) } },
+                                label = { Text(dest.label) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = BrandPrimary, selectedTextColor = BrandPrimary,
+                                    indicatorColor = Color(0xFFEAF1FF),
+                                    unselectedIconColor = Color(0xFF667085), unselectedTextColor = Color(0xFF667085),
+                                ),
+                            )
+                        }
                     }
                 }
             },
         ) { padding -> Box(Modifier.padding(padding)) { content() } }
         WindowWidthSizeClass.Medium -> Row(Modifier.fillMaxSize()) {
-            NavigationRail(containerColor = Color.White) {
-                destinations.forEach { dest ->
-                    NavigationRailItem(
-                        selected = selectedRoute == dest.route,
-                        onClick = { onNavigate(dest) },
-                        icon = { dest.icon?.let { Icon(it, contentDescription = dest.label) } },
-                        label = { Text(dest.label) },
-                    )
+            if (destinations.isNotEmpty()) {
+                NavigationRail(containerColor = Color.White) {
+                    destinations.forEach { dest ->
+                        NavigationRailItem(
+                            selected = selectedRoute == dest.route,
+                            onClick = { onNavigate(dest) },
+                            icon = { dest.icon?.let { Icon(it, contentDescription = dest.label) } },
+                            label = { Text(dest.label) },
+                        )
+                    }
                 }
             }
             Box(Modifier.weight(1f)) { content() }
