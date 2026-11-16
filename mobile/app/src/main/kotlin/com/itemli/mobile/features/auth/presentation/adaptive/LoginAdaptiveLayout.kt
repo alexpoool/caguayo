@@ -17,6 +17,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -120,14 +123,22 @@ private fun BasePicker(
     selected: DependenciaRef?,
     onSelected: (DependenciaRef?) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Selecciona una dependencia", style = MaterialTheme.typography.titleMedium)
-        bases.forEach { base ->
-            OutlinedButton(
-                onClick = { onSelected(base) },
+    var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Dependencia", style = MaterialTheme.typography.titleMedium)
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                selected?.let { "${it.nombre} · ${it.baseDatos}" }
+                    ?: "Selecciona tu dependencia",
                 modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("${base.nombre} (base: ${base.baseDatos})")
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            bases.forEach { base ->
+                DropdownMenuItem(
+                    text = { Text("${base.nombre} · ${base.baseDatos}") },
+                    onClick = { onSelected(base); expanded = false },
+                )
             }
         }
     }
