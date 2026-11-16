@@ -26,5 +26,9 @@ export interface AuthRepositorio {
   actualizarAlmacen(sesion: Sesion): void;
   tokenActual(): string | null;
   tokenVigente(token: string): boolean;
+  /** Sesión completa desde el almacén local, solo si el token está vigente. */
+  leerSesionCacheada(): Sesion | null;
+  /** Refresca la sesión contra el backend y actualiza el almacén local. */
+  sincronizarSesion(): Promise<Sesion | null>;
   limpiarSesion(): void;
 }

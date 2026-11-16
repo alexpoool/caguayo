@@ -30,6 +30,8 @@ function repoFalso(overrides: Partial<AuthRepositorio> = {}): AuthRepositorio {
     actualizarAlmacen: vi.fn(),
     tokenActual: vi.fn().mockReturnValue('token'),
     tokenVigente: vi.fn().mockReturnValue(true),
+    leerSesionCacheada: vi.fn().mockReturnValue(sesion),
+    sincronizarSesion: vi.fn().mockResolvedValue(sesion),
     limpiarSesion: vi.fn(),
     ...overrides,
   };
@@ -49,16 +51,17 @@ describe('crearCasosUsoAuth', () => {
     expect(repo.iniciarSesion).toHaveBeenCalledWith(credenciales);
   });
 
-  it('restaura la sesión y actualiza el almacén', async () => {
-    const repo = repoFalso();
+  it('restaura la sesión desde la caché sin llamar al backend', async () => {
+    const repo = repoFalso({ leerSesionCacheada: vi.fn().mockReturnValue(sesion) });
     const casos = crearCasosUsoAuth(repo);
 
     await expect(casos.restaurarSesion()).resolves.toBe(sesion);
-    expect(repo.actualizarAlmacen).toHaveBeenCalledWith(sesion);
+    expect(repo.obtenerSesion).not.toHaveBeenCalled();
+    expect(repo.limpiarSesion).not.toHaveBeenCalled();
   });
 
-  it('limpia la sesión si el token no existe o expiró', async () => {
-    const repo = repoFalso({ tokenActual: vi.fn().mockReturnValue(null) });
+  it('limpia la sesión si no hay caché válida', async () => {
+    const repo = repoFalso({ leerSesionCacheada: vi.fn().mockReturnValue(null) });
     const casos = crearCasosUsoAuth(repo);
 
     await expect(casos.restaurarSesion()).resolves.toBeNull();
@@ -66,14 +69,22 @@ describe('crearCasosUsoAuth', () => {
     expect(repo.obtenerSesion).not.toHaveBeenCalled();
   });
 
-  it('limpia la sesión si el backend rechaza la restauración', async () => {
+  it('sincroniza la sesión con el backend vía el repositorio', async () => {
+    const repo = repoFalso();
+    const casos = crearCasosUsoAuth(repo);
+
+    await expect(casos.sincronizarSesion()).resolves.toBe(sesion);
+    expect(repo.sincronizarSesion).toHaveBeenCalledOnce();
+  });
+
+  it('sincronizarSesion devuelve null sin limpiar si el repositorio falla', async () => {
     const repo = repoFalso({
-      obtenerSesion: vi.fn().mockRejectedValue(new Error('401')),
+      sincronizarSesion: vi.fn().mockRejectedValue(new Error('red caída')),
     });
     const casos = crearCasosUsoAuth(repo);
 
-    await expect(casos.restaurarSesion()).resolves.toBeNull();
-    expect(repo.limpiarSesion).toHaveBeenCalledOnce();
+    await expect(casos.sincronizarSesion()).resolves.toBeNull();
+    expect(repo.limpiarSesion).not.toHaveBeenCalled();
   });
 
   it('cierra la sesión en el puerto', async () => {

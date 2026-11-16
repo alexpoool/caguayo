@@ -104,6 +104,7 @@ export const authApiRepositorio: AuthRepositorio = {
   actualizarAlmacen(sesion) {
     authHelpers.setUser(sesion.usuario);
     authHelpers.setBaseDatos(sesion.baseDatos);
+    authHelpers.setFuncionalidades(sesion.funcionalidades);
   },
 
   tokenActual: () => authHelpers.getToken(),
@@ -115,6 +116,30 @@ export const authApiRepositorio: AuthRepositorio = {
     } catch {
       return false;
     }
+  },
+
+  /** Sesión desde localStorage; null si el token no es vigente o falta algo. */
+  leerSesionCacheada() {
+    const token = authHelpers.getToken();
+    const usuario = authHelpers.getUser() as UsuarioSesion | null;
+    const funcionalidades = authHelpers.getFuncionalidades() as
+      | FuncionalidadSesion[]
+      | null;
+    const baseDatos = authHelpers.getBaseDatos();
+
+    if (!token || !usuario || !funcionalidades || !baseDatos) return null;
+    if (!this.tokenVigente(token)) {
+      this.limpiarSesion();
+      return null;
+    }
+    return { token, usuario, funcionalidades, baseDatos };
+  },
+
+  /** Refresca contra el backend y actualiza el almacén; el 401 lo maneja api.ts. */
+  async sincronizarSesion() {
+    const sesion = await this.obtenerSesion();
+    this.actualizarAlmacen(sesion);
+    return sesion;
   },
 
   limpiarSesion: () => authHelpers.clearAuth(),

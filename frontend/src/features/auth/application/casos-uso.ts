@@ -20,21 +20,26 @@ export function crearCasosUsoAuth(
     },
 
     /**
-     * Restaura la sesión si el token existe y no ha expirado. Si falla,
-     * limpia el almacén y devuelve `null`; no lanza al arrancar la app.
+     * Sesión instantánea desde el almacén local, sin red. Si no hay caché
+     * válida, limpia el almacén y devuelve `null`; no lanza al arrancar la app.
      */
     async restaurarSesion(): Promise<Sesion | null> {
-      const token = repositorio.tokenActual();
-      if (!token || !repositorio.tokenVigente(token)) {
+      const sesion = repositorio.leerSesionCacheada();
+      if (!sesion) {
         repositorio.limpiarSesion();
         return null;
       }
+      return sesion;
+    },
+
+    /**
+     * Refresco en background contra el backend. En fallo (incluida red caída)
+     * devuelve `null` sin limpiar la sesión: el cierre por 401 lo maneja api.ts.
+     */
+    async sincronizarSesion(): Promise<Sesion | null> {
       try {
-        const sesion = await repositorio.obtenerSesion();
-        repositorio.actualizarAlmacen(sesion);
-        return sesion;
+        return await repositorio.sincronizarSesion();
       } catch {
-        repositorio.limpiarSesion();
         return null;
       }
     },

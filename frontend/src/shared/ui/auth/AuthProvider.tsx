@@ -65,6 +65,7 @@ export function AuthProvider({
 
   useEffect(() => {
     let activo = true;
+    // Arranque instantáneo desde el almacén local (sin red)…
     casosUso
       .restaurarSesion()
       .then((sesion) => {
@@ -73,6 +74,10 @@ export function AuthProvider({
       .finally(() => {
         if (activo) setIsLoading(false);
       });
+    // …y refresco en background contra el backend.
+    casosUso.sincronizarSesion().then((sesion) => {
+      if (activo && sesion) aplicarSesion(sesion);
+    });
     return () => {
       activo = false;
     };

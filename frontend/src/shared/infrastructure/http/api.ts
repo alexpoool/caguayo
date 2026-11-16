@@ -4,6 +4,7 @@ const LOGIN_PATH = '/login';
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
 const BASE_DATOS_KEY = 'auth_base_datos';
+const FUNCIONALIDADES_KEY = 'auth_funcionalidades';
 
 let redirectingToLogin = false;
 
@@ -198,10 +199,30 @@ export const authHelpers = {
     localStorage.removeItem(BASE_DATOS_KEY);
   },
 
+  setFuncionalidades(funcionalidades: unknown): void {
+    localStorage.setItem(FUNCIONALIDADES_KEY, JSON.stringify(funcionalidades));
+  },
+
+  getFuncionalidades(): unknown[] | null {
+    const raw = localStorage.getItem(FUNCIONALIDADES_KEY);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  },
+
+  removeFuncionalidades(): void {
+    localStorage.removeItem(FUNCIONALIDADES_KEY);
+  },
+
   clearAuth(): void {
     this.removeToken();
     this.removeUser();
     this.removeBaseDatos();
+    this.removeFuncionalidades();
   },
 
   isAuthenticated(): boolean {
