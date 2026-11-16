@@ -16,6 +16,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.itemli.mobile.features.auth.presentation.screens.LoginScreen
+import com.itemli.mobile.features.reports.presentation.screens.HomeScreen
 import com.itemli.mobile.features.reports.presentation.screens.ReportDetailScreen
 import com.itemli.mobile.features.reports.presentation.screens.ReportsCatalogScreen
 import com.itemli.mobile.features.settings.presentation.screens.SettingsScreen
@@ -35,7 +36,7 @@ fun ItemliAppRoot(windowSizeClass: WindowSizeClass) {
 
     LaunchedEffect(Unit) {
         startDestination = if (sessionManager.currentToken() != null) {
-            AppDestination.Reports.route
+            AppDestination.Home.route
         } else {
             AppDestination.Login.route
         }
@@ -81,7 +82,7 @@ fun AppRoot(
                 LoginScreen(
                     windowSizeClass = windowSizeClass,
                     onLogged = {
-                        navController.navigate(AppDestination.Reports.route) {
+                        navController.navigate(AppDestination.Home.route) {
                             popUpTo(AppDestination.Login.route) { inclusive = true }
                         }
                     },
@@ -89,7 +90,7 @@ fun AppRoot(
                 )
             }
 
-            composable(AppDestination.Reports.route) {
+            composable(AppDestination.Home.route) {\n                HomeScreen(\n                    windowSizeClass = windowSizeClass,\n                    onOpenReports = { navController.navigate(AppDestination.Reports.route) },\n                    onOpenSettings = { navController.navigate(AppDestination.Settings.route) },\n                )\n            }\n\n            composable(AppDestination.Reports.route) {
                 ReportsCatalogScreen(
                     windowSizeClass = windowSizeClass,
                     onOpenReport = { reportId ->
