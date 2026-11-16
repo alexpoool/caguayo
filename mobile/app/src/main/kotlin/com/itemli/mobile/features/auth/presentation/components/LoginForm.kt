@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -33,7 +31,6 @@ fun LoginForm(
     onAliasChanged: (String) -> Unit,
     onPasswordChanged: (String) -> Unit,
     onSearchBases: () -> Unit,
-    onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
@@ -73,13 +70,6 @@ fun LoginForm(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Buscar mis dependencias")
-        }
-        Button(
-            onClick = onSubmit,
-            enabled = !isLoading && alias.isNotBlank() && password.isNotBlank(),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (isLoading) CircularProgressIndicator() else Text("Iniciar sesión")
         }
     }
 }
