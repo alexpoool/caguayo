@@ -22,8 +22,8 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.itemli.mobile.shared.ui.theme.BrandPrimary
-import com.itemli.mobile.shared.ui.theme.OutlineSoft
 
 /**
  * Navegación adaptativa y deliberadamente sencilla: el producto es un
