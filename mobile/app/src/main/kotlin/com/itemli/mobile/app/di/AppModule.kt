@@ -103,6 +103,7 @@ val appModule: Module = module {
             getCatalogUseCase = get(),
             downloadPdfUseCase = get(),
             pdfStorage = get(),
+            apiClient = get(),
             pdfDirProvider = { get<ConfigStore>().current().pdfDirUri },
         )
     }
