@@ -233,7 +233,7 @@ private fun ReportCatalogCard(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Filled.Description,
+                        Icons.Filled.List,
                         contentDescription = null,
                         tint = if (definition.module.label.hashCode() % 2 == 0) BrandPrimary else BrandTertiary,
                     )

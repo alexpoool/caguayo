@@ -22,6 +22,8 @@ private val LightColors = lightColorScheme(
     outline = OutlineSoft,
 )
 
+private val ColorDarkPrimary = androidx.compose.ui.graphics.Color(0xFF8CB4FF)
+
 private val DarkColors = darkColorScheme(
     primary = ColorDarkPrimary,
     secondary = BrandSecondary,
@@ -30,8 +32,6 @@ private val DarkColors = darkColorScheme(
     surface = androidx.compose.ui.graphics.Color(0xFF182230),
     onSurface = androidx.compose.ui.graphics.Color(0xFFF2F4F7),
 )
-
-private val ColorDarkPrimary = androidx.compose.ui.graphics.Color(0xFF8CB4FF)
 
 @Composable
 fun ItemliTheme(
