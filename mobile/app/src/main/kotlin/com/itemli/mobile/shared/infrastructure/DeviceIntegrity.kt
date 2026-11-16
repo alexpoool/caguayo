@@ -45,12 +45,25 @@ object DeviceIntegrity {
      * En release, comparar contra el hash del certificado oficial para
      * detectar reempaquetado (el resultado se reporta, no se fuerza).
      */
+    @Suppress("DEPRECATION")
     fun signingCertSha256(context: Context): String? = runCatching {
-        val packageInfo = context.packageManager.getPackageInfo(
-            context.packageName,
-            PackageManager.GET_SIGNATURES,
-        )
-        val cert = packageInfo.signatures?.firstOrNull()?.toByteArray() ?: return null
+        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_SIGNING_CERTIFICATES,
+            )
+        } else {
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_SIGNATURES,
+            )
+        }
+        val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            packageInfo.signingInfo?.apkContentsSigners
+        } else {
+            packageInfo.signatures
+        }
+        val cert = signatures?.firstOrNull()?.toByteArray() ?: return null
         val digest = java.security.MessageDigest.getInstance("SHA-256").digest(cert)
         digest.joinToString("") { "%02x".format(it) }
     }.getOrNull()
