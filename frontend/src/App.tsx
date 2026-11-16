@@ -138,7 +138,7 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
-      staleTime: 0, // Siempre considerarse stale para obtener datos frescos
+      staleTime: 60_000, // 1 min de datos frescos; las mutaciones invalidan y refetchean igual
     },
   },
 });
