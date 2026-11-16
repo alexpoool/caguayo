@@ -3,6 +3,7 @@ package com.itemli.mobile.features.reports.presentation.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
@@ -37,7 +38,7 @@ fun ReportPdfButton(
         ) {
             if (state.isPdfLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.then(Modifier),
+                    modifier = Modifier.size(18.dp),
                     color = MaterialTheme.colorScheme.onPrimary,
                     strokeWidth = 2.dp,
                 )
