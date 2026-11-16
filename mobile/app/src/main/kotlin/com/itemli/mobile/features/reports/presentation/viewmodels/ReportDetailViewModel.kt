@@ -8,6 +8,9 @@ import com.itemli.mobile.features.reports.application.usecases.GetReportsCatalog
 import com.itemli.mobile.features.reports.domain.entities.ReportDefinition
 import com.itemli.mobile.features.reports.domain.entities.ReportPreview
 import com.itemli.mobile.features.reports.infrastructure.storage.ReportPdfStorage
+import com.itemli.mobile.features.reports.infrastructure.datasources.ReportFilterOptionsApi
+import com.itemli.mobile.features.reports.infrastructure.datasources.ReportFilterOption
+import com.itemli.mobile.shared.infrastructure.ApiClient
 import com.itemli.mobile.shared.domain.AppResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +22,7 @@ import kotlinx.coroutines.launch
 data class ReportDetailUiState(
     val definition: ReportDefinition? = null,
     val filters: Map<String, String> = emptyMap(),
+    val filterOptions: Map<String, List<ReportFilterOption>> = emptyMap(),
     val preview: ReportPreview? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -38,6 +42,7 @@ class ReportDetailViewModel(
     private val getCatalogUseCase: GetReportsCatalogUseCase,
     private val downloadPdfUseCase: DownloadReportPdfUseCase,
     private val pdfStorage: ReportPdfStorage,
+    private val apiClient: ApiClient,
     /** Carpeta externa elegida en Ajustes (tree URI) o null para la interna. */
     private val pdfDirProvider: suspend () -> String? = { null },
 ) : ViewModel() {
@@ -57,6 +62,7 @@ class ReportDetailViewModel(
                         )
                     } else {
                         _state.value = _state.value.copy(definition = definition, error = null)
+                        loadFilterOptions(definition)
                         refresh()
                     }
                 }
@@ -64,6 +70,42 @@ class ReportDetailViewModel(
                     error = "No se pudo cargar el catálogo: ${catalog.error.message ?: ""}",
                 )
             }
+        }
+    }
+
+    private fun loadFilterOptions(definition: ReportDefinition) {
+        viewModelScope.launch {
+            val api = runCatching { apiClient.createService(ReportFilterOptionsApi::class.java) }.getOrNull()
+                ?: return@launch
+            val options = mutableMapOf<String, List<ReportFilterOption>>()
+            definition.filters.forEach { filter ->
+                val values = runCatching {
+                    when (filter.id) {
+                        "id_dependencia" -> api.dependencies().map {
+                            ReportFilterOption(it.id_dependencia.toString(), it.nombre)
+                        }
+                        "id_provincia" -> api.provinces().map {
+                            ReportFilterOption(it.id_provincia.toString(), it.nombre)
+                        }
+                        "id_moneda" -> api.currencies().map {
+                            ReportFilterOption(it.id_moneda.toString(), listOf(it.nombre, it.simbolo).filter(String::isNotBlank).joinToString(" · "))
+                        }
+                        "id_persona", "id_cliente" -> api.people().map {
+                            ReportFilterOption(it.id_persona.toString(), it.nombre)
+                        }
+                        "id_producto" -> api.products().map {
+                            ReportFilterOption(it.id_producto.toString(), listOf(it.codigo, it.nombre).filter(String::isNotBlank).joinToString(" · "))
+                        }
+                        "estado" -> listOf(
+                            ReportFilterOption("pagada", "Pagada"),
+                            ReportFilterOption("pendiente", "Pendiente"),
+                        )
+                        else -> emptyList()
+                    }
+                }.getOrDefault(emptyList())
+                options[filter.id] = values
+            }
+            _state.value = _state.value.copy(filterOptions = options)
         }
     }
 
