@@ -6,11 +6,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,8 +42,7 @@ fun ReportPdfButton(
                 )
                 Text("Preparando PDF…")
             } else {
-                Icon(Icons.Filled.Download, contentDescription = null)
-                Text("Descargar informe PDF")
+                Text("↓  Descargar informe PDF")
             }
         }
         state.pdfError?.let {
