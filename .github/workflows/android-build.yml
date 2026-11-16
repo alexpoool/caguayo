@@ -61,3 +61,5 @@ jobs:
           path: mobile/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+
+# CI verification trigger: validate the Android debug build on GitHub-hosted runners.
