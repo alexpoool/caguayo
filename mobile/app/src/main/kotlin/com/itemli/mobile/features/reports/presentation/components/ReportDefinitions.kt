@@ -46,28 +46,123 @@ fun ReportCard(
 }
 
 /**
- * Formulario de filtros de un reporte.
+ * Filtros guiados: fechas con calendario y el resto con selectores.
+ * Ningún parámetro de un informe requiere escritura libre.
  */
 @Composable
 fun ReportFilterForm(
     definition: ReportDefinition,
     values: Map<String, String>,
+    options: Map<String, List<com.itemli.mobile.features.reports.infrastructure.datasources.ReportFilterOption>>,
     onFilterChange: (String, String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         definition.filters.forEach { filter ->
-            OutlinedTextField(
-                value = values[filter.id].orEmpty(),
-                onValueChange = { onFilterChange(filter.id, it) },
-                label = { Text(filter.label) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (filter.type == com.itemli.mobile.features.reports.domain.entities.ReportFilterType.DATE) {
+                ReportDateSelector(
+                    label = filter.label,
+                    value = values[filter.id].orEmpty(),
+                    onSelected = { onFilterChange(filter.id, it) },
+                )
+            } else {
+                ReportChoiceSelector(
+                    label = filter.label,
+                    value = values[filter.id].orEmpty(),
+                    options = options[filter.id].orEmpty(),
+                    optional = !filter.required,
+                    onSelected = { onFilterChange(filter.id, it) },
+                )
+            }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            OutlinedButton(onClick = onRefresh) { Text("Actualizar") }
+            OutlinedButton(onClick = onRefresh) { Text("Aplicar filtros") }
+        }
+    }
+}
+
+@Composable
+private fun ReportChoiceSelector(
+    label: String,
+    value: String,
+    options: List<com.itemli.mobile.features.reports.infrastructure.datasources.ReportFilterOption>,
+    optional: Boolean,
+    onSelected: (String) -> Unit,
+) {
+    var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val selectedLabel = options.firstOrNull { it.value == value }?.label
+        ?: if (value.isBlank()) "Seleccionar $label" else value
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        androidx.compose.foundation.layout.Box {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = options.isNotEmpty(),
+            ) {
+                Text(
+                    if (options.isEmpty()) "Opciones no disponibles" else selectedLabel,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            androidx.compose.material3.DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                if (optional) {
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text("Todos") },
+                        onClick = { onSelected(""); expanded = false },
+                    )
+                }
+                options.forEach { option ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(option.label) },
+                        onClick = { onSelected(option.value); expanded = false },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReportDateSelector(
+    label: String,
+    value: String,
+    onSelected: (String) -> Unit,
+) {
+    var showPicker by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val pickerState = androidx.compose.material3.rememberDatePickerState()
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(value.ifBlank { "Seleccionar fecha" }, modifier = Modifier.fillMaxWidth())
+        }
+    }
+    if (showPicker) {
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        pickerState.selectedDateMillis?.let { millis ->
+                            val date = java.time.Instant.ofEpochMilli(millis)
+                                .atZone(java.time.ZoneOffset.UTC).toLocalDate()
+                            onSelected(date.toString())
+                        }
+                        showPicker = false
+                    },
+                ) { Text("Aceptar") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showPicker = false }) {
+                    Text("Cancelar")
+                }
+            },
+        ) {
+            androidx.compose.material3.DatePicker(state = pickerState)
         }
     }
 }
