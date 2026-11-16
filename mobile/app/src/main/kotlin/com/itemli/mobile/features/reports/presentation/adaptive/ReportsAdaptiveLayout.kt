@@ -233,14 +233,14 @@ private fun ReportCatalogCard(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Filled.List,
+                        Icons.AutoMirrored.Filled.List,
                         contentDescription = null,
                         tint = if (definition.module.label.hashCode() % 2 == 0) BrandPrimary else BrandTertiary,
                     )
                 }
                 Spacer(Modifier.weight(1f))
                 Icon(
-                    Icons.Filled.List,
+                    Icons.AutoMirrored.Filled.List,
                     contentDescription = "Abrir informe",
                     tint = TextSecondary,
                 )
