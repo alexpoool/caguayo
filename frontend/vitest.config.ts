@@ -14,7 +14,14 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     css: true,
     restoreMocks: true,
-    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    exclude: [
+      'e2e/**',
+      'node_modules/**',
+      // Carpeta fantasma de una instalación ajena: sus tests de dependencias
+      // no deben entrar en la suite (el nombre no casa con node_modules/**).
+      'node_modules.agarces-ro/**',
+      'dist/**',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
