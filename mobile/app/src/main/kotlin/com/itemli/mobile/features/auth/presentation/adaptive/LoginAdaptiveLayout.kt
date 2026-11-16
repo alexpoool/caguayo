@@ -13,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -94,7 +96,6 @@ fun LoginAdaptiveLayout(
                         onAliasChanged = onAliasChange,
                         onPasswordChanged = onPasswordChange,
                         onSearchBases = onSearchBases,
-                        onSubmit = onSubmit,
                     )
                     if (state.bases.isNotEmpty()) {
                         BasePicker(
@@ -102,6 +103,13 @@ fun LoginAdaptiveLayout(
                             selected = state.selectedBase,
                             onSelected = onBaseChange,
                         )
+                    }
+                    Button(
+                        onClick = onSubmit,
+                        enabled = !state.isLoading && state.alias.isNotBlank() && state.password.isNotBlank() && state.selectedBase != null,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (state.isLoading) CircularProgressIndicator() else Text("Iniciar sesión")
                     }
                     state.error?.let {
                         Text(text = it, color = MaterialTheme.colorScheme.error)
