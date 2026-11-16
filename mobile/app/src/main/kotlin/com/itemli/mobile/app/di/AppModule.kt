@@ -26,7 +26,7 @@ import com.itemli.mobile.shared.infrastructure.ConfigStore
 import com.itemli.mobile.shared.infrastructure.EncryptedTokenStorage
 import com.itemli.mobile.shared.infrastructure.SessionManager
 import org.koin.android.ext.koin.androidApplication
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
