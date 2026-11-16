@@ -18,8 +18,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -123,7 +122,7 @@ fun ReportsAdaptiveLayout(
                         .background(Color(0xFFEAF1FF), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Description, contentDescription = null, tint = BrandPrimary)
+                    Icon(Icons.Filled.List, contentDescription = null, tint = BrandPrimary)
                 }
                 Spacer(Modifier.width(12.dp))
                 Column {
@@ -241,7 +240,7 @@ private fun ReportCatalogCard(
                 }
                 Spacer(Modifier.weight(1f))
                 Icon(
-                    Icons.Filled.ArrowForward,
+                    Icons.Filled.List,
                     contentDescription = "Abrir informe",
                     tint = TextSecondary,
                 )
