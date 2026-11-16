@@ -18,7 +18,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -122,7 +122,7 @@ fun ReportsAdaptiveLayout(
                         .background(Color(0xFFEAF1FF), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.List, contentDescription = null, tint = BrandPrimary)
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, tint = BrandPrimary)
                 }
                 Spacer(Modifier.width(12.dp))
                 Column {
