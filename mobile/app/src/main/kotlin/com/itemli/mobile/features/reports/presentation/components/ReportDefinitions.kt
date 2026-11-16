@@ -128,6 +128,7 @@ private fun ReportChoiceSelector(
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun ReportDateSelector(
     label: String,
