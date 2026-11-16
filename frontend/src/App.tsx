@@ -44,7 +44,6 @@ import {
 import { LoginPage } from './features/auth/ui/LoginPage';
 import { RegisterPage } from './features/auth/ui/RegisterPage';
 import { HomePage } from './app/layout/HomePage';
-import { DashboardPageContainer } from './app/container/dashboard';
 import { LoggerPage } from './pages/Logger';
 import { PerfilPage } from './features/auth/ui/PerfilPage';
 import { AuthProvider } from './app/providers/AuthProvider';
@@ -59,6 +58,7 @@ import {
   puedeAccederRuta,
   type Modulo,
 } from './config/rutas';
+const DashboardPageContainer = lazy(() => import('./app/container/dashboard').then(m => ({ default: m.DashboardPageContainer })));
 const ProductosPage = lazy(() => import('./app/container/inventario').then(m => ({ default: m.ProductosPageContainer })));
 const ClientesPage = lazy(() => import('./app/container/terceros').then(m => ({ default: m.ClientesPageContainer })));
 const PerfilClientePage = lazy(() => import('./app/container/terceros').then(m => ({ default: m.PerfilClientePageContainer })));
