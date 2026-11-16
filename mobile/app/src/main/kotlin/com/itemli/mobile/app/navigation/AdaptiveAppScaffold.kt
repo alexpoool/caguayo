@@ -86,7 +86,7 @@ fun AdaptiveAppScaffold(
                             onClick = { onNavigate(dest) },
                             icon = {
                                 Icon(
-                                    if (dest == AppDestination.Reports) Icons.Filled.Description else Icons.Filled.Settings,
+                                    if (dest == AppDestination.Reports) Icons.Filled.List else Icons.Filled.Settings,
                                     contentDescription = dest.label,
                                 )
                             },
@@ -104,7 +104,7 @@ fun AdaptiveAppScaffold(
                         label = { Text("Informes") },
                         selected = selectedRoute == AppDestination.Reports.route,
                         onClick = { onNavigate(AppDestination.Reports) },
-                        icon = { Icon(Icons.Filled.Description, contentDescription = null) },
+                        icon = { Icon(Icons.Filled.List, contentDescription = null) },
                     )
                     NavigationDrawerItem(
                         label = { Text("Ajustes") },
