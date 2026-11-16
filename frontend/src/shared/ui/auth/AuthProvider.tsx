@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { CasosUsoSesion } from '@/shared/application/auth';
 import type {
   DatosRegistro,
@@ -22,6 +22,10 @@ export function AuthProvider({
   );
   const [baseDatos, setBaseDatos] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Generación de sesión: se incrementa en login/logout/registrar para que
+  // respuestas tardías del sync en background no revivan sesiones cerradas
+  // ni mezclen usuarios (ver AuthProvider.test.tsx).
+  const generacion = useRef(0);
 
   const aplicarSesion = (sesion: Sesion | null) => {
     setUser(sesion?.usuario ?? null);
@@ -30,8 +34,16 @@ export function AuthProvider({
   };
 
   const refreshUser = async () => {
-    const sesion = await casosUso.restaurarSesion();
-    aplicarSesion(sesion);
+    const miGeneracion = generacion.current;
+    // Refresco real contra el backend (la caché no sirve aquí: el perfil
+    // acaba de cambiar). Solo aplica si la sesión no cambió entretanto y
+    // nunca cierra sesión por un fallo de refresco.
+    try {
+      const sesion = await casosUso.sincronizarSesion();
+      if (sesion && generacion.current === miGeneracion) aplicarSesion(sesion);
+    } catch {
+      // El contrato de sincronizarSesion no lanza; por si acaso, ignorar.
+    }
   };
 
   const login = async (
@@ -39,6 +51,7 @@ export function AuthProvider({
     contrasenia: string,
     baseDatosSeleccionada: string,
   ) => {
+    generacion.current += 1;
     const sesion = await casosUso.iniciarSesion({
       alias,
       contrasenia,
@@ -48,11 +61,13 @@ export function AuthProvider({
   };
 
   const logout = async () => {
+    generacion.current += 1;
     await casosUso.cerrarSesion();
     aplicarSesion(null);
   };
 
   const registrar = async (datos: DatosRegistro) => {
+    generacion.current += 1;
     const sesion = await casosUso.registrar(datos);
     aplicarSesion(sesion);
   };
@@ -65,6 +80,7 @@ export function AuthProvider({
 
   useEffect(() => {
     let activo = true;
+    const miGeneracion = generacion.current;
     // Arranque instantáneo desde el almacén local (sin red)…
     casosUso
       .restaurarSesion()
@@ -74,9 +90,12 @@ export function AuthProvider({
       .finally(() => {
         if (activo) setIsLoading(false);
       });
-    // …y refresco en background contra el backend.
+    // …y refresco en background contra el backend, solo si la sesión no
+    // cambió mientras tanto (logout o re-login invalidan la respuesta).
     casosUso.sincronizarSesion().then((sesion) => {
-      if (activo && sesion) aplicarSesion(sesion);
+      if (activo && sesion && generacion.current === miGeneracion) {
+        aplicarSesion(sesion);
+      }
     });
     return () => {
       activo = false;

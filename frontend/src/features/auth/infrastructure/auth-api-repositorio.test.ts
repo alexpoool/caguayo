@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { authApiRepositorio } from './auth-api-repositorio';
 import { authHelpers } from '@/shared/infrastructure/http/api';
+import { server } from '@/test/setup';
 import type { Sesion, UsuarioSesion } from '@/shared/domain/sesion';
 
 function tokenConExpiracion(segundos: number): string {
@@ -91,5 +93,31 @@ describe('authApiRepositorio', () => {
     expect(
       JSON.parse(localStorage.getItem('auth_funcionalidades') ?? 'null'),
     ).toEqual(funcionalidades);
+  });
+
+  it('el login persiste funcionalidades para restaurar la sesión tras recargar', async () => {
+    const exp = Math.floor(Date.now() / 1000) + 60;
+    server.use(
+      http.post('*/auth/login', () =>
+        HttpResponse.json({
+          token: tokenConExpiracion(exp),
+          usuario,
+          funcionalidades,
+          base_datos: 'demo',
+        }),
+      ),
+    );
+
+    await authApiRepositorio.iniciarSesion({
+      alias: 'ana',
+      contrasenia: 'x',
+      baseDatos: 'demo',
+    });
+
+    expect(authApiRepositorio.leerSesionCacheada()).toMatchObject({
+      usuario,
+      funcionalidades,
+      baseDatos: 'demo',
+    });
   });
 });

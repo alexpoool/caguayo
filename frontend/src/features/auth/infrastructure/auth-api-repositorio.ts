@@ -35,6 +35,7 @@ function guardarSesion(sesion: Sesion): void {
   authHelpers.setToken(sesion.token);
   authHelpers.setUser(sesion.usuario);
   authHelpers.setBaseDatos(sesion.baseDatos);
+  authHelpers.setFuncionalidades(sesion.funcionalidades);
 }
 
 /** Adaptador HTTP + almacenamiento local del puerto de autenticación. */
