@@ -11,6 +11,7 @@ import com.itemli.mobile.features.reports.infrastructure.storage.ReportPdfStorag
 import com.itemli.mobile.features.reports.infrastructure.datasources.ReportFilterOptionsApi
 import com.itemli.mobile.features.reports.infrastructure.datasources.ReportFilterOption
 import com.itemli.mobile.shared.infrastructure.ApiClient
+import com.itemli.mobile.shared.infrastructure.SessionManager
 import com.itemli.mobile.shared.domain.AppResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +44,7 @@ class ReportDetailViewModel(
     private val downloadPdfUseCase: DownloadReportPdfUseCase,
     private val pdfStorage: ReportPdfStorage,
     private val apiClient: ApiClient,
+    private val sessionManager: SessionManager,
     /** Carpeta externa elegida en Ajustes (tree URI) o null para la interna. */
     private val pdfDirProvider: suspend () -> String? = { null },
 ) : ViewModel() {
@@ -61,7 +63,22 @@ class ReportDetailViewModel(
                             error = "Reporte no encontrado: $reportId",
                         )
                     } else {
-                        _state.value = _state.value.copy(definition = definition, error = null)
+                        val today = java.time.LocalDate.now()
+                        val defaults = buildMap {
+                            definition.filters.forEach { filter ->
+                                when (filter.id) {
+                                    "fecha_inicio" -> put(filter.id, today.minusMonths(1).toString())
+                                    "fecha_fin" -> put(filter.id, today.toString())
+                                    "id_moneda" -> put(filter.id, "1")
+                                    "id_producto", "id_cliente", "id_persona", "id_provincia", "id_municipio", "estado", "vigencia", "texto_busqueda" -> Unit
+                                    else -> Unit
+                                }
+                            }
+                        }.toMutableMap()
+                        sessionManager.currentDependencyId()?.let { dependencyId ->
+                            if (definition.filters.any { it.id == "id_dependencia" }) defaults["id_dependencia"] = dependencyId.toString()
+                        }
+                        _state.value = _state.value.copy(definition = definition, filters = defaults, error = null)
                         loadFilterOptions(definition)
                         refresh()
                     }
@@ -110,7 +127,7 @@ class ReportDetailViewModel(
     }
 
     fun onFilterChange(filterId: String, value: String) {
-        _state.value = _state.value.copy(filters = _state.value.filters + (filterId to value))
+        _state.value = _state.value.copy(filters = if (value.isBlank()) _state.value.filters - filterId else _state.value.filters + (filterId to value))
     }
 
     fun refresh() {
@@ -127,7 +144,7 @@ class ReportDetailViewModel(
             when (val result = getPreviewUseCase(definition, _state.value.filters)) {
                 is AppResult.Success -> _state.value = _state.value.copy(
                     isLoading = false,
-                    preview = result.value,
+                    preview = result.value.copy(rows = result.value.rows.filterNot { row -> row.keys.any { key -> key == "id" || key.startsWith("id_") } }.take(3)),
                     error = null,
                 )
                 is AppResult.Failure -> _state.value = _state.value.copy(
