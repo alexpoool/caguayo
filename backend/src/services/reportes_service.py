@@ -457,7 +457,7 @@ async def get_movimientos_dependencia(
 
 
 async def get_movimientos_producto(
-    db: AsyncSession, id_dependencia: int, id_producto: int, fecha_inicio, fecha_fin
+    db: AsyncSession, id_dependencia: int, id_producto: Optional[int], fecha_inicio, fecha_fin
 ):
     result = await db.execute(
         select(Dependencia).filter(Dependencia.id_dependencia == id_dependencia)
@@ -469,13 +469,15 @@ async def get_movimientos_producto(
         else {}
     )
 
-    result = await db.execute(
-        select(Productos).filter(Productos.id_producto == id_producto)
-    )
-    producto = result.scalar_one_or_none()
-    producto_info = (
-        {"codigo": producto.codigo, "nombre": producto.nombre} if producto else {}
-    )
+    producto_info = {"nombre": "Todos los productos"}
+    if id_producto is not None:
+        result = await db.execute(
+            select(Productos).filter(Productos.id_producto == id_producto)
+        )
+        producto = result.scalar_one_or_none()
+        producto_info = (
+            {"codigo": producto.codigo, "nombre": producto.nombre} if producto else {}
+        )
 
     query = (
         select(
@@ -494,7 +496,6 @@ async def get_movimientos_producto(
         )
         .filter(
             Movimiento.id_dependencia == id_dependencia,
-            Movimiento.id_producto == id_producto,
             # Solo los movimientos confirmados son movimientos reales.
             Movimiento.estado == "confirmado",
             Movimiento.fecha >= fecha_inicio,
@@ -503,6 +504,9 @@ async def get_movimientos_producto(
         )
         .order_by(Movimiento.fecha.desc())
     )
+
+    if id_producto is not None:
+        query = query.filter(Movimiento.id_producto == id_producto)
 
     result = await db.execute(query)
     results = result.all()
