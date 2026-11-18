@@ -791,7 +791,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
 
           {/* Center: Filter icon with dropdown */}
           <div className="relative" ref={filterRef}>
-            <button onClick={() => setFilterOpen((prev) => !prev)} title="Filtros"
+            <button onClick={() => { setDraftFilters(filters); setFilterOpen((prev) => !prev); }} title="Filtros"
               className={`p-2.5 rounded-xl border transition-all duration-150 ${filterOpen ? "bg-brand-50 text-brand-600 border-brand-300 shadow-sm ring-2 ring-brand-100" : "bg-white text-gray-500 border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300"}`}>
               <SlidersHorizontal className="w-5 h-5" />
             </button>
@@ -852,6 +852,10 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                       placeholder="Agregue notas para el reporte..."
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none" />
                   </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
+                  <button type="button" onClick={() => { setDraftFilters(filters); setFilterOpen(false); }} className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
+                  <button type="button" onClick={applyFilters} className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700">Aplicar</button>
                 </div>
               </div>
             )}
