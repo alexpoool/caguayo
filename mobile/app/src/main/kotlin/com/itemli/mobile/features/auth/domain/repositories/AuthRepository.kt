@@ -15,4 +15,6 @@ interface AuthRepository {
     ): AppResult<AuthSession>
 
     suspend fun basesByAlias(alias: String): AppResult<List<DependenciaRef>>
+    suspend fun listConnections(): AppResult<List<DependenciaRef>>
+    suspend fun testConnection(base: DependenciaRef): AppResult<Boolean>
 }
