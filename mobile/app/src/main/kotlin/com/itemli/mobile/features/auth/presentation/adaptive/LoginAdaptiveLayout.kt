@@ -199,6 +199,9 @@ fun LoginAdaptiveLayout(
         if (showServerDialog) {
             AlertDialog(
                 onDismissRequest = { if (!isSavingServer && !isTestingServer) showServerDialog = false },
+                containerColor = Color.White,
+                titleContentColor = Navy,
+                textContentColor = Color(0xFF33415C),
                 title = { Text("Configurar servidor") },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -298,7 +301,11 @@ private fun DatabasePicker(
                 modifier = Modifier.fillMaxWidth(),
             )
             Box(Modifier.matchParentSize().padding(end = 46.dp).clickable { expanded = true })
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(Color.White),
+            ) {
                 bases.forEach { base ->
                     DropdownMenuItem(text = { Text(base.baseDatos) }, onClick = { expanded = false; onSelected(base) })
                 }
