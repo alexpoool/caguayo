@@ -99,7 +99,7 @@ val appModule: Module = module {
 
     single { ReportPdfStorage(androidApplication()) }
 
-    viewModel { LoginViewModel(listDatabaseConnections = get(), testDatabaseConnection = get(), loginUseCase = get()) }
+    viewModel { LoginViewModel(listDatabaseConnections = get(), testDatabaseConnection = get(), loginUseCase = get(), tokenStorage = get()) }
     viewModel { ReportsCatalogViewModel(get()) }
     viewModel {
         ReportDetailViewModel(
