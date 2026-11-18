@@ -203,7 +203,7 @@ const REPORTS: ReportConfig[] = [
     module: "tienda",
     moduleLabel: "Tienda",
     previewEndpoint: "/reportes/clientes/preview",
-    buildPreviewParams: () => ({}),
+    buildPreviewParams: (f) => ({ id_dependencia: f.id_dependencia }),
     transformChartData: (data) => {
       const items = data?.items || [];
       const provincias: Record<string, number> = {};
@@ -249,7 +249,7 @@ const REPORTS: ReportConfig[] = [
     computeStats: (data) => { const items = data?.items || []; return { total: items.length, promedio: 0, max: items.length, min: 0, count: items.length }; },
     pdfEndpoint: "/reportes/proveedores-dependencia",
     pdfFilename: "proveedores.pdf",
-    buildPdfParams: (f) => ({ aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
     needsDependencia: true,
     needsFechas: false,
   },
