@@ -64,6 +64,18 @@ class EncryptedTokenStorage(context: Context) : TokenStorage {
         runCatching { prefs.edit().putString(KEY_USER_ALIAS, alias).apply() }
     }
 
+    override suspend fun dependencyId(): Long? = runCatching {
+        if (prefs.contains(KEY_DEPENDENCY_ID)) prefs.getLong(KEY_DEPENDENCY_ID, 0L) else null
+    }.getOrNull()
+
+    override suspend fun setDependencyId(id: Long?) {
+        runCatching {
+            val editor = prefs.edit()
+            if (id == null) editor.remove(KEY_DEPENDENCY_ID) else editor.putLong(KEY_DEPENDENCY_ID, id)
+            editor.apply()
+        }
+    }
+
     override suspend fun clear() {
         runCatching { prefs.edit().clear().apply() }
             .onFailure { android.util.Log.e("ItemliSecurity", "No se pudo borrar el token", it) }
@@ -75,5 +87,6 @@ class EncryptedTokenStorage(context: Context) : TokenStorage {
         const val KEY_SAVED_PASSWORD = "saved_password"
         const val KEY_SAVED_DATABASE = "saved_database"
         const val KEY_USER_ALIAS = "user_alias"
+        const val KEY_DEPENDENCY_ID = "user_dependency_id"
     }
 }
