@@ -3,6 +3,7 @@ package com.itemli.mobile.features.auth.infrastructure.mappers
 import com.itemli.mobile.features.auth.domain.entities.AuthSession
 import com.itemli.mobile.features.auth.domain.entities.AuthUser
 import com.itemli.mobile.features.auth.domain.entities.DependenciaRef
+import com.itemli.mobile.features.auth.infrastructure.datasources.ConexionBaseDatosDto
 import com.itemli.mobile.features.auth.infrastructure.datasources.AuthLoginResponseDto
 import com.itemli.mobile.features.auth.infrastructure.datasources.AuthUserDto
 import com.itemli.mobile.features.auth.infrastructure.datasources.DependenciaDto
@@ -29,4 +30,8 @@ private fun AuthUserDto.toDomain(): AuthUser = AuthUser(
     alias = alias,
     cargo = cargo,
     dependencia = dependencia?.toDomain(),
+)
+
+fun ConexionBaseDatosDto.toDomain(): DependenciaRef = DependenciaRef(
+    id = id_conexion, nombre = nombre_database, baseDatos = nombre_database, host = host, puerto = puerto,
 )
