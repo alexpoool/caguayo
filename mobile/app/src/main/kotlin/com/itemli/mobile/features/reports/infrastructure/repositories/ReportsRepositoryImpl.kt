@@ -187,6 +187,18 @@ class ReportsRepositoryImpl(
                 ),
             )
         }
+        ReportCatalog.realizadores.id -> {
+            val dto = api().realizadoresPreview(
+                provinciaId = filters.optionalFilter("id_provincia"),
+                municipioId = filters.optionalFilter("id_municipio"),
+                vigencia = filters.optionalFilter("vigencia"),
+                textoBusqueda = filters.optionalFilter("texto_busqueda"),
+            )
+            ReportPreview(
+                rows = dto.toRows(definition),
+                totals = mapOf("total_items" to (dto.total_items ?: 0)),
+            )
+        }
         ReportCatalog.liquidaciones.id -> {
             val dto = api().liquidacionesPreview(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
