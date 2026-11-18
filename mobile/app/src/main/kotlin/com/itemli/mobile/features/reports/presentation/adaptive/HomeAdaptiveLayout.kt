@@ -25,7 +25,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -70,7 +70,7 @@ private val homeModules = listOf(
 @Composable
 fun HomeAdaptiveLayout(
     onOpenReports: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onLogout: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -122,12 +122,12 @@ fun HomeAdaptiveLayout(
                         }
                     }
                     Surface(
-                        modifier = Modifier.size(42.dp).clickable(onClick = onOpenSettings),
+                        modifier = Modifier.size(42.dp).clickable(onClick = onLogout),
                         shape = RoundedCornerShape(50),
                         color = Color.White.copy(alpha = .12f),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Ajustes", tint = Color.White)
+                            Icon(Icons.Filled.Logout, contentDescription = "Cerrar sesión", tint = Color.White)
                         }
                     }
                 }
