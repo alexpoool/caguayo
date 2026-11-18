@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
@@ -74,6 +75,7 @@ fun LoginAdaptiveLayout(
     state: LoginUiState,
     onAliasChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onRememberCredentialsChange: (Boolean) -> Unit,
     onBaseChange: (DependenciaRef?) -> Unit,
     onReloadBases: () -> Unit,
     onSubmit: () -> Unit,
@@ -167,6 +169,10 @@ fun LoginAdaptiveLayout(
                         onPasswordChanged = onPasswordChange,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = state.rememberCredentials, onCheckedChange = onRememberCredentialsChange)
+                        Text("Recordar mis datos", color = MutedText, style = MaterialTheme.typography.bodyMedium)
+                    }
                     Button(
                         onClick = onSubmit,
                         enabled = !state.isLoading && !state.isLoadingBases &&
