@@ -8,7 +8,7 @@ import com.itemli.mobile.features.reports.presentation.adaptive.HomeAdaptiveLayo
 fun HomeScreen(
     windowSizeClass: WindowSizeClass,
     onOpenReports: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onLogout: () -> Unit,
 ) {
-    HomeAdaptiveLayout(onOpenReports = onOpenReports, onOpenSettings = onOpenSettings)
+    HomeAdaptiveLayout(onOpenReports = onOpenReports, onLogout = onLogout)
 }
