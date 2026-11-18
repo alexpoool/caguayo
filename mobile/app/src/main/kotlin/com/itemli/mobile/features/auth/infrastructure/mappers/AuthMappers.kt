@@ -33,5 +33,5 @@ private fun AuthUserDto.toDomain(): AuthUser = AuthUser(
 )
 
 fun ConexionBaseDatosDto.toDomain(): DependenciaRef = DependenciaRef(
-    id = id_conexion, nombre = nombre_database, baseDatos = nombre_database, host = host, puerto = puerto,
+    id = id_conexion ?: nombre_database.hashCode().toLong(), nombre = nombre_database, baseDatos = nombre_database, host = host, puerto = puerto,
 )
