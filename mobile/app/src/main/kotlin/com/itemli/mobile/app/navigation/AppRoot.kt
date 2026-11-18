@@ -77,7 +77,7 @@ fun AppRoot(
                             popUpTo(AppDestination.Login.route) { inclusive = true }
                         }
                     },
-                    onOpenSettings = { navController.navigate(AppDestination.Settings.route) },
+                    onOpenSettings = { /* El engranaje del login abre el diálogo local de URL. */ },
                 )
             }
             composable(AppDestination.Home.route) {
