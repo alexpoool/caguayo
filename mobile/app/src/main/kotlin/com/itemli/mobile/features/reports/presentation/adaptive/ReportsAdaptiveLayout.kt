@@ -70,9 +70,10 @@ fun ReportsAdaptiveLayout(
     windowSizeClass: WindowSizeClass?,
     state: ReportsListUiState,
     onOpenReport: (String) -> Unit,
+    initialModule: String? = null,
 ) {
     var search by remember { mutableStateOf("") }
-    var selectedModule by remember { mutableStateOf("Todos") }
+    var selectedModule by remember(initialModule) { mutableStateOf(initialModule ?: "Todos") }
     val modules = remember(state.definitions) {
         listOf("Todos") + state.definitions.map { it.module.label }.distinct().sorted()
     }
