@@ -6,12 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,29 +51,13 @@ fun ReportDetailAdaptiveLayout(
             onAction = { showFilters = true },
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(1.dp),
-            ) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(definition.description, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "Vista previa: primeros 3 registros",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF667795),
-                    )
-                }
-            }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             state.preview?.let { preview ->
-                Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                    Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Vista previa", style = MaterialTheme.typography.titleMedium)
-                        ReportPreviewTable(definition = definition, rows = preview.rows, modifier = Modifier.fillMaxWidth())
-                    }
-                }
+                ReportPreviewTable(
+                    definition = definition,
+                    rows = preview.rows,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
         ReportPdfButton(state = state, onDownload = onDownloadPdf, modifier = Modifier.padding(bottom = 10.dp))
