@@ -31,7 +31,7 @@ fun AdaptiveAppScaffold(
     content: @Composable () -> Unit,
 ) {
     val destinations = if (currentRoute == AppDestination.Login.route) emptyList() else
-        listOf(AppDestination.Home, AppDestination.Reports, AppDestination.Settings)
+        listOf(AppDestination.Home, AppDestination.Reports, AppDestination.History, AppDestination.Settings)
     val selectedRoute = if (currentRoute.startsWith("report-detail")) {
         AppDestination.Reports.route
     } else currentRoute
