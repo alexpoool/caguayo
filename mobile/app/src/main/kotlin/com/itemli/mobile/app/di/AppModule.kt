@@ -1,6 +1,8 @@
 package com.itemli.mobile.app.di
 
 import com.itemli.mobile.features.auth.application.usecases.LoginUseCase
+import com.itemli.mobile.features.auth.application.usecases.ListDatabaseConnectionsUseCase
+import com.itemli.mobile.features.auth.application.usecases.TestDatabaseConnectionUseCase
 import com.itemli.mobile.features.auth.application.usecases.SearchAliasUseCase
 import com.itemli.mobile.features.auth.domain.repositories.AuthRepository
 import com.itemli.mobile.features.auth.infrastructure.repositories.AuthRepositoryImpl
@@ -81,6 +83,8 @@ val appModule: Module = module {
     }
 
     factory { SearchAliasUseCase(get()) }
+    factory { ListDatabaseConnectionsUseCase(get()) }
+    factory { TestDatabaseConnectionUseCase(get()) }
     factory { LoginUseCase(get()) }
     factory { LoadServerConfigUseCase(get()) }
     factory {
@@ -95,7 +99,7 @@ val appModule: Module = module {
 
     single { ReportPdfStorage(androidApplication()) }
 
-    viewModel { LoginViewModel(searchAliasUseCase = get(), loginUseCase = get()) }
+    viewModel { LoginViewModel(listDatabaseConnections = get(), testDatabaseConnection = get(), loginUseCase = get()) }
     viewModel { ReportsCatalogViewModel(get()) }
     viewModel {
         ReportDetailViewModel(
