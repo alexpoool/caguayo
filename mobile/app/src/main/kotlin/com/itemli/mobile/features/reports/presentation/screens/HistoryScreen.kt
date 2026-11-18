@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 fun HistoryScreen(onBack: () -> Unit = {}) {
     Box(Modifier.fillMaxSize().background(Color(0xFFF3F6FF)).padding(20.dp), contentAlignment = Alignment.TopStart) {
         Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            InteriorHeader(title = "Historial", onBack = onBack, actionIcon = Icons.Filled.History, actionDescription = "Historial", onAction = {})
+            InteriorHeader(title = "Historial", onBack = onBack, actionIcon = Icons.Filled.History, actionDescription = "Historial")
             Surface(color = Color.White, shape = RoundedCornerShape(20.dp), shadowElevation = 1.dp) {
                 Column(
                     Modifier.fillMaxSize().padding(28.dp),
