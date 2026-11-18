@@ -32,6 +32,7 @@ fun LoginScreen(
         state = state,
         onAliasChange = viewModel::onAliasChanged,
         onPasswordChange = viewModel::onPasswordChanged,
+        onRememberCredentialsChange = viewModel::onRememberCredentialsChanged,
         onBaseChange = viewModel::onBaseSelected,
         onReloadBases = viewModel::loadDatabases,
         onSubmit = { viewModel.submit(onLogged) },
