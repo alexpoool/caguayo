@@ -91,7 +91,7 @@ fun AppRoot(
                 )
             }
             composable(
-                AppDestination.Reports.route,
+                "reports?module={module}",
                 arguments = listOf(navArgument("module") { nullable = true; defaultValue = null }),
             ) { entry ->
                 ReportsCatalogScreen(
