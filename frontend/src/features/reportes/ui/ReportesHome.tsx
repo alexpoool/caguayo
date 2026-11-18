@@ -105,7 +105,7 @@ function getDefaultFilters(userDepId?: number): FilterState {
     fecha_inicio: toISODateLocal(oneMonthAgo),
     fecha_fin: toISODateLocal(now),
     notas: "",
-    id_moneda: "",
+    id_moneda: "1",
   };
 }
 
@@ -120,7 +120,7 @@ const REPORTS: ReportConfig[] = [
     module: "inventario",
     moduleLabel: "Inventario",
     previewEndpoint: "/reportes/existencias/preview",
-    buildPreviewParams: (f) => ({ id_dependencia: f.id_dependencia || "1" }),
+    buildPreviewParams: (f) => ({ id_dependencia: f.id_dependencia }),
     transformChartData: (data) => {
       const items = data?.items || [];
       return items.slice(0, 7).map((item: any) => ({
@@ -136,7 +136,7 @@ const REPORTS: ReportConfig[] = [
     },
     pdfEndpoint: "/reportes/existencias",
     pdfFilename: "existencias.pdf",
-    buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia || "1", aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
     needsDependencia: true,
     needsFechas: false,
     showTable: true,
@@ -158,7 +158,7 @@ const REPORTS: ReportConfig[] = [
     moduleLabel: "Inventario",
     previewEndpoint: "/reportes/movimientos-dependencia/preview",
     buildPreviewParams: (f) => ({
-      id_dependencia: f.id_dependencia || "1",
+      id_dependencia: f.id_dependencia,
       fecha_inicio: f.fecha_inicio,
       fecha_fin: f.fecha_fin,
     }),
@@ -176,7 +176,7 @@ const REPORTS: ReportConfig[] = [
     },
     pdfEndpoint: "/reportes/movimientos-dependencia",
     pdfFilename: "movimientos_dependencia.pdf",
-    buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia || "1", fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia, fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
     needsDependencia: true,
     needsFechas: true,
     showTable: true,
@@ -470,6 +470,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
 
   // Filter state with smart defaults
   const [filters, setFilters] = useState<FilterState>(() => getDefaultFilters(userDepId));
+  const [draftFilters, setDraftFilters] = useState<FilterState>(() => getDefaultFilters(userDepId));
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
 
@@ -493,7 +494,9 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
 
   // Reset filters with smart defaults when report changes
   useEffect(() => {
-    setFilters(getDefaultFilters(userDepId));
+    const defaults = getDefaultFilters(userDepId);
+    setFilters(defaults);
+    setDraftFilters(defaults);
   }, [activeReport?.id, userDepId]);
 
   // Petición de vista previa (null mientras no haya reporte activo).
@@ -604,7 +607,8 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [filterOpen]);
 
-  const updateFilter = useCallback((key: string, value: string) => { setFilters((prev) => ({ ...prev, [key]: value })); }, []);
+  const updateFilter = useCallback((key: string, value: string) => { setDraftFilters((prev) => ({ ...prev, [key]: value })); }, []);
+  const applyFilters = useCallback(() => { setFilters(draftFilters); setFilterOpen(false); }, [draftFilters]);
 
   const handleDownload = useCallback(async () => {
     if (!activeReport) return;
@@ -639,7 +643,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
   const tableData = useMemo(() => {
     if (!activeReport?.showTable || !previewData) return null;
     const items = previewData?.items || [];
-    return items;
+    return items.slice(0, 3).map((row: Record<string, any>) => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "id" && !key.startsWith("id_"))));
   }, [activeReport, previewData]);
 
   // Pantalla de selección cuando aún no hay reporte activo.
@@ -808,7 +812,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Dependencia</label>
                       <DependenciaTreeSelect
                         dependencias={dependencias}
-                        value={filters.id_dependencia}
+                        value={draftFilters.id_dependencia}
                         onChange={(v) => updateFilter("id_dependencia", v)}
                         rootId={userDepId}
                         placeholder="Seleccionar dependencia"
@@ -823,7 +827,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                   {activeReport.needsMoneda && (
                     <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Moneda</label>
-                      <select value={filters.id_moneda} onChange={(e) => updateFilter("id_moneda", e.target.value)}
+                      <select value={draftFilters.id_moneda} onChange={(e) => updateFilter("id_moneda", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none">
                         <option value="">Todas las monedas</option>
                         {monedas.map((m) => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
@@ -834,17 +838,17 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Desde</label>
-                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-brand-500" value={filters.fecha_inicio} onChange={(fecha) => updateFilter("fecha_inicio", fecha)} />
+                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-brand-500" value={draftFilters.fecha_inicio} onChange={(fecha) => updateFilter("fecha_inicio", fecha)} />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
-                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-brand-500" value={filters.fecha_fin} onChange={(fecha) => updateFilter("fecha_fin", fecha)} />
+                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-brand-500" value={draftFilters.fecha_fin} onChange={(fecha) => updateFilter("fecha_fin", fecha)} />
                       </div>
                     </div>
                   )}
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notas / Observaciones</label>
-                    <textarea rows={2} value={filters.notas} onChange={(e) => updateFilter("notas", e.target.value)}
+                    <textarea rows={2} value={draftFilters.notas} onChange={(e) => updateFilter("notas", e.target.value)}
                       placeholder="Agregue notas para el reporte..."
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none" />
                   </div>
