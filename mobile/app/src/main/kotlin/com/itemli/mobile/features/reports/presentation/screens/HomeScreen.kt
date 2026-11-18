@@ -7,7 +7,7 @@ import com.itemli.mobile.features.reports.presentation.adaptive.HomeAdaptiveLayo
 @Composable
 fun HomeScreen(
     windowSizeClass: WindowSizeClass,
-    onOpenReports: () -> Unit,
+    onOpenReports: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
     HomeAdaptiveLayout(onOpenReports = onOpenReports, onLogout = onLogout)
