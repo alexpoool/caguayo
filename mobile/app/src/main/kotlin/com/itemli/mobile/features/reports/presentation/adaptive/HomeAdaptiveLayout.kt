@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Handshake
@@ -52,24 +53,24 @@ private val HomeSurface = Color(0xFFF3F6FF)
 
 private data class HomeModule(
     val title: String,
+    val count: Int,
     val icon: ImageVector,
     val tint: Color,
     val background: Color,
 )
 
 private val homeModules = listOf(
-    HomeModule("Ventas", Icons.Filled.ShoppingCart, Color(0xFF0875E8), Color(0xFFDDEEFF)),
-    HomeModule("Inventario", Icons.Filled.Inventory2, Color(0xFF079B69), Color(0xFFD7F6EA)),
-    HomeModule("Clientes", Icons.Filled.Groups, Color(0xFF6738D7), Color(0xFFECE3FF)),
-    HomeModule("Compras", Icons.Filled.Handshake, Color(0xFFD65B24), Color(0xFFFFE8DC)),
-    HomeModule("Proyectos", Icons.Filled.Folder, Color(0xFF079DB5), Color(0xFFDDF6FA)),
-    HomeModule("Generales", Icons.Filled.BarChart, Color(0xFF1554C8), Color(0xFFE2EBFF)),
+    HomeModule("Inventario", 3, Icons.Filled.Inventory2, Color(0xFF079B69), Color(0xFFD7F6EA)),
+    HomeModule("Compra", 1, Icons.Filled.Handshake, Color(0xFFD65B24), Color(0xFFFFE8DC)),
+    HomeModule("Tienda", 2, Icons.Filled.Groups, Color(0xFF6738D7), Color(0xFFECE3FF)),
+    HomeModule("Proyectos", 3, Icons.Filled.Folder, Color(0xFF079DB5), Color(0xFFDDF6FA)),
+    HomeModule("Ministerios", 2, Icons.Filled.AccountBalance, Color(0xFF1554C8), Color(0xFFE2EBFF)),
 )
 
 /** Inicio ITEMLI: cabecera azul con bienvenida y módulos de acceso rápido. */
 @Composable
 fun HomeAdaptiveLayout(
-    onOpenReports: () -> Unit,
+    onOpenReports: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
     Column(
@@ -168,19 +169,19 @@ fun HomeAdaptiveLayout(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Text("Reportes Disponibles", style = MaterialTheme.typography.titleLarge)
                     Surface(shape = RoundedCornerShape(50), color = Color(0xFFE3ECFF)) {
-                        Text("6", modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = Navy, fontWeight = FontWeight.Bold)
+                        Text("11", modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), color = Navy, fontWeight = FontWeight.Bold)
                     }
                 }
                 androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.fillMaxWidth().height(220.dp),
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxWidth().height(330.dp),
                     contentPadding = PaddingValues(0.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     userScrollEnabled = false,
                 ) {
                     items(homeModules) { module ->
-                        ModuleTile(module = module, onClick = onOpenReports)
+                        ModuleTile(module = module, onClick = { onOpenReports(module.title) })
                     }
                 }
             }
