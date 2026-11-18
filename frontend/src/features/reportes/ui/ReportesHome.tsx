@@ -641,10 +641,10 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
 
   // Table data for inventory reports
   const tableData = useMemo(() => {
-    if (!activeReport?.showTable || !previewData) return null;
-    const items = previewData?.items || [];
+    if (!previewData) return null;
+    const items = Array.isArray(previewData) ? previewData : (previewData?.items || []);
     return items.slice(0, 3).map((row: Record<string, any>) => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "id" && !key.startsWith("id_"))));
-  }, [activeReport, previewData]);
+  }, [previewData]);
 
   // Pantalla de selección cuando aún no hay reporte activo.
   // IMPORTANTE: debe ir DESPUÉS de todos los hooks (reglas de React); un return
@@ -676,7 +676,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
     if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
     if (!tableData || tableData.length === 0) return <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">No hay datos para mostrar</div>;
 
-    const columns = activeReport.tableColumns || [];
+    const columns = (activeReport.tableColumns?.length ? activeReport.tableColumns : Object.keys(tableData[0] || {}).map((key) => ({ key, label: key.replace(/_/g, " ") }))).slice(0, 3);
 
     // Paginación local
     const totalRows = tableData.length;
@@ -779,15 +779,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
       <div className="max-w-6xl mx-auto">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-          {/* Left: Chart type icons (invisible spacer for table reports to keep filter centered) */}
-          <div className={`flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm ${activeReport?.showTable ? 'invisible' : ''}`}>
-            {chartButtons.map((btn) => (
-              <button key={btn.type} onClick={() => setChartType(btn.type)} title={btn.label}
-                className={`p-2 rounded-lg transition-all duration-150 ${chartType === btn.type ? "bg-brand-50 text-brand-600 shadow-sm ring-1 ring-brand-200" : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"}`}>
-                {btn.icon}
-              </button>
-            ))}
-          </div>
+          <div className="flex-1" />
 
           {/* Center: Filter icon with dropdown */}
           <div className="relative" ref={filterRef}>
@@ -863,9 +855,6 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
 
           {/* Right: Action icons */}
           <div className="flex items-center gap-1">
-            <button onClick={handlePreview} title="Vista previa" className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300 transition-all duration-150">
-              <Eye className="w-4 h-4" />
-            </button>
             <button onClick={handleDownload} title="Descargar PDF" className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300 transition-all duration-150">
               <Download className="w-4 h-4" />
             </button>
@@ -884,7 +873,6 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-gray-900">{activeReport?.title}</h2>
-                <p className="text-xs text-gray-400">{activeReport?.description}</p>
               </div>
             </div>
             {!activeReport?.showTable && !activeReport?.chartSeries && (
@@ -894,27 +882,9 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
               </div>
             )}
           </div>
-          <div className="border-t border-gray-100 pt-4">{activeReport?.showTable ? renderTable() : renderChart()}</div>
+          <div className="border-t border-gray-100 pt-4">{renderTable()}</div>
 
-          {/* Summary statistics */}
-          <div className={`border-t border-gray-100 pt-4 mt-4 ${activeReport?.showStats === false ? "hidden" : ""}`}>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { label: "Total", value: stats.total, icon: <DollarSign className="w-4 h-4 text-brand-600" />, bg: "bg-brand-100" },
-                { label: "Promedio", value: stats.promedio, icon: <TrendingUp className="w-4 h-4 text-emerald-600" />, bg: "bg-emerald-100" },
-                { label: "Máximo", value: stats.max, icon: <TrendingUp className="w-4 h-4 text-amber-600" />, bg: "bg-amber-100" },
-                { label: "Mínimo", value: stats.min, icon: <TrendingDown className="w-4 h-4 text-red-600" />, bg: "bg-red-100" },
-              ].map((s) => (
-                <div key={s.label} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                  <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center`}>{s.icon}</div>
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{s.label}</p>
-                    <p className="text-sm font-bold text-gray-900">{formatNumber(s.value)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+
         </div>
       </div>
     </div>
