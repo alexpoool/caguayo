@@ -6,7 +6,7 @@ import androidx.security.crypto.MasterKey
 import com.itemli.mobile.shared.domain.TokenStorage
 
 /**
- * Token cifrado en disco. Si el contexto aún no está listo, se degrada a
+ * Token y credenciales recordadas cifrados en disco. Si el contexto aún no está listo, se degrada a
  * preferencias normales (solo usado en tests).
  */
 class EncryptedTokenStorage(context: Context) : TokenStorage {
