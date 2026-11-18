@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -33,21 +36,24 @@ fun InteriorHeader(
     onAction: (() -> Unit)? = null,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(58.dp).background(HeaderNavy)
-            .padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().height(52.dp)
+            .drawBehind {
+                val bleed = 20.dp.toPx()
+                drawRect(color = HeaderNavy, topLeft = Offset(-bleed, 0f), size = Size(size.width + bleed * 2, size.height))
+            }.padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
             Icon(Icons.Filled.ArrowBack, contentDescription = "Volver",
-                tint = Color.White, modifier = Modifier.size(24.dp).clickable(onClick = onBack))
+                tint = Color.White, modifier = Modifier.size(22.dp).clickable(onClick = onBack))
             Spacer(Modifier.width(16.dp))
         }
-        Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge)
+        Text(title, color = Color.White, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.weight(1f))
         if (actionIcon != null) {
             val iconModifier = if (onAction != null) Modifier.clickable(onClick = onAction) else Modifier
             Icon(actionIcon, contentDescription = actionDescription,
-                tint = Color.White, modifier = iconModifier.size(25.dp))
+                tint = Color.White, modifier = iconModifier.size(23.dp))
         }
     }
 }
