@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -75,8 +77,15 @@ fun LoginAdaptiveLayout(
     onBaseChange: (DependenciaRef?) -> Unit,
     onReloadBases: () -> Unit,
     onSubmit: () -> Unit,
+    serverUrl: String,
+    isSavingServer: Boolean,
+    isTestingServer: Boolean,
+    connectionFeedback: String?,
+    onServerUrlChange: (String) -> Unit,
+    onSaveServerUrl: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
+    var showServerDialog by remember { mutableStateOf(false) }
     val maxWidth = if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) 480.dp else 440.dp
     Box(Modifier.fillMaxSize().background(Color(0xFFF2F5FC))) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -109,7 +118,7 @@ fun LoginAdaptiveLayout(
                             Text("ITEMLI", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
                             Text("Reportes Empresariales", color = Color(0xFFD6E8FF), style = MaterialTheme.typography.labelSmall)
                         }
-                        IconButton(onClick = onOpenSettings) {
+                        IconButton(onClick = { showServerDialog = true; onOpenSettings() }) {
                             Icon(Icons.Filled.Settings, contentDescription = "Configurar servidor", tint = Color.White)
                         }
                     }
@@ -185,6 +194,45 @@ fun LoginAdaptiveLayout(
                 color = MutedText,
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
+            )
+        }
+        if (showServerDialog) {
+            AlertDialog(
+                onDismissRequest = { if (!isSavingServer && !isTestingServer) showServerDialog = false },
+                title = { Text("Configurar servidor") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Actualiza la dirección del servidor. Al guardar, la aplicación comprobará automáticamente la conexión.")
+                        OutlinedTextField(
+                            value = serverUrl,
+                            onValueChange = onServerUrlChange,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            label = { Text("URL del servidor") },
+                            placeholder = { Text("http://192.168.1.100:8000/") },
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                        if (isSavingServer || isTestingServer) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                Text(if (isSavingServer) "Guardando dirección…" else "Probando conexión…", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                        connectionFeedback?.let { feedback ->
+                            Text(feedback, color = if (feedback.startsWith("Conexión correcta")) Color(0xFF15945B) else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = onSaveServerUrl, enabled = !isSavingServer && !isTestingServer && serverUrl.isNotBlank()) {
+                        Text("Guardar y probar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showServerDialog = false }, enabled = !isSavingServer && !isTestingServer) {
+                        Text("Cancelar")
+                    }
+                },
             )
         }
     }
