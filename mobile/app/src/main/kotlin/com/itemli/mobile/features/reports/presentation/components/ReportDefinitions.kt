@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -163,6 +164,11 @@ private fun ReportDateSelector(
         }
     }
     if (showPicker) {
+        MaterialTheme(
+            colorScheme = lightColorScheme(),
+            typography = MaterialTheme.typography,
+            shapes = MaterialTheme.shapes,
+        ) {
         androidx.compose.material3.DatePickerDialog(
             onDismissRequest = { showPicker = false },
             confirmButton = {
@@ -183,7 +189,27 @@ private fun ReportDateSelector(
                 }
             },
         ) {
-            androidx.compose.material3.DatePicker(state = pickerState)
+            androidx.compose.material3.DatePicker(
+                state = pickerState,
+                colors = androidx.compose.material3.DatePickerDefaults.colors(
+                    containerColor = Color.White,
+                    titleContentColor = Color(0xFF173C78),
+                    headlineContentColor = Color(0xFF173C78),
+                    weekdayContentColor = Color(0xFF53658C),
+                    subheadContentColor = Color(0xFF53658C),
+                    yearContentColor = Color(0xFF173C78),
+                    currentYearContentColor = Color(0xFF0752D8),
+                    selectedYearContainerColor = Color(0xFF0752D8),
+                    selectedYearContentColor = Color.White,
+                    dayContentColor = Color(0xFF173C78),
+                    disabledDayContentColor = Color(0xFFB8C1D1),
+                    selectedDayContainerColor = Color(0xFF0752D8),
+                    selectedDayContentColor = Color.White,
+                    todayContentColor = Color(0xFF0752D8),
+                    todayDateBorderColor = Color(0xFF0752D8),
+                ),
+            )
+        }
         }
     }
 }
