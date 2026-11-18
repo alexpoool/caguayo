@@ -54,7 +54,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
   const userName = user ? `${user.nombre} ${user.primer_apellido}${user.segundo_apellido ? " " + user.segundo_apellido : ""}`.trim() : "";
   const userCargo = user?.cargo || "";
 
-  const isFormValid = Boolean(idDependencia && idProducto && fechaInicio && fechaFin);
+  const isFormValid = Boolean(idDependencia && fechaInicio && fechaFin);
 
   useEffect(() => {
     casosUso.listarDependencias().then(setDependencias).catch(() => toast.error("Error cargando dependencias"));
@@ -63,7 +63,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
 
   // ── Tabla automática: se carga sola cuando el formulario es válido ──────────
   useEffect(() => {
-    if (!idDependencia || !idProducto || !fechaInicio || !fechaFin) {
+    if (!idDependencia || !fechaInicio || !fechaFin) {
       setPreviewData(null);
       setPreviewError(false);
       setTableLoading(false);
@@ -80,7 +80,6 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
           '/reportes/movimientos-producto/preview',
           {
             id_dependencia: String(idDependencia),
-            id_producto: String(idProducto),
             fecha_inicio: fechaInicio,
             fecha_fin: fechaFin,
           },
@@ -200,8 +199,9 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
   };
 
   const buildParams = () => new URLSearchParams({
-    id_dependencia: idDependencia!.toString(), id_producto: idProducto!.toString(),
+    id_dependencia: idDependencia!.toString(),
     fecha_inicio: fechaInicio, fecha_fin: fechaFin,
+    ...(idProducto ? { id_producto: idProducto.toString() } : {}),
     aprobado_por_nombre: userName, aprobado_por_cargo: userCargo, notas,
   });
 
@@ -220,7 +220,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
     try {
             const r = await casosUso.generarReporte('/reportes/movimientos-producto', Object.fromEntries(buildParams()));
       const blob = r;
-      descargarBlob(blob, `movimientos_producto_${idProducto}.pdf`);
+      descargarBlob(blob, `movimientos_producto.pdf`);
       toast.success("Reporte generado");
     } catch { toast.error("Error al generar reporte"); } finally { setPdfLoading(false); }
   };
@@ -229,7 +229,6 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
     if (!isFormValid) {
       const faltantes = [
         !idDependencia && "la dependencia",
-        !idProducto && "el producto",
         (!fechaInicio || !fechaFin) && "el rango de fechas",
       ].filter(Boolean) as string[];
       const texto = faltantes.length > 1
@@ -262,7 +261,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
         columns={[
           { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
           { key: "tipo", label: "Tipo" },
-          { key: "producto", label: "Producto", render: () => productoSel?.nombre || "—" },
+          { key: "producto", label: "Producto", render: (v: any) => v || productoSel?.nombre || "—" },
           { key: "cantidad", label: "Cantidad", className: "text-right" },
         ]}
         data={previewData}
@@ -310,7 +309,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
                   </select>
                 </div>
                 <div className="relative">
-                  <label className="block text-xs font-medium text-gray-600 mb-0.5">Producto <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-medium text-gray-600 mb-0.5">Producto <span className="text-gray-400 font-normal">(opcional)</span></label>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                     <input
@@ -328,7 +327,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
                           setSugAbiertas(false);
                         }
                       }}
-                      placeholder={idProducto ? "" : "Buscar por nombre o código…"}
+                      placeholder={idProducto ? "" : "Todos los productos (o buscar uno específico)…"}
                       autoComplete="off"
                       className="w-full pl-8 pr-8 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 bg-white"
                     />
