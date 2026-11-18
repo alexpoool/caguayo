@@ -19,6 +19,7 @@ import org.koin.androidx.compose.koinViewModel
 fun ReportsCatalogScreen(
     windowSizeClass: WindowSizeClass? = null,
     onOpenReport: (String) -> Unit,
+    initialModule: String? = null,
 ) {
     val viewModel: ReportsCatalogViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
@@ -30,6 +31,7 @@ fun ReportsCatalogScreen(
             windowSizeClass = windowSizeClass,
             state = state,
             onOpenReport = onOpenReport,
+            initialModule = initialModule,
         )
     }
 }
