@@ -2,6 +2,7 @@ package com.itemli.mobile.features.reports.presentation.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import com.itemli.mobile.features.reports.domain.entities.ReportDefinition
 
@@ -221,11 +223,17 @@ fun ReportPreviewTable(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFE6F0FF), RoundedCornerShape(10.dp))
+                .padding(horizontal = 10.dp, vertical = 12.dp),
+        ) {
             definition.columns.take(3).forEach { column ->
                 Text(
                     text = column.label,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                    color = Color(0xFF173C78),
                     modifier = Modifier.weight(1f),
                 )
             }
