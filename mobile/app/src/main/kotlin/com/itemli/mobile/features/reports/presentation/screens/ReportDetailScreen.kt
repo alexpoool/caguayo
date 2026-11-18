@@ -23,6 +23,7 @@ import org.koin.androidx.compose.koinViewModel
 fun ReportDetailScreen(
     windowSizeClass: WindowSizeClass? = null,
     reportId: String,
+    onBack: () -> Unit = {},
 ) {
     val viewModel: ReportDetailViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
@@ -65,6 +66,7 @@ fun ReportDetailScreen(
             onFilterChange = viewModel::onFilterChange,
             onRefresh = viewModel::refresh,
             onDownloadPdf = viewModel::downloadPdf,
+            onBack = onBack,
         )
     }
 }
