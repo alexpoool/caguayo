@@ -21,6 +21,8 @@ data class DependenciaRef(
     val id: Long,
     val nombre: String,
     val baseDatos: String,
+    val host: String = "localhost",
+    val puerto: Int = 5432,
 )
 
 data class AuthSession(
