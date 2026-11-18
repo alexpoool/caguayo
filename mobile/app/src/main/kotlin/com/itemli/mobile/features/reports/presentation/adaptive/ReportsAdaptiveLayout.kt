@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.ChevronRight
@@ -50,6 +51,7 @@ import com.itemli.mobile.features.reports.presentation.viewmodels.ReportsListUiS
 import com.itemli.mobile.shared.ui.theme.BrandPrimary
 import com.itemli.mobile.shared.ui.theme.SurfaceLight
 import com.itemli.mobile.shared.ui.theme.TextSecondary
+import com.itemli.mobile.shared.ui.components.InteriorHeader
 
 private data class ReportVisual(val icon: androidx.compose.ui.graphics.vector.ImageVector, val tint: Color, val bg: Color)
 
@@ -71,8 +73,10 @@ fun ReportsAdaptiveLayout(
     state: ReportsListUiState,
     onOpenReport: (String) -> Unit,
     initialModule: String? = null,
+    onBack: () -> Unit = {},
 ) {
     var search by remember { mutableStateOf("") }
+    var searchVisible by remember { mutableStateOf(false) }
     var selectedModule by remember(initialModule) { mutableStateOf(initialModule ?: "Todos") }
     val modules = remember(state.definitions) {
         listOf("Todos") + state.definitions.map { it.module.label }.distinct().sorted()
@@ -88,20 +92,28 @@ fun ReportsAdaptiveLayout(
         Modifier.fillMaxSize().background(SurfaceLight).padding(horizontal = 18.dp).padding(top = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Reportes", style = MaterialTheme.typography.headlineMedium, color = Color(0xFF092C63))
-        OutlinedTextField(
-            value = search,
-            onValueChange = { search = it },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("Buscar reporte") },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = Color.White,
-                focusedContainerColor = Color.White,
-            ),
+        InteriorHeader(
+            title = "Reportes",
+            onBack = onBack,
+            actionIcon = if (searchVisible) Icons.Filled.Close else Icons.Filled.Search,
+            actionDescription = if (searchVisible) "Cerrar búsqueda" else "Buscar reportes",
+            onAction = { searchVisible = !searchVisible; if (!searchVisible) search = "" },
         )
+        if (searchVisible) {
+            OutlinedTextField(
+                value = search,
+                onValueChange = { search = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text("Buscar reporte") },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = Color.White,
+                    focusedContainerColor = Color.White,
+                ),
+            )
+        }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(modules) { module ->
                 FilterChip(
