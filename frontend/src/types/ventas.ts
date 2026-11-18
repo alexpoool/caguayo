@@ -50,6 +50,8 @@ export interface Cliente {
   id_cliente: number;
   codigo: string;
   nombre: string;
+  /** Nombre + apellidos en naturales/TCP; razón social en jurídicas. */
+  nombre_completo?: string;
   tipo_persona: 'NATURAL' | 'JURIDICA' | 'TCP';
   nit: string;
   telefono?: string;

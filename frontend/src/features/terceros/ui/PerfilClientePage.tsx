@@ -31,6 +31,7 @@ import {
   TableCell,
 } from "@/shared/ui/components";
 import { formatFecha, formatFechaMesLargo } from "@/utils/fecha";
+import { nombreMostrado } from "@/utils/nombre";
 
 export function PerfilClientePage({ casosUso }: { casosUso: CasosUsoTerceros }) {
   const { id } = useParams<{ id: string }>();
@@ -137,7 +138,7 @@ export function PerfilClientePage({ casosUso }: { casosUso: CasosUsoTerceros }) 
               />
               <div>
                 <CardTitle className="text-xl">
-                  {cliente.nombre || "Cliente sin nombre"}
+                  {nombreMostrado(cliente) || "Cliente sin nombre"}
                 </CardTitle>
                 <p className="text-sm text-gray-500">
                   Cliente desde{" "}

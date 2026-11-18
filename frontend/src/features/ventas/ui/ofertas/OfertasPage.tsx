@@ -29,6 +29,7 @@ import { ConfirmDeleteModal } from "../facturas/components/modals/ConfirmDeleteM
 import { useOfertas, type EstadoOfertaFiltro } from "./hooks/useOfertas";
 import { useProductSelection } from "../facturas/hooks/useProductSelection";
 import { formatFecha } from "@/utils/fecha";
+import { nombreMostrado } from "@/utils/nombre";
 import { empresaActual } from '@/config/branding';
 
 const OFERTA_FORM_ID = "oferta-form";
@@ -61,7 +62,7 @@ export function getOfertaDocumento(
 
   const numeroContrato = contrato?.codigo || "";
   const cliente = clienteCompleto || contrato?.cliente;
-  const nombreCliente = cliente?.nombre || "N/A";
+  const nombreCliente = nombreMostrado(cliente) || "N/A";
   const nitCliente = cliente?.nit || "";
   const direccionCliente = cliente?.direccion || "";
   const provinciaCliente = cliente?.provincia?.nombre || "";

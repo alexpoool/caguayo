@@ -4,6 +4,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
@@ -18,6 +19,7 @@ from src.models import (
 )
 from src.dto.convenios_dto import ConvenioCreate, ConvenioRead, ConvenioUpdate
 from src.utils import generar_codigo_convenio, _get_denominacion_from_token, verify_auth
+from src.utils.nombres import filtro_nombre_completo, nombres_completos_por_cliente
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,20 @@ router = APIRouter(prefix="/convenios", tags=["convenios"], redirect_slashes=Fal
 def _sanitize_search(search: str) -> str:
     """Escape wildcard characters from search string."""
     return search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+async def _con_nombres_completos(db: AsyncSession, convenios):
+    """ConvenioRead con nombre + apellidos en el cliente anidado."""
+    reads = [ConvenioRead.model_validate(c) for c in convenios]
+    nombres = await nombres_completos_por_cliente(
+        db, [c.id_cliente for c in convenios]
+    )
+    for read in reads:
+        if read.cliente is not None:
+            read.cliente.nombre_completo = (
+                nombres.get(read.cliente.id_cliente) or read.cliente.nombre
+            )
+    return reads
 
 
 @router.get("")
@@ -47,7 +63,17 @@ async def listar_convenios(
         statement = statement.where(Convenio.id_cliente == cliente_id)
     if search:
         escaped = _sanitize_search(search)
-        statement = statement.where(Convenio.nombre_convenio.ilike(f"%{escaped}%"))
+        patron = f"%{escaped}%"
+        statement = statement.join(
+            ClienteModel, ClienteModel.id_cliente == Convenio.id_cliente, isouter=True
+        ).where(
+            or_(
+                Convenio.nombre_convenio.ilike(patron),
+                ClienteModel.codigo.ilike(patron),
+                ClienteModel.nombre.ilike(patron),
+                filtro_nombre_completo(search.strip()),
+            )
+        )
     # Los convenios anulados (borrado lógico con datos asociados) no se listan.
     statement = statement.where(Convenio.estado != "ANULADO")
     # Total con el mismo WHERE, antes de paginar: header para el contador.
@@ -58,7 +84,7 @@ async def listar_convenios(
     statement = statement.offset(skip).limit(limit)
     results = await db.exec(statement)
     convenios = results.all()
-    return [ConvenioRead.model_validate(c) for c in convenios]
+    return await _con_nombres_completos(db, convenios)
 
 
 @router.get("/simple")
@@ -101,7 +127,7 @@ async def obtener_convenio(
     c = results.first()
     if not c:
         raise HTTPException(status_code=404, detail="Convenio no encontrado")
-    return ConvenioRead.model_validate(c)
+    return (await _con_nombres_completos(db, [c]))[0]
 
 
 @router.post("", status_code=201)

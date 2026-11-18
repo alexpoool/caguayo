@@ -72,6 +72,7 @@ class ClienteCreate(ClienteBase):
 class ClienteRead(ClienteBase):
     id_cliente: int
     tipo_cliente: Optional[TipoClienteRead] = None
+    nombre_completo: Optional[str] = None
 
 
 class ClienteUpdate(SQLModel):
@@ -250,6 +251,7 @@ class ClienteSimpleRead(SQLModel):
     id_cliente: int
     codigo: str
     nombre: str
+    nombre_completo: Optional[str] = None
 
 
 class ConvenioSimpleRead(SQLModel):

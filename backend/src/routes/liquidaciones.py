@@ -26,6 +26,7 @@ async def listar_liquidaciones(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
+    search: Optional[str] = Query(None, description="Código o nombre del proveedor"),
     db: AsyncSession = Depends(get_session),
     response: Response = None,
 ):
@@ -33,10 +34,12 @@ async def listar_liquidaciones(
     try:
         response.headers["X-Total-Count"] = str(
             await liquidacion_service.count_liquidaciones(
-                db, cliente_id=cliente_id
+                db, cliente_id=cliente_id, search=search
             )
         )
-        return await liquidacion_service.get_liquidaciones(db, skip=skip, limit=limit, cliente_id=cliente_id)
+        return await liquidacion_service.get_liquidaciones(
+            db, skip=skip, limit=limit, cliente_id=cliente_id, search=search
+        )
     except Exception as e:
         logger.error("Error al listar liquidaciones", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -47,17 +50,18 @@ async def listar_liquidaciones_pendientes(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
+    search: Optional[str] = Query(None, description="Código o nombre del proveedor"),
     db: AsyncSession = Depends(get_session),
     response: Response = None,
 ):
     """Listar liquidaciones pendientes."""
     response.headers["X-Total-Count"] = str(
         await liquidacion_service.count_liquidaciones(
-            db, cliente_id=cliente_id, variante="pendientes"
+            db, cliente_id=cliente_id, variante="pendientes", search=search
         )
     )
     return await liquidacion_service.get_liquidaciones_pendientes(
-        db, skip=skip, limit=limit, cliente_id=cliente_id
+        db, skip=skip, limit=limit, cliente_id=cliente_id, search=search
     )
 
 
@@ -66,17 +70,18 @@ async def listar_liquidaciones_liquidadas(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
+    search: Optional[str] = Query(None, description="Código o nombre del proveedor"),
     db: AsyncSession = Depends(get_session),
     response: Response = None,
 ):
     """Listar liquidaciones liquidadas."""
     response.headers["X-Total-Count"] = str(
         await liquidacion_service.count_liquidaciones(
-            db, cliente_id=cliente_id, variante="liquidadas"
+            db, cliente_id=cliente_id, variante="liquidadas", search=search
         )
     )
     return await liquidacion_service.get_liquidaciones_liquidadas(
-        db, skip=skip, limit=limit, cliente_id=cliente_id
+        db, skip=skip, limit=limit, cliente_id=cliente_id, search=search
     )
 
 

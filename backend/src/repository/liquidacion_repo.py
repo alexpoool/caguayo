@@ -1,12 +1,34 @@
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, TypeVar
+from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 from src.repository.base import CRUDBase
+from src.models.cliente import Cliente
 from src.models.liquidacion import Liquidacion
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
+from src.utils.nombres import filtro_nombre_completo
 
 ModelType = TypeVar("ModelType")
+
+
+def _aplicar_busqueda(statement, search: Optional[str]):
+    """Busca por código de liquidación o por el nombre del proveedor.
+
+    Incluye los apellidos (personas naturales/TCP) mediante un EXISTS, para que
+    el total paginado y la lista usen el mismo WHERE.
+    """
+    if not search or not search.strip():
+        return statement
+    patron = f"%{search.strip()}%"
+    return statement.join(
+        Cliente, Cliente.id_cliente == Liquidacion.id_cliente
+    ).where(
+        or_(
+            Liquidacion.codigo.ilike(patron),
+            filtro_nombre_completo(search.strip()),
+        )
+    )
 
 
 class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
@@ -64,7 +86,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
 
     async def get_multi_with_relations(
         self, db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        cliente_id: Optional[int] = None, search: Optional[str] = None
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
@@ -86,12 +108,14 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         )
         if cliente_id is not None:
             statement = statement.where(Liquidacion.id_cliente == cliente_id)
+        statement = _aplicar_busqueda(statement, search)
         statement = statement.order_by(Liquidacion.id_liquidacion.desc()).offset(skip).limit(limit)
         result = await db.exec(statement)
         return result.all()
 
     async def count_liquidaciones(
-        self, db: AsyncSession, cliente_id: Optional[int] = None, variante: str = ""
+        self, db: AsyncSession, cliente_id: Optional[int] = None,
+        variante: str = "", search: Optional[str] = None
     ) -> int:
         """Total con el mismo WHERE que get_multi/pendientes/liquidadas.
         variante: '', 'pendientes' o 'liquidadas'."""
@@ -102,6 +126,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
             statement = statement.where(Liquidacion.liquidada)
         if cliente_id is not None:
             statement = statement.where(Liquidacion.id_cliente == cliente_id)
+        statement = _aplicar_busqueda(statement, search)
         result = await db.exec(statement)
         return result.one()
 
@@ -148,7 +173,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
 
     async def get_pendientes_with_relations(
         self, db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        cliente_id: Optional[int] = None, search: Optional[str] = None
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
@@ -171,6 +196,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         )
         if cliente_id is not None:
             statement = statement.where(Liquidacion.id_cliente == cliente_id)
+        statement = _aplicar_busqueda(statement, search)
         statement = statement.order_by(Liquidacion.id_liquidacion.desc()).offset(skip).limit(limit)
         result = await db.exec(statement)
         return result.all()
@@ -188,7 +214,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
 
     async def get_liquidadas_with_relations(
         self, db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        cliente_id: Optional[int] = None, search: Optional[str] = None
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
@@ -211,6 +237,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         )
         if cliente_id is not None:
             statement = statement.where(Liquidacion.id_cliente == cliente_id)
+        statement = _aplicar_busqueda(statement, search)
         statement = statement.order_by(Liquidacion.id_liquidacion.desc()).offset(skip).limit(limit)
         result = await db.exec(statement)
         return result.all()

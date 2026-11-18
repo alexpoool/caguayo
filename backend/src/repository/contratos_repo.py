@@ -17,6 +17,7 @@ from src.models.contrato import (
     VentaEfectivo,
 )
 from src.models.cliente import Cliente
+from src.utils.nombres import filtro_nombre_completo
 from src.models.item_anexo import ItemAnexo
 from src.models.item_factura import ItemFactura
 from src.models.item_venta_efectivo import ItemVentaEfectivo
@@ -104,6 +105,7 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
                         Contrato.nombre.ilike(patron),
                         Cliente.codigo.ilike(patron),
                         Cliente.nombre.ilike(patron),
+                        filtro_nombre_completo(search.strip()),
                         EstadoContrato.nombre.ilike(patron),
                     )
                 )
@@ -148,6 +150,7 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
                         Contrato.nombre.ilike(patron),
                         Cliente.codigo.ilike(patron),
                         Cliente.nombre.ilike(patron),
+                        filtro_nombre_completo(search.strip()),
                         EstadoContrato.nombre.ilike(patron),
                     )
                 )

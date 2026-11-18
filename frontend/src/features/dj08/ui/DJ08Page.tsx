@@ -32,6 +32,7 @@ import {
   TableHeader,
   TableRow,
   CreateButton,
+  MobileRecordCard,
 } from "@/shared/ui/components";
 import { toISODateLocal } from "../../../utils/fecha";
 import { descargarBlob } from "../../../utils/archivos";
@@ -355,9 +356,98 @@ export function DJ08Page({ repositorio }: { repositorio: Dj08Repositorio }) {
           />
         </div>
 
-        {/* Tabla */}
-        <Card className="overflow-hidden shadow-sm border-gray-200">
-          <div className="overflow-x-auto">
+        {/* Listado móvil: tarjetas en lugar de la tabla ancha */}
+        <div className="space-y-3 md:hidden">
+          {cargandoDJs ? (
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-400">
+              Cargando declaraciones…
+            </div>
+          ) : declaracionesFiltradas.length === 0 ? (
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-sm text-gray-400">
+              {busqueda
+                ? "Sin resultados para la búsqueda"
+                : "No hay declaraciones guardadas. Cree la primera con «Nueva Declaración»."}
+            </div>
+          ) : (
+            declaracionesFiltradas.map((dj) => (
+              <MobileRecordCard
+                key={dj.id_declaracion}
+                title={dj.codigo}
+                subtitle={`Año fiscal ${dj.ano_fiscal}`}
+                icon={<ScrollText className="h-4 w-4" />}
+                badges={
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      dj.estado === "PRESENTADA"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {dj.estado}
+                  </span>
+                }
+                fields={[
+                  { label: "Fecha", value: dj.fecha_declaracion || "—" },
+                  { label: "Base imponible", value: `$${fmt(dj.base_imponible)}` },
+                  { label: "Total a pagar", value: `$${fmt(dj.total_pagar)}` },
+                ]}
+                actions={
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => reexportar(dj)}
+                      className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      PDF
+                    </Button>
+                    {dj.estado === "BORRADOR" && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            pedirConfirmacion(
+                              "Presentar declaración",
+                              `¿Marcar la declaración ${dj.codigo} como PRESENTADA? No podrá editarse ni eliminarse.`,
+                              "warning",
+                              () => presentarMutation.mutate(dj.id_declaracion),
+                            )
+                          }
+                          className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Presentar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            pedirConfirmacion(
+                              "Eliminar borrador",
+                              `¿Eliminar la declaración ${dj.codigo}? Esta acción no se puede deshacer.`,
+                              "danger",
+                              () => eliminarMutation.mutate(dj.id_declaracion),
+                            )
+                          }
+                          className="gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Eliminar
+                        </Button>
+                      </>
+                    )}
+                  </>
+                }
+              />
+            ))
+          )}
+        </div>
+
+        {/* Tabla (desde md) */}
+        <Card className="hidden overflow-hidden border-gray-200 shadow-sm md:block">
+          <div className="overflow-x-auto overscroll-x-contain">
             <Table>
               <TableHeader className="bg-gradient-to-r from-brand-50 to-brand-50">
                 <TableRow>

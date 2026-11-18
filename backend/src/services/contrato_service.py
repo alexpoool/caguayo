@@ -15,6 +15,7 @@ from src.repository.contratos_repo import (
     item_venta_efectivo_repo,
 )
 from src.services.existencia_service import ExistenciaService
+from src.utils.nombres import nombres_completos_por_cliente
 from src.services.saldo_service import SaldoService
 from src.models import (
     TipoContrato,
@@ -152,12 +153,16 @@ class EstadoContratoService:
 
 
 async def map_contrato_to_read(
-    db: AsyncSession, contrato: Contrato
+    db: AsyncSession,
+    contrato: Contrato,
+    nombres: Optional[dict[int, str]] = None,
 ) -> ContratoReadWithDetails:
     estado = await db.get(EstadoContrato, contrato.id_estado)
     tipo_contrato = await db.get(TipoContrato, contrato.id_tipo_contrato)
     moneda = await db.get(Moneda, contrato.id_moneda)
     cliente = await db.get(Cliente, contrato.id_cliente)
+    if nombres is None:
+        nombres = await nombres_completos_por_cliente(db, [contrato.id_cliente])
 
     return ContratoReadWithDetails(
         id_contrato=contrato.id_contrato,
@@ -196,6 +201,7 @@ async def map_contrato_to_read(
             id_cliente=cliente.id_cliente,
             codigo=cliente.codigo,
             nombre=cliente.nombre,
+            nombre_completo=nombres.get(cliente.id_cliente) or cliente.nombre,
         )
         if cliente
         else None,
@@ -251,9 +257,12 @@ class ContratoService:
         contratos = await contrato_repo.get_all_with_details(
             db, skip, limit, id_cliente, search
         )
+        nombres = await nombres_completos_por_cliente(
+            db, [c.id_cliente for c in contratos]
+        )
         result = []
         for contrato in contratos:
-            result.append(await map_contrato_to_read(db, contrato))
+            result.append(await map_contrato_to_read(db, contrato, nombres))
         return result
 
     @staticmethod

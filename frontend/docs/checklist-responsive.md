@@ -7,13 +7,16 @@ Anchos de referencia: 320, 390, 768, 1024 y 1440 px. Móvil primero.
 - [ ] Sin scroll horizontal de página (`scrollWidth <= clientWidth + 1`).
 - [ ] Sidebar se convierte en drawer con overlay por debajo de `lg`.
 - [ ] El drawer cierra al navegar y con `Escape`.
-- [ ] Header muestra hamburguesa y acciones de perfil.
+- [ ] Header muestra hamburguesa, accesos a módulos y acciones de perfil.
 - [ ] `main` usa `p-4 md:p-8`.
 - [ ] Área principal usa `dvh`, no `vh`.
 
 ## Listas
 
 - [ ] `PageHeader` apila acciones debajo del título en móvil.
+- [ ] Listados de 5 o más columnas usan `MobileRecordCard` en móvil y la tabla
+      desde `md`; las tablas de solo consulta quedan dentro de
+      `overflow-x-auto overscroll-x-contain`.
 - [ ] Tabla dentro de `overflow-x-auto`; el scroll horizontal no arrastra la
       página.
 - [ ] Botones de fila conservan objetivo táctil de 44×44 px.
@@ -34,5 +37,15 @@ Anchos de referencia: 320, 390, 768, 1024 y 1440 px. Móvil primero.
 
 ## Verificación automática
 
-`e2e/smoke.spec.ts` comprueba desborde a 320, 768 y 1440 px en el login. Añade
-el mismo chequeo a cada flujo crítico que incorpores.
+`e2e/smoke.spec.ts` comprueba desborde a 320, 768 y 1440 px en el login.
+
+`e2e/responsive.spec.ts` recorre las rutas principales y los modales de creación
+más densos a 320 y 390 px, y comprueba el header, el drawer y el riel del
+sidebar. Añade el mismo chequeo a cada flujo crítico que incorpores.
+
+```bash
+pnpm e2e:install   # una vez: descarga Chromium
+pnpm e2e
+```
+
+Playwright no soporta Android/Termux: ejecuta la suite en escritorio o CI.

@@ -58,7 +58,86 @@ export function ProductSelector({
 
       {/* Lista de productos seleccionados - arriba */}
       {selectedProducts.length > 0 && (
-        <div className="overflow-x-auto mb-3">
+        <div className="mb-3">
+          {/* Listado móvil: tarjetas editables en lugar de la tabla ancha */}
+          <div className="space-y-2 md:hidden">
+            {selectedProducts.map((p) => {
+              const pr = productos.find((item) => item.id_producto === p.id_producto);
+              const subtotal = toNumber(mul(p.cantidad, p.precio_venta));
+              const stock = stockMap.get(p.id_producto) ?? 0;
+              const tieneStockSuficiente = stock >= p.cantidad;
+
+              return (
+                <div key={p.id_producto} className="rounded-xl border border-gray-200 bg-white p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-gray-900">
+                        {pr?.nombre || `Producto #${p.id_producto}`}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {pr?.codigo || '-'} · Stock {stock}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => onRemoveProduct(p.id_producto)}
+                      className="-m-1 rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                      aria-label={`Eliminar ${pr?.nombre || 'producto'}`}
+                      title="Eliminar producto"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {!tieneStockSuficiente && (
+                    <p className="mt-1 text-[11px] font-medium text-red-500">Stock insuficiente</p>
+                  )}
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <label className="text-xs font-medium text-gray-600">
+                      Cantidad
+                      <Input
+                        type="number"
+                        min="1"
+                        value={p.cantidad}
+                        onChange={(e: any) =>
+                          onUpdateCantidad(p.id_producto, Number(e.target.value) || 1)
+                        }
+                        className="mt-1 h-10 w-full text-center text-sm"
+                        placeholder="Cant"
+                        style={{
+                          borderColor: !tieneStockSuficiente && stock > 0 ? PALETA.danger[300] : undefined,
+                        }}
+                      />
+                    </label>
+                    <label className="text-xs font-medium text-gray-600">
+                      Precio
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={p.precio_venta}
+                        onChange={(e: any) =>
+                          onUpdatePrecio(p.id_producto, Number(e.target.value) || 0)
+                        }
+                        className="mt-1 h-10 w-full text-center text-sm"
+                        placeholder="Precio"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                    <span>
+                      Moneda:{' '}
+                      {p.id_moneda
+                        ? (monedas?.find((m: any) => m.id_moneda === p.id_moneda)?.denominacion || `#${p.id_moneda}`)
+                        : '-'}
+                    </span>
+                    <span className="text-sm font-semibold tabular-nums text-gray-800">
+                      ${subtotal.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto overscroll-x-contain md:block">
           <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
             <thead className="bg-gray-50">
               <tr className="divide-x divide-gray-200">
@@ -140,6 +219,7 @@ export function ProductSelector({
               })}
             </tbody>
           </table>
+          </div>
 
           {/* Total */}
           <div className="flex justify-end mt-3 pt-3 border-t border-gray-200">
@@ -195,9 +275,9 @@ export function ProductSelector({
                   className="w-full px-3 py-2 text-left text-sm hover:bg-brand-50 flex items-center gap-3 transition-colors"
                 >
                   <span className="truncate text-sm font-medium text-gray-800 min-w-0 flex-1">{p.nombre}</span>
-                  <span className="text-xs text-gray-400 w-16 truncate">{p.codigo || '-'}</span>
+                  <span className="hidden text-xs text-gray-400 w-16 truncate sm:inline">{p.codigo || '-'}</span>
                   <span className={`text-xs font-medium w-16 text-center ${stockStatus}`}>{stockText}</span>
-                  <span className="text-xs text-gray-400 w-8 text-center">{monedas?.find((m: any) => m.id_moneda === (p as any).id_moneda)?.denominacion || '-'}</span>
+                  <span className="hidden text-xs text-gray-400 w-8 text-center sm:inline">{monedas?.find((m: any) => m.id_moneda === (p as any).id_moneda)?.denominacion || '-'}</span>
                   <span className="text-sm font-medium text-gray-700 tabular-nums w-24 text-right">
                     ${Number(p.precio_venta).toFixed(2)}
                   </span>
@@ -253,9 +333,9 @@ export function ProductSelector({
                       className="w-full px-4 py-3 text-left hover:bg-brand-50 flex items-center gap-3 transition-colors rounded-lg"
                     >
                       <span className="truncate text-sm font-medium text-gray-800 min-w-0 flex-1">{p.nombre}</span>
-                      <span className="text-xs text-gray-400 w-16 truncate">{p.codigo || '-'}</span>
+                      <span className="hidden text-xs text-gray-400 w-16 truncate sm:inline">{p.codigo || '-'}</span>
                       <span className={`text-xs font-medium w-16 text-center ${stockColor}`}>{stockText}</span>
-                      <span className="text-xs text-gray-400 w-8 text-center">{monedas?.find((m: any) => m.id_moneda === (p as any).id_moneda)?.denominacion || '-'}</span>
+                      <span className="hidden text-xs text-gray-400 w-8 text-center sm:inline">{monedas?.find((m: any) => m.id_moneda === (p as any).id_moneda)?.denominacion || '-'}</span>
                       <span className="text-sm font-medium text-gray-700 tabular-nums w-24 text-right">
                         ${Number(p.precio_venta).toFixed(2)}
                       </span>

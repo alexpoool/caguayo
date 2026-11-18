@@ -15,6 +15,7 @@ import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, User, Tag, X, Layers, 
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { formatFecha, toISODateLocal} from '@/utils/fecha';
+import { nombreMostrado } from '@/utils/nombre';
 import { DateInput } from '@/shared/ui/components';
 
 type View = 'list' | 'form';
@@ -69,8 +70,17 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
   const filteredClientes = useMemo(() => {
     if (!clienteSearch) return clientes;
     const term = clienteSearch.toLowerCase();
-    return clientes.filter(c => c.nombre.toLowerCase().includes(term));
+    return clientes.filter(c => nombreMostrado(c).toLowerCase().includes(term));
   }, [clientes, clienteSearch]);
+
+  const nombresClientes = useMemo(
+    () => new Map(clientes.map((c) => [c.id_cliente, nombreMostrado(c)])),
+    [clientes],
+  );
+  const nombreClienteContrato = (contrato: ContratoWithDetails) =>
+    nombresClientes.get(contrato.id_cliente) ||
+    nombreMostrado(contrato.cliente) ||
+    'N/A';
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -315,7 +325,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
                   label: 'Valor',
                   value: `${item.moneda?.simbolo || '$'}${Number(item.monto || 0).toFixed(2)}`,
                 },
-                { label: 'Cliente', value: item.cliente?.nombre || 'N/A' },
+                { label: 'Cliente', value: nombreClienteContrato(item) },
               ]}
               onOpen={() => setDetailModal({ isOpen: true, item })}
               openLabel={`Ver detalle del contrato ${item.nombre}`}
@@ -430,7 +440,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-gray-400" />
-                        {item.cliente?.nombre || 'N/A'}
+                        {nombreClienteContrato(item)}
                       </div>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -521,7 +531,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
                 <Label className="text-sm font-medium">Cliente *</Label>
                 {initialClienteId ? (
                   <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
-                    {clientes.find(c => c.id_cliente === Number(initialClienteId))?.nombre || `Cliente #${initialClienteId}`}
+                    {nombreMostrado(clientes.find(c => c.id_cliente === Number(initialClienteId))) || `Cliente #${initialClienteId}`}
                   </div>
                 ) : (
                   <>
@@ -532,7 +542,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
                         placeholder="Buscar cliente..."
                         value={
                           formData.id_cliente
-                            ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
+                            ? (nombreMostrado(clientes.find(c => c.id_cliente === Number(formData.id_cliente))) || '')
                             : clienteSearch
                         }
                         disabled={!!formData.id_cliente}
@@ -570,7 +580,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
                                 setShowClienteDropdown(false);
                               }}
                             >
-                              <span className="font-medium text-gray-900">{c.nombre}</span>
+                              <span className="font-medium text-gray-900">{nombreMostrado(c)}</span>
                               <span className="text-xs text-gray-400 ml-2">({c.tipo_persona})</span>
                             </button>
                           ))
@@ -769,7 +779,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
                   <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Cliente</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.cliente?.nombre || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{nombreClienteContrato(detailModal.item)}</p>
                 </div>
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
                   <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Monto</p>

@@ -79,7 +79,7 @@ export function FormModal({
         <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
 
         {footer && (
-          <div className="flex justify-end gap-3 px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4 border-t border-gray-200 bg-white/95 backdrop-blur-sm flex-shrink-0">
+          <div className="flex flex-wrap justify-end gap-3 px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4 border-t border-gray-200 bg-white/95 backdrop-blur-sm flex-shrink-0">
             {footer}
           </div>
         )}

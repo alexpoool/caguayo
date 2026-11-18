@@ -114,6 +114,7 @@ class ClienteSimpleRead(SQLModel):
     id_cliente: int
     codigo: str
     nombre: str
+    nombre_completo: Optional[str] = None
 
 
 class SuplementoBase(SQLModel):

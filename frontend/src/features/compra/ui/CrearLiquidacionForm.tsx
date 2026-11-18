@@ -15,6 +15,7 @@ import { useDebounce } from '@/shared/ui/hooks/useDebounce';
 import { Decimal } from 'decimal.js';
 import { mul, add, sub, percentToMultiplier, toNumber } from '@/utils/decimal';
 import { DEFAULTS } from '@/config/defaults';
+import { nombreMostrado } from '@/utils/nombre';
 
 interface CrearLiquidacionFormProps {
   formId: string;
@@ -356,7 +357,7 @@ if (!filtroCliente) {
                 {filtroCliente ? (
                   <div className="flex items-center gap-2 px-3 py-2 border border-brand-300 rounded-lg bg-brand-50">
                     <span className="flex-1 font-medium text-brand-900">
-                      {clientes.find((c: Cliente) => c.id_cliente === filtroCliente)?.nombre}
+                      {nombreMostrado(clientes.find((c: Cliente) => c.id_cliente === filtroCliente))}
                     </span>
                     <button
                       type="button"
@@ -380,7 +381,7 @@ if (!filtroCliente) {
                     {showProveedorDropdown && (() => {
                       const filtrados = proveedorSearch
                         ? clientes.filter((c: Cliente) =>
-                            c.nombre.toLowerCase().includes(proveedorSearch.toLowerCase()) ||
+                            nombreMostrado(c).toLowerCase().includes(proveedorSearch.toLowerCase()) ||
                             c.codigo?.toLowerCase().includes(proveedorSearch.toLowerCase()) ||
                             c.nit?.toLowerCase().includes(proveedorSearch.toLowerCase())
                           )
@@ -397,7 +398,7 @@ if (!filtroCliente) {
                               }}
                               className="px-3 py-2 hover:bg-brand-50 cursor-pointer text-sm transition-colors border-b border-gray-100 last:border-b-0"
                             >
-                              <div className="font-medium text-gray-900">{cliente.nombre}</div>
+                              <div className="font-medium text-gray-900">{nombreMostrado(cliente)}</div>
                               <div className="text-xs text-gray-500">{cliente.codigo} · {cliente.nit}</div>
                             </li>
                           ))}

@@ -23,6 +23,7 @@ from src.models.servicio import (
     PersonaLiquidacion,
     SolicitudServicio,
 )
+from src.utils.nombres import componer_nombre_completo
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -147,6 +148,7 @@ async def get_proveedores_por_dependencia(
         proveedor_data: Dict[str, Any] = {
             "codigo": cliente_obj.codigo,
             "nombre": cliente_obj.nombre,
+            "nombre_completo": cliente_obj.nombre,
             "direccion": cliente_obj.direccion or "",
             "provincia": row.provincia_nombre or "",
             "municipio": row.municipio_nombre or "",
@@ -161,12 +163,22 @@ async def get_proveedores_por_dependencia(
             n = naturales_map[cliente_obj.id_cliente]
             proveedor_data["carnet_identidad"] = n.carnet_identidad or ""
             proveedor_data["vigencia"] = n.vigencia.isoformat() if n.vigencia else ""
+            proveedor_data["nombre_completo"] = componer_nombre_completo(
+                n.nombre or cliente_obj.nombre,
+                n.primer_apellido,
+                n.segundo_apellido,
+            )
         elif cliente_obj.id_cliente in juridicas_map:
             j = juridicas_map[cliente_obj.id_cliente]
             proveedor_data["codigo_reup"] = j.codigo_reup or ""
         elif cliente_obj.id_cliente in tcp_map:
             t = tcp_map[cliente_obj.id_cliente]
             proveedor_data["carnet_identidad"] = t.numero_registro_proyecto or ""
+            proveedor_data["nombre_completo"] = componer_nombre_completo(
+                t.nombre or cliente_obj.nombre,
+                t.primer_apellido,
+                t.segundo_apellido,
+            )
 
         proveedores.append(proveedor_data)
 

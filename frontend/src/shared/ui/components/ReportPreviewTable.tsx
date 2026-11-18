@@ -58,7 +58,7 @@ export const ReportPreviewTable: React.FC<ReportPreviewTableProps> = ({
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+        <div className="overflow-x-auto overscroll-x-contain max-h-[400px] overflow-y-auto">
           <Table>
             <TableHeader className="bg-gray-50 sticky top-0">
               <TableRow>
@@ -84,6 +84,9 @@ export const ReportPreviewTable: React.FC<ReportPreviewTableProps> = ({
             </TableBody>
           </Table>
         </div>
+        <p className="border-t border-gray-100 px-3 py-2 text-xs text-gray-400 md:hidden">
+          Desliza la tabla para ver más columnas.
+        </p>
       </div>
 
       {totalPages > 1 && (

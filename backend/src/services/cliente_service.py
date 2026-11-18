@@ -12,6 +12,7 @@ from src.repository.cliente_repo import (
     cuenta_repo,
 )
 from src.models import Cliente, ClienteJuridica
+from src.utils.nombres import filtro_nombre_completo
 from src.dto import (
     ClienteCreate,
     ClienteRead,
@@ -113,6 +114,7 @@ def _aplicar_filtros(
                 Cliente.nit.ilike(patron),
                 Cliente.telefono.ilike(patron),
                 Cliente.email.ilike(patron),
+                filtro_nombre_completo(search.strip()),
             )
         )
 

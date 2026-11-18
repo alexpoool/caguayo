@@ -28,6 +28,7 @@ import type {
   Cliente,
   Liquidacion,
 } from '../domain/compra';
+import { nombreMostrado } from '@/utils/nombre';
 import { Decimal } from 'decimal.js';
 import { mul, add, sub, percentToMultiplier, toFixed } from '@/utils/decimal';
 import { escapeHtml } from '@/utils/sanitize';
@@ -148,12 +149,12 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
   );
 
   const clientesPorId = useMemo(
-    () => new Map(clientes.map((c: Cliente) => [c.id_cliente, c.nombre])),
+    () => new Map(clientes.map((c: Cliente) => [c.id_cliente, nombreMostrado(c)])),
     [clientes],
   );
 
   const getClienteNombre = (clienteId: number) =>
-    clientesPorId.get(clienteId) || 'N/A';
+    clientesPorId.get(clienteId) || '';
 
   // Quita el filtro por proveedor que llega desde la lista de Proveedores
   // (?proveedor=id) y vuelve a mostrar todas las liquidaciones.
@@ -183,7 +184,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     const empresaEmail = escapeHtml(empresa?.email || '');
     const empresaReeup = escapeHtml(empresa?.reeup || '');
     
-    const nombreProveedor = escapeHtml(cliente?.nombre || 'N/A');
+    const nombreProveedor = escapeHtml(nombreMostrado(cliente) || 'N/A');
     const codigoProveedor = escapeHtml(cliente?.codigo || 'N/A');
     const cedulaProveedor = escapeHtml(cliente?.nit || 'N/A');
     const direccionProveedor = escapeHtml(cliente?.direccion || '');
@@ -460,7 +461,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Liquidaciones</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Gestión de liquidaciones ({searchTerm ? filteredLiquidaciones.length : totalLiquidaciones ?? liquidaciones.length} registradas)
+              Gestión de liquidaciones ({totalLiquidaciones ?? liquidaciones.length} registradas)
             </p>
           </div>
         </div>
@@ -499,7 +500,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full bg-brand-50 border border-brand-200 text-sm font-medium text-brand-700">
             <User className="h-3.5 w-3.5" />
-            Proveedor: {getClienteNombre(filtroCliente)}
+            Proveedor: {getClienteNombre(filtroCliente) || 'N/A'}
             <button
               type="button"
               onClick={limpiarFiltroProveedor}
@@ -534,8 +535,8 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
               key={liquidacion.id_liquidacion}
               title={liquidacion.codigo}
               subtitle={
-                liquidacion.cliente?.nombre ||
                 getClienteNombre(liquidacion.id_cliente) ||
+                nombreMostrado(liquidacion.cliente) ||
                 'N/A'
               }
               icon={<Receipt className="h-4 w-4" />}
@@ -661,7 +662,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                         {liquidacion.codigo}
                       </span>
                     </TableCell>
-                    <TableCell>{liquidacion.cliente?.nombre || getClienteNombre(liquidacion.id_cliente) || 'N/A'}</TableCell>
+                    <TableCell>{getClienteNombre(liquidacion.id_cliente) || nombreMostrado(liquidacion.cliente) || 'N/A'}</TableCell>
                     <TableCell className="font-medium text-gray-900">{liquidacion.importe?.toLocaleString()}</TableCell>
                     <TableCell className="font-medium text-gray-900">{liquidacion.neto_pagar?.toLocaleString()}</TableCell>
                     <TableCell>
@@ -804,7 +805,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Proveedor</p>
-                  <p className="font-medium">{selectedLiquidacion.cliente?.nombre || getClienteNombre(selectedLiquidacion.id_cliente)}</p>
+                  <p className="font-medium">{getClienteNombre(selectedLiquidacion.id_cliente) || nombreMostrado(selectedLiquidacion.cliente)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Anexo</p>
@@ -895,7 +896,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
                   <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Proveedor</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.cliente?.nombre || getClienteNombre(detailModal.item.id_cliente)}</p>
+                  <p className="font-bold text-gray-900">{getClienteNombre(detailModal.item.id_cliente) || nombreMostrado(detailModal.item.cliente)}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Anexo</p>

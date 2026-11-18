@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from typing import Optional, List, Any
 from datetime import date, datetime
 from .ventas_dto import VentaRead
@@ -145,6 +145,26 @@ class ClienteRead(ClienteBase):
     cliente_natural: Optional[ClienteNaturalRead] = None
     cliente_juridica: Optional[ClienteJuridicaRead] = None
     cliente_tcp: Optional[ClienteTCPRead] = None
+    # Nombre que debe verse en listados y selectores: nombre + apellidos en
+    # personas naturales/TCP, razón social en jurídicas.
+    nombre_completo: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _componer_nombre_completo(self):
+        if self.nombre_completo:
+            return self
+        from src.utils.nombres import componer_nombre_completo
+
+        hijo = self.cliente_natural or self.cliente_tcp
+        if hijo is not None:
+            self.nombre_completo = componer_nombre_completo(
+                hijo.nombre or self.nombre,
+                hijo.primer_apellido,
+                hijo.segundo_apellido,
+            ) or self.nombre
+        else:
+            self.nombre_completo = self.nombre
+        return self
 
 
 class ClienteReadWithVentas(ClienteRead):
@@ -187,6 +207,7 @@ class ClienteSimpleRead(SQLModel):
     id_cliente: int
     codigo: str
     nombre: Optional[str] = None
+    nombre_completo: Optional[str] = None
     tipo_persona: Optional[str] = None
     estado: Optional[str] = None
     nit: Optional[str] = None

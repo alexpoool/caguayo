@@ -30,6 +30,7 @@ import {
   MobileRecordCard,
 } from "@/shared/ui/components";
 import { ClienteDetailModal } from "../modals/ClienteDetailModal";
+import { nombreMostrado } from "@/utils/nombre";
 import type {
   Cliente,
   FiltroTipoPersona,
@@ -154,7 +155,7 @@ export function ClientesList({
             <div className="relative flex-1 md:max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder={`Buscar ${isProveedorView ? "proveedores" : "clientes"} por nombre, código o NIT/CI...`}
+                placeholder={`Buscar ${isProveedorView ? "proveedores" : "clientes"} por nombre, apellidos, código o NIT/CI...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="h-10 border-gray-200 bg-gray-50 pl-10 pr-10 focus:bg-white"
@@ -226,7 +227,7 @@ export function ClientesList({
           clientes.map((cliente) => (
             <MobileRecordCard
               key={cliente.id_cliente}
-              title={cliente.nombre || "(Sin nombre)"}
+              title={nombreMostrado(cliente) || "(Sin nombre)"}
               subtitle={
                 cliente.valido === false
                   ? `CI/NIT: ${cliente.nit}`
@@ -260,7 +261,7 @@ export function ClientesList({
                 { label: "CI/NIT", value: cliente.nit || "-" },
               ]}
               onOpen={() => setDetailModal({ isOpen: true, cliente })}
-              openLabel={`Ver detalle de ${cliente.nombre || "cliente"}`}
+              openLabel={`Ver detalle de ${nombreMostrado(cliente) || "cliente"}`}
               actions={
                 <>
                   <Button
@@ -401,7 +402,7 @@ export function ClientesList({
                         )}
                         <div>
                           <span className="font-medium text-gray-900 block">
-                            {cliente.nombre || "(Sin nombre)"}
+                            {nombreMostrado(cliente) || "(Sin nombre)"}
                           </span>
                           {cliente.valido === false && (
                             <span className="text-xs text-amber-700">

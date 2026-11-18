@@ -148,6 +148,18 @@ const rutas = [
   '/administracion',
   '/configuracion/rrhh',
   '/configuracion',
+  '/configuracion/actividades-economicas',
+  '/configuracion/categorias',
+  '/configuracion/subcategorias',
+  '/configuracion/estados-contrato',
+  '/configuracion/especialidades',
+  '/configuracion/tipos-contrato',
+  '/configuracion/tipos-convenio',
+  '/configuracion/tipos-cuenta',
+  '/configuracion/tipos-dependencia',
+  '/configuracion/tipos-entidad',
+  '/configuracion/tipos-proveedores',
+  '/configuracion/tributos',
   '/monedas',
   '/usuarios',
   '/usuarios-credenciales',
@@ -216,6 +228,53 @@ test('las rutas principales no desbordan horizontalmente en ningún ancho', asyn
         `${ruta} desborda a ${width}px`,
       ).toBeLessThanOrEqual(1);
     }
+  }
+});
+
+/**
+ * Modales de creación de los módulos con formularios más densos.
+ * Con la API vacía no dependen de datos semilla: el botón siempre está.
+ */
+const modales = [
+  { ruta: '/dj08', boton: 'Nueva Declaración' },
+  { ruta: '/monedas', boton: 'Nueva Moneda' },
+  { ruta: '/usuarios', boton: 'Nuevo Usuario' },
+  { ruta: '/grupos', boton: 'Nuevo Grupo' },
+  { ruta: '/dependencias', boton: 'Nueva Dependencia' },
+  { ruta: '/cuentas', boton: 'Nueva Cuenta' },
+  { ruta: '/rrhh/empleados', boton: 'Nuevo empleado' },
+  { ruta: '/rrhh/nomina', boton: 'Nueva nómina' },
+  { ruta: '/rrhh/evaluaciones', boton: 'Nueva evaluación' },
+  { ruta: '/rrhh/objetivos', boton: 'Nuevo objetivo' },
+];
+
+test('los modales de creación no desbordan en móvil', async ({ page }) => {
+  for (const { ruta, boton } of modales) {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(ruta);
+
+    const crear = page.getByRole('button', { name: boton }).first();
+    await expect(crear, `${ruta} no muestra «${boton}»`).toBeVisible();
+    await crear.click();
+
+    const dialogo = page.getByRole('dialog').first();
+    await expect(dialogo, `${ruta} no abrió un diálogo`).toBeVisible();
+
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const desborde = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      );
+      expect(
+        desborde,
+        `${ruta} (modal) desborda a ${width}px`,
+      ).toBeLessThanOrEqual(1);
+    }
+
+    await page.keyboard.press('Escape');
+    await expect(dialogo).toBeHidden();
   }
 });
 

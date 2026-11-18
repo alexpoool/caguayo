@@ -1,6 +1,7 @@
 import { CheckCircle2, Eye, Printer, Receipt, X } from 'lucide-react';
 import { Button, ModalOverlay } from '@/shared/ui/components';
 import { formatFecha } from '@/utils/fecha';
+import { nombreMostrado } from '@/utils/nombre';
 import { formatCifra } from '@/utils/decimal';
 import type {
   ContratoWithDetails,
@@ -146,8 +147,8 @@ export function FacturaDetailModal({
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
                 Cliente
               </p>
-              <p className="font-bold text-gray-900 truncate">
-                {contrato?.cliente?.nombre || 'N/A'}
+              <p className="break-words font-bold text-gray-900">
+                {nombreMostrado(contrato?.cliente) || 'N/A'}
               </p>
             </div>
           </div>

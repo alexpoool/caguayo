@@ -11,6 +11,7 @@ from src.models.liquidacion import Liquidacion
 from src.models.producto import Productos
 from src.models.movimiento import Movimiento
 from src.utils.codigos_entidad import generar_codigo_liquidacion
+from src.utils.nombres import nombres_completos_por_cliente
 from src.dto import (
     LiquidacionCreate,
     LiquidacionRead,
@@ -24,6 +25,22 @@ from src.dto.convenios_dto import ConvenioSimpleRead
 
 
 class LiquidacionService:
+    @staticmethod
+    async def _enriquecer_nombres(
+        db: AsyncSession, db_liquidaciones: List[Liquidacion]
+    ) -> List[LiquidacionRead]:
+        """Agrega nombre + apellidos al cliente anidado de cada liquidación."""
+        reads = [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
+        nombres = await nombres_completos_por_cliente(
+            db, [liq.id_cliente for liq in db_liquidaciones]
+        )
+        for read in reads:
+            if read.cliente is not None:
+                read.cliente.nombre_completo = (
+                    nombres.get(read.cliente.id_cliente) or read.cliente.nombre
+                )
+        return reads
+
     @staticmethod
     async def create_liquidacion(
         db: AsyncSession, data: LiquidacionCreate, denominacion: Optional[str] = None
@@ -300,45 +317,46 @@ class LiquidacionService:
         if not db_liquidacion:
             return None
 
-        return LiquidacionRead.model_validate(db_liquidacion)
+        return (await LiquidacionService._enriquecer_nombres(db, [db_liquidacion]))[0]
 
     @staticmethod
     async def get_liquidaciones(
         db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        cliente_id: Optional[int] = None, search: Optional[str] = None
     ) -> List[LiquidacionRead]:
         db_liquidaciones = await liquidacion_repo.get_multi_with_relations(
-            db, skip=skip, limit=limit, cliente_id=cliente_id
+            db, skip=skip, limit=limit, cliente_id=cliente_id, search=search
         )
-        return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
+        return await LiquidacionService._enriquecer_nombres(db, db_liquidaciones)
 
     @staticmethod
     async def get_liquidaciones_pendientes(
         db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        cliente_id: Optional[int] = None, search: Optional[str] = None
     ) -> List[LiquidacionRead]:
         db_liquidaciones = await liquidacion_repo.get_pendientes_with_relations(
-            db, skip=skip, limit=limit, cliente_id=cliente_id
+            db, skip=skip, limit=limit, cliente_id=cliente_id, search=search
         )
-        return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
+        return await LiquidacionService._enriquecer_nombres(db, db_liquidaciones)
 
     @staticmethod
     async def get_liquidaciones_liquidadas(
         db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        cliente_id: Optional[int] = None, search: Optional[str] = None
     ) -> List[LiquidacionRead]:
         db_liquidaciones = await liquidacion_repo.get_liquidadas_with_relations(
-            db, skip=skip, limit=limit, cliente_id=cliente_id
+            db, skip=skip, limit=limit, cliente_id=cliente_id, search=search
         )
-        return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
+        return await LiquidacionService._enriquecer_nombres(db, db_liquidaciones)
 
     @staticmethod
     async def count_liquidaciones(
-        db: AsyncSession, cliente_id: Optional[int] = None, variante: str = ""
+        db: AsyncSession, cliente_id: Optional[int] = None,
+        variante: str = "", search: Optional[str] = None
     ) -> int:
         """Total para el header X-Total-Count, mismo WHERE que la lista."""
         return await liquidacion_repo.count_liquidaciones(
-            db, cliente_id=cliente_id, variante=variante
+            db, cliente_id=cliente_id, variante=variante, search=search
         )
 
     async def get_liquidaciones_by_cliente(
@@ -347,7 +365,7 @@ class LiquidacionService:
         db_liquidaciones = await liquidacion_repo.get_by_cliente_with_relations(
             db, cliente_id, skip=skip, limit=limit
         )
-        return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
+        return await LiquidacionService._enriquecer_nombres(db, db_liquidaciones)
 
     @staticmethod
     async def get_productos_pendientes_by_cliente(

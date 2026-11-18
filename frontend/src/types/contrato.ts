@@ -40,6 +40,7 @@ export interface ClienteSimple {
   id_cliente: number;
   codigo: string;
   nombre: string;
+  nombre_completo?: string;
   nit: string;
 }
 

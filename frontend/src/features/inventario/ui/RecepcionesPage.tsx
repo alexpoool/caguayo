@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import type { CasosUsoInventario } from '../application/casos-uso';
 import type { RecepcionStock } from '../domain/inventario';
-import { Input } from "@/shared/ui/components";
+import { Button, Input, MobileRecordCard } from "@/shared/ui/components";
 import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
 import {
   ArrowLeft,
@@ -98,9 +98,63 @@ export function RecepcionesPage({
         </div>
       </div>
 
-      {/* Tabla de Recepciones */}
-      <div className="bg-white rounded-md shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Listado móvil: tarjetas en lugar de la tabla ancha */}
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-12 text-gray-500">
+            <div className="animate-spin h-6 w-6 border-2 border-brand-500 border-t-transparent rounded-full" />
+            Cargando recepciones...
+          </div>
+        ) : filteredRecepciones.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-gray-500">
+            {searchTerm
+              ? "No se encontraron recepciones"
+              : "No hay recepciones disponibles"}
+          </div>
+        ) : (
+          filteredRecepciones.map((recepcion: RecepcionStock) => (
+            <MobileRecordCard
+              key={recepcion.id_movimiento}
+              title={recepcion.nombre_producto}
+              subtitle={recepcion.codigo || `Movimiento #${recepcion.id_movimiento}`}
+              icon={<Package className="h-4 w-4" />}
+              badges={
+                <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-bold text-green-800">
+                  {recepcion.cantidad}
+                </span>
+              }
+              fields={[
+                {
+                  label: "Proveedor",
+                  value: recepcion.proveedor_nombre || "Sin proveedor",
+                },
+                {
+                  label: "Dependencia",
+                  value: recepcion.nombre_dependencia,
+                },
+                {
+                  label: "Convenio / Anexo",
+                  value:
+                    [recepcion.convenio_nombre, recepcion.anexo_nombre]
+                      .filter(Boolean)
+                      .join(" · ") || "-",
+                },
+              ]}
+              onOpen={() => handleSelectRecepcion(recepcion)}
+              openLabel={`Seleccionar recepción de ${recepcion.nombre_producto}`}
+              actions={
+                <Button size="sm" onClick={() => handleSelectRecepcion(recepcion)}>
+                  Seleccionar
+                </Button>
+              }
+            />
+          ))
+        )}
+      </div>
+
+      {/* Tabla de Recepciones (desde md) */}
+      <div className="hidden overflow-hidden rounded-md bg-white shadow-md md:block">
+        <div className="overflow-x-auto overscroll-x-contain">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>

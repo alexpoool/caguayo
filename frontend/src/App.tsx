@@ -1330,7 +1330,7 @@ function App() {
         </div>
         </aside>
         )}
-        <header className={`col-span-1 ${hideSidebar ? '' : 'lg:col-start-2 lg:col-end-3'} row-start-1 row-end-2 sticky top-0 z-30 min-w-0 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-3 py-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] h-16 flex flex-wrap items-center justify-between gap-3 gap-2 md:px-6`}>
+        <header className={`col-span-1 ${hideSidebar ? '' : 'lg:col-start-2 lg:col-end-3'} row-start-1 row-end-2 sticky top-0 z-30 min-w-0 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-3 py-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] min-h-16 flex flex-wrap items-center justify-between gap-3 gap-2 md:px-6`}>
           <div className="flex items-center gap-2">
             {!hideSidebar && (
               <button
@@ -2296,7 +2296,10 @@ function AppWrapper() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <Toaster position="top-right" />
+        <Toaster
+          position="top-right"
+          containerStyle={{ maxWidth: 'calc(100vw - 2rem)' }}
+        />
         <AuthProvider>
           <ErrorBoundary>
             <Suspense

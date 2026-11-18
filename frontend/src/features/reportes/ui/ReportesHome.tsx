@@ -689,7 +689,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
 
     return (
       <div>
-        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+        <div className="overflow-x-auto overscroll-x-contain max-h-[400px] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 sticky top-0">
               <tr>
@@ -713,6 +713,9 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
             </tbody>
           </table>
         </div>
+        <p className="mt-1 text-xs text-gray-400 md:hidden">
+          Desliza la tabla para ver más columnas.
+        </p>
 
         {/* Paginación */}
         {totalPages > 1 && (

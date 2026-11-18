@@ -29,6 +29,7 @@ import { usePagos } from "./hooks/usePagos";
 import { useProductSelection } from "./hooks/useProductSelection";
 import { useStockVentas } from "../hooks/useStockVentas";
 import { formatFecha } from "@/utils/fecha";
+import { nombreMostrado } from "@/utils/nombre";
 import { empresaActual } from '@/config/branding';
 
 type View = "list" | "form";
@@ -60,7 +61,7 @@ export function getFacturaDocument(
   const empresaReeup = dependencia?.reeup || "";
 
   const numeroContrato = contrato?.codigo || "";
-  const nombreCliente = cliente?.nombre || "N/A";
+  const nombreCliente = nombreMostrado(cliente) || "N/A";
   const codigoCliente = cliente?.codigo || cliente?.id_cliente?.toString() || "N/A";
   const nitCliente = cliente?.nit || "";
   const direccionCliente = cliente?.direccion || "";

@@ -105,6 +105,18 @@
   }
 }
 
+/*
+ * Navegadores sin `:has()` (WebView antiguos): se degrada a scroll horizontal
+ * en todas las tablas en móvil, en vez de aplastar las columnas.
+ */
+@supports not selector(:has(*)) {
+  @media (max-width: 767px) {
+    .overflow-x-auto > table {
+      min-width: 44rem;
+    }
+  }
+}
+
 /* Elimina el retardo de 300 ms en controles táctiles. */
 button,
 a,

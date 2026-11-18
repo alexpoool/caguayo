@@ -53,7 +53,7 @@ def generar_pdf_proveedores_dependencia(
         data.append([
             p.get("codigo", ""),
             tipo,
-            p.get("nombre", ""),
+            p.get("nombre_completo") or p.get("nombre", ""),
             id_val,
             p.get("direccion", ""),
             p.get("provincia", ""),

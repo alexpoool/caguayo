@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useInfiniteList } from "@/shared/ui/hooks/useInfiniteList";
 import { useDebounce } from "@/shared/ui/hooks/useDebounce";
 import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
+import { nombreMostrado } from "@/utils/nombre";
 import type { CasosUsoCompra } from "../application/casos-uso";
 import type { Convenio } from "../domain/compra";
 import {
@@ -150,7 +151,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     if (!termino) return clientes;
     return clientes.filter(
       (c) =>
-        coincideBusqueda(c.nombre, termino) ||
+        coincideBusqueda(nombreMostrado(c), termino) ||
         coincideBusqueda(c.codigo, termino) ||
         coincideBusqueda(c.nit, termino),
     );
@@ -166,18 +167,18 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     if (enLista) {
       setClienteSeleccionado({
         id_cliente: enLista.id_cliente,
-        nombre: enLista.nombre,
+        nombre: nombreMostrado(enLista),
       });
       return;
     }
 
     if (
       editingConvenio?.id_cliente === formData.id_cliente &&
-      editingConvenio.cliente?.nombre
+      nombreMostrado(editingConvenio.cliente)
     ) {
       setClienteSeleccionado({
         id_cliente: formData.id_cliente,
-        nombre: editingConvenio.cliente.nombre,
+        nombre: nombreMostrado(editingConvenio.cliente),
       });
       return;
     }
@@ -187,7 +188,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
       .obtenerCliente(formData.id_cliente)
       .then((c) => {
         if (!cancelado) {
-          setClienteSeleccionado({ id_cliente: c.id_cliente, nombre: c.nombre });
+          setClienteSeleccionado({ id_cliente: c.id_cliente, nombre: nombreMostrado(c) });
         }
       })
       .catch(() => undefined);
@@ -378,7 +379,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
               fields={[
                 {
                   label: "Proveedor",
-                  value: convenio.cliente?.nombre || "Sin cliente",
+                  value: nombreMostrado(convenio.cliente) || "Sin cliente",
                 },
                 { label: "Código", value: convenio.codigo || "-" },
               ]}
@@ -453,7 +454,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                       {convenio.codigo || "-"}
                     </TableCell>
                     <TableCell>
-                      {convenio.cliente?.nombre || "Sin cliente"}
+                      {nombreMostrado(convenio.cliente) || "Sin cliente"}
                     </TableCell>
                     <TableCell className="font-medium">
                       {convenio.nombre_convenio}
@@ -578,13 +579,13 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                         setFormData({ ...formData, id_cliente: c.id_cliente });
                         setClienteSeleccionado({
                           id_cliente: c.id_cliente,
-                          nombre: c.nombre,
+                          nombre: nombreMostrado(c),
                         });
                         setClienteSearch("");
                         setShowClienteDropdown(false);
                       }}
                     >
-                      <span className="text-sm font-medium">{c.nombre}</span>
+                      <span className="text-sm font-medium">{nombreMostrado(c)}</span>
                       <span className="text-xs text-gray-400">{c.codigo}</span>
                     </div>
                   ))
@@ -738,7 +739,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Cliente</p>
-                    <p className="text-sm font-medium text-gray-800">{detailModal.convenio.cliente?.nombre || "N/A"}</p>
+                    <p className="text-sm font-medium text-gray-800">{nombreMostrado(detailModal.convenio.cliente) || "N/A"}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">

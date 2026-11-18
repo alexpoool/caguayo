@@ -8,6 +8,7 @@ import type { Productos } from '@/types';
 import type { ContratoWithDetails } from '@/types/contrato';
 import type { Cliente } from '@/types/ventas';
 import { toISODateLocal } from '@/utils/fecha';
+import { nombreMostrado } from '@/utils/nombre';
 
 interface OfertaFormProps {
   casosUso: CasosUsoVentas;
@@ -72,7 +73,8 @@ export function OfertaForm({
     const q = clienteSearch.toLowerCase();
     return clientes.filter(
       (c) =>
-        c.nombre?.toLowerCase().includes(q) || c.codigo?.toLowerCase().includes(q)
+        nombreMostrado(c).toLowerCase().includes(q) ||
+        c.codigo?.toLowerCase().includes(q)
     );
   }, [clientes, clienteSearch]);
 
@@ -86,7 +88,7 @@ export function OfertaForm({
     return list.filter(
       (c) =>
         c.nombre?.toLowerCase().includes(q) ||
-        c.cliente?.nombre?.toLowerCase().includes(q)
+        nombreMostrado(c.cliente).toLowerCase().includes(q)
     );
   }, [contratos, selectedClienteId, contratoSearch]);
 
@@ -125,7 +127,7 @@ export function OfertaForm({
             <div className="relative mt-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
-                value={selectedCliente ? selectedCliente.nombre : clienteSearch}
+                value={selectedCliente ? nombreMostrado(selectedCliente) : clienteSearch}
                 onChange={(e) => {
                   setClienteSearch(e.target.value);
                   onClienteSearch?.(e.target.value);
@@ -176,7 +178,7 @@ export function OfertaForm({
                         setShowClienteDropdown(false);
                       }}
                     >
-                      {c.nombre} ({c.codigo})
+                      {nombreMostrado(c)} ({c.codigo})
                     </button>
                   ))
                 )}
@@ -220,7 +222,7 @@ export function OfertaForm({
                         setShowContratoDropdown(false);
                       }}
                     >
-                      {c.nombre} ({c.cliente?.nombre || 'Sin cliente'})
+                      {c.nombre} ({nombreMostrado(c.cliente) || 'Sin cliente'})
                     </button>
                   ))
                 )}

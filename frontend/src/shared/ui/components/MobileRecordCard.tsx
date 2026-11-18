@@ -58,12 +58,12 @@ export function MobileRecordCard({
               aria-label={openLabel}
               className="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             >
-              <span className="block truncate font-semibold text-gray-900">{title}</span>
+              <span className="block break-words font-semibold text-gray-900">{title}</span>
               {subtitle && <span className="mt-0.5 block truncate text-xs text-gray-500">{subtitle}</span>}
             </button>
           ) : (
             <>
-              <p className="truncate font-semibold text-gray-900">{title}</p>
+              <p className="break-words font-semibold text-gray-900">{title}</p>
               {subtitle && <p className="mt-0.5 truncate text-xs text-gray-500">{subtitle}</p>}
             </>
           )}
@@ -78,7 +78,7 @@ export function MobileRecordCard({
               <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                 {field.label}
               </dt>
-              <dd className="mt-0.5 truncate text-sm text-gray-800">{field.value}</dd>
+              <dd className="mt-0.5 break-words text-sm text-gray-800">{field.value}</dd>
             </div>
           ))}
         </dl>

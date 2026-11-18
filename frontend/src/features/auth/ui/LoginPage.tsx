@@ -142,7 +142,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-brand-50 via-white to-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Decorative background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-brand-100 rounded-full opacity-40 blur-3xl" />
@@ -154,7 +154,7 @@ export function LoginPage() {
         {/* Login Card */}
         <div className="bg-white/80 backdrop-blur-sm border-0 rounded-2xl shadow-2xl shadow-brand-900/10 ring-1 ring-brand-100 overflow-hidden animate-login-card">
           <div className="h-1 bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700" />
-          <div className="p-8">
+          <div className="p-6 sm:p-8">
             <h2 className="text-xl font-semibold text-brand-900 mb-6 text-center">
               Iniciar Sesión
             </h2>

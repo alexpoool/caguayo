@@ -10,6 +10,7 @@ import {
   TableCell,
 } from "@/shared/ui/components";
 import { formatFecha } from '@/utils/fecha';
+import { componerNombre, nombreMostrado } from '@/utils/nombre';
 import { useQuery } from "@tanstack/react-query";
 import type {
   Cliente,
@@ -130,7 +131,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
     </h4>
   );
 
-  const iniciales = (cliente.nombre || "")
+  const iniciales = (nombreMostrado(cliente) || "")
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
@@ -149,7 +150,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
     <ModalOverlay
       isOpen={isOpen}
       onClose={onClose}
-      ariaLabel={`Detalle de ${cliente.nombre || "cliente"}`}
+      ariaLabel={`Detalle de ${nombreMostrado(cliente) || "cliente"}`}
     >
       <div className="bg-white shadow-2xl w-full overflow-auto animate-scale-in sm:max-w-2xl sm:rounded-2xl max-h-[100dvh] sm:max-h-[90dvh]">
         {/* Header */}
@@ -163,8 +164,8 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-700/70">
                   {etiquetaRelacion}
                 </p>
-                <h3 className="truncate text-2xl font-bold tracking-tight text-gray-900">
-                  {cliente.nombre || "(Sin nombre)"}
+                <h3 className="break-words text-2xl font-bold tracking-tight text-gray-900">
+                  {nombreMostrado(cliente) || "(Sin nombre)"}
                 </h3>
                 <p className="text-sm text-gray-500">
                   Código: {cliente.codigo || "N/A"}
@@ -242,6 +243,18 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
               </div>
             ) : cliente.tipo_persona === "NATURAL" && datosNatural ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="col-span-2 md:col-span-3">
+                  <Campo
+                    label="Nombre completo"
+                    value={
+                      componerNombre(
+                        datosNatural.nombre,
+                        datosNatural.primer_apellido,
+                        datosNatural.segundo_apellido,
+                      ) || "N/A"
+                    }
+                  />
+                </div>
                 <Campo label="Nombre" value={datosNatural.nombre} />
                 <Campo label="Primer Apellido" value={datosNatural.primer_apellido} />
                 <Campo
@@ -325,6 +338,18 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
               </div>
             ) : cliente.tipo_persona === "TCP" && datosTCP ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="col-span-2 md:col-span-3">
+                  <Campo
+                    label="Nombre completo"
+                    value={
+                      componerNombre(
+                        datosTCP.nombre,
+                        datosTCP.primer_apellido,
+                        datosTCP.segundo_apellido,
+                      ) || "N/A"
+                    }
+                  />
+                </div>
                 <Campo label="Nombre" value={datosTCP.nombre || "N/A"} />
                 <Campo
                   label="Primer Apellido"
