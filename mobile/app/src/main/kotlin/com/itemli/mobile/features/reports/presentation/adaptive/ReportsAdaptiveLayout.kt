@@ -1,6 +1,13 @@
 package com.itemli.mobile.features.reports.presentation.adaptive
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.People
@@ -31,16 +39,22 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,7 +65,6 @@ import com.itemli.mobile.features.reports.presentation.viewmodels.ReportsListUiS
 import com.itemli.mobile.shared.ui.theme.BrandPrimary
 import com.itemli.mobile.shared.ui.theme.SurfaceLight
 import com.itemli.mobile.shared.ui.theme.TextSecondary
-import com.itemli.mobile.shared.ui.components.InteriorHeader
 
 private data class ReportVisual(val icon: androidx.compose.ui.graphics.vector.ImageVector, val tint: Color, val bg: Color)
 
@@ -77,6 +90,8 @@ fun ReportsAdaptiveLayout(
 ) {
     var search by remember { mutableStateOf("") }
     var searchVisible by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(searchVisible) { if (searchVisible) searchFocusRequester.requestFocus() }
     var selectedModule by remember(initialModule) { mutableStateOf(initialModule ?: "Todos") }
     val modules = remember(state.definitions) {
         listOf("Todos") + state.definitions.map { it.module.label }.distinct().sorted()
@@ -92,26 +107,63 @@ fun ReportsAdaptiveLayout(
         Modifier.fillMaxSize().background(SurfaceLight).padding(horizontal = 18.dp).padding(top = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        InteriorHeader(
-            title = "Reportes",
-            onBack = onBack,
-            actionIcon = if (searchVisible) Icons.Filled.Close else Icons.Filled.Search,
-            actionDescription = if (searchVisible) "Cerrar búsqueda" else "Buscar reportes",
-            onAction = { searchVisible = !searchVisible; if (!searchVisible) search = "" },
-        )
-        if (searchVisible) {
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("Buscar reporte") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = Color.White,
-                    focusedContainerColor = Color.White,
-                ),
+        Row(
+            modifier = Modifier.fillMaxWidth().height(52.dp)
+                .background(Color(0xFF082D66), RoundedCornerShape(0.dp))
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.ArrowBack,
+                contentDescription = "Volver",
+                tint = Color.White,
+                modifier = Modifier.size(22.dp).clickable(onClick = onBack),
+            )
+            Spacer(Modifier.width(14.dp))
+            AnimatedContent(
+                targetState = searchVisible,
+                modifier = Modifier.weight(1f),
+                transitionSpec = {
+                    fadeIn(tween(180)) togetherWith fadeOut(tween(120)) using
+                        SizeTransform(clip = false)
+                },
+                label = "reports-header-search",
+            ) { expanded ->
+                if (expanded) {
+                    BasicTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        modifier = Modifier.fillMaxWidth().focusRequester(searchFocusRequester),
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = Color.White,
+                            fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        cursorBrush = SolidColor(Color.White),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        decorationBox = { innerTextField ->
+                            Box {
+                                if (search.isEmpty()) {
+                                    Text("Buscar reporte…", color = Color.White.copy(alpha = .68f), style = MaterialTheme.typography.titleMedium)
+                                }
+                                innerTextField()
+                            }
+                        },
+                    )
+                } else {
+                    Text("Reportes", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Icon(
+                if (searchVisible) Icons.Filled.Close else Icons.Filled.Search,
+                contentDescription = if (searchVisible) "Cerrar búsqueda" else "Buscar reportes",
+                tint = Color.White,
+                modifier = Modifier.size(23.dp).clickable {
+                    searchVisible = !searchVisible
+                    if (!searchVisible) search = ""
+                },
             )
         }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
