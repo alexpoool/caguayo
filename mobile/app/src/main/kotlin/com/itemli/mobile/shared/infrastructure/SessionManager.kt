@@ -24,6 +24,9 @@ class SessionManager(
     var token: String? = null
         private set
 
+    var dependencyId: Long? = null
+        private set
+
     private val _sessionCleared = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val sessionCleared: SharedFlow<Unit> = _sessionCleared
 
@@ -38,17 +41,23 @@ class SessionManager(
 
     suspend fun currentAlias(): String? = alias ?: tokenStorage.userAlias()
 
-    suspend fun login(newToken: String, userAlias: String) {
+    suspend fun login(newToken: String, userAlias: String, userDependencyId: Long? = null) {
         token = newToken
         alias = userAlias
+        dependencyId = userDependencyId
         tokenStorage.setToken(newToken)
         tokenStorage.setUserAlias(userAlias)
+        tokenStorage.setDependencyId(userDependencyId)
     }
+
+    suspend fun currentDependencyId(): Long? = dependencyId ?: tokenStorage.dependencyId()
 
     suspend fun logout() {
         token = null
         alias = null
+        dependencyId = null
         tokenStorage.setToken(null)
+        tokenStorage.setDependencyId(null)
         onLogoutActions.forEach { action ->
             runCatching { action() }
         }
