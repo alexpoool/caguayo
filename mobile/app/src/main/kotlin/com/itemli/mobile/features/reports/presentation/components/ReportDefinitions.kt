@@ -106,6 +106,12 @@ private fun ReportChoiceSelector(
                 onClick = { expanded = true },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = options.isNotEmpty(),
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF173C78),
+                    disabledContainerColor = Color.White,
+                    disabledContentColor = Color(0xFF8995AA),
+                ),
             ) {
                 Text(
                     if (options.isEmpty()) "Opciones no disponibles" else selectedLabel,
@@ -115,6 +121,7 @@ private fun ReportChoiceSelector(
             androidx.compose.material3.DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
+                containerColor = Color.White,
             ) {
                 if (optional) {
                     androidx.compose.material3.DropdownMenuItem(
@@ -144,7 +151,14 @@ private fun ReportDateSelector(
     val pickerState = androidx.compose.material3.rememberDatePickerState()
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(label, style = MaterialTheme.typography.labelLarge)
-        OutlinedButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(
+            onClick = { showPicker = true },
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.White,
+                contentColor = Color(0xFF173C78),
+            ),
+        ) {
             Text(value.ifBlank { "Seleccionar fecha" }, modifier = Modifier.fillMaxWidth())
         }
     }
