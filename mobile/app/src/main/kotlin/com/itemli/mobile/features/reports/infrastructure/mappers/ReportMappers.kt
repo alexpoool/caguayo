@@ -58,6 +58,8 @@ fun MovimientosDependenciaPreviewDto.toRows(definition: ReportDefinition): List<
 
 fun MovimientosProductoPreviewDto.toRows(definition: ReportDefinition): List<Map<String, Any?>> =
     items.map { item -> mapOf(
+        "codigo_producto" to (item.codigo_producto ?: ""),
+        "producto" to (item.producto ?: ""),
         "fecha" to (item.fecha ?: ""),
         "operacion" to (item.operacion ?: ""),
         "tipo" to (item.tipo ?: ""),
@@ -235,6 +237,8 @@ object ReportCatalog {
             ReportFilter(id = "fecha_fin", label = "Fecha fin", type = ReportFilterType.DATE),
         ),
         columns = listOf(
+            ReportColumn("codigo_producto", "Código producto"),
+            ReportColumn("producto", "Producto"),
             ReportColumn("fecha", "Fecha"),
             ReportColumn("operacion", "Operación"),
             ReportColumn("tipo", "Tipo"),
