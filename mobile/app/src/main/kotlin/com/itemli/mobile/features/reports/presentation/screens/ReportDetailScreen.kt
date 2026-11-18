@@ -52,12 +52,6 @@ fun ReportDetailScreen(
         }
         return
     }
-    if (state.isLoading) {
-        Box(Modifier.fillMaxSize()) {
-            LoadingView("Cargando ${state.definition?.title}")
-        }
-        return
-    }
 
     Box(Modifier.fillMaxSize()) {
         ReportDetailAdaptiveLayout(
