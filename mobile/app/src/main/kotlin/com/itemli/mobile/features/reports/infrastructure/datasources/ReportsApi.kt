@@ -67,6 +67,14 @@ interface ReportsApi {
         @Query("fecha_fin") fechaFin: String?,
     ): MincultPreviewDto
 
+    @GET("proyecto/preview")
+    suspend fun realizadoresPreview(
+        @Query("id_provincia") provinciaId: String?,
+        @Query("id_municipio") municipioId: String?,
+        @Query("vigencia") vigencia: String?,
+        @Query("texto_busqueda") textoBusqueda: String?,
+    ): RealizadoresPreviewDto
+
     @GET("reportes/liquidaciones/preview")
     suspend fun liquidacionesPreview(
         @Query("fecha_inicio") fechaInicio: String?,
@@ -275,6 +283,28 @@ data class MincultRowDto(
     val cantidad: Int? = null,
     val total_devengado: Double? = null,
     val cantidad_artistas: Int? = null,
+)
+
+// ── Registro de realizadores ─────────────────────────────────────────────────
+
+@Serializable
+data class RealizadoresPreviewDto(
+    val items: List<RealizadorRowDto> = emptyList(),
+    val total_items: Int? = null,
+    val grupos_municipio: Map<String, Int> = emptyMap(),
+)
+
+@Serializable
+data class RealizadorRowDto(
+    val id_cliente: Int? = null,
+    val nombre_completo: String? = null,
+    val direccion: String? = null,
+    val municipio: String? = null,
+    val provincia: String? = null,
+    val codigo: String? = null,
+    val nit: String? = null,
+    val tipo_persona: String? = null,
+    val estado: String? = null,
 )
 
 // ── Resumen de liquidaciones ─────────────────────────────────────────────────
