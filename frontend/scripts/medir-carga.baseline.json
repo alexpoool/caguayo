@@ -1,0 +1,17 @@
+{
+  "_nota": "Medido el 2026-11-18 tras el plan de carga inicial (KiB gzip). Antes del plan: inicial 147.04, dashboard 90.36, reportes 106.28, proyectos 81.08, rrhh 67.49. Ahora el inicial baja a 145.46 (login/perfil/logger diferidos) y dashboard/reportes ahorran ~85 KiB; proyectos y rrhh se parten por página. No actualizar al alza sin justificar en docs/presupuesto-bundle.md.",
+  "inicialKb": 145.46,
+  "cssKb": 13.34,
+  "porModulo": {
+    "dashboard": 5.48,
+    "terceros": 27.02,
+    "inventario": 29.42,
+    "administracion": 35.71,
+    "ventas": 49.75,
+    "compra": 46.1,
+    "proyectos": 25.76,
+    "rrhh": 23.54,
+    "reportes": 21.63,
+    "dj08": 16.26
+  }
+}

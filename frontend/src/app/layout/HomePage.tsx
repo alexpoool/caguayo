@@ -211,6 +211,7 @@ export function HomePage() {
                   src={PRODUCTO.logo}
                   alt={PRODUCTO.nombre}
                   className="w-28 h-28 rounded-full object-cover shadow-lg"
+                  decoding="async"
                   onError={() => setLogoOk(false)}
                 />
               ) : (

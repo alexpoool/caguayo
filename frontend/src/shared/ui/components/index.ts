@@ -14,6 +14,7 @@ export * from './Modal';
 export * from './FormModal';
 export * from './ModalShell';
 export * from './Skeleton';
+export * from './SkeletonPagina';
 export * from './AnimatedCard';
 export * from './Avatar';
 export * from './Select';

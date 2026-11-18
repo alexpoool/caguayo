@@ -13,6 +13,7 @@ export function Avatar({ src, alt, className }: AvatarProps) {
       src={src || fallback}
       alt={alt || 'Avatar'}
       className={cn('rounded-full object-cover', className)}
+      decoding="async"
     />
   );
 }

@@ -1,7 +1,11 @@
+import { lazy, Suspense } from 'react';
 import { Package, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/components';
 import type { ProductoVendido } from '../../domain/dashboard';
-import { TopProductsChart } from './TopProductsChart';
+
+const TopProductsChart = lazy(() =>
+  import('./TopProductsChart').then((m) => ({ default: m.TopProductsChart })),
+);
 
 export function TopProductosCard({
   productos,
@@ -21,7 +25,13 @@ export function TopProductosCard({
       <CardContent>
         {productos.length > 0 ? (
           <div className="space-y-4">
-            <TopProductsChart products={productos} />
+            <Suspense
+              fallback={
+                <div className="h-48 w-full animate-pulse rounded-lg bg-gray-200 sm:h-56" />
+              }
+            >
+              <TopProductsChart products={productos} />
+            </Suspense>
             <div className="space-y-2 pt-2">
               {productos.slice(0, 5).map((producto, index) => (
                 <div

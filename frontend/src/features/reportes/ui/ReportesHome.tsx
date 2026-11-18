@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import type { CasosUsoReportes } from '../application/casos-uso';
 import { useAuth } from '@/shared/ui/auth';
 import { useSearchParams } from "react-router-dom";
@@ -25,22 +25,13 @@ import {
   FileText,
   ClipboardList,
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
 import { toast } from "react-hot-toast";
+
+// `recharts` (87 kB gzip) se carga aparte: primero se pintan filtros, tabla y
+// estadísticas, y el gráfico entra cuando su chunk está listo.
+const ReporteGrafico = lazy(() =>
+  import("./ReporteGrafico").then((m) => ({ default: m.ReporteGrafico })),
+);
 
 
 
@@ -48,7 +39,7 @@ import { toast } from "react-hot-toast";
 import type { Dependencia } from "../domain/reportes";
 import type { Moneda } from "../domain/reportes";
 import { formatFecha, toISODateLocal } from "@/utils/fecha";
-import { CHART_COLORS, PALETA } from "@/config/paleta";
+import { CHART_COLORS } from "@/config/paleta";
 import { DateInput } from "@/shared/ui/components";
 import { DependenciaTreeSelect } from "@/shared/ui/components/DependenciaTreeSelect";
 
@@ -429,10 +420,6 @@ const REPORTS: ReportConfig[] = [
   },
 ];
 
-const PIE_COLORS = [
-  CHART_COLORS[0], CHART_COLORS[1], CHART_COLORS[2], CHART_COLORS[3], CHART_COLORS[4],
-  CHART_COLORS[0], CHART_COLORS[5],
-];
 
 function computeBasicStats(values: number[]): ChartStats {
   if (values.length === 0) return { total: 0, promedio: 0, max: 0, min: 0, count: 0 };
@@ -761,57 +748,19 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
     if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
     if (!displayData || displayData.length === 0) return <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">No hay datos para mostrar</div>;
 
-    const gridAndAxis = (
-      <>
-        <CartesianGrid strokeDasharray="3 3" stroke={PALETA.neutral.grid} />
-        <XAxis dataKey="name" stroke={PALETA.neutral.axis} fontSize={11} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
-        <YAxis stroke={PALETA.neutral.axis} fontSize={12} tickLine={false} />
-        <Tooltip contentStyle={{ borderRadius: "8px", border: `1px solid ${PALETA.neutral.grid}`, boxShadow: "0 4px 6px rgba(0,0,0,0.07)" }} />
-        <Legend />
-      </>
-    );
-
-    const hasMonto = displayData.some((d: any) => d.monto !== undefined && d.monto !== null);
-
-    if (chartType === "line") {
-      return (
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={displayData}>
-            {gridAndAxis}
-            {hasMonto && <Line type="monotone" dataKey="monto" stroke={activeReport?.colorHex} strokeWidth={3} dot={{ fill: activeReport?.colorHex, r: 4 }} activeDot={{ r: 6 }} name="Monto" animationDuration={500} />}
-            <Line type="monotone" dataKey="cantidad" stroke={CHART_COLORS[1]} strokeWidth={2} dot={{ fill: CHART_COLORS[1], r: 3 }} name="Cantidad" animationDuration={500} />
-          </LineChart>
-        </ResponsiveContainer>
-      );
-    }
-    if (chartType === "pie") {
-      return (
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie data={displayData} cx="50%" cy="50%" innerRadius={60} outerRadius={120} paddingAngle={3} dataKey={hasMonto ? "monto" : "cantidad"} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} animationDuration={500}>
-              {displayData.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-            </Pie>
-            <Tooltip contentStyle={{ borderRadius: "8px", border: `1px solid ${PALETA.neutral.grid}` }} />
-          </PieChart>
-        </ResponsiveContainer>
-      );
-    }
     return (
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={displayData}>
-          {gridAndAxis}
-          {activeReport?.chartSeries ? (
-            activeReport?.chartSeries.map((s) => (
-              <Bar key={s.key} dataKey={s.key} stackId="stack" fill={s.color} name={s.name} animationDuration={500} />
-            ))
-          ) : (
-            <>
-              {hasMonto && <Bar dataKey="monto" fill={activeReport?.colorHex} radius={[4, 4, 0, 0]} name="Monto" animationDuration={500} />}
-              <Bar dataKey="cantidad" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} name="Cantidad" animationDuration={500} />
-            </>
-          )}
-        </BarChart>
-      </ResponsiveContainer>
+      <Suspense
+        fallback={
+          <div className="h-[300px] w-full animate-pulse rounded-lg bg-gray-200" />
+        }
+      >
+        <ReporteGrafico
+          tipo={chartType}
+          datos={displayData}
+          colorHex={activeReport?.colorHex}
+          series={activeReport?.chartSeries}
+        />
+      </Suspense>
     );
   };
 

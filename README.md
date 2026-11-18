@@ -505,6 +505,28 @@ The frontend provides:
 - Reporting and analytics
 - User management and permissions
 
+### Rendimiento de carga
+
+La primera visita se mide y se vigila con:
+
+```bash
+cd frontend
+pnpm build
+pnpm check:size             # 250 kB gzip inicial / 500 kB por chunk
+pnpm medir:carga            # tabla por módulo + baseline
+```
+
+Qué no romper:
+
+- No importar `recharts` de forma estática: los gráficos se cargan con
+  `React.lazy` desde `DashboardPage`, `TopProductosCard` y `ReporteGrafico`.
+- No añadir imports eager de páginas en `App.tsx`: cada ruta usa un cargador de
+  `src/app/rutas/cargadores.ts` y su propio chunk.
+- El prefetch (`usePrecargaInactiva`, hover en el menú) es best-effort: si falla,
+  la navegación normal vuelve a pedir el chunk.
+- Los cambios de `docs/presupuesto-bundle.md` deben reflejar números medidos, no
+  estimados.
+
 ## Migration
 
 The application uses Alembic for database migrations. All migration files are included in the repository.

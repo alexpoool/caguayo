@@ -132,6 +132,8 @@ export function PerfilClientePage({ casosUso }: { casosUso: CasosUsoTerceros }) 
                 src="/default.jpg"
                 alt="avatar"
                 className="w-16 h-16 rounded-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
               <div>
                 <CardTitle className="text-xl">

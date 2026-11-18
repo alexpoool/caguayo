@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeftRight,
@@ -14,14 +15,24 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Skeleton,
   SkeletonDashboard,
 } from '@/shared/ui/components';
 import type { CasosUsoDashboard } from '../application/casos-uso';
 import { useDashboard } from './useDashboard';
 import { calcularTendencia } from './tendencias';
 import { StatCard } from './components/StatCard';
-import { MovimientosTrendChart } from './components/MovimientosTrendChart';
-import { TrendChart } from './components/TrendChart';
+
+// Los gráficos arrastran `recharts` (87 kB gzip): se descargan después de que
+// las tarjetas de números ya están pintadas.
+const MovimientosTrendChart = lazy(() =>
+  import('./components/MovimientosTrendChart').then((m) => ({
+    default: m.MovimientosTrendChart,
+  })),
+);
+const TrendChart = lazy(() =>
+  import('./components/TrendChart').then((m) => ({ default: m.TrendChart })),
+);
 import { VentasHoyCard } from './components/VentasHoyCard';
 import { StockCriticoCard } from './components/StockCriticoCard';
 import { UltimasVentasCard } from './components/UltimasVentasCard';
@@ -145,7 +156,13 @@ export function DashboardPage({ casosUso }: { casosUso: CasosUsoDashboard }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <MovimientosTrendChart data={tendenciasMovimientos} />
+          <Suspense
+            fallback={
+              <Skeleton variant="rectangular" className="h-64 w-full sm:h-72 lg:h-80" />
+            }
+          >
+            <MovimientosTrendChart data={tendenciasMovimientos} />
+          </Suspense>
           <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs sm:text-sm">
             <div className="flex items-center gap-1">
               <div className="h-3 w-3 rounded-full bg-green-500" />
@@ -175,7 +192,13 @@ export function DashboardPage({ casosUso }: { casosUso: CasosUsoDashboard }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <TrendChart data={tendenciasVentas} />
+          <Suspense
+            fallback={
+              <Skeleton variant="rectangular" className="h-64 w-full sm:h-72 lg:h-80" />
+            }
+          >
+            <TrendChart data={tendenciasVentas} />
+          </Suspense>
         </CardContent>
       </Card>
 

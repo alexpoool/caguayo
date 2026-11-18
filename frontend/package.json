@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/generar-preloads.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -19,7 +19,9 @@
     "check:palette": "node scripts/check-paleta.mjs",
     "check:arch": "node scripts/check-arch.mjs",
     "check:size": "node scripts/check-size.mjs",
-    "check": "pnpm typecheck && pnpm lint && pnpm check:arch && pnpm check:ui && pnpm check:palette && pnpm test && pnpm build && pnpm check:size"
+    "check:carga": "node scripts/check-carga.mjs",
+    "medir:carga": "node scripts/medir-carga.mjs",
+    "check": "pnpm typecheck && pnpm lint && pnpm check:arch && pnpm check:ui && pnpm check:palette && pnpm test && pnpm build && pnpm check:size && pnpm medir:carga"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.21",
