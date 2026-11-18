@@ -33,6 +33,12 @@ private fun LoginAdaptiveLayoutPreview() {
         onBaseChange = {},
         onReloadBases = {},
         onSubmit = {},
+        serverUrl = "http://192.168.1.100:8000/",
+        isSavingServer = false,
+        isTestingServer = false,
+        connectionFeedback = null,
+        onServerUrlChange = {},
+        onSaveServerUrl = {},
         onOpenSettings = {},
     )
 }
