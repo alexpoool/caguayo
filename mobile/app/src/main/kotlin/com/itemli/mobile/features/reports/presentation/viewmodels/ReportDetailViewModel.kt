@@ -104,6 +104,13 @@ class ReportDetailViewModel(
                         "id_provincia" -> api.provinces().map {
                             ReportFilterOption(it.id_provincia.toString(), it.nombre)
                         }
+                        "id_municipio" -> api.municipalities().map {
+                            ReportFilterOption(it.id_municipio.toString(), it.nombre)
+                        }
+                        "vigencia" -> listOf(
+                            ReportFilterOption("activo", "Activo"),
+                            ReportFilterOption("inactivo", "Inactivo"),
+                        )
                         "id_moneda" -> api.currencies().map {
                             ReportFilterOption(it.id_moneda.toString(), listOf(it.nombre, it.simbolo).filter(String::isNotBlank).joinToString(" · "))
                         }
