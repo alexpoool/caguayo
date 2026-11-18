@@ -18,6 +18,9 @@ class SessionManager(
     private val tokenStorage: TokenStorage,
     private val configProvider: suspend () -> AppConfig.ServerConfig,
 ) {
+    var alias: String? = null
+        private set
+
     var token: String? = null
         private set
 
@@ -33,14 +36,19 @@ class SessionManager(
 
     suspend fun currentToken(): String? = token ?: tokenStorage.token()
 
-    suspend fun login(newToken: String) {
+    suspend fun currentAlias(): String? = alias ?: tokenStorage.userAlias()
+
+    suspend fun login(newToken: String, userAlias: String) {
         token = newToken
+        alias = userAlias
         tokenStorage.setToken(newToken)
+        tokenStorage.setUserAlias(userAlias)
     }
 
     suspend fun logout() {
         token = null
-        tokenStorage.clear()
+        alias = null
+        tokenStorage.setToken(null)
         onLogoutActions.forEach { action ->
             runCatching { action() }
         }
