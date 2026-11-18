@@ -38,7 +38,7 @@ class AuthRepositoryImpl(
                 ),
             )
             val session = response.toDomain()
-            sessionManager.login(session.token, session.usuario.alias.ifBlank { alias })
+            sessionManager.login(session.token, session.usuario.alias.ifBlank { alias }, session.usuario.dependencia?.id)
             session
         }
         return when {
