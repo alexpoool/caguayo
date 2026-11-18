@@ -11,7 +11,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 sealed class AppDestination(val route: String, val label: String, val icon: ImageVector?) {
     data object Login : AppDestination("login", "Acceso", null)
     data object Home : AppDestination("home", "Inicio", Icons.Filled.Home)
-    data object Reports : AppDestination("reports", "Reportes", Icons.AutoMirrored.Filled.List)
+    data object Reports : AppDestination("reports?module={module}", "Reportes", Icons.AutoMirrored.Filled.List) {
+        fun route(module: String? = null) = if (module.isNullOrBlank()) "reports" else "reports?module=$module"
+    }
     data object History : AppDestination("history", "Historial", Icons.Filled.History)
     data object Settings : AppDestination("settings", "Ajustes", Icons.Filled.Settings)
     data object ReportDetail : AppDestination("report-detail/{reportId}", "Detalle", null) {
