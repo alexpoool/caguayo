@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -21,6 +22,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 /** Campos compactos: icono y placeholder, sin labels ni subtítulos duplicados. */
 @Composable
@@ -43,6 +46,13 @@ fun LoginForm(
             singleLine = true,
             enabled = enabled && !isLoading,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            shape = RoundedCornerShape(15.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFFF8FAFF),
+                unfocusedContainerColor = Color(0xFFF8FAFF),
+                focusedBorderColor = Color(0xFF155EEF),
+                unfocusedBorderColor = Color(0xFFDCE5F5),
+            ),
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
@@ -59,6 +69,13 @@ fun LoginForm(
                 }
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            shape = RoundedCornerShape(15.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFFF8FAFF),
+                unfocusedContainerColor = Color(0xFFF8FAFF),
+                focusedBorderColor = Color(0xFF155EEF),
+                unfocusedBorderColor = Color(0xFFDCE5F5),
+            ),
             modifier = Modifier.fillMaxWidth(),
         )
     }
