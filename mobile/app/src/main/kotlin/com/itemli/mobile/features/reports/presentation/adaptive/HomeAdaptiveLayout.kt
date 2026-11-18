@@ -60,6 +60,7 @@ private data class HomeModule(
 )
 
 private val homeModules = listOf(
+    HomeModule("Todos", 11, Icons.Filled.BarChart, Color(0xFF1554C8), Color(0xFFE2EBFF)),
     HomeModule("Inventario", 3, Icons.Filled.Inventory2, Color(0xFF079B69), Color(0xFFD7F6EA)),
     HomeModule("Compra", 1, Icons.Filled.Handshake, Color(0xFFD65B24), Color(0xFFFFE8DC)),
     HomeModule("Tienda", 2, Icons.Filled.Groups, Color(0xFF6738D7), Color(0xFFECE3FF)),
