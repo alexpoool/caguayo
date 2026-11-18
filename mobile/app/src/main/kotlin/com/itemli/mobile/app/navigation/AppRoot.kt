@@ -97,6 +97,7 @@ fun AppRoot(
                 ReportsCatalogScreen(
                     windowSizeClass = windowSizeClass,
                     initialModule = entry.arguments?.getString("module"),
+                    onBack = { navController.popBackStack() },
                     onOpenReport = { reportId ->
                         navController.navigate(AppDestination.ReportDetail.route(reportId))
                     },
@@ -109,10 +110,11 @@ fun AppRoot(
                 ReportDetailScreen(
                     windowSizeClass = windowSizeClass,
                     reportId = entry.arguments?.getString("reportId").orEmpty(),
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(AppDestination.History.route) {
-                HistoryScreen()
+                HistoryScreen(onBack = { navController.popBackStack() })
             }
             composable(AppDestination.Settings.route) {
                 SettingsScreen(
