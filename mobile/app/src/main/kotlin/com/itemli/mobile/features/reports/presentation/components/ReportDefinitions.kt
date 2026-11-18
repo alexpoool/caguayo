@@ -244,36 +244,3 @@ fun ReportPreviewTable(
     }
 }
 
- 
-@Composable
-private fun ReportPreviewChart(
-    definition: ReportDefinition,
-    rows: List<Map<String, Any?>>,
-) {
-    val numericColumn = definition.columns.firstOrNull { column ->
-        rows.any { row ->
-            (row[column.key] as? Number) != null ||
-                row[column.key]?.toString()?.replace(",", ".")?.toDoubleOrNull() != null
-        }
-    } ?: return
-    val values = rows.mapNotNull { row ->
-        val raw = row[numericColumn.key] ?: return@mapNotNull null
-        (raw as? Number)?.toFloat() ?: raw.toString().replace(",", ".").toFloatOrNull()
-    }
-    if (values.isEmpty()) return
-    val max = values.maxOrNull()?.coerceAtLeast(1f) ?: 1f
-    Canvas(Modifier.fillMaxWidth().padding(vertical = 8.dp).size(height = 132.dp, width = 300.dp)) {
-        val gap = 10.dp.toPx()
-        val barWidth = ((size.width - gap * (values.size + 1)) / values.size).coerceAtLeast(4f)
-        values.forEachIndexed { index, value ->
-            val height = (value / max) * size.height * 0.88f
-            val x = gap + index * (barWidth + gap)
-            drawRoundRect(
-                color = Color(0xFF1686E8),
-                topLeft = Offset(x, size.height - height),
-                size = Size(barWidth, height),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx(), 6.dp.toPx()),
-            )
-        }
-    }
-}
