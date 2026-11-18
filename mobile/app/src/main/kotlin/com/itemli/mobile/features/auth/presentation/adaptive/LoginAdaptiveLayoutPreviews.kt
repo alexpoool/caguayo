@@ -31,7 +31,8 @@ private fun LoginAdaptiveLayoutPreview() {
         onAliasChange = {},
         onPasswordChange = {},
         onBaseChange = {},
-        onSearchBases = {},
+        onReloadBases = {},
         onSubmit = {},
+        onOpenSettings = {},
     )
 }
