@@ -3,6 +3,7 @@ package com.itemli.mobile.app.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -38,6 +39,7 @@ fun AdaptiveAppScaffold(
 
     when (windowSizeClass.widthSizeClass) {
         WindowWidthSizeClass.Compact -> Scaffold(
+            modifier = Modifier.imePadding(),
             containerColor = Color(0xFFF5F7FB),
             bottomBar = {
                 if (destinations.isNotEmpty()) {
@@ -59,7 +61,7 @@ fun AdaptiveAppScaffold(
                 }
             },
         ) { padding -> Box(Modifier.padding(padding)) { content() } }
-        WindowWidthSizeClass.Medium -> Row(Modifier.fillMaxSize()) {
+        WindowWidthSizeClass.Medium -> Row(Modifier.fillMaxSize().imePadding()) {
             if (destinations.isNotEmpty()) {
                 NavigationRail(containerColor = Color.White) {
                     destinations.forEach { dest ->
@@ -75,6 +77,7 @@ fun AdaptiveAppScaffold(
             Box(Modifier.weight(1f)) { content() }
         }
         else -> PermanentNavigationDrawer(
+            modifier = Modifier.imePadding(),
             drawerContent = {
                 destinations.forEach { dest ->
                     NavigationDrawerItem(
