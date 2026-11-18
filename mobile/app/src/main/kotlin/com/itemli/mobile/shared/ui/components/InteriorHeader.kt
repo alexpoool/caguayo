@@ -44,9 +44,10 @@ fun InteriorHeader(
         }
         Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.weight(1f))
-        if (actionIcon != null && onAction != null) {
+        if (actionIcon != null) {
+            val iconModifier = if (onAction != null) Modifier.clickable(onClick = onAction) else Modifier
             Icon(actionIcon, contentDescription = actionDescription,
-                tint = Color.White, modifier = Modifier.size(25.dp).clickable(onClick = onAction))
+                tint = Color.White, modifier = iconModifier.size(25.dp))
         }
     }
 }
