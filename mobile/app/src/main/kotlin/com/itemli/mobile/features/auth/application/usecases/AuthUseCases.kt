@@ -27,3 +27,11 @@ class SearchAliasUseCase(
     suspend operator fun invoke(alias: String): AppResult<List<DependenciaRef>> =
         repository.basesByAlias(alias)
 }
+
+class ListDatabaseConnectionsUseCase(private val repository: AuthRepository) {
+    suspend operator fun invoke() = repository.listConnections()
+}
+
+class TestDatabaseConnectionUseCase(private val repository: AuthRepository) {
+    suspend operator fun invoke(base: DependenciaRef) = repository.testConnection(base)
+}
