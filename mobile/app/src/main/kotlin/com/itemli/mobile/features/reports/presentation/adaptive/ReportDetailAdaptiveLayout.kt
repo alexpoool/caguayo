@@ -30,6 +30,7 @@ import com.itemli.mobile.features.reports.presentation.components.ReportPreviewT
 import com.itemli.mobile.features.reports.presentation.viewmodels.ReportDetailUiState
 import com.itemli.mobile.shared.ui.theme.BrandPrimary
 import com.itemli.mobile.shared.ui.theme.TextSecondary
+import com.itemli.mobile.shared.ui.components.InteriorHeader
 
 @Composable
 fun ReportDetailAdaptiveLayout(
@@ -38,16 +39,20 @@ fun ReportDetailAdaptiveLayout(
     onFilterChange: (String, String) -> Unit,
     onRefresh: () -> Unit,
     onDownloadPdf: () -> Unit = {},
+    onBack: () -> Unit = {},
 ) {
     val definition = state.definition ?: return
     Column(
         Modifier.fillMaxSize().background(Color(0xFFF3F6FF)).padding(horizontal = 16.dp).padding(top = 14.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Tune, contentDescription = null, tint = BrandPrimary)
-            Text("  Filtros del Reporte", style = MaterialTheme.typography.titleLarge, color = Color(0xFF092C63))
-        }
+        InteriorHeader(
+            title = "Filtros del Reporte",
+            onBack = onBack,
+            actionIcon = Icons.Filled.Tune,
+            actionDescription = "Filtros",
+            onAction = onRefresh,
+        )
         Column(
             Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(14.dp),
