@@ -366,7 +366,11 @@ object ReportCatalog {
         title = "Registro de realizadores",
         description = "Realizadores asignados a etapas de proyectos",
         module = ReportModule.Projects,
-        filters = emptyList(),
+        filters = listOf(
+            ReportFilter(id = "id_provincia", label = "Provincia", type = ReportFilterType.NUMBER, required = false),
+            ReportFilter(id = "id_municipio", label = "Municipio", type = ReportFilterType.NUMBER, required = false),
+            ReportFilter(id = "vigencia", label = "Vigencia", type = ReportFilterType.TEXT, required = false),
+        ),
         columns = listOf(
             ReportColumn("codigo", "Código"),
             ReportColumn("nombre_completo", "Nombre"),
