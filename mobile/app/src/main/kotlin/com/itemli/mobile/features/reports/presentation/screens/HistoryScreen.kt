@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.History
+import com.itemli.mobile.shared.ui.components.InteriorHeader
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,10 +24,10 @@ import androidx.compose.ui.unit.dp
 
 /** Historial: no presenta registros ficticios; muestra el estado vacío hasta tener descargas registradas. */
 @Composable
-fun HistoryScreen() {
+fun HistoryScreen(onBack: () -> Unit = {}) {
     Box(Modifier.fillMaxSize().background(Color(0xFFF3F6FF)).padding(20.dp), contentAlignment = Alignment.TopStart) {
         Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            RowTitle()
+            InteriorHeader(title = "Historial", onBack = onBack, actionIcon = Icons.Filled.History, actionDescription = "Historial", onAction = {})
             Surface(color = Color.White, shape = RoundedCornerShape(20.dp), shadowElevation = 1.dp) {
                 Column(
                     Modifier.fillMaxSize().padding(28.dp),
@@ -49,10 +50,3 @@ fun HistoryScreen() {
     }
 }
 
-@Composable
-private fun RowTitle() {
-    androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Filled.History, contentDescription = null, tint = Color(0xFF0752D8))
-        Text("  Historial", style = MaterialTheme.typography.headlineMedium, color = Color(0xFF092C63))
-    }
-}
