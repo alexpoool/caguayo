@@ -36,10 +36,12 @@ class EncryptedTokenStorage(context: Context) : TokenStorage {
 
     override suspend fun savedCredentials(): com.itemli.mobile.shared.domain.SavedLoginCredentials? =
         runCatching {
-            val alias = prefs.getString(KEY_SAVED_ALIAS, null) ?: return null
-            val password = prefs.getString(KEY_SAVED_PASSWORD, null) ?: return null
-            val database = prefs.getString(KEY_SAVED_DATABASE, null) ?: return null
-            com.itemli.mobile.shared.domain.SavedLoginCredentials(alias, password, database)
+            val alias = prefs.getString(KEY_SAVED_ALIAS, null)
+            val password = prefs.getString(KEY_SAVED_PASSWORD, null)
+            val database = prefs.getString(KEY_SAVED_DATABASE, null)
+            if (alias != null && password != null && database != null) {
+                com.itemli.mobile.shared.domain.SavedLoginCredentials(alias, password, database)
+            } else null
         }.getOrNull()
 
     override suspend fun saveCredentials(credentials: com.itemli.mobile.shared.domain.SavedLoginCredentials?) {
