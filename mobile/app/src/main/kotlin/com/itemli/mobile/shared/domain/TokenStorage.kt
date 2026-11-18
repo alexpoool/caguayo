@@ -13,5 +13,7 @@ interface TokenStorage {
     suspend fun saveCredentials(credentials: SavedLoginCredentials?) {}
     suspend fun userAlias(): String? = null
     suspend fun setUserAlias(alias: String?) {}
+    suspend fun dependencyId(): Long? = null
+    suspend fun setDependencyId(id: Long?) {}
     suspend fun clear()
 }
