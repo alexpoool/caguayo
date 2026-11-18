@@ -295,6 +295,7 @@ async def get_movimientos_dependencia(
             Productos.precio_compra.label("precio_compra"),
         )
         .join(Movimiento, Movimiento.id_producto == Productos.id_producto)
+        .join(Productos, Movimiento.id_producto == Productos.id_producto)
         .filter(
             Movimiento.id_dependencia == id_dependencia,
             Movimiento.estado == "confirmado",
@@ -489,6 +490,8 @@ async def get_movimientos_producto(
                 else_="Neutro",
             ).label("tipo"),
             Movimiento.cantidad,
+            Productos.codigo.label("codigo_producto"),
+            Productos.nombre.label("producto"),
         )
         .join(
             TipoMovimiento,
@@ -517,6 +520,8 @@ async def get_movimientos_producto(
             "operacion": r.operacion,
             "tipo": r.tipo,
             "cantidad": r.cantidad,
+            "codigo_producto": r.codigo_producto,
+            "producto": r.producto,
         }
         for r in results
     ]
