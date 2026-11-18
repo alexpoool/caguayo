@@ -5,7 +5,6 @@ import com.itemli.mobile.features.auth.domain.entities.DependenciaRef
 import com.itemli.mobile.features.auth.domain.repositories.AuthRepository
 import com.itemli.mobile.features.auth.infrastructure.datasources.AuthApi
 import com.itemli.mobile.features.auth.infrastructure.datasources.TestConnectionRequestDto
-import com.itemli.mobile.features.auth.infrastructure.mappers.toDomain
 import com.itemli.mobile.features.auth.infrastructure.datasources.AuthLoginRequestDto
 import com.itemli.mobile.features.auth.infrastructure.mappers.toDomain
 import com.itemli.mobile.shared.domain.AppResult
