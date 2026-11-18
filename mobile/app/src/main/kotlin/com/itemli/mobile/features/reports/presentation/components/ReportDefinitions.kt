@@ -232,7 +232,7 @@ fun ReportPreviewTable(
         }
         rows.forEach { row ->
             Row(modifier = Modifier.fillMaxWidth()) {
-                definition.columns.forEach { column ->
+                definition.columns.take(3).forEach { column ->
                     Text(
                         text = (row[column.key] ?: "").toString(),
                         style = MaterialTheme.typography.bodyMedium,
