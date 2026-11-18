@@ -16,6 +16,12 @@ interface AuthApi {
         @Body body: AuthLoginRequestDto,
     ): AuthLoginResponseDto
 
+    @GET("conexiones")
+    suspend fun listConnections(): List<ConexionBaseDatosDto>
+
+    @retrofit2.http.POST("conexiones/test")
+    suspend fun testConnection(@Body body: TestConnectionRequestDto): TestConnectionResponseDto
+
     @GET("auth/buscar-alias/{alias}")
     suspend fun basesByAlias(
         @Path("alias") alias: String,
@@ -54,3 +60,12 @@ data class DependenciaDto(
     val nombre: String = "",
     val base_datos: String = "",
 )
+
+@Serializable
+data class ConexionBaseDatosDto(val id_conexion: Long, val nombre_database: String, val host: String = "localhost", val puerto: Int = 5432)
+
+@Serializable
+data class TestConnectionRequestDto(val nombre_database: String, val host: String = "localhost", val puerto: Int = 5432)
+
+@Serializable
+data class TestConnectionResponseDto(val success: Boolean)
