@@ -86,13 +86,17 @@ fun AppRoot(
             composable(AppDestination.Home.route) {
                 HomeScreen(
                     windowSizeClass = windowSizeClass,
-                    onOpenReports = { navController.navigate(AppDestination.Reports.route) },
+                    onOpenReports = { module -> navController.navigate(AppDestination.Reports.route(module)) },
                     onLogout = { coroutineScope.launch { sessionManager.logout() } },
                 )
             }
-            composable(AppDestination.Reports.route) {
+            composable(
+                AppDestination.Reports.route,
+                arguments = listOf(navArgument("module") { nullable = true; defaultValue = null }),
+            ) { entry ->
                 ReportsCatalogScreen(
                     windowSizeClass = windowSizeClass,
+                    initialModule = entry.arguments?.getString("module"),
                     onOpenReport = { reportId ->
                         navController.navigate(AppDestination.ReportDetail.route(reportId))
                     },
