@@ -70,6 +70,7 @@ private val homeModules = listOf(
 /** Inicio ITEMLI: cabecera azul con bienvenida y módulos de acceso rápido. */
 @Composable
 fun HomeAdaptiveLayout(
+    alias: String,
     onOpenReports: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
@@ -133,7 +134,7 @@ fun HomeAdaptiveLayout(
                     }
                 }
                 Spacer(Modifier.height(28.dp))
-                Text("Hola, Usuario", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                Text("Hola, $alias", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(5.dp))
                 Text(
                     "Accede a tus reportes de forma\nrápida y segura",
@@ -174,10 +175,10 @@ fun HomeAdaptiveLayout(
                 }
                 androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxWidth().height(330.dp),
+                    modifier = Modifier.fillMaxWidth().height(260.dp),
                     contentPadding = PaddingValues(0.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     userScrollEnabled = false,
                 ) {
                     items(homeModules) { module ->
@@ -193,17 +194,17 @@ fun HomeAdaptiveLayout(
 @Composable
 private fun ModuleTile(module: HomeModule, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().height(104.dp).clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().height(80.dp).clickable(onClick = onClick),
         shape = RoundedCornerShape(17.dp),
         colors = CardDefaults.cardColors(containerColor = module.background),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(vertical = 12.dp, horizontal = 4.dp),
+            modifier = Modifier.fillMaxSize().padding(vertical = 7.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(module.icon, contentDescription = null, tint = module.tint, modifier = Modifier.size(34.dp))
+            Icon(module.icon, contentDescription = null, tint = module.tint, modifier = Modifier.size(27.dp))
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(module.title, color = Color(0xFF13264A), style = MaterialTheme.typography.labelLarge)
                 Text("${module.count} reportes", color = Color(0xFF52627D), style = MaterialTheme.typography.labelSmall)
