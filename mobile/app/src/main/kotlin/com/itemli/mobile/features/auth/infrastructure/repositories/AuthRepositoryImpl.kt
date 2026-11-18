@@ -4,6 +4,8 @@ import com.itemli.mobile.features.auth.domain.entities.AuthSession
 import com.itemli.mobile.features.auth.domain.entities.DependenciaRef
 import com.itemli.mobile.features.auth.domain.repositories.AuthRepository
 import com.itemli.mobile.features.auth.infrastructure.datasources.AuthApi
+import com.itemli.mobile.features.auth.infrastructure.datasources.TestConnectionRequestDto
+import com.itemli.mobile.features.auth.infrastructure.mappers.toDomain
 import com.itemli.mobile.features.auth.infrastructure.datasources.AuthLoginRequestDto
 import com.itemli.mobile.features.auth.infrastructure.mappers.toDomain
 import com.itemli.mobile.shared.domain.AppResult
@@ -45,6 +47,16 @@ class AuthRepositoryImpl(
             else -> AppResult.Failure(result.exceptionOrNull()?.toAppError() ?: IllegalStateException())
         }
     }
+
+    override suspend fun listConnections(): AppResult<List<DependenciaRef>> = runCatching {
+        apiClient.createService(AuthApi::class.java).listConnections().map { it.toDomain() }
+    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it) })
+
+    override suspend fun testConnection(base: DependenciaRef): AppResult<Boolean> = runCatching {
+        apiClient.createService(AuthApi::class.java).testConnection(
+            TestConnectionRequestDto(base.baseDatos, base.host, base.puerto),
+        ).success
+    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it) })
 
     override suspend fun basesByAlias(alias: String): AppResult<List<DependenciaRef>> {
         val result = runCatching {
