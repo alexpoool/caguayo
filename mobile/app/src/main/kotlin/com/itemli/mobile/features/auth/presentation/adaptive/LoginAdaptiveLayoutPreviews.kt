@@ -30,6 +30,7 @@ private fun LoginAdaptiveLayoutPreview() {
         state = dummyState(),
         onAliasChange = {},
         onPasswordChange = {},
+        onRememberCredentialsChange = {},
         onBaseChange = {},
         onReloadBases = {},
         onSubmit = {},
