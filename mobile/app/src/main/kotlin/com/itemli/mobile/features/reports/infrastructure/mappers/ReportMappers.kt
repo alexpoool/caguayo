@@ -230,7 +230,7 @@ object ReportCatalog {
         module = ReportModule.Inventory,
         filters = listOf(
             ReportFilter(id = "id_dependencia", label = "Dependencia", type = ReportFilterType.NUMBER),
-            ReportFilter(id = "id_producto", label = "Producto", type = ReportFilterType.NUMBER),
+            ReportFilter(id = "id_producto", label = "Producto", type = ReportFilterType.NUMBER, required = false),
             ReportFilter(id = "fecha_inicio", label = "Fecha inicio", type = ReportFilterType.DATE),
             ReportFilter(id = "fecha_fin", label = "Fecha fin", type = ReportFilterType.DATE),
         ),
