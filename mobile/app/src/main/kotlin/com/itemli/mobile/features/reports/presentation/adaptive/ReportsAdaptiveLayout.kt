@@ -12,14 +12,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -40,125 +45,64 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import com.itemli.mobile.features.reports.domain.entities.ReportDefinition
 import com.itemli.mobile.features.reports.presentation.viewmodels.ReportsListUiState
 import com.itemli.mobile.shared.ui.theme.BrandPrimary
-import com.itemli.mobile.shared.ui.theme.BrandTertiary
-import com.itemli.mobile.shared.ui.theme.OutlineSoft
 import com.itemli.mobile.shared.ui.theme.SurfaceLight
 import com.itemli.mobile.shared.ui.theme.TextSecondary
 
-/**
- * Catálogo de informes: búsqueda local y filtro por módulo.
- * Los datos siguen llegando del catálogo real del backend.
- */
+private data class ReportVisual(val icon: androidx.compose.ui.graphics.vector.ImageVector, val tint: Color, val bg: Color)
+
+private fun reportVisual(module: String): ReportVisual {
+    val name = module.lowercase()
+    return when {
+        "venta" in name -> ReportVisual(Icons.Filled.ShoppingCart, Color(0xFF0875E8), Color(0xFFE0EEFF))
+        "invent" in name -> ReportVisual(Icons.Filled.Inventory2, Color(0xFF00A86B), Color(0xFFDDF8ED))
+        "client" in name || "persona" in name -> ReportVisual(Icons.Filled.People, Color(0xFF7139D8), Color(0xFFEDE5FF))
+        "compra" in name -> ReportVisual(Icons.Filled.Handshake, Color(0xFFE56B22), Color(0xFFFFE9DD))
+        "proyect" in name -> ReportVisual(Icons.Filled.Folder, Color(0xFF079DB5), Color(0xFFDDF6FA))
+        else -> ReportVisual(Icons.Filled.BarChart, BrandPrimary, Color(0xFFE5EDFF))
+    }
+}
+
 @Composable
 fun ReportsAdaptiveLayout(
     windowSizeClass: WindowSizeClass?,
     state: ReportsListUiState,
     onOpenReport: (String) -> Unit,
 ) {
-    val columns = when (windowSizeClass?.widthSizeClass) {
-        WindowWidthSizeClass.Compact -> 1
-        WindowWidthSizeClass.Medium -> 2
-        else -> 3
-    }
-    val horizontalPadding = when (windowSizeClass?.widthSizeClass) {
-        WindowWidthSizeClass.Compact -> 20.dp
-        WindowWidthSizeClass.Medium -> 24.dp
-        else -> 32.dp
-    }
-
     var search by remember { mutableStateOf("") }
     var selectedModule by remember { mutableStateOf("Todos") }
     val modules = remember(state.definitions) {
         listOf("Todos") + state.definitions.map { it.module.label }.distinct().sorted()
     }
-    val filteredReports = remember(state.definitions, search, selectedModule) {
+    val filtered = remember(state.definitions, search, selectedModule) {
         state.definitions.filter { report ->
-            val matchesModule = selectedModule == "Todos" || report.module.label == selectedModule
-            val query = search.trim()
-            val matchesSearch = query.isEmpty() ||
-                report.title.contains(query, ignoreCase = true) ||
-                report.description.contains(query, ignoreCase = true) ||
-                report.module.label.contains(query, ignoreCase = true)
-            matchesModule && matchesSearch
+            (selectedModule == "Todos" || report.module.label == selectedModule) &&
+                (search.isBlank() || report.title.contains(search, true) ||
+                    report.description.contains(search, true) || report.module.label.contains(search, true))
         }
     }
-
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(SurfaceLight)
-            .padding(horizontal = horizontalPadding)
-            .padding(top = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        Modifier.fillMaxSize().background(SurfaceLight).padding(horizontal = 18.dp).padding(top = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(
-                text = "Tus informes",
-                style = MaterialTheme.typography.headlineLarge,
-            )
-            Text(
-                text = "Consulta y descarga la información que necesitas.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = TextSecondary,
-            )
-        }
-
-        Surface(
-            shape = RoundedCornerShape(18.dp),
-            color = Color.White,
-            shadowElevation = 1.dp,
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .background(Color(0xFFEAF1FF), CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, tint = BrandPrimary)
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "${state.definitions.size} informes disponibles",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = "Información actualizada desde tu servidor",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                    )
-                }
-            }
-        }
-
+        Text("Reportes", style = MaterialTheme.typography.headlineMedium, color = Color(0xFF092C63))
         OutlinedTextField(
             value = search,
             onValueChange = { search = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            placeholder = { Text("Buscar un informe…") },
+            placeholder = { Text("Buscar reporte") },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedContainerColor = Color.White,
                 focusedContainerColor = Color.White,
-                unfocusedBorderColor = OutlineSoft,
             ),
         )
-
-        androidx.compose.foundation.lazy.LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(modules.size) { index ->
-                val module = modules[index]
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(modules) { module ->
                 FilterChip(
                     selected = selectedModule == module,
                     onClick = { selectedModule = module },
@@ -167,43 +111,18 @@ fun ReportsAdaptiveLayout(
                 )
             }
         }
-
-        Text(
-            text = "Catálogo de informes",
-            style = MaterialTheme.typography.titleLarge,
-        )
-
-        if (filteredReports.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Filled.Search,
-                        contentDescription = null,
-                        tint = TextSecondary,
-                        modifier = Modifier.size(36.dp),
-                    )
-                    Text("No encontramos informes", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Prueba con otro nombre o módulo.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                    )
-                }
+        Text("${filtered.size} informes", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
+        if (filtered.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(if (state.isLoading) "Cargando informes…" else "No hay informes para estos filtros", color = TextSecondary)
             }
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
-                items(filteredReports, key = { it.id }) { definition ->
-                    ReportCatalogCard(definition = definition) {
-                        onOpenReport(definition.id)
-                    }
+                items(filtered, key = { it.id }) { definition ->
+                    ReportRow(definition) { onOpenReport(definition.id) }
                 }
             }
         }
@@ -211,59 +130,30 @@ fun ReportsAdaptiveLayout(
 }
 
 @Composable
-private fun ReportCatalogCard(
-    definition: ReportDefinition,
-    onClick: () -> Unit,
-) {
+private fun ReportRow(definition: ReportDefinition, onClick: () -> Unit) {
+    val visual = reportVisual(definition.module.label)
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(Color(0xFFEAF1FF), RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.List,
-                        contentDescription = null,
-                        tint = if (definition.module.label.hashCode() % 2 == 0) BrandPrimary else BrandTertiary,
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-                Icon(
-                    Icons.AutoMirrored.Filled.List,
-                    contentDescription = "Abrir informe",
-                    tint = TextSecondary,
-                )
+            Box(
+                Modifier.size(50.dp).background(visual.bg, RoundedCornerShape(15.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(visual.icon, contentDescription = null, tint = visual.tint, modifier = Modifier.size(27.dp))
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = definition.module.label.uppercase(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = BrandPrimary,
-                )
-                Text(
-                    text = definition.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = definition.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Spacer(Modifier.width(13.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(definition.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(definition.description, style = MaterialTheme.typography.bodySmall, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
+            Icon(Icons.Filled.ChevronRight, contentDescription = "Abrir", tint = Color(0xFF294B83))
         }
     }
 }
