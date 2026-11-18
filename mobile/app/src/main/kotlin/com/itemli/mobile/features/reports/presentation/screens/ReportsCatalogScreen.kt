@@ -20,6 +20,7 @@ fun ReportsCatalogScreen(
     windowSizeClass: WindowSizeClass? = null,
     onOpenReport: (String) -> Unit,
     initialModule: String? = null,
+    onBack: () -> Unit = {},
 ) {
     val viewModel: ReportsCatalogViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
@@ -32,6 +33,7 @@ fun ReportsCatalogScreen(
             state = state,
             onOpenReport = onOpenReport,
             initialModule = initialModule,
+            onBack = onBack,
         )
     }
 }
