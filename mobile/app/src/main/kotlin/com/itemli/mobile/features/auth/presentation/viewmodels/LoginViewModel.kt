@@ -7,6 +7,8 @@ import com.itemli.mobile.features.auth.application.usecases.TestDatabaseConnecti
 import com.itemli.mobile.features.auth.application.usecases.LoginUseCase
 import com.itemli.mobile.features.auth.domain.entities.DependenciaRef
 import com.itemli.mobile.shared.domain.AppResult
+import com.itemli.mobile.shared.domain.TokenStorage
+import com.itemli.mobile.shared.domain.SavedLoginCredentials
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -16,6 +18,7 @@ enum class DatabaseConnectionStatus { IDLE, TESTING, CONNECTED, ERROR }
 data class LoginUiState(
     val alias: String = "",
     val password: String = "",
+    val rememberCredentials: Boolean = false,
     val bases: List<DependenciaRef> = emptyList(),
     val selectedBase: DependenciaRef? = null,
     val connectionStatus: DatabaseConnectionStatus = DatabaseConnectionStatus.IDLE,
@@ -28,23 +31,36 @@ class LoginViewModel(
     private val listDatabaseConnections: ListDatabaseConnectionsUseCase,
     private val testDatabaseConnection: TestDatabaseConnectionUseCase,
     private val loginUseCase: LoginUseCase,
+    private val tokenStorage: TokenStorage,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state
 
-    init { loadDatabases() }
+    init {
+        viewModelScope.launch {
+            tokenStorage.savedCredentials()?.let { saved ->
+                _state.value = _state.value.copy(alias = saved.alias, password = saved.password, rememberCredentials = true)
+            }
+            loadDatabases()
+        }
+    }
+
+    fun onRememberCredentialsChanged(remember: Boolean) {
+        _state.value = _state.value.copy(rememberCredentials = remember)
+        if (!remember) viewModelScope.launch { tokenStorage.saveCredentials(null) }
+    }
 
     fun loadDatabases() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoadingBases = true, error = null)
             when (val result = listDatabaseConnections()) {
-                is AppResult.Success -> _state.value = _state.value.copy(
-                    isLoadingBases = false,
-                    bases = result.value,
-                    selectedBase = null,
-                    connectionStatus = DatabaseConnectionStatus.IDLE,
-                    error = if (result.value.isEmpty()) "No hay bases de datos disponibles en este servidor" else null,
-                )
+                is AppResult.Success -> {
+                    val savedDatabase = tokenStorage.savedCredentials()?.database
+                    _state.value = _state.value.copy(isLoadingBases = false, bases = result.value, selectedBase = null,
+                        connectionStatus = DatabaseConnectionStatus.IDLE,
+                        error = if (result.value.isEmpty()) "No hay bases de datos disponibles en este servidor" else null)
+                    result.value.firstOrNull { it.baseDatos == savedDatabase }?.let(::onBaseSelected)
+                }
                 is AppResult.Failure -> _state.value = _state.value.copy(
                     isLoadingBases = false,
                     error = "No se pudieron cargar las bases de datos. Comprueba la conexión e inténtalo de nuevo.",
@@ -101,7 +117,11 @@ class LoginViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             when (val result = loginUseCase(current.alias.trim(), current.password, base.baseDatos)) {
-                is AppResult.Success -> onLogged()
+                is AppResult.Success -> {
+                    if (current.rememberCredentials) tokenStorage.saveCredentials(SavedLoginCredentials(current.alias.trim(), current.password, base.baseDatos))
+                    else tokenStorage.saveCredentials(null)
+                    onLogged()
+                }
                 is AppResult.Failure -> _state.value = _state.value.copy(
                     isLoading = false,
                     error = "No se pudo iniciar sesión. Verifica tus datos e inténtalo de nuevo.",
