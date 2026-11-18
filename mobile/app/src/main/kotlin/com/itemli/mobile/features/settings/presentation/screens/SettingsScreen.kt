@@ -75,6 +75,7 @@ fun SettingsScreen(
                 /* snackbar pendiente */
             } },
             pdfDirName = pdfDirName,
+            onBack = onBack,
         )
     }
 }
