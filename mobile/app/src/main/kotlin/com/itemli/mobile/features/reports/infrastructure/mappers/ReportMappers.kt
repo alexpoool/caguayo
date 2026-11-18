@@ -16,6 +16,7 @@ import com.itemli.mobile.features.reports.infrastructure.datasources.Movimientos
 import com.itemli.mobile.features.reports.infrastructure.datasources.OnatPreviewDto
 import com.itemli.mobile.features.reports.infrastructure.datasources.ProyectosPreviewDto
 import com.itemli.mobile.features.reports.infrastructure.datasources.ProveedoresPreviewDto
+import com.itemli.mobile.features.reports.infrastructure.datasources.RealizadoresPreviewDto
 
 /**
  * Mappers de los DTO de preview al modelo genérico de filas.
@@ -122,6 +123,18 @@ fun MincultPreviewDto.toRows(definition: ReportDefinition): List<Map<String, Any
         "cantidad" to (item.cantidad ?: 0),
         "total_devengado" to (item.total_devengado ?: 0),
         "cantidad_artistas" to (item.cantidad_artistas ?: 0),
+    ) }
+
+fun RealizadoresPreviewDto.toRows(definition: ReportDefinition): List<Map<String, Any?>> =
+    items.map { item -> mapOf(
+        "codigo" to (item.codigo ?: ""),
+        "nombre_completo" to (item.nombre_completo ?: ""),
+        "nit" to (item.nit ?: ""),
+        "tipo_persona" to (item.tipo_persona ?: ""),
+        "direccion" to (item.direccion ?: ""),
+        "municipio" to (item.municipio ?: ""),
+        "provincia" to (item.provincia ?: ""),
+        "estado" to (item.estado ?: ""),
     ) }
 
 fun LiquidacionesPreviewDto.toRows(definition: ReportDefinition): List<Map<String, Any?>> =
@@ -348,6 +361,31 @@ object ReportCatalog {
         pdfPath = "reportes/mincult",
     )
 
+    val realizadores = ReportDefinition(
+        id = "realizadores",
+        title = "Registro de realizadores",
+        description = "Realizadores asignados a etapas de proyectos",
+        module = ReportModule.Projects,
+        filters = listOf(
+            ReportFilter(id = "id_provincia", label = "Provincia", type = ReportFilterType.NUMBER, required = false),
+            ReportFilter(id = "id_municipio", label = "Municipio", type = ReportFilterType.NUMBER, required = false),
+            ReportFilter(id = "vigencia", label = "Vigencia", type = ReportFilterType.TEXT, required = false),
+            ReportFilter(id = "texto_busqueda", label = "Búsqueda", type = ReportFilterType.TEXT, required = false),
+        ),
+        columns = listOf(
+            ReportColumn("codigo", "Código"),
+            ReportColumn("nombre_completo", "Nombre"),
+            ReportColumn("nit", "NIT"),
+            ReportColumn("tipo_persona", "Tipo"),
+            ReportColumn("direccion", "Dirección"),
+            ReportColumn("municipio", "Municipio"),
+            ReportColumn("provincia", "Provincia"),
+            ReportColumn("estado", "Estado"),
+        ),
+        previewPath = "proyecto/preview",
+        pdfPath = "proyecto/",
+    )
+
     val liquidaciones = ReportDefinition(
         id = "liquidaciones",
         title = "Resumen de liquidaciones",
@@ -383,6 +421,7 @@ object ReportCatalog {
         clientes,
         liquidaciones,
         proyectos,
+        realizadores,
         desempeno,
         onat,
         mincult,
