@@ -266,7 +266,7 @@ async def obtener_reporte_movimientos_dependencia(
 @router.get("/movimientos-producto")
 async def obtener_reporte_movimientos_producto(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
-    id_producto: int = Query(..., description="ID del Producto"),
+    id_producto: Optional[int] = Query(None, description="ID del Producto (opcional)"),
     fecha_inicio: date = Query(..., description="Fecha Inicio"),
     fecha_fin: date = Query(..., description="Fecha Fin"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
@@ -748,7 +748,7 @@ async def preview_movimientos_dependencia(
 @router.get("/movimientos-producto/preview")
 async def preview_movimientos_producto(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
-    id_producto: int = Query(..., description="ID del Producto"),
+    id_producto: Optional[int] = Query(None, description="ID del Producto (opcional)"),
     fecha_inicio: date = Query(..., description="Fecha Inicio"),
     fecha_fin: date = Query(..., description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
