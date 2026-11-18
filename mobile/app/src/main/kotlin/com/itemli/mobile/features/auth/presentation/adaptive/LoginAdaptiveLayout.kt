@@ -1,6 +1,7 @@
 package com.itemli.mobile.features.auth.presentation.adaptive
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -203,9 +204,7 @@ private fun DatabasePicker(
                 ),
                 modifier = Modifier.fillMaxWidth(),
             )
-            Box(Modifier.matchParentSize().background(Color.Transparent).padding(end = 46.dp).then(Modifier)) {
-                androidx.compose.foundation.clickable(onClick = { expanded = true })
-            }
+            Box(Modifier.matchParentSize().padding(end = 46.dp).clickable { expanded = true })
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 bases.forEach { base ->
                     DropdownMenuItem(
@@ -230,7 +229,7 @@ private fun DatabasePicker(
                 "Volver a cargar",
                 color = BrightBlue,
                 style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(start = 4.dp).then(Modifier),
+                modifier = Modifier.padding(start = 4.dp).clickable(onClick = onReload),
             )
         }
     }
