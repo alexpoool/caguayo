@@ -168,6 +168,8 @@ data class MovimientosProductoPreviewDto(
 
 @Serializable
 data class MovimientoProductoRowDto(
+    val codigo_producto: String? = null,
+    val producto: String? = null,
     val fecha: String? = null,
     val operacion: String? = null,
     val tipo: String? = null,
