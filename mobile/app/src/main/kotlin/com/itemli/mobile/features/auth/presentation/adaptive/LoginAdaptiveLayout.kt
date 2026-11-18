@@ -238,7 +238,7 @@ private fun DatabasePicker(
                 onValueChange = {},
                 readOnly = true,
                 enabled = !loading,
-                placeholder = { Text(if (loading) "Cargando bases de datos…" else "Base de Datos") },
+                placeholder = { Text(if (loading) "Cargando bases de datos…" else "Seleccionar base de datos") },
                 leadingIcon = { Icon(Icons.Filled.Storage, contentDescription = null, tint = BrandPrimary) },
                 trailingIcon = {
                     if (loading || status == DatabaseConnectionStatus.TESTING) CircularProgressIndicator(modifier = Modifier.padding(12.dp), strokeWidth = 2.dp)
@@ -254,7 +254,7 @@ private fun DatabasePicker(
                 bases.forEach { base ->
                     DropdownMenuItem(text = { Text(base.baseDatos) }, onClick = { expanded = false; onSelected(base) })
                 }
-                if (bases.isEmpty() && !loading) DropdownMenuItem(text = { Text("No hay bases disponibles") }, onClick = { expanded = false })
+                if (bases.isEmpty() && !loading) DropdownMenuItem(text = { Text("No hay bases de datos disponibles") }, onClick = { expanded = false })
             }
         }
         if (statusText != null) {
