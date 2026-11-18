@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
+import com.itemli.mobile.shared.ui.components.InteriorHeader
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Card
@@ -45,13 +47,14 @@ fun SettingsAdaptiveLayout(
     onSave: () -> Unit,
     onTest: () -> Unit,
     pdfDirName: String? = null,
+    onBack: () -> Unit = {},
 ) {
     Column(
         Modifier.fillMaxSize().background(Color(0xFFF3F6FF)).verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp).padding(top = 18.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("Ajustes", style = MaterialTheme.typography.headlineMedium, color = Color(0xFF092C63))
+        InteriorHeader(title = "Ajustes", onBack = onBack, actionIcon = Icons.Filled.Settings, actionDescription = "Ajustes")
         Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
