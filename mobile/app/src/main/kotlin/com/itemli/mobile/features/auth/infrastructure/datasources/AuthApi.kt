@@ -62,7 +62,7 @@ data class DependenciaDto(
 )
 
 @Serializable
-data class ConexionBaseDatosDto(val id_conexion: Long, val nombre_database: String, val host: String = "localhost", val puerto: Int = 5432)
+data class ConexionBaseDatosDto(val id_conexion: Long? = null, val nombre_database: String, val host: String = "localhost", val puerto: Int = 5432)
 
 @Serializable
 data class TestConnectionRequestDto(val nombre_database: String, val host: String = "localhost", val puerto: Int = 5432)
