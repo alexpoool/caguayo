@@ -204,7 +204,10 @@ private fun ModuleTile(module: HomeModule, onClick: () -> Unit) {
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Icon(module.icon, contentDescription = null, tint = module.tint, modifier = Modifier.size(34.dp))
-            Text(module.title, color = Color(0xFF13264A), style = MaterialTheme.typography.labelLarge)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(module.title, color = Color(0xFF13264A), style = MaterialTheme.typography.labelLarge)
+                Text("${module.count} reportes", color = Color(0xFF52627D), style = MaterialTheme.typography.labelSmall)
+            }
         }
     }
 }
