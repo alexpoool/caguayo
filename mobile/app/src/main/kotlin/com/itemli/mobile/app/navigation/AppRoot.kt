@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -24,6 +25,7 @@ import com.itemli.mobile.features.settings.presentation.screens.SettingsScreen
 import com.itemli.mobile.shared.infrastructure.SessionManager
 import com.itemli.mobile.shared.ui.components.LoadingView
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 
 @Composable
@@ -50,6 +52,7 @@ fun AppRoot(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: startDestination
     val sessionManager = remember { GlobalContext.get().get<SessionManager>() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         sessionManager.sessionCleared.collectLatest {
@@ -84,7 +87,7 @@ fun AppRoot(
                 HomeScreen(
                     windowSizeClass = windowSizeClass,
                     onOpenReports = { navController.navigate(AppDestination.Reports.route) },
-                    onOpenSettings = { navController.navigate(AppDestination.Settings.route) },
+                    onLogout = { coroutineScope.launch { sessionManager.logout() } },
                 )
             }
             composable(AppDestination.Reports.route) {
