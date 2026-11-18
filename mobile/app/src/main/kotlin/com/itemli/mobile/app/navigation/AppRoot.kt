@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.itemli.mobile.features.auth.presentation.screens.LoginScreen
 import com.itemli.mobile.features.reports.presentation.screens.HomeScreen
+import com.itemli.mobile.features.reports.presentation.screens.HistoryScreen
 import com.itemli.mobile.features.reports.presentation.screens.ReportDetailScreen
 import com.itemli.mobile.features.reports.presentation.screens.ReportsCatalogScreen
 import com.itemli.mobile.features.settings.presentation.screens.SettingsScreen
@@ -102,6 +103,9 @@ fun AppRoot(
                     windowSizeClass = windowSizeClass,
                     reportId = entry.arguments?.getString("reportId").orEmpty(),
                 )
+            }
+            composable(AppDestination.History.route) {
+                HistoryScreen()
             }
             composable(AppDestination.Settings.route) {
                 SettingsScreen(
