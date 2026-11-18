@@ -203,7 +203,7 @@ const REPORTS: ReportConfig[] = [
     module: "tienda",
     moduleLabel: "Tienda",
     previewEndpoint: "/reportes/clientes/preview",
-    buildPreviewParams: (f) => ({ id_dependencia: f.id_dependencia }),
+    buildPreviewParams: () => ({}),
     transformChartData: (data) => {
       const items = data?.items || [];
       const provincias: Record<string, number> = {};
@@ -233,7 +233,7 @@ const REPORTS: ReportConfig[] = [
     module: "compra",
     moduleLabel: "Compra",
     previewEndpoint: "/reportes/proveedores-dependencia/preview",
-    buildPreviewParams: () => ({}),
+    buildPreviewParams: (f) => ({ id_dependencia: f.id_dependencia }),
     transformChartData: (data) => {
       const items = data?.items || [];
       const provincias: Record<string, number> = {};
