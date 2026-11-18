@@ -4,13 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,54 +22,44 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
-/** Formulario de acceso: alias y contraseña son las únicas entradas de texto. */
+/** Campos compactos: icono y placeholder, sin labels ni subtítulos duplicados. */
 @Composable
 fun LoginForm(
     alias: String,
     password: String,
     isLoading: Boolean,
+    enabled: Boolean,
     onAliasChanged: (String) -> Unit,
     onPasswordChanged: (String) -> Unit,
-    onSearchBases: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
         OutlinedTextField(
             value = alias,
             onValueChange = onAliasChanged,
-            label = { Text("Alias de usuario") },
-            placeholder = { Text("Introduce tu alias") },
+            placeholder = { Text("Alias de Usuario") },
+            leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) },
             singleLine = true,
-            enabled = !isLoading,
+            enabled = enabled && !isLoading,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = password,
             onValueChange = onPasswordChanged,
-            label = { Text("Contraseña") },
-            placeholder = { Text("Introduce tu contraseña") },
+            placeholder = { Text("Contraseña") },
+            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
             singleLine = true,
-            enabled = !isLoading,
+            enabled = enabled && !isLoading,
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
-                    )
+                TextButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Text(if (passwordVisible) "Ocultar" else "Mostrar")
                 }
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedButton(
-            onClick = onSearchBases,
-            enabled = alias.isNotBlank() && !isLoading,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Buscar mis dependencias")
-        }
     }
 }
