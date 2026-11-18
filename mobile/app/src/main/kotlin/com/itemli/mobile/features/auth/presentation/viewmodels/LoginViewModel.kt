@@ -47,7 +47,7 @@ class LoginViewModel(
                 )
                 is AppResult.Failure -> _state.value = _state.value.copy(
                     isLoadingBases = false,
-                    error = result.error.message ?: "No se pudieron cargar las bases de datos",
+                    error = "No se pudieron cargar las bases de datos. Comprueba la conexión e inténtalo de nuevo.",
                 )
             }
         }
@@ -76,7 +76,7 @@ class LoginViewModel(
                     )
                     is AppResult.Failure -> _state.value = _state.value.copy(
                         connectionStatus = DatabaseConnectionStatus.ERROR,
-                        error = result.error.message ?: "Error al comprobar la conexión",
+                        error = "No se pudo comprobar la base de datos. Inténtalo de nuevo.",
                     )
                 }
             }
@@ -104,7 +104,7 @@ class LoginViewModel(
                 is AppResult.Success -> onLogged()
                 is AppResult.Failure -> _state.value = _state.value.copy(
                     isLoading = false,
-                    error = result.error.message ?: "Error al iniciar sesión",
+                    error = "No se pudo iniciar sesión. Verifica tus datos e inténtalo de nuevo.",
                 )
             }
         }
