@@ -497,6 +497,7 @@ async def get_movimientos_producto(
             TipoMovimiento,
             Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
         )
+        .join(Productos, Movimiento.id_producto == Productos.id_producto)
         .filter(
             Movimiento.id_dependencia == id_dependencia,
             # Solo los movimientos confirmados son movimientos reales.
