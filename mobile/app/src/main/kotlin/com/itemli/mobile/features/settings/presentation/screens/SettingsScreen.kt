@@ -41,7 +41,7 @@ fun SettingsScreen(
     val fontSizePreferences = remember { FontSizePreferences(context.applicationContext) }
     val fontScale by fontSizePreferences.scale.collectAsState(initial = FontSizePreferences.DEFAULT_SCALE)
     val coroutineScope = rememberCoroutineScope()
-    var section by remember { mutableStateOf(SettingsSection.HOME) }
+    var section by remember { mutableStateOf<SettingsSection?>(null) }
     val pdfStorage = remember { ReportPdfStorage(context) }
 
     // Nombre visible de la carpeta elegida, para mostrarla en el formulario.
