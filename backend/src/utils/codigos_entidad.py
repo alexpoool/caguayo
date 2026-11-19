@@ -152,10 +152,10 @@ def generar_codigo_item_venta_efectivo(
 def generar_codigo_contrato(
     denominacion: str, anio: int, secuencia: int
 ) -> str:
-    """Código de contrato: {den}.{año_2d}.{secuencia:03d}.
-    El secuencial es global.
-    Ej: FT.26.014"""
-    return f"{_prefijo(denominacion)}.{str(anio)[-2:]}.{secuencia:03d}"
+    """Código de contrato: {den}.{año}.{secuencia:03d}.
+    El secuencial es por año.
+    Ej: FT.2026.046"""
+    return f"{_prefijo(denominacion)}.{anio}.{secuencia:03d}"
 
 
 def generar_codigo_suplemento(
@@ -176,9 +176,9 @@ def generar_codigo_suplemento(
 def generar_codigo_correlativo(
     denominacion: str, anio: int, secuencia: int
 ) -> str:
-    """Código correlativo: {den}.{año_2d}.{secuencia:03d}.
-    La serie es global (no reinicia por año). Ej: FT.26.001"""
-    return f"{_prefijo(denominacion)}.{str(anio)[-2:]}.{secuencia:03d}"
+    """Código correlativo: {den}.{año}.{secuencia:03d}.
+    El secuencial es por año. Ej: FT.2026.001"""
+    return f"{_prefijo(denominacion)}.{anio}.{secuencia:03d}"
 
 
 async def siguiente_secuencia(db, tabla: str, campo: str) -> int:
@@ -195,3 +195,26 @@ async def siguiente_secuencia(db, tabla: str, campo: str) -> int:
     )
     result = await db.exec(raw)
     return result.one()[0] + 1
+
+
+async def siguiente_secuencia_anio(
+    db, tabla: str, campo: str, anio: int
+) -> int:
+    """Siguiente número de la serie de un año concreto.
+
+    Acepta el prefijo de copia por moneda (`1.`/`2.`), un segmento de mes
+    opcional (`.MM`) y el sufijo `-id` de los códigos legacy duplicados.
+    Ignora los códigos de otros años y los que no son numéricos.
+    Ej: con FT.2026.045, 1.FT.2026.045 y FT.2026.045-123 devuelve 46.
+    """
+    patron = (
+        rf"^(?:[0-9]+\.)?[^.]+\.{anio}"
+        rf"(?:\.[0-9]{{2}})?\.([0-9]+)(?:-[0-9]+)?$"
+    )
+    raw = text(
+        f"SELECT COALESCE(MAX((regexp_match({campo}, :patron))[1]::int), 0) + 1 "
+        f"FROM {tabla} "
+        f"WHERE {campo} ~ :patron"
+    )
+    result = await db.exec(raw, params={"patron": patron})
+    return result.one()[0]

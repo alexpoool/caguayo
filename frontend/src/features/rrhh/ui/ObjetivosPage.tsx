@@ -3,6 +3,7 @@ import type { CasosUsoRrhh } from '../application/casos-uso';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { addYears, toISODateLocal } from '@/utils/fecha';
 import { type RrhhObjetivo } from '../domain/rrhh';
 import {
   AlertCircle,
@@ -83,7 +84,7 @@ export function ObjetivosPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
   const [objForm, setObjForm] = useState({
     nombre: '',
     periodo_inicio: '',
-    periodo_fin: '',
+    periodo_fin: addYears(toISODateLocal(), 1),
     peso: '1',
     observaciones: '',
   });
@@ -151,11 +152,19 @@ export function ObjetivosPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
     setObjForm({
       nombre: o?.nombre ?? '',
       periodo_inicio: o?.periodo_inicio ?? '',
-      periodo_fin: o?.periodo_fin ?? '',
+      periodo_fin: o?.periodo_fin || addYears(o?.periodo_inicio || toISODateLocal(), 1),
       peso: o ? String(Number(o.peso)) : '1',
       observaciones: o?.observaciones ?? '',
     });
     setFormErrors({});
+  };
+
+  const handlePeriodoInicioChange = (iso: string) => {
+    setObjForm((prev) => {
+      let fin = prev.periodo_fin;
+      if (iso && (!fin || fin < iso)) fin = addYears(iso, 1);
+      return { ...prev, periodo_inicio: iso, periodo_fin: fin };
+    });
   };
 
   const submit = (e: React.FormEvent) => {
@@ -506,9 +515,7 @@ export function ObjetivosPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
                 <DateInput
                   id="obj-inicio"
                   value={objForm.periodo_inicio}
-                  onChange={(iso) =>
-                    setObjForm({ ...objForm, periodo_inicio: iso })
-                  }
+                  onChange={(iso) => handlePeriodoInicioChange(iso)}
                   className={`transition-all duration-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${formErrors.periodo_inicio ? 'border-red-500' : ''}`}
                 />
                 {formErrors.periodo_inicio && (
@@ -528,7 +535,7 @@ export function ObjetivosPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
                 </Label>
                 <DateInput
                   id="obj-fin"
-                  value={objForm.periodo_fin}
+                  value={objForm.periodo_fin || addYears(objForm.periodo_inicio || toISODateLocal(), 1)}
                   onChange={(iso) => setObjForm({ ...objForm, periodo_fin: iso })}
                   className={`transition-all duration-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${formErrors.periodo_fin ? 'border-red-500' : ''}`}
                 />

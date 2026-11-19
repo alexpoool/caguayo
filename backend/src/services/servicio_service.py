@@ -7,13 +7,11 @@ from src.core.exceptions import BusinessLogicError
 from src.utils.codigos_entidad import (
     generar_codigo,
     generar_codigo_correlativo,
-    siguiente_secuencia,
+    siguiente_secuencia_anio,
 )
 from src.models.servicio import (
-    Etapa,
     PersonaEtapa,
     Certificacion,
-    TareaEtapa,
     FacturaServicio,
     Oferta,
     PersonaLiquidacion,
@@ -121,14 +119,18 @@ class SolicitudServicioService:
     async def create(
         db: AsyncSession, data: SolicitudServicioCreate, denominacion: Optional[str] = None
     ) -> SolicitudServicioRead:
-        sec = await siguiente_secuencia(db, "solicitud_servicio", "codigo_solicitud")
         s = await solicitud_servicio_repo.create(db, obj_in=data)
         año = (data.fecha_solicitud or date.today()).year
+        sec = await siguiente_secuencia_anio(
+            db, "solicitud_servicio", "codigo_solicitud", año
+        )
         s.codigo_solicitud = generar_codigo_correlativo(denominacion or "", año, sec)
 
         # Generar codigo_proyecto si viene aprobado con contrato
         if data.aprobado and data.id_contrato:
-            sec_proy = await siguiente_secuencia(db, "solicitud_servicio", "codigo_proyecto")
+            sec_proy = await siguiente_secuencia_anio(
+                db, "solicitud_servicio", "codigo_proyecto", año
+            )
             s.codigo_proyecto = generar_codigo_correlativo(denominacion or "", año, sec_proy)
         else:
             s.codigo_proyecto = None
@@ -206,8 +208,10 @@ class SolicitudServicioService:
         aprobado = getattr(data, "aprobado", None)
         id_contrato = getattr(data, "id_contrato", None)
         if aprobado and id_contrato and not s.codigo_proyecto:
-            sec = await siguiente_secuencia(db, "solicitud_servicio", "codigo_proyecto")
-            año = datetime.now().year
+            año = (s.fecha_solicitud or date.today()).year
+            sec = await siguiente_secuencia_anio(
+                db, "solicitud_servicio", "codigo_proyecto", año
+            )
             s.codigo_proyecto = generar_codigo_correlativo(denominacion or "", año, sec)
 
         updated = await solicitud_servicio_repo.update(db, db_obj=s, obj_in=data)

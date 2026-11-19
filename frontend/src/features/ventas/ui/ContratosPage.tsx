@@ -14,7 +14,7 @@ import type {
 import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, User, Tag, X, Layers, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { formatFecha, toISODateLocal} from '@/utils/fecha';
+import { addYears, formatFecha, toISODateLocal} from '@/utils/fecha';
 import { nombreMostrado } from '@/utils/nombre';
 import { DateInput } from '@/shared/ui/components';
 
@@ -45,20 +45,12 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
 
   const hoy = toISODateLocal();
 
-  const addDays = (dateStr: string, days: number) => {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const dt = new Date(y, m - 1, d + days);
-    const mm = String(dt.getMonth() + 1).padStart(2, '0');
-    const dd = String(dt.getDate()).padStart(2, '0');
-    return `${dt.getFullYear()}-${mm}-${dd}`;
-  };
-
   const handleFechaChange = (fecha: string) => {
     setFormData(prev => {
       let nuevaVigencia = prev.vigencia;
       if (fecha) {
-        if (!prev.vigencia || prev.vigencia <= fecha) {
-          nuevaVigencia = addDays(fecha, 1);
+        if (!prev.vigencia || prev.vigencia < fecha) {
+          nuevaVigencia = addYears(fecha, 1);
         }
       } else {
         nuevaVigencia = '';
@@ -173,9 +165,9 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
     setIsSaving(true);
     try {
       const fecha = formData.fecha || hoy;
-      const vigencia = formData.vigencia || addDays(fecha, 1);
-      if (!fecha || !vigencia || vigencia <= fecha) {
-        toast.error('La fecha de vigencia debe ser posterior a la fecha');
+      const vigencia = formData.vigencia || addYears(fecha, 1);
+      if (!fecha || !vigencia || vigencia < fecha) {
+        toast.error('La fecha de vigencia no puede ser anterior a la fecha');
         return;
       }
       const data: ContratoCreate = { 
@@ -229,7 +221,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
     });
   };
 
-  const resetForm = () => { setFormData({ fecha: hoy, monto: '' }); setEditingId(null); };
+  const resetForm = () => { setFormData({ fecha: hoy, vigencia: addYears(hoy, 1), monto: '' }); setEditingId(null); };
 
   const openForm = (item?: ContratoWithDetails) => {
     if (item) {
@@ -621,7 +613,6 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
               <DateInput
                 className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha || ''}
-                min={hoy}
                 onChange={(fecha) => handleFechaChange(fecha)}
               />
             </div>
@@ -629,8 +620,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
               <Label className="text-sm font-medium">Fecha Vigencia</Label>
               <DateInput
                 className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                value={formData.vigencia || ''}
-                min={formData.fecha ? addDays(formData.fecha, 1) : hoy}
+                value={formData.vigencia || addYears(formData.fecha || hoy, 1)}
                 onChange={(vigencia) => setFormData({...formData, vigencia})}
               />
             </div>

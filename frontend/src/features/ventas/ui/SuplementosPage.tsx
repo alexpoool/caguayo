@@ -9,7 +9,7 @@ import { Trash2, Edit, Search, Layers, FileText, Calendar, Tag, X } from 'lucide
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { required } from '@/utils/validacionFormularios';
-import { formatFecha, toISODateLocal} from '@/utils/fecha';
+import { addYears, formatFecha, toISODateLocal} from '@/utils/fecha';
 import { DateInput } from '@/shared/ui/components';
 
 type View = 'list' | 'form';
@@ -119,6 +119,20 @@ export function SuplementosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
 
   const filteredSuplementos = suplementos;
 
+  const handleFechaChange = (fecha: string) => {
+    setFormData(prev => {
+      let nuevaVigencia = prev.fecha_vigencia;
+      if (fecha) {
+        if (!prev.fecha_vigencia || prev.fecha_vigencia < fecha) {
+          nuevaVigencia = addYears(fecha, 1);
+        }
+      } else {
+        nuevaVigencia = '';
+      }
+      return { ...prev, fecha, fecha_vigencia: nuevaVigencia };
+    });
+  };
+
   const handleSave = async () => {
     if (!selectedContratoId) {
       toast.error('Debe seleccionar un contrato');
@@ -134,13 +148,17 @@ export function SuplementosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
       toast.error(vigenciaErr);
       return;
     }
+    if (formData.fecha_vigencia < (formData.fecha || toISODateLocal())) {
+      toast.error('La fecha de vigencia no puede ser anterior a la fecha');
+      return;
+    }
     setIsSaving(true);
     try {
       const data = {
         id_contrato: selectedContratoId,
         nombre: formData.nombre || '',
         fecha: formData.fecha || toISODateLocal(),
-        fecha_vigencia: formData.fecha_vigencia || toISODateLocal(),
+        fecha_vigencia: formData.fecha_vigencia || addYears(formData.fecha || toISODateLocal(), 1),
         monto: Number(formData.monto) || 0,
         documento: formData.documento
       };
@@ -175,7 +193,7 @@ export function SuplementosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
   };
 
   const resetForm = () => {
-    setFormData({ fecha: hoy, fecha_vigencia: hoy });
+    setFormData({ fecha: hoy, fecha_vigencia: addYears(hoy, 1) });
     setEditingId(null);
     setSelectedContratoId(initialContratoId ? Number(initialContratoId) : null);
   };
@@ -472,15 +490,14 @@ export function SuplementosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
               <DateInput
                 className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha || hoy}
-                min={hoy}
-                onChange={(fecha) => setFormData({...formData, fecha})}
+                onChange={(fecha) => handleFechaChange(fecha)}
               />
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha de vigencia *</Label>
               <DateInput
                 className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                value={formData.fecha_vigencia || hoy}
+                value={formData.fecha_vigencia || addYears(formData.fecha || hoy, 1)}
                 onChange={(fecha_vigencia) => setFormData({...formData, fecha_vigencia})}
               />
             </div>

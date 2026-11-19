@@ -49,6 +49,7 @@ import {
   MobileRecordCard,
 } from '@/shared/ui/components';
 import { getCachedNumberFormat } from '@/utils/formato';
+import { addYears, toISODateLocal } from '@/utils/fecha';
 
 type Pestana = 'deducciones' | 'bonificaciones' | 'consolidado';
 
@@ -277,7 +278,7 @@ function TablaMovimientos({
     tipo_id: '',
     valor: '',
     inicio_periodo: '',
-    fin_periodo: '',
+    fin_periodo: addYears(toISODateLocal(), 1),
     observaciones: '',
   });
   const [busquedaEmpleado, setBusquedaEmpleado] = useState('');
@@ -317,7 +318,7 @@ function TablaMovimientos({
       tipo_id: '',
       valor: '',
       inicio_periodo: '',
-      fin_periodo: '',
+      fin_periodo: addYears(toISODateLocal(), 1),
       observaciones: '',
     });
     setBusquedaEmpleado('');
@@ -409,7 +410,7 @@ function TablaMovimientos({
       tipo_id: '',
       valor: '',
       inicio_periodo: '',
-      fin_periodo: '',
+      fin_periodo: addYears(toISODateLocal(), 1),
       observaciones: '',
     });
     setBusquedaEmpleado('');
@@ -422,7 +423,7 @@ function TablaMovimientos({
       tipo_id: '',
       valor: '',
       inicio_periodo: '',
-      fin_periodo: '',
+      fin_periodo: addYears(toISODateLocal(), 1),
       observaciones: '',
     });
     setBusquedaEmpleado('');
@@ -468,6 +469,14 @@ function TablaMovimientos({
     label: t.nombre,
     description: t.es_porcentaje ? 'Porcentual' : 'Importe fijo',
   }));
+
+  const setInicioPeriodo = (iso: string) => {
+    setFormData((prev) => {
+      let fin = prev.fin_periodo;
+      if (iso && (!fin || fin < iso)) fin = addYears(iso, 1);
+      return { ...prev, inicio_periodo: iso, fin_periodo: fin };
+    });
+  };
 
   const validar = (): string | null => {
     if (!formData.empleado_id) return 'Elige un empleado';
@@ -797,14 +806,14 @@ function TablaMovimientos({
               <DateInput
                 id="inicio"
                 value={formData.inicio_periodo}
-                onChange={(iso) => setFormData({ ...formData, inicio_periodo: iso })}
+                onChange={(iso) => setInicioPeriodo(iso)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="fin">Fin del periodo</Label>
               <DateInput
                 id="fin"
-                value={formData.fin_periodo}
+                value={formData.fin_periodo || addYears(formData.inicio_periodo || toISODateLocal(), 1)}
                 onChange={(iso) => setFormData({ ...formData, fin_periodo: iso })}
               />
             </div>

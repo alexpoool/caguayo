@@ -56,6 +56,7 @@ import {
 } from '@/shared/ui/components';
 import { ModalNuevoPeriodo } from './components/ModalNuevoPeriodo';
 import { getCachedNumberFormat } from '@/utils/formato';
+import { addYears, toISODateLocal } from '@/utils/fecha';
 
 type Pestana = 'nominas' | 'costo';
 
@@ -807,7 +808,7 @@ export function NominaFormModal({
             tasa: String(nomina.tasa),
             porcentaje_impuesto: String(nomina.porcentaje_impuesto),
           }
-        : FORM_VACIO
+        : { ...FORM_VACIO, fin_periodo: addYears(toISODateLocal(), 1) }
     );
     setErrores({});
   }, [isOpen, nomina]);
@@ -853,6 +854,14 @@ export function NominaFormModal({
     key: K,
     value: (typeof FORM_VACIO)[K]
   ) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const setInicioPeriodo = (iso: string) => {
+    setForm((prev) => {
+      let fin = prev.fin_periodo;
+      if (iso && (!fin || fin < iso)) fin = addYears(iso, 1);
+      return { ...prev, inicio_periodo: iso, fin_periodo: fin };
+    });
+  };
 
   const validar = (): boolean => {
     const errs: Record<string, string> = {};
@@ -1040,14 +1049,14 @@ export function NominaFormModal({
             <DateInput
               id="inicio"
               value={form.inicio_periodo}
-              onChange={(iso) => set('inicio_periodo', iso)}
+              onChange={(iso) => setInicioPeriodo(iso)}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="fin">Fin del periodo *</Label>
             <DateInput
               id="fin"
-              value={form.fin_periodo}
+              value={form.fin_periodo || addYears(form.inicio_periodo || toISODateLocal(), 1)}
               onChange={(iso) => set('fin_periodo', iso)}
             />
           </div>

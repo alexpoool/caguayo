@@ -14,6 +14,7 @@ from .codigos_entidad import (
     generar_codigo_suplemento,
     generar_codigo_correlativo,
     siguiente_secuencia,
+    siguiente_secuencia_anio,
 )
 from .auth import _get_nit_from_token, _get_denominacion_from_token, _get_user_dependencia_id, verify_auth
 from .pdf_template import PDFTemplate, format_quantity
@@ -34,6 +35,7 @@ __all__ = [
     "generar_codigo_suplemento",
     "generar_codigo_correlativo",
     "siguiente_secuencia",
+    "siguiente_secuencia_anio",
     "_get_nit_from_token",
     "_get_denominacion_from_token",
     "_get_user_dependencia_id",

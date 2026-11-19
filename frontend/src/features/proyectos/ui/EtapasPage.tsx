@@ -10,7 +10,7 @@ import type { Moneda } from '../domain/proyectos';
 import { Trash2, Edit, ArrowLeft, Search, Layers, DollarSign, Tag, X, FileText, Users, CheckSquare, MoreVertical, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { formatFecha, toISODateLocal} from '@/utils/fecha';
+import { addYears, formatFecha, toISODateLocal} from '@/utils/fecha';
 import { useMonedaContrato } from './hooks/useMonedaContrato';
 
 type View = 'list' | 'form';
@@ -124,18 +124,34 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (view === 'list' && solicitudId) loadEtapas(); }, [view, solicitudId]);
 
+  const handleFechaEntregaChange = (fecha_entrega: string) => {
+    setFormData(prev => {
+      let nuevaPago = prev.fecha_pago;
+      if (fecha_entrega) {
+        if (!prev.fecha_pago || prev.fecha_pago < fecha_entrega) {
+          nuevaPago = addYears(fecha_entrega, 1);
+        }
+      } else {
+        nuevaPago = '';
+      }
+      return { ...prev, fecha_entrega, fecha_pago: nuevaPago };
+    });
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      if (formData.fecha_pago && formData.fecha_entrega && formData.fecha_pago < formData.fecha_entrega) {
+      const fechaEntrega = formData.fecha_entrega || hoy;
+      const fechaPago = formData.fecha_pago || addYears(fechaEntrega, 1);
+      if (fechaPago < fechaEntrega) {
         toast.error('La fecha de pago debe ser mayor o igual a la fecha de entrega');
         return;
       }
       if (editingId) {
         const data: EtapaUpdate = {
           nombre_etapa: formData.nombre_etapa,
-          fecha_entrega: formData.fecha_entrega,
-          fecha_pago: formData.fecha_pago,
+          fecha_entrega: fechaEntrega,
+          fecha_pago: fechaPago,
           descripcion: formData.descripcion,
           valor: formData.valor ? Number(formData.valor) : undefined,
           id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
@@ -147,8 +163,8 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
         const data: EtapaCreate = {
           id_solicitud_servicio: Number(solicitudId),
           nombre_etapa: formData.nombre_etapa,
-          fecha_entrega: formData.fecha_entrega,
-          fecha_pago: formData.fecha_pago,
+          fecha_entrega: fechaEntrega,
+          fecha_pago: fechaPago,
           descripcion: formData.descripcion,
           valor: formData.valor ? Number(formData.valor) : 0,
           id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
@@ -190,7 +206,7 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
         numero_etapa: item.numero_etapa,
         nombre_etapa: item.nombre_etapa,
         fecha_entrega: item.fecha_entrega,
-        fecha_pago: item.fecha_pago,
+        fecha_pago: item.fecha_pago || addYears(item.fecha_entrega || hoy, 1),
         descripcion: item.descripcion,
         valor: item.valor,
         id_moneda: monedaContrato ?? item.id_moneda,
@@ -199,7 +215,7 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
       });
     } else {
       resetForm();
-      setFormData({ tipo_etapa: 'TAREAS', fecha_entrega: hoy, id_moneda: monedaContrato || '' });
+      setFormData({ tipo_etapa: 'TAREAS', fecha_entrega: hoy, fecha_pago: addYears(hoy, 1), id_moneda: monedaContrato || '' });
     }
     setView('form');
   };
@@ -477,16 +493,14 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
               <DateInput
                 className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha_entrega || hoy}
-                min={hoy}
-                onChange={(fecha_entrega) => setFormData({...formData, fecha_entrega})}
+                onChange={(fecha_entrega) => handleFechaEntregaChange(fecha_entrega)}
               />
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha Pago</Label>
               <DateInput
                 className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                value={formData.fecha_pago || ''}
-                min={formData.fecha_entrega || hoy}
+                value={formData.fecha_pago || addYears(formData.fecha_entrega || hoy, 1)}
                 onChange={(fecha_pago) => setFormData({...formData, fecha_pago})}
               />
             </div>

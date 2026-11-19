@@ -58,6 +58,20 @@ const partes = (valor: string | Date | null | undefined): [number, number, numbe
 const dosDigitos = (n: number): string => String(n).padStart(2, '0');
 
 /**
+ * Suma anios a una fecha ISO `yyyy-mm-dd`. Si el dia no existe en el ano
+ * destino (29/02 -> ano no bisiesto), se ajusta al ultimo dia del mes.
+ * Devuelve cadena vacia si la fecha no es valida.
+ */
+export const addYears = (iso: string | null | undefined, years: number): string => {
+  const p = partes(iso);
+  if (!p) return '';
+  const [anio, mes, dia] = p;
+  const dt = new Date(anio + years, mes - 1, dia);
+  if (dt.getMonth() !== mes - 1) dt.setDate(0);
+  return toISODateLocal(dt);
+};
+
+/**
  * Formatea una fecha como `dd/mm/yyyy` (ej. `15/05/2024`).
  * Devuelve cadena vacia si el valor es null, undefined, vacio o no parseable,
  * para que el llamante conserve su propio placeholder (`|| 'N/A'`).

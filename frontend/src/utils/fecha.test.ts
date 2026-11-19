@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addYears,
   formatFecha,
   formatFechaHora,
   formatFechaMesLargo,
@@ -35,6 +36,14 @@ describe('fecha', () => {
     expect(formatRangoFechasCorto('2026-10-18', '2026-10-22')).toBe('18 oct – 22 oct 2026');
     expect(formatRangoFechasCorto('2026-12-18', '2027-01-05')).toBe('18 dic 2026 – 5 ene 2027');
     expect(formatRangoFechasCorto('2026-10-18', '2026-10-18')).toBe('18 oct 2026');
+  });
+
+  it('suma años respetando el último día del mes', () => {
+    expect(addYears('2024-05-15', 1)).toBe('2025-05-15');
+    expect(addYears('2024-02-29', 1)).toBe('2025-02-28');
+    expect(addYears('2026-12-31', 1)).toBe('2027-12-31');
+    expect(addYears('', 1)).toBe('');
+    expect(addYears('no-es-fecha', 1)).toBe('');
   });
 
   it('devuelve cadena vacía para valores inválidos', () => {

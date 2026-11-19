@@ -14,7 +14,7 @@ import { Plus, Trash2, Edit, Search, ClipboardList, Tag, X, Layers, CheckCircle,
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
-import { formatFecha, toISODateLocal} from '@/utils/fecha';
+import { addYears, formatFecha, toISODateLocal} from '@/utils/fecha';
 import { nombreMostrado } from '@/utils/nombre';
 
 type View = 'list' | 'form';
@@ -125,20 +125,12 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
 
   const hoy = toISODateLocal();
 
-  const addDays = (dateStr: string, days: number) => {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const dt = new Date(y, m - 1, d + days);
-    const mm = String(dt.getMonth() + 1).padStart(2, '0');
-    const dd = String(dt.getDate()).padStart(2, '0');
-    return `${dt.getFullYear()}-${mm}-${dd}`;
-  };
-
   const handleFechaSolicitudChange = (fecha: string) => {
     setFormData(prev => {
       let nuevaEntrega = prev.fecha_entrega;
       if (fecha) {
-        if (!prev.fecha_entrega || prev.fecha_entrega <= fecha) {
-          nuevaEntrega = addDays(fecha, 1);
+        if (!prev.fecha_entrega || prev.fecha_entrega < fecha) {
+          nuevaEntrega = addYears(fecha, 1);
         }
       } else {
         nuevaEntrega = '';
@@ -192,9 +184,9 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
         return;
       }
       const fechaSolicitud = formData.fecha_solicitud || hoy;
-      const fechaEntrega = formData.fecha_entrega || (fechaSolicitud ? addDays(fechaSolicitud, 1) : '');
-      if (!fechaSolicitud || !fechaEntrega || fechaEntrega <= fechaSolicitud) {
-        toast.error('La fecha de entrega debe ser posterior a la fecha de solicitud');
+      const fechaEntrega = formData.fecha_entrega || addYears(fechaSolicitud, 1);
+      if (!fechaSolicitud || !fechaEntrega || fechaEntrega < fechaSolicitud) {
+        toast.error('La fecha de entrega no puede ser anterior a la fecha de solicitud');
         return;
       }
       if (editingId) {
@@ -513,7 +505,7 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
     }
   };
 
-  const resetForm = () => { setFormData({ fecha_solicitud: hoy }); setEditingId(null); setClienteSearch(''); setPendingClientData(null); };
+  const resetForm = () => { setFormData({ fecha_solicitud: hoy, fecha_entrega: addYears(hoy, 1) }); setEditingId(null); setClienteSearch(''); setPendingClientData(null); };
 
   const openForm = (item?: SolicitudServicio) => {
     if (item) {
@@ -930,7 +922,6 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
               <DateInput
                 className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha_solicitud || ''}
-                min={hoy}
                 onChange={(fecha_solicitud) => handleFechaSolicitudChange(fecha_solicitud)}
               />
             </div>
@@ -938,8 +929,7 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
               <Label className="text-sm font-medium">Fecha Entrega</Label>
               <DateInput
                 className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                value={formData.fecha_entrega || ''}
-                min={formData.fecha_solicitud ? addDays(formData.fecha_solicitud, 1) : hoy}
+                value={formData.fecha_entrega || addYears(formData.fecha_solicitud || hoy, 1)}
                 onChange={(fecha_entrega) => setFormData({...formData, fecha_entrega})}
               />
             </div>

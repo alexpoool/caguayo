@@ -38,7 +38,7 @@ import {
   MobileRecordCard,
   ModalOverlay,
 } from "@/shared/ui/components";
-import { formatFecha } from "@/utils/fecha";
+import { addYears, formatFecha, toISODateLocal } from "@/utils/fecha";
 
 const CONVENIO_FORM_ID = "convenio-form";
 
@@ -67,7 +67,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     id_cliente: 0,
     nombre_convenio: "",
     fecha: "",
-    vigencia: "",
+    vigencia: addYears(toISODateLocal(), 1),
     id_tipo_convenio: 0,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -251,7 +251,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
       id_cliente: 0,
       nombre_convenio: "",
       fecha: "",
-      vigencia: "",
+      vigencia: addYears(toISODateLocal(), 1),
       id_tipo_convenio: 0,
     });
     setFormErrors({});
@@ -290,6 +290,20 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     });
   };
 
+  const handleFechaChange = (fecha: string) => {
+    setFormData((prev) => {
+      let vigencia = prev.vigencia;
+      if (fecha) {
+        if (!prev.vigencia || prev.vigencia < fecha) {
+          vigencia = addYears(fecha, 1);
+        }
+      } else {
+        vigencia = addYears(toISODateLocal(), 1);
+      }
+      return { ...prev, fecha, vigencia };
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
@@ -300,6 +314,8 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     if (!formData.nombre_convenio) errors.nombre_convenio = "Ingrese el nombre";
     if (!formData.fecha) errors.fecha = "Ingrese la fecha";
     if (!formData.vigencia) errors.vigencia = "Ingrese la vigencia";
+    if (formData.fecha && formData.vigencia && formData.vigencia < formData.fecha)
+      errors.vigencia = "La vigencia no puede ser anterior a la fecha";
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -652,7 +668,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
               <Label>Fecha *</Label>
               <DateInput
                 value={formData.fecha}
-                onChange={(fecha) => setFormData({ ...formData, fecha })}
+                onChange={(fecha) => handleFechaChange(fecha)}
               />
               {formErrors.fecha && (
                 <p className="text-red-600 text-sm mt-1">
@@ -663,7 +679,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
             <div>
               <Label>Vigencia *</Label>
               <DateInput
-                value={formData.vigencia}
+                value={formData.vigencia || addYears(formData.fecha || toISODateLocal(), 1)}
                 onChange={(vigencia) => setFormData({ ...formData, vigencia })}
               />
               {formErrors.vigencia && (

@@ -70,6 +70,7 @@ from src.utils import (
     generar_codigo_venta_efectivo,
     generar_codigo_contrato,
     generar_codigo_suplemento,
+    siguiente_secuencia_anio,
 )
 from src.core.exceptions import BusinessLogicError
 
@@ -216,20 +217,10 @@ class ContratoService:
         contrato = await contrato_repo.create(db, data)
         anio = data.fecha.year
 
-        # Secuencia global del contrato (orden por fecha, id)
-        stmt_sec = text(
-            "SELECT rn FROM ("
-            "  SELECT id_contrato, "
-            "         ROW_NUMBER() OVER ("
-            "             ORDER BY fecha, id_contrato"
-            "         ) AS rn"
-            "  FROM contrato"
-            ") t WHERE id_contrato = :id_contrato"
+        # Secuencia de la serie del año (continúa los códigos migrados)
+        secuencia = await siguiente_secuencia_anio(
+            db, "contrato", "codigo", anio
         )
-        result_sec = await db.exec(
-            stmt_sec, params={"id_contrato": contrato.id_contrato}
-        )
-        secuencia = result_sec.one()[0]
 
         contrato.codigo = generar_codigo_contrato(
             denominacion or "", anio, secuencia
@@ -305,12 +296,6 @@ class ContratoService:
                 OfertaTienda.id_contrato == id
             )
         )).one() or 0
-        suplementos = (await db.exec(
-            select(func.count()).select_from(Suplemento).where(
-                Suplemento.id_contrato == id
-            )
-        )).one() or 0
-
         if facturas or solicitudes or movimientos or ofertas:
             contrato_anulado = (
                 await db.exec(

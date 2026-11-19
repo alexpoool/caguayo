@@ -3,7 +3,7 @@ import type { CasosUsoRrhh } from '../application/casos-uso';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { formatRangoFechasCorto } from "@/utils/fecha";
+import { addYears, formatRangoFechasCorto } from "@/utils/fecha";
 import {
   type RrhhEvaluacionCreate,
   type RrhhEvaluacionListado,
@@ -68,7 +68,7 @@ const formVacio = (): RrhhEvaluacionCreate => ({
   periodo_evaluacion_id: null,
   tipo_evaluacion_id: 0,
   inicio_periodo: hoyISO(),
-  fin_periodo: hoyISO(),
+  fin_periodo: addYears(hoyISO(), 1),
 });
 
 /** Promedio ponderado 0–5 con dos decimales; «—» sin puntuar. */
@@ -156,6 +156,14 @@ export function EvaluacionesPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
     setFormData({ ...formVacio(), empleado_id: empleadoId });
     setFormErrors({});
     setFormOpen(true);
+  };
+
+  const handleInicioPeriodoChange = (iso: string) => {
+    setFormData((prev) => {
+      let fin = prev.fin_periodo;
+      if (iso && (!fin || fin < iso)) fin = addYears(iso, 1);
+      return { ...prev, inicio_periodo: iso, fin_periodo: fin };
+    });
   };
 
   const validar = (): boolean => {
@@ -603,9 +611,7 @@ export function EvaluacionesPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
               <DateInput
                 id="inicio_periodo"
                 value={formData.inicio_periodo}
-                onChange={(iso) =>
-                  setFormData({ ...formData, inicio_periodo: iso })
-                }
+                onChange={(iso) => handleInicioPeriodoChange(iso)}
                 className="transition-all duration-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
               />
             </div>
@@ -619,7 +625,7 @@ export function EvaluacionesPage({ casosUso }: { casosUso: CasosUsoRrhh }) {
               </Label>
               <DateInput
                 id="fin_periodo"
-                value={formData.fin_periodo}
+                value={formData.fin_periodo || addYears(formData.inicio_periodo || hoyISO(), 1)}
                 onChange={(iso) =>
                   setFormData({ ...formData, fin_periodo: iso })
                 }

@@ -3,6 +3,8 @@ import type { CasosUsoRrhh } from '../application/casos-uso';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { addYears } from '@/utils/fecha';
+
 import {
   AlertCircle,
   ArrowLeft,
@@ -86,7 +88,7 @@ export function PagoResultadoNuevoPage({ casosUso }: { casosUso: CasosUsoRrhh })
   const [monto, setMonto] = useState('');
   const [porcentaje, setPorcentaje] = useState('5');
   const [inicio, setInicio] = useState(hoyISO());
-  const [fin, setFin] = useState(hoyISO());
+  const [fin, setFin] = useState(addYears(hoyISO(), 1));
   const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [modalPeriodo, setModalPeriodo] = useState(false);
@@ -181,7 +183,10 @@ export function PagoResultadoNuevoPage({ casosUso }: { casosUso: CasosUsoRrhh })
     // El preview propone el rango real de las evaluaciones del periodo; el
     // usuario puede editarlo antes de guardar.
     setInicio(preview.inicio_periodo || hoyISO());
-    setFin(preview.fin_periodo || hoyISO());
+    setFin(
+      preview.fin_periodo ||
+        addYears(preview.inicio_periodo || hoyISO(), 1)
+    );
   }, [preview]);
 
   const calculo = useMemo(() => {
@@ -231,6 +236,11 @@ export function PagoResultadoNuevoPage({ casosUso }: { casosUso: CasosUsoRrhh })
       totalNeto: filas.reduce((acc, fila) => acc + fila.netoACobrar, 0),
     };
   }, [preview, seleccionados, monto, porcentaje]);
+
+  const handleInicioChange = (iso: string) => {
+    setInicio(iso);
+    if (iso && (!fin || fin < iso)) setFin(addYears(iso, 1));
+  };
 
   const toggleEmpleado = (id: number) => {
     setSeleccionados((actual) => {
@@ -455,7 +465,7 @@ export function PagoResultadoNuevoPage({ casosUso }: { casosUso: CasosUsoRrhh })
                       setPeriodoId(id);
                       setSeleccionados(new Set());
                       setInicio(hoyISO());
-                      setFin(hoyISO());
+                      setFin(addYears(hoyISO(), 1));
                       setErrores({});
                     }}
                     className={`w-full flex-1 rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500 ${
@@ -564,14 +574,14 @@ export function PagoResultadoNuevoPage({ casosUso }: { casosUso: CasosUsoRrhh })
                 <DateInput
                   id="inicio_periodo"
                   value={inicio}
-                  onChange={setInicio}
+                  onChange={handleInicioChange}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fin_periodo">Fin del periodo *</Label>
                 <DateInput
                   id="fin_periodo"
-                  value={fin}
+                  value={fin || addYears(inicio || hoyISO(), 1)}
                   onChange={setFin}
                 />
               </div>
@@ -831,7 +841,7 @@ export function PagoResultadoNuevoPage({ casosUso }: { casosUso: CasosUsoRrhh })
           setPeriodoId(periodo.id_periodo_evaluacion);
           setSeleccionados(new Set());
           setInicio(hoyISO());
-          setFin(hoyISO());
+          setFin(addYears(hoyISO(), 1));
           setErrores({});
         }}
       />
