@@ -52,18 +52,25 @@ fun ServerConfigForm(
     onTest: () -> Unit,
     modifier: Modifier = Modifier,
     windowSizeClass: androidx.compose.material3.windowsizeclass.WindowSizeClass? = null,
+    showServer: Boolean = true,
+    showProxy: Boolean = true,
+    showSecurity: Boolean = true,
+    showPdf: Boolean = true,
 ) {
     var showProxyHelp by remember { mutableStateOf(false) }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(
-            value = baseUrl,
-            onValueChange = onBaseUrlChange,
-            label = { Text("URL base") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (showServer) {
+            OutlinedTextField(
+                value = baseUrl,
+                onValueChange = onBaseUrlChange,
+                label = { Text("URL base") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
+        if (showProxy) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(
                 checked = useProxy,
@@ -80,7 +87,8 @@ fun ServerConfigForm(
             }
         }
 
-        if (appLockSupported) {
+        }
+        if (showSecurity && appLockSupported) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(
                     checked = appLockEnabled,
@@ -90,6 +98,7 @@ fun ServerConfigForm(
             }
         }
 
+        if (showPdf) {
         Text("Descargas de PDF", style = MaterialTheme.typography.titleMedium)
         Text(
             text = pdfDirName?.let { "Carpeta: $it" }
@@ -107,7 +116,7 @@ fun ServerConfigForm(
             }
         }
 
-        if (useProxy) {
+        if (useProxy && showProxy) {
             OutlinedTextField(
                 value = proxyHost,
                 onValueChange = { onProxyChange(useProxy, it, proxyPort, proxyUser, proxyPassword) },
@@ -138,6 +147,8 @@ fun ServerConfigForm(
             )
         }
 
+        }
+        if (showServer || showProxy) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(
                 onClick = onSave,
@@ -150,6 +161,7 @@ fun ServerConfigForm(
             ) {
                 if (isTesting) CircularProgressIndicator() else Text("Probar conexión")
             }
+        }
         }
     }
 
