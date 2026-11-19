@@ -43,7 +43,7 @@ router = APIRouter(prefix="/reportes", tags=["reportes"])
 
 def _paginate_preview(items, limit: Optional[int], offset: int):
     """Paginate only when a client explicitly requests it; preserve web defaults."""
-    return items if limit is None else _paginate_preview(items, limit, offset)
+    return items if limit is None else items[offset:offset + limit]
 
 async def get_current_user_required(
     authorization: Optional[str] = Header(None),
