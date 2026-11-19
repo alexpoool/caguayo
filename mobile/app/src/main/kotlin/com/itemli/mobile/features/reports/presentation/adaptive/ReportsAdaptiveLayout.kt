@@ -10,6 +10,7 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,9 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
@@ -61,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import com.itemli.mobile.features.reports.domain.entities.ReportDefinition
 import com.itemli.mobile.features.reports.presentation.viewmodels.ReportsListUiState
 import com.itemli.mobile.shared.ui.theme.BrandPrimary
@@ -104,9 +106,18 @@ fun ReportsAdaptiveLayout(
                     report.description.contains(search, true) || report.module.label.contains(search, true))
         }
     }
+    val isCompact = windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Compact
+    val isExpanded = windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded
+    val gridColumns = when {
+        isCompact -> 1
+        isExpanded -> 3
+        else -> 2
+    }
+    val horizontalPadding = if (isCompact) 16.dp else 24.dp
+
     Column(
-        Modifier.fillMaxSize().background(SurfaceLight).padding(horizontal = 18.dp).padding(top = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        Modifier.fillMaxSize().background(SurfaceLight).padding(horizontal = horizontalPadding).padding(top = if (isCompact) 12.dp else 20.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isCompact) 10.dp else 14.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().height(52.dp)
@@ -167,12 +178,16 @@ fun ReportsAdaptiveLayout(
                 },
             )
         }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(modules) { module ->
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            modules.forEach { module ->
                 FilterChip(
                     selected = selectedModule == module,
                     onClick = { selectedModule = module },
-                    label = { Text(module) },
+                    label = { Text(module, maxLines = 1) },
                     shape = RoundedCornerShape(50),
                 )
             }
@@ -183,12 +198,18 @@ fun ReportsAdaptiveLayout(
                 Text(if (state.isLoading) "Cargando informes…" else "No hay informes para estos filtros", color = TextSecondary)
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(9.dp),
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(gridColumns),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(if (isCompact) 9.dp else 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (isCompact) 0.dp else 14.dp),
             ) {
                 items(filtered, key = { it.id }) { definition ->
-                    ReportRow(definition) { onOpenReport(definition.id) }
+                    ReportRow(
+                        definition = definition,
+                        compact = isCompact,
+                        onClick = { onOpenReport(definition.id) },
+                    )
                 }
             }
         }
@@ -196,7 +217,7 @@ fun ReportsAdaptiveLayout(
 }
 
 @Composable
-private fun ReportRow(definition: ReportDefinition, onClick: () -> Unit) {
+private fun ReportRow(definition: ReportDefinition, compact: Boolean, onClick: () -> Unit) {
     val visual = reportVisual(definition.module.label)
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
@@ -205,18 +226,18 @@ private fun ReportRow(definition: ReportDefinition, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().padding(horizontal = if (compact) 13.dp else 16.dp, vertical = if (compact) 12.dp else 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(50.dp).background(visual.bg, RoundedCornerShape(15.dp)),
+                Modifier.size(if (compact) 50.dp else 56.dp).background(visual.bg, RoundedCornerShape(15.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(visual.icon, contentDescription = null, tint = visual.tint, modifier = Modifier.size(27.dp))
             }
-            Spacer(Modifier.width(13.dp))
+            Spacer(Modifier.width(if (compact) 13.dp else 16.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(definition.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Clip)
+                Text(definition.title, style = MaterialTheme.typography.titleSmall, maxLines = 3, overflow = TextOverflow.Clip)
                 Text(definition.description, style = MaterialTheme.typography.bodySmall, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Icon(Icons.Filled.ChevronRight, contentDescription = "Abrir", tint = Color(0xFF294B83))
