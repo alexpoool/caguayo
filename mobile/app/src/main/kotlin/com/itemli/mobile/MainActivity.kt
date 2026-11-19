@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.itemli.mobile.app.navigation.ItemliAppRoot
@@ -43,7 +44,7 @@ class MainActivity : FragmentActivity() {
 
             ItemliTheme {
                 val density = LocalDensity.current
-                CompositionLocalProvider(LocalDensity provides density.copy(fontScale = fontScale)) {
+                CompositionLocalProvider(LocalDensity provides Density(density = density.density, fontScale = fontScale)) {
                     AppLockGate {
                         ItemliAppRoot(windowSizeClass = windowSizeClass)
                     }
