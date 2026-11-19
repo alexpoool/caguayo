@@ -40,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +55,7 @@ import com.itemli.mobile.shared.ui.components.InteriorHeader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -68,6 +70,7 @@ fun ReportChartScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val catalogUseCase: GetReportsCatalogUseCase = koinInject()
     val previewUseCase: GetReportPreviewUseCase = koinInject()
     var title by remember { mutableStateOf("Gráficos del reporte") }
@@ -146,14 +149,14 @@ fun ReportChartScreen(
                         val chartEntries = entries
                         val chartFilters = activeFilters
                         downloading = true
-                        android.os.Handler(android.os.Looper.getMainLooper()).post {
-                            val saved = runCatching {
-                                saveChartImage(context, chartTitle, chartEntries, chartFilters)
-                            }.getOrNull()
+                        scope.launch {
+                            val saved = withContext(Dispatchers.IO) {
+                                runCatching { saveChartImage(context, chartTitle, chartEntries, chartFilters) }.getOrDefault(false)
+                            }
                             downloading = false
                             Toast.makeText(
                                 context,
-                                if (saved != null) "Gráfico guardado en Imágenes/ITEMLI" else "No se pudo guardar el gráfico",
+                                if (saved) "Gráfico guardado en Imágenes/ITEMLI" else "No se pudo guardar el gráfico",
                                 Toast.LENGTH_LONG,
                             ).show()
                         }
