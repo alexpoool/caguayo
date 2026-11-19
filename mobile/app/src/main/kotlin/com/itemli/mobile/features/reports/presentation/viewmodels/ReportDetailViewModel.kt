@@ -243,16 +243,18 @@ class ReportDetailViewModel(
             _state.value = _state.value.copy(isPdfLoading = true, pdfError = null)
             when (val result = downloadPdfUseCase(definition, _state.value.filters)) {
                 is AppResult.Success -> {
-                    val fileName = "${definition.id}.pdf"
+                    val stamp = java.time.LocalDateTime.now()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
+                    val fileName = "${definition.id}_${stamp}.pdf"
                     val uri = runCatching {
-                        // Preferencia: la carpeta externa elegida en Ajustes.
-                        // Si falla (permiso revocado, carpeta borrada), cae en
-                        // la carpeta interna de la app.
+                        // Copia privada permanente: el Historial siempre podrá encontrarla.
+                        val internal = pdfStorage.saveToHistory(result.value, fileName)
+                        // Copia adicional en la carpeta externa configurada, si está disponible.
                         val dirUri = runCatching { pdfDirProvider() }.getOrNull()
-                        val external = dirUri
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { pdfStorage.saveExternal(result.value, fileName, android.net.Uri.parse(it)) }
-                        external ?: pdfStorage.save(result.value, fileName)
+                        dirUri?.takeIf { it.isNotBlank() }?.let {
+                            pdfStorage.saveExternal(result.value, fileName, android.net.Uri.parse(it))
+                        }
+                        internal
                     }.getOrNull()
                     _state.value = if (uri == null) {
                         _state.value.copy(isPdfLoading = false, pdfError = "No se pudo guardar el PDF")
