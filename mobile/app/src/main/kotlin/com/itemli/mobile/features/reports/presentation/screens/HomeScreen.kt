@@ -22,5 +22,10 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         alias = sessionManager.currentAlias()?.takeIf { it.isNotBlank() } ?: "Usuario"
     }
-    HomeAdaptiveLayout(alias = alias, onOpenReports = onOpenReports, onLogout = onLogout)
+    HomeAdaptiveLayout(
+        alias = alias,
+        windowSizeClass = windowSizeClass,
+        onOpenReports = onOpenReports,
+        onLogout = onLogout,
+    )
 }
