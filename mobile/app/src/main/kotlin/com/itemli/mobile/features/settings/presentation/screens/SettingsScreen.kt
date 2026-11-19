@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.itemli.mobile.features.settings.presentation.adaptive.SettingsAdaptiveLayout
 import com.itemli.mobile.features.settings.presentation.adaptive.SettingsSection
+import com.itemli.mobile.features.settings.presentation.adaptive.SettingsSection
 import com.itemli.mobile.features.settings.presentation.viewmodels.SettingsViewModel
 import com.itemli.mobile.features.reports.infrastructure.storage.ReportPdfStorage
 import com.itemli.mobile.shared.ui.components.SecureScreen
