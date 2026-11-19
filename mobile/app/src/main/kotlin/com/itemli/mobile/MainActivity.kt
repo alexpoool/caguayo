@@ -20,8 +20,6 @@ import com.itemli.mobile.app.navigation.ItemliAppRoot
 import com.itemli.mobile.shared.infrastructure.SessionManager
 import com.itemli.mobile.shared.ui.components.AppLockGate
 import com.itemli.mobile.shared.ui.theme.ItemliTheme
-import com.itemli.mobile.shared.ui.theme.AppThemeMode
-import com.itemli.mobile.shared.ui.theme.ThemePreferences
 import com.itemli.mobile.shared.ui.theme.FontSizePreferences
 import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
@@ -45,20 +43,13 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
-            val themePreferences = remember { ThemePreferences(applicationContext) }
             val fontSizePreferences = remember { FontSizePreferences(applicationContext) }
             val fontScale by fontSizePreferences.scale.collectAsState(initial = FontSizePreferences.DEFAULT_SCALE)
             val density = LocalDensity.current
-            val themeMode by themePreferences.mode.collectAsState(initial = AppThemeMode.SYSTEM)
             val fontScalePreferences = remember { FontScalePreferences(applicationContext) }
             val fontScale by fontScalePreferences.scale.collectAsState(initial = 1f)
-            val darkTheme = when (themeMode) {
-                AppThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
-                AppThemeMode.LIGHT -> false
-                AppThemeMode.DARK -> true
-            }
             CompositionLocalProvider(LocalDensity provides density.copy(fontScale = fontScale)) {
-              ItemliTheme(darkTheme = darkTheme) {
+              ItemliTheme {
                 val density = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides density.copy(fontScale = fontScale)) {
                 AppLockGate {
