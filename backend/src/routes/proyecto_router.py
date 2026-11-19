@@ -95,6 +95,8 @@ async def preview_creadores(
     texto_busqueda: Optional[str] = Query(None, description="Texto de búsqueda"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         data, meta = await get_registro_creadores(
@@ -115,7 +117,7 @@ async def preview_creadores(
         )
 
         return {
-            "items": data,
+            "items": data[offset:offset + limit],
             "total_items": len(data),
             "grupos_municipio": meta.get("grupos_municipio", {}),
         }
