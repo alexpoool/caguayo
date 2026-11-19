@@ -3,6 +3,7 @@ package com.itemli.mobile.shared.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,6 +35,7 @@ fun InteriorHeader(
     actionIcon: ImageVector? = null,
     actionDescription: String? = null,
     onAction: (() -> Unit)? = null,
+    leadingActions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().height(52.dp)
@@ -50,6 +52,7 @@ fun InteriorHeader(
         }
         Text(title, color = Color.White, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.weight(1f))
+        leadingActions()
         if (actionIcon != null) {
             val iconModifier = if (onAction != null) Modifier.clickable(onClick = onAction) else Modifier
             Icon(actionIcon, contentDescription = actionDescription,
