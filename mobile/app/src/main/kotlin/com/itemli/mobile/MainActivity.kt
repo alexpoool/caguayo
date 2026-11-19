@@ -21,24 +21,37 @@ import com.itemli.mobile.shared.ui.theme.ItemliTheme
 import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 
+/**
+ * Único Activity de la app. Calcula el WindowSizeClass y distribuye
+ * la preferencia de tamaño de texto a toda la interfaz.
+ */
 class MainActivity : FragmentActivity() {
+
     private var pausedAt: Long = 0L
+
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
             val fontPreferences = remember { FontSizePreferences(applicationContext) }
-            val fontScale by fontPreferences.scale.collectAsState(initial = FontSizePreferences.DEFAULT_SCALE)
-            val density = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides density.copy(fontScale = fontScale)) {
-                ItemliTheme {
-                    AppLockGate { ItemliAppRoot(windowSizeClass = windowSizeClass) }
+            val fontScale by fontPreferences.scale.collectAsState(
+                initial = FontSizePreferences.DEFAULT_SCALE,
+            )
+
+            ItemliTheme {
+                val density = LocalDensity.current
+                CompositionLocalProvider(LocalDensity provides density.copy(fontScale = fontScale)) {
+                    AppLockGate {
+                        ItemliAppRoot(windowSizeClass = windowSizeClass)
+                    }
                 }
             }
         }
     }
+
     override fun onPause() { pausedAt = SystemClock.elapsedRealtime(); super.onPause() }
     override fun onResume() {
         super.onResume()
