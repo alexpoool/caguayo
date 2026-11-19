@@ -23,7 +23,9 @@ class GetReportPreviewUseCase(
     suspend operator fun invoke(
         definition: ReportDefinition,
         filters: Map<String, String>,
-    ): AppResult<ReportPreview> = repository.preview(definition, filters)
+        limit: Int = 10,
+        offset: Int = 0,
+    ): AppResult<ReportPreview> = repository.preview(definition, filters, limit, offset)
 }
 
 /**
