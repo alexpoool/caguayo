@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,6 +42,8 @@ fun ReportDetailAdaptiveLayout(
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit = {},
     onDownloadPdf: () -> Unit = {},
+    onShare: () -> Unit = {},
+    onChart: () -> Unit = {},
     onBack: () -> Unit = {},
 ) {
     val definition = state.definition ?: return
@@ -53,6 +59,18 @@ fun ReportDetailAdaptiveLayout(
             actionIcon = Icons.Filled.Tune,
             actionDescription = "Abrir filtros",
             onAction = { showFilters = true },
+            leadingActions = {
+                IconButton(onClick = onShare, enabled = !state.isShareLoading) {
+                    if (state.isShareLoading) CircularProgressIndicator(
+                        modifier = Modifier.padding(3.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White,
+                    ) else Icon(Icons.Filled.Share, contentDescription = "Generar y compartir PDF", tint = Color.White)
+                }
+                IconButton(onClick = onChart) {
+                    Icon(Icons.Filled.BarChart, contentDescription = "Ver gráficos del reporte", tint = Color.White)
+                }
+            },
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
