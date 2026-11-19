@@ -118,7 +118,9 @@ private fun ReportChoiceSelector(
 ) {
     var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val selectedLabel = options.firstOrNull { it.value == value }?.label
-        ?: if (value.isBlank() && optional) "Todos" else if (value.isBlank()) "Seleccionar $label" else value
+        ?: if (value.isBlank() && optional) "Todos"
+        else if (value.isBlank()) "Seleccionar $label"
+        else "Opción seleccionada"
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(label, style = MaterialTheme.typography.labelLarge)
         androidx.compose.foundation.layout.Box {
