@@ -30,6 +30,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.itemli.mobile.BuildConfig
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -103,7 +105,7 @@ fun SettingsAdaptiveLayout(
                     Text("Dirección del servicio al que se conecta ITEMLI.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(value = state.baseUrl, onValueChange = onBaseUrlChange, label = { Text("URL base") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     ActionButtons(state.isLoading, state.isTesting, onSave, onTest)
-                    state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    state.message?.let { Text(it, color = if (it.contains("correcta", true) || it.contains("guardada", true)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error) }
                 }
                 SettingsSection.PROXY -> SettingsCard {
                     Text("Conexión mediante proxy", style = MaterialTheme.typography.titleMedium)
@@ -119,7 +121,7 @@ fun SettingsAdaptiveLayout(
                         OutlinedTextField(value = state.proxyHost, onValueChange = { onProxyChange(true, it, state.proxyPort, state.proxyUser, state.proxyPassword) }, label = { Text("Servidor / Host") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = state.proxyPort, onValueChange = { onProxyChange(true, state.proxyHost, it, state.proxyUser, state.proxyPassword) }, label = { Text("Puerto") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = state.proxyUser, onValueChange = { onProxyChange(true, state.proxyHost, state.proxyPort, it, state.proxyPassword) }, label = { Text("Usuario (opcional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = state.proxyPassword, onValueChange = { onProxyChange(true, state.proxyHost, state.proxyPort, state.proxyUser, it) }, label = { Text("Contraseña (opcional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = state.proxyPassword, onValueChange = { onProxyChange(true, state.proxyHost, state.proxyPort, state.proxyUser, it) }, label = { Text("Contraseña (opcional)") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
                     }
                     Button(onClick = onSave, enabled = !state.isLoading, modifier = Modifier.fillMaxWidth()) {
                         if (state.isLoading) CircularProgressIndicator(modifier = Modifier.size(18.dp)) else Text("Guardar configuración")
@@ -164,7 +166,7 @@ fun SettingsAdaptiveLayout(
                 SettingsSection.ABOUT -> SettingsCard {
                     Text("ITEMLI", style = MaterialTheme.typography.headlineMedium, color = BrandPrimary, fontWeight = FontWeight.Bold)
                     Text("Reportes Empresariales", style = MaterialTheme.typography.titleMedium)
-                    Text("Versión 1.0.0", style = MaterialTheme.typography.bodyMedium)
+                    Text("Versión ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyMedium)
                     Text("Información confiable, siempre contigo.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
