@@ -11,6 +11,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.CompositionLocalProvider
+import com.itemli.mobile.shared.ui.theme.FontScalePreferences
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.itemli.mobile.app.navigation.ItemliAppRoot
@@ -47,6 +50,8 @@ class MainActivity : FragmentActivity() {
             val fontScale by fontSizePreferences.scale.collectAsState(initial = FontSizePreferences.DEFAULT_SCALE)
             val density = LocalDensity.current
             val themeMode by themePreferences.mode.collectAsState(initial = AppThemeMode.SYSTEM)
+            val fontScalePreferences = remember { FontScalePreferences(applicationContext) }
+            val fontScale by fontScalePreferences.scale.collectAsState(initial = 1f)
             val darkTheme = when (themeMode) {
                 AppThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
                 AppThemeMode.LIGHT -> false
@@ -54,6 +59,8 @@ class MainActivity : FragmentActivity() {
             }
             CompositionLocalProvider(LocalDensity provides density.copy(fontScale = fontScale)) {
               ItemliTheme(darkTheme = darkTheme) {
+                val density = LocalDensity.current
+                CompositionLocalProvider(LocalDensity provides density.copy(fontScale = fontScale)) {
                 AppLockGate {
                     ItemliAppRoot(windowSizeClass = windowSizeClass)
                 }
