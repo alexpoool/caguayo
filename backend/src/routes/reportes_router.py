@@ -262,7 +262,7 @@ async def obtener_reporte_movimientos_dependencia(
             },
         )
     except Exception as e:
-        logger.error(f"Error en reporte movimientos-dependencia: {e}")
+        logger.exception("Error en reporte movimientos-dependencia")
         raise HTTPException(
             status_code=500, detail="Error interno al generar el reporte"
         )
@@ -748,7 +748,7 @@ async def preview_movimientos_dependencia(
             "total_salidas": total_salidas,
         }
     except Exception as e:
-        logger.error(f"Error en preview movimientos-dependencia: {e}")
+        logger.exception("Error en preview movimientos-dependencia")
         raise HTTPException(
             status_code=500, detail="Error interno al generar el reporte"
         )
