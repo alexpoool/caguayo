@@ -53,6 +53,7 @@ class ReportDetailViewModel(
 
     private val _state = MutableStateFlow(ReportDetailUiState())
     val state: StateFlow<ReportDetailUiState> = _state
+    private var previewRequestVersion: Long = 0L
 
     /** Carga la definición del reporte a partir del catálogo. */
     fun loadById(reportId: String) {
@@ -140,6 +141,7 @@ class ReportDetailViewModel(
     }
 
     fun refresh() {
+        val requestVersion = ++previewRequestVersion
         val definition = _state.value.definition ?: return
         val filters = _state.value.filters
         val missingFilter = definition.filters.firstOrNull { filter ->
@@ -159,6 +161,7 @@ class ReportDetailViewModel(
             )
             when (val result = getPreviewUseCase(definition, filters, PAGE_SIZE, 0)) {
                 is AppResult.Success -> {
+                    if (requestVersion != previewRequestVersion) return@launch
                     val preview = result.value.copy(
                         rows = result.value.rows.filterNot { row ->
                             row.keys.any { key -> key == "id" || key.startsWith("id_") }
@@ -172,11 +175,14 @@ class ReportDetailViewModel(
                         error = null,
                     )
                 }
-                is AppResult.Failure -> _state.value = _state.value.copy(
-                    isLoading = false,
-                    preview = null,
-                    error = result.error.message ?: "No se pudo cargar el reporte",
-                )
+                is AppResult.Failure -> {
+                    if (requestVersion != previewRequestVersion) return@launch
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        preview = null,
+                        error = result.error.message ?: "No se pudo cargar el reporte",
+                    )
+                }
             }
         }
     }
@@ -187,16 +193,18 @@ class ReportDetailViewModel(
         val definition = current.definition ?: return
         val preview = current.preview ?: return
         if (current.isLoading || current.isLoadingMore || !current.hasMore) return
+        val requestVersion = previewRequestVersion
         val offset = preview.rows.size
         val filters = current.filters
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoadingMore = true)
             when (val result = getPreviewUseCase(definition, filters, PAGE_SIZE, offset)) {
                 is AppResult.Success -> {
+                    if (requestVersion != previewRequestVersion) return@launch
                     val newRows = result.value.rows.filterNot { row ->
                         row.keys.any { key -> key == "id" || key.startsWith("id_") }
                     }
-                    val combined = (preview.rows + newRows).distinct()
+                    val combined = preview.rows + newRows
                     val updated = result.value.copy(rows = combined, fromCache = result.value.fromCache)
                     _state.value = _state.value.copy(
                         isLoadingMore = false,
@@ -205,10 +213,13 @@ class ReportDetailViewModel(
                         error = null,
                     )
                 }
-                is AppResult.Failure -> _state.value = _state.value.copy(
-                    isLoadingMore = false,
-                    error = result.error.message ?: "No se pudieron cargar más registros",
-                )
+                is AppResult.Failure -> {
+                    if (requestVersion != previewRequestVersion) return@launch
+                    _state.value = _state.value.copy(
+                        isLoadingMore = false,
+                        error = result.error.message ?: "No se pudieron cargar más registros",
+                    )
+                }
             }
         }
     }
