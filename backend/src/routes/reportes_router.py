@@ -657,6 +657,8 @@ async def preview_existencias(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         existencias, dependencia_info = await get_existencias(db, id_dependencia)
@@ -677,7 +679,7 @@ async def preview_existencias(
 
         return {
             "dependencia": dependencia_info,
-            "items": existencias,
+            "items": existencias[offset:offset + limit],
             "total_items": len(existencias),
             "total_cantidad": total_cantidad,
         }
@@ -695,6 +697,8 @@ async def preview_movimientos_dependencia(
     fecha_fin: date = Query(..., description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         movimientos, dependencia_info = await get_movimientos_dependencia(
@@ -731,7 +735,7 @@ async def preview_movimientos_dependencia(
 
         return {
             "dependencia": dependencia_info,
-            "items": movimientos,
+            "items": movimientos[offset:offset + limit],
             "total_items": len(movimientos),
             "total_saldo_inicial": total_saldo_inicial,
             "total_saldo_final": total_saldo_final,
@@ -753,6 +757,8 @@ async def preview_movimientos_producto(
     fecha_fin: date = Query(..., description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         movimientos, dependencia_info, producto_info = await get_movimientos_producto(
@@ -793,7 +799,7 @@ async def preview_movimientos_producto(
         return {
             "dependencia": dependencia_info,
             "producto": producto_info,
-            "items": items,
+            "items": items[offset:offset + limit],
             "total_items": len(items),
             "total_entradas": total_entradas,
             "total_salidas": total_salidas,
@@ -811,6 +817,8 @@ async def preview_proveedores_dependencia(
     id_provincia: Optional[int] = Query(None, description="Filtrar por provincia (opcional)"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         proveedores, dependencia_info = await get_proveedores_por_dependencia(
@@ -831,7 +839,7 @@ async def preview_proveedores_dependencia(
 
         return {
             "dependencia": dependencia_info,
-            "items": proveedores,
+            "items": proveedores[offset:offset + limit],
             "total_items": len(proveedores),
         }
     except Exception as e:
@@ -850,6 +858,8 @@ async def preview_proveedores_dependencia(
 async def preview_clientes(
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         data, meta = await get_registro_clientes(db)
@@ -864,7 +874,7 @@ async def preview_clientes(
         )
 
         return {
-            "items": data,
+            "items": data[offset:offset + limit],
             "total_items": len(data),
         }
     except Exception as e:
@@ -885,6 +895,8 @@ async def preview_proyectos(
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         data, meta = await get_registro_proyectos(db, fecha_inicio, fecha_fin)
@@ -913,7 +925,7 @@ async def preview_proyectos(
         )
 
         return {
-            "items": items,
+            "items": items[offset:offset + limit],
             "total_items": len(items),
         }
     except Exception as e:
@@ -936,6 +948,8 @@ async def preview_desempeno(
     estado: Optional[str] = Query(None, description="Estado (pagada/pendiente)"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         data, meta = await get_informe_desempeno(
@@ -969,7 +983,7 @@ async def preview_desempeno(
         )
 
         return {
-            "items": items,
+            "items": items[offset:offset + limit],
             "total_items": len(items),
             "totales_por_persona": meta.get("totales_por_persona", {}),
             "gran_total_cobro": meta.get("gran_total_cobro", 0),
@@ -995,6 +1009,8 @@ async def preview_onat(
     id_persona: Optional[int] = Query(None, description="Filtrar por creador"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         data, meta = await get_reporte_onat(
@@ -1028,7 +1044,7 @@ async def preview_onat(
         )
 
         return {
-            "items": items,
+            "items": items[offset:offset + limit],
             "total_items": len(items),
             "totales": meta.get("totales", {}),
         }
@@ -1050,6 +1066,8 @@ async def preview_mincult(
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         data, meta = await get_reporte_mincult(db, fecha_inicio, fecha_fin)
@@ -1068,7 +1086,7 @@ async def preview_mincult(
         )
 
         return {
-            "items": data,
+            "items": data[offset:offset + limit],
             "total_brackets": len(data),
             "total_liquidaciones": meta.get("total_liquidaciones", 0),
             "total_devengado_general": meta.get("total_devengado_general", 0),
@@ -1093,6 +1111,8 @@ async def preview_liquidaciones(
     id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     try:
         data, meta = await get_resumen_liquidaciones(
@@ -1126,7 +1146,7 @@ async def preview_liquidaciones(
         )
 
         return {
-            "items": items,
+            "items": items[offset:offset + limit],
             "total_items": len(items),
             "totales": meta.get("totales", {}),
         }
