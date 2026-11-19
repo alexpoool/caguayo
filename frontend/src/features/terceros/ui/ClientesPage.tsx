@@ -43,6 +43,7 @@ function ClientesPageContent({ casosUso }: { casosUso: CasosUsoTerceros }) {
     clientes,
     tiposEntidad,
     provincias,
+    monedas,
     createMutation,
     updateMutation,
     handleEdit,
@@ -132,6 +133,7 @@ function ClientesPageContent({ casosUso }: { casosUso: CasosUsoTerceros }) {
         }}
         provincias={provincias}
         tiposEntidad={tiposEntidad}
+        monedas={monedas}
         casosUso={casosUso}
       />
 

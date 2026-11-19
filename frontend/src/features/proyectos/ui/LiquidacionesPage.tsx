@@ -491,22 +491,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
         }));
       }
       try {
-        const validacion = await casosUso.validarPagoEtapa(etapaId);
-        
-        if (validacion.id_factura_servicio && (!validacion.pagado || validacion.pagado <= 0)) {
-          setValidacionModal({ 
-            isOpen: true, 
-            validacion: {
-              puede_liquidar: false,
-              id_etapa: etapaId,
-              id_persona: 0,
-              factura: validacion,
-              mensaje: `No hay pagos registrados para esta etapa. Saldo pendiente: ${validacion.saldo}`
-            }
-          });
-          return;
-        }
-
         const personasDeEtapa = await casosUso.getPersonasByEtapa(etapaId);
         setPersonasEtapa(await cargarClientesDePersonas(casosUso, personasDeEtapa));
       } catch (error) {
@@ -542,12 +526,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
       setPagosDisponibles(pagosData);
       setDisponibleLiquidar(disponibleData.disponible);
 
-      if (pagosData.length === 0) {
-        toast.error('No hay pagos disponibles para esta etapa. Debe registrar un pago en la factura antes de liquidar.');
-        return;
-      }
-
-      if (!selectedPago) {
+      if (!selectedPago && pagosData.length > 0) {
         const pago = pagosData[0];
         setSelectedPago(pago.id_pago_factura_servicio);
         const montoDisponible = Number(pago.monto_disponible);
@@ -621,11 +600,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
 
     if (!formData.id_moneda) {
       toast.error('Debe seleccionar una moneda');
-      return;
-    }
-
-    if (pagosDisponibles.length === 0) {
-      toast.error('No hay pagos disponibles para liquidar. Debe registrar un pago en la factura.');
       return;
     }
 
@@ -1327,8 +1301,8 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                   ))}
                 </div>
                 ) : (
-                  <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg mt-1">
-                    No hay pagos disponibles para esta etapa. Debe registrar un pago en la factura antes de liquidar.
+                  <p className="text-sm text-amber-700 bg-amber-50 p-3 rounded-lg mt-1">
+                    No hay pagos registrados para esta etapa. Puede guardar la liquidación sin asociar un pago.
                   </p>
                 )}
                 {disponibleLiquidar > 0 && (

@@ -526,3 +526,87 @@ class TestConfirmarLiquidacionTipoCompraValidation:
         ):
             with pytest.raises(ValueError, match="no está facturado"):
                 await liquidacion_service.confirmar_liquidacion(mock_db, 1, data)
+
+
+# ══════════════════════════════════════════════════════════════════
+# 5. validar_liquidar — facturas impagas no bloquean la liquidación
+# ══════════════════════════════════════════════════════════════════
+
+
+class TestValidarLiquidarFacturaImpaga:
+    """La liquidación de personas no debe exigir pagos registrados."""
+
+    @staticmethod
+    def _db_con_por_cobrar(por_cobrar):
+        db = MagicMock()
+        persona_etapa = MagicMock()
+        persona_etapa.por_cobrar = por_cobrar
+        resultado = MagicMock()
+        resultado.first.return_value = persona_etapa
+        db.exec = AsyncMock(return_value=resultado)
+        return db
+
+    @pytest.mark.asyncio
+    async def test_factura_sin_pagos_permite_liquidar(self):
+        """Con factura asociada e importe pagado = 0, la validación debe permitir liquidar."""
+        from src.services.servicio_service import PersonaLiquidacionService
+        from src.dto.servicio_dto import FacturaPagoValidacion
+
+        factura = FacturaPagoValidacion(
+            id_factura_servicio=10,
+            codigo_factura="F-001",
+            importe=Decimal("100.00"),
+            pagado=Decimal("0.00"),
+            saldo=Decimal("100.00"),
+            esta_pagada=False,
+        )
+        db = self._db_con_por_cobrar(Decimal("100.00"))
+
+        with patch(
+            "src.services.servicio_service.FacturaServicioService.validar_pago_etapa",
+            new=AsyncMock(return_value=factura),
+        ):
+            validacion = await PersonaLiquidacionService.validar_liquidar(db, 1, 2)
+
+        assert validacion.puede_liquidar is True
+        assert validacion.mensaje is None
+
+    @pytest.mark.asyncio
+    async def test_sin_factura_sigue_bloqueando(self):
+        """Sin factura asociada la validación debe seguir bloqueando."""
+        from src.services.servicio_service import PersonaLiquidacionService
+        from src.dto.servicio_dto import FacturaPagoValidacion
+
+        factura = FacturaPagoValidacion(id_factura_servicio=None)
+        db = self._db_con_por_cobrar(Decimal("100.00"))
+
+        with patch(
+            "src.services.servicio_service.FacturaServicioService.validar_pago_etapa",
+            new=AsyncMock(return_value=factura),
+        ):
+            validacion = await PersonaLiquidacionService.validar_liquidar(db, 1, 2)
+
+        assert validacion.puede_liquidar is False
+        assert validacion.mensaje == "No existe factura para esta etapa"
+
+    @pytest.mark.asyncio
+    async def test_por_cobrar_cero_sigue_bloqueando(self):
+        """Un realizador con por cobrar = 0 sigue sin poder liquidarse."""
+        from src.services.servicio_service import PersonaLiquidacionService
+        from src.dto.servicio_dto import FacturaPagoValidacion
+
+        factura = FacturaPagoValidacion(
+            id_factura_servicio=10,
+            importe=Decimal("100.00"),
+            pagado=Decimal("0.00"),
+        )
+        db = self._db_con_por_cobrar(Decimal("0.00"))
+
+        with patch(
+            "src.services.servicio_service.FacturaServicioService.validar_pago_etapa",
+            new=AsyncMock(return_value=factura),
+        ):
+            validacion = await PersonaLiquidacionService.validar_liquidar(db, 1, 2)
+
+        assert validacion.puede_liquidar is False
+        assert "por cobrar = 0" in (validacion.mensaje or "")

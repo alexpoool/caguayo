@@ -7,6 +7,14 @@ import {
   CardTitle,
   CardContent,
   Modal,
+  CreateButton,
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+  IconButton,
 } from "@/shared/ui/components";
 import { Label } from "@/shared/ui/components";
 import { Input } from "@/shared/ui/components";
@@ -20,16 +28,20 @@ import {
   AlertTriangle,
   ArrowLeft,
   Save,
+  Wallet,
 } from "lucide-react";
 
 import { TipoPersona, TipoRelacion } from "./types";
 import { NaturalForm } from "./forms-especificos/NaturalForm";
 import { JuridicaForm } from "./forms-especificos/JuridicaForm";
 import { TCPForm } from "./forms-especificos/TCPForm";
+import { CuentaForm } from "./CuentaForm";
 import type {
   ClienteNatural,
   ClienteJuridica,
   ClienteTCP,
+  Cuenta,
+  Moneda,
 } from "../../../domain/terceros";
 import type { CasosUsoTerceros } from "../../../application/casos-uso";
 import { toISODateLocal } from '@/utils/fecha';
@@ -45,6 +57,7 @@ export interface ClienteFormProps {
   selfContained?: boolean;
   provincias?: any[];
   tiposEntidad?: any[];
+  monedas?: Moneda[];
   casosUso: CasosUsoTerceros;
 }
 
@@ -58,6 +71,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   selfContained = true,
   provincias = [],
   tiposEntidad = [],
+  monedas: monedasProp = [],
   casosUso,
 }) => {
   const [localProvincias, setLocalProvincias] = useState<any[]>(
@@ -112,6 +126,30 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
         console.error("Error loading tiposEntidad:", error);
       });
   }, [casosUso, localTiposEntidad.length]);
+
+  const [localMonedas, setLocalMonedas] = useState<Moneda[]>(
+    monedasProp || [],
+  );
+  const fetchedMonedasRef = useRef(false);
+
+  useEffect(() => {
+    if (monedasProp && Array.isArray(monedasProp) && monedasProp.length > 0) {
+      setLocalMonedas(monedasProp);
+    }
+  }, [monedasProp]);
+
+  useEffect(() => {
+    if (fetchedMonedasRef.current || localMonedas.length > 0) return;
+    fetchedMonedasRef.current = true;
+    casosUso
+      .listarMonedas()
+      .then((data) => {
+        setLocalMonedas(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        console.error("Error loading monedas:", error);
+      });
+  }, [casosUso, localMonedas.length]);
 
   const [tipoPersona, setTipoPersona] = useState<TipoPersona | null>(
     editingCliente?.tipo_persona || null,
@@ -220,6 +258,15 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     editingCliente?.cliente_tcp || null,
   );
 
+  const [cuentas, setCuentas] = useState<Cuenta[]>(
+    (editingCliente?.cuentas || []).map((c: Cuenta) => ({ ...c })),
+  );
+  const [cuentasTouched, setCuentasTouched] = useState(false);
+  const [cuentaModalAbierta, setCuentaModalAbierta] = useState(false);
+  const [cuentaDraft, setCuentaDraft] = useState<Partial<Cuenta>>({});
+  const [cuentaEditIndex, setCuentaEditIndex] = useState<number | null>(null);
+  const [cuentaErrors, setCuentaErrors] = useState<Record<string, string>>({});
+
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modalTipo, setModalTipo] = useState<TipoPersona | null>(null);
   const [datosDraft, setDatosDraft] = useState<any>(null);
@@ -248,6 +295,13 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
       setDatosNatural(editingCliente.cliente_natural || null);
       setDatosJuridica(editingCliente.cliente_juridica || null);
       setDatosTCP(editingCliente.cliente_tcp || null);
+      setCuentas(
+        (editingCliente.cuentas || []).map((c: Cuenta) => ({ ...c })),
+      );
+      setCuentasTouched(false);
+    } else {
+      setCuentas([]);
+      setCuentasTouched(false);
     }
   }, [editingCliente, isProveedorView]);
 
@@ -291,6 +345,72 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     setDatosTCP(null);
     setTipoPersona(null);
     setFormData((prev: any) => ({ ...prev, tipo_persona: null }));
+  };
+
+  const abrirModalCuenta = (index: number | null = null) => {
+    setCuentaEditIndex(index);
+    setCuentaDraft(
+      index === null
+        ? { titular: formData.nombre || "" }
+        : { ...cuentas[index] },
+    );
+    setCuentaErrors({});
+    setCuentaModalAbierta(true);
+  };
+
+  const cerrarModalCuenta = () => {
+    setCuentaModalAbierta(false);
+    setCuentaEditIndex(null);
+    setCuentaDraft({});
+    setCuentaErrors({});
+  };
+
+  const validarCuenta = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!cuentaDraft.titular?.trim()) {
+      errors.titular = "El titular es requerido";
+    }
+    if (!cuentaDraft.banco?.trim()) {
+      errors.banco = "El banco es requerido";
+    }
+    if (!cuentaDraft.numero_cuenta?.trim()) {
+      errors.numero_cuenta = "El número de cuenta es requerido";
+    }
+    if (!cuentaDraft.direccion?.trim()) {
+      errors.direccion = "La dirección es requerida";
+    }
+    setCuentaErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const confirmarModalCuenta = () => {
+    if (!validarCuenta()) return;
+    const cuenta: Cuenta = {
+      ...cuentaDraft,
+      titular: cuentaDraft.titular!.trim(),
+      banco: cuentaDraft.banco!.trim(),
+      numero_cuenta: cuentaDraft.numero_cuenta!.trim(),
+      direccion: cuentaDraft.direccion!.trim(),
+    };
+    setCuentas((prev) =>
+      cuentaEditIndex === null
+        ? [...prev, cuenta]
+        : prev.map((c, i) => (i === cuentaEditIndex ? cuenta : c)),
+    );
+    setCuentasTouched(true);
+    cerrarModalCuenta();
+  };
+
+  const eliminarCuenta = (index: number) => {
+    setCuentas((prev) => prev.filter((_, i) => i !== index));
+    setCuentasTouched(true);
+  };
+
+  const getMonedaNombre = (id?: number) => {
+    if (!id) return "-";
+    return (
+      localMonedas.find((m) => m.id_moneda === id)?.denominacion || "-"
+    );
   };
 
   const relacionActual: TipoRelacion =
@@ -390,12 +510,22 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     }
     const formDataSinFecha = { ...formData };
     delete formDataSinFecha.fecha_registro;
-    const payload = {
+    const payload: any = {
       ...formDataSinFecha,
       cliente_natural: tipoPersona === "NATURAL" ? datosNatural : undefined,
       cliente_juridica: tipoPersona === "JURIDICA" ? datosJuridica : undefined,
       cliente_tcp: tipoPersona === "TCP" ? datosTCP : undefined,
     };
+    if (!editingCliente || cuentasTouched) {
+      payload.cuentas = cuentas.map((c) => ({
+        id_moneda: c.id_moneda,
+        titular: c.titular,
+        banco: c.banco,
+        sucursal: c.sucursal,
+        numero_cuenta: c.numero_cuenta,
+        direccion: c.direccion,
+      }));
+    }
     try {
       await onSubmit(payload);
     } catch (error) {
@@ -799,6 +929,138 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
             </div>
           </div>
         )}
+
+        {/* Cuentas bancarias */}
+        <Card className="mb-6 shadow-sm border-gray-200">
+          <CardHeader className="border-b bg-gray-50/50">
+            <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-lg">
+              <span className="flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-brand-600" />
+                Cuentas Bancarias
+                {cuentas.length > 0 && (
+                  <span className="text-sm font-normal text-gray-500">
+                    · {cuentas.length}
+                  </span>
+                )}
+              </span>
+              <CreateButton
+                label="Agregar Cuenta"
+                variant="inline"
+                onClick={() => abrirModalCuenta()}
+              />
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {cuentas.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-8 text-center text-gray-500">
+                <Wallet className="mb-2 h-8 w-8 text-gray-300" />
+                <p className="text-sm font-medium">No hay cuentas agregadas</p>
+                <p className="mt-1 text-xs">
+                  Use “Agregar Cuenta” para registrar una cuenta bancaria.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-gray-200">
+                <Table>
+                  <TableHeader className="bg-brand-50/60">
+                    <TableRow>
+                      <TableHead>Titular</TableHead>
+                      <TableHead>Banco</TableHead>
+                      <TableHead>Nº Cuenta</TableHead>
+                      <TableHead>Moneda</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cuentas.map((cuenta, index) => (
+                      <TableRow
+                        key={
+                          cuenta.id_cuenta ??
+                          `${cuenta.banco}-${cuenta.numero_cuenta}-${index}`
+                        }
+                      >
+                        <TableCell className="font-medium">
+                          {cuenta.titular}
+                        </TableCell>
+                        <TableCell>{cuenta.banco}</TableCell>
+                        <TableCell>
+                          <span className="font-mono text-sm">
+                            {cuenta.numero_cuenta}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {getMonedaNombre(cuenta.id_moneda)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <IconButton
+                              label="Editar cuenta"
+                              icon={<Pencil className="h-4 w-4" />}
+                              className="text-brand-600"
+                              onClick={() => abrirModalCuenta(index)}
+                            />
+                            <IconButton
+                              label="Eliminar cuenta"
+                              icon={<Trash2 className="h-4 w-4" />}
+                              variant="danger"
+                              onClick={() => eliminarCuenta(index)}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Modal formulario de cuenta */}
+        <Modal
+          className="max-w-2xl"
+          isOpen={cuentaModalAbierta}
+          onClose={cerrarModalCuenta}
+        >
+          <div className="p-4 md:p-6 pb-5 border-b">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
+                <Wallet className="h-5 w-5 text-brand-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {cuentaEditIndex === null ? "Nueva Cuenta" : "Editar Cuenta"}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {cuentaEditIndex === null
+                    ? "Complete los datos de la cuenta bancaria"
+                    : "Actualice la información de la cuenta"}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 md:p-6">
+            <CuentaForm
+              datos={cuentaDraft}
+              setDatos={setCuentaDraft}
+              monedas={localMonedas}
+              formErrors={cuentaErrors}
+            />
+          </div>
+          <div className="flex justify-end gap-3 px-6 py-4 border-t bg-gray-50/50 rounded-b-2xl">
+            <Button type="button" variant="outline" onClick={cerrarModalCuenta}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmarModalCuenta}
+              className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+            >
+              <Check className="h-4 w-4" />
+              Guardar
+            </Button>
+          </div>
+        </Modal>
 
         {/* Modal formulario tipo de persona */}
         <Modal className="max-w-2xl" isOpen={modalAbierto} onClose={cerrarModalTipo}>

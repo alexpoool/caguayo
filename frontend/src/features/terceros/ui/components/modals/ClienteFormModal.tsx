@@ -2,7 +2,7 @@ import { useState } from "react";
 import { User, Save } from "lucide-react";
 import { Button, FormModal } from "@/shared/ui/components";
 import { ClienteForm } from "../form/ClienteForm";
-import type { Cliente } from "../../../domain/terceros";
+import type { Cliente, Moneda } from "../../../domain/terceros";
 import type { CasosUsoTerceros } from "../../../application/casos-uso";
 
 export const CLIENTE_FORM_ID = "cliente-form";
@@ -16,6 +16,7 @@ interface ClienteFormModalProps {
   onSubmit: (data: any) => Promise<void>;
   provincias?: any[];
   tiposEntidad?: any[];
+  monedas?: Moneda[];
   casosUso: CasosUsoTerceros;
 }
 
@@ -28,6 +29,7 @@ export function ClienteFormModal({
   onSubmit,
   provincias = [],
   tiposEntidad = [],
+  monedas = [],
   casosUso,
 }: ClienteFormModalProps) {
   const [isValid, setIsValid] = useState(false);
@@ -75,6 +77,7 @@ export function ClienteFormModal({
         selfContained={false}
         provincias={provincias}
         tiposEntidad={tiposEntidad}
+        monedas={monedas}
         casosUso={casosUso}
       />
     </FormModal>

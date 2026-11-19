@@ -1318,9 +1318,6 @@ class PersonaLiquidacionService:
         if not validacion_factura.id_factura_servicio:
             puede_liquidar = False
             mensaje = "No existe factura para esta etapa"
-        elif not validacion_factura.pagado or validacion_factura.pagado <= 0:
-            puede_liquidar = False
-            mensaje = "No hay pagos registrados para esta etapa"
         else:
             # Verificar si el realizador ya tiene todo liquidado
             from src.models import PersonaEtapa
