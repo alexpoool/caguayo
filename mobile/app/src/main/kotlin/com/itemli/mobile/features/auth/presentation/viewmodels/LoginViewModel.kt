@@ -35,6 +35,7 @@ class LoginViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state
+    private var connectionCheckVersion: Long = 0L
 
     init {
         viewModelScope.launch {
@@ -51,8 +52,10 @@ class LoginViewModel(
     }
 
     fun loadDatabases() {
+        connectionCheckVersion++
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoadingBases = true, error = null)
+            _state.value = _state.value.copy(isLoadingBases = true, selectedBase = null,
+                connectionStatus = DatabaseConnectionStatus.IDLE, error = null)
             when (val result = listDatabaseConnections()) {
                 is AppResult.Success -> {
                     val savedDatabase = tokenStorage.savedCredentials()?.database
@@ -78,6 +81,7 @@ class LoginViewModel(
     }
 
     fun onBaseSelected(base: DependenciaRef?) {
+        val requestVersion = ++connectionCheckVersion
         _state.value = _state.value.copy(
             selectedBase = base,
             connectionStatus = if (base == null) DatabaseConnectionStatus.IDLE else DatabaseConnectionStatus.TESTING,
@@ -85,20 +89,24 @@ class LoginViewModel(
         )
         if (base != null) {
             viewModelScope.launch {
-                when (val result = testDatabaseConnection(base)) {
+                val result = testDatabaseConnection(base)
+                // Ignorar respuestas tardías de una base que ya no está seleccionada.
+                if (requestVersion != connectionCheckVersion || _state.value.selectedBase?.baseDatos != base.baseDatos) {
+                    return@launch
+                }
+                when (result) {
                     is AppResult.Success -> _state.value = _state.value.copy(
                         connectionStatus = if (result.value) DatabaseConnectionStatus.CONNECTED else DatabaseConnectionStatus.ERROR,
-                        error = if (result.value) null else "No se pudo conectar a la base de datos",
+                        error = if (result.value) null else "Esta base de datos no tiene una estructura compatible con ITEMLI Reports. Selecciona otra.",
                     )
                     is AppResult.Failure -> _state.value = _state.value.copy(
                         connectionStatus = DatabaseConnectionStatus.ERROR,
-                        error = "No se pudo comprobar la base de datos. Inténtalo de nuevo.",
+                        error = "No se pudo comprobar esta base de datos. Puedes seleccionar otra e intentarlo de nuevo.",
                     )
                 }
             }
         }
     }
-
     fun submit(onLogged: () -> Unit) {
         val current = _state.value
         val base = current.selectedBase
@@ -106,6 +114,7 @@ class LoginViewModel(
             _state.value = current.copy(error = "Selecciona una base de datos")
             return
         }
+        if (current.isLoading) return
         if (current.connectionStatus != DatabaseConnectionStatus.CONNECTED) {
             _state.value = current.copy(error = "Comprueba la conexión con la base de datos antes de continuar")
             return
