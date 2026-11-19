@@ -30,7 +30,7 @@ class ConexionTestRequest(BaseModel):
 
 @router.get("", response_model=List[ConexionResponse])
 async def get_conexiones():
-    """Obtiene todas las bases de datos del servidor PostgreSQL"""
+    """Lista bases de datos sin modificar su estructura ni sus datos."""
     from src.services.database_service import DatabaseService
 
     try:
@@ -49,14 +49,6 @@ async def get_conexiones():
         rows = cur.fetchall()
         cur.close()
         conn.close()
-
-        bases_de_datos = [row[0] for row in rows]
-
-        for db_name in bases_de_datos:
-            try:
-                DatabaseService.verificar_y_crear_tablas_faltantes(db_name)
-            except Exception as e:
-                print(f"[CONEXIONES] Error verificando tablas en {db_name}: {e}")
 
         return [
             ConexionResponse(
