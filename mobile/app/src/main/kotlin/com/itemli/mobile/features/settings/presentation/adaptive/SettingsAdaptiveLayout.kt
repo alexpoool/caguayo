@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +35,7 @@ import com.itemli.mobile.features.settings.presentation.components.ServerConfigF
 import com.itemli.mobile.features.settings.presentation.viewmodels.SettingsUiState
 import com.itemli.mobile.shared.ui.theme.BrandPrimary
 import com.itemli.mobile.shared.ui.theme.TextSecondary
+import com.itemli.mobile.shared.ui.theme.AppThemeMode
 
 @Composable
 fun SettingsAdaptiveLayout(
@@ -47,21 +49,23 @@ fun SettingsAdaptiveLayout(
     onSave: () -> Unit,
     onTest: () -> Unit,
     pdfDirName: String? = null,
+    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    onThemeModeChange: (AppThemeMode) -> Unit = {},
     onBack: () -> Unit = {},
 ) {
     Column(
-        Modifier.fillMaxSize().background(Color(0xFFF3F6FF)).verticalScroll(rememberScrollState())
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp).padding(top = 18.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         InteriorHeader(title = "Ajustes", onBack = onBack, actionIcon = Icons.Filled.Settings, actionDescription = "Ajustes")
-        Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Storage, contentDescription = null, tint = BrandPrimary)
                     Column(Modifier.padding(start = 10.dp)) {
                         Text("Servidor", style = MaterialTheme.typography.titleMedium)
-                        Text(state.baseUrl, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        Text(state.baseUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 ServerConfigForm(
@@ -86,6 +90,17 @@ fun SettingsAdaptiveLayout(
                     windowSizeClass = windowSizeClass,
                 )
                 state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        }
+        Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Apariencia", style = MaterialTheme.typography.titleMedium)
+                Text("Elige cómo quieres ver ITEMLI", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FilterChip(selected = themeMode == AppThemeMode.SYSTEM, onClick = { onThemeModeChange(AppThemeMode.SYSTEM) }, label = { Text("Sistema") })
+                    FilterChip(selected = themeMode == AppThemeMode.LIGHT, onClick = { onThemeModeChange(AppThemeMode.LIGHT) }, label = { Text("Claro") })
+                    FilterChip(selected = themeMode == AppThemeMode.DARK, onClick = { onThemeModeChange(AppThemeMode.DARK) }, label = { Text("Oscuro") })
+                }
             }
         }
         Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
