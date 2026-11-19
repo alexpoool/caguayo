@@ -24,35 +24,29 @@ val ItemliTypography: Typography = Typography(
         fontWeight = FontWeight.Bold,
         fontSize = 30.sp,
         lineHeight = 36.sp,
-        color = TextPrimary,
     ),
     headlineMedium = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize = 25.sp,
         lineHeight = 31.sp,
-        color = TextPrimary,
     ),
     titleLarge = TextStyle(
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
         lineHeight = 26.sp,
-        color = TextPrimary,
     ),
     titleMedium = TextStyle(
         fontWeight = FontWeight.SemiBold,
         fontSize = 16.sp,
         lineHeight = 22.sp,
-        color = TextPrimary,
     ),
     bodyLarge = TextStyle(
         fontSize = 16.sp,
         lineHeight = 23.sp,
-        color = TextPrimary,
     ),
     bodyMedium = TextStyle(
         fontSize = 14.sp,
         lineHeight = 20.sp,
-        color = TextSecondary,
     ),
     labelLarge = TextStyle(
         fontWeight = FontWeight.SemiBold,
