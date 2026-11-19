@@ -12,6 +12,8 @@ interface ReportsRepository {
     suspend fun preview(
         definition: ReportDefinition,
         filters: Map<String, String>,
+        limit: Int,
+        offset: Int,
     ): AppResult<ReportPreview>
     suspend fun pdf(
         definition: ReportDefinition,
