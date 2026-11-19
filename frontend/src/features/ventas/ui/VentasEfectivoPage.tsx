@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 import { ProductSelector } from "./facturas/components/ProductSelector";
 import toast from "react-hot-toast";
-import { required, seleccionValida, esFechaValida, fechaNoAnteriorA } from "@/utils/validacionFormularios";
+import { required, seleccionValida, esFechaValida } from "@/utils/validacionFormularios";
 import { Decimal } from "decimal.js";
 import { mul, add, toNumber, toFixed } from "@/utils/decimal";
 import { DEFAULTS } from "@/config/defaults";
@@ -165,10 +165,6 @@ const loadInitialData = async () => {
     if (depErr) fieldErrors.push(depErr);
     const fechaErr = esFechaValida(formData.fecha, 'Fecha');
     if (fechaErr) fieldErrors.push(fechaErr);
-    else {
-      const fechaAnterior = fechaNoAnteriorA(formData.fecha, hoy, 'Fecha');
-      if (fechaAnterior) fieldErrors.push(fechaAnterior);
-    }
     if (fieldErrors.length > 0) {
       toast.error(fieldErrors.join('\n• '));
       return;
@@ -582,7 +578,6 @@ const loadInitialData = async () => {
               <DateInput
                 className="mt-1 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 value={formData.fecha || ""}
-                min={hoy}
                 onChange={(fecha: string) => setFormData({ ...formData, fecha })}
               />
             </div>

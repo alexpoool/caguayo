@@ -646,12 +646,12 @@ def test_etapa_sin_nombre_ni_descripcion_hereda_del_proyecto():
     assert payload["descripcion"] == "Descripción del proyecto"
 
 
-def test_etapa_sin_nombre_usa_el_codigo_si_el_proyecto_no_tiene_descripcion():
+def test_etapa_sin_nombre_usa_etapa_unica_si_el_proyecto_no_tiene_descripcion():
     payload, _ = migrar_etapas._payload_etapa_real(
-        _etapa_legacy(), 1, {}, {"CUC": 2}, "CUC",
+        _etapa_legacy(), 1, {"nombre_contrato": "Contrato X"}, {"CUC": 2}, "CUC",
         ("Proyecto1", None))
 
-    assert payload["nombre_etapa"] == "Proyecto1"
+    assert payload["nombre_etapa"] == "Etapa única"
     assert payload["descripcion"] is None
 
 
@@ -675,3 +675,14 @@ def test_etapa_sintetica_hereda_del_proyecto():
 
     assert payload["nombre_etapa"] == "Descripción del proyecto"
     assert payload["descripcion"] == "Descripción del proyecto"
+
+
+def test_etapa_sintetica_sin_descripcion_usa_etapa_unica():
+    contrato = {"nombre_contrato": "Contrato X", "fecha": "2020-01-01",
+                "valor_contratocuc": "100.00", "valor_contratocup": "0.00"}
+
+    payload, _ = migrar_etapas._payload_etapa_sintetica(
+        contrato, {"CUC": 2}, "CUC", ("Proyecto1", None))
+
+    assert payload["nombre_etapa"] == "Etapa única"
+    assert payload["descripcion"] is None

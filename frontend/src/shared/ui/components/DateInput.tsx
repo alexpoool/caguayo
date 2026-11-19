@@ -6,10 +6,6 @@ export interface DateInputProps {
   /** Fecha en ISO `yyyy-mm-dd`. Es el mismo formato que produce un `<input type="date">`. */
   value?: string;
   onChange: (iso: string) => void;
-  /** Fecha minima en ISO. Impide elegir fechas anteriores. */
-  min?: string;
-  /** Fecha maxima en ISO. */
-  max?: string;
   required?: boolean;
   disabled?: boolean;
   error?: string;
@@ -56,23 +52,6 @@ const textoAIso = (texto: string): string | null => {
   return `${anio}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
 };
 
-/** ISO a numero de dias, para comparar contra min/max sin desfases de zona horaria. */
-const aDias = (iso?: string): number | null => {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
-  if (!m) return null;
-  return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86400000;
-};
-
-const fueraDeRango = (iso: string, min?: string, max?: string): boolean => {
-  const dias = aDias(iso);
-  if (dias === null) return false;
-  const minimo = aDias(min);
-  const maximo = aDias(max);
-  if (minimo !== null && dias < minimo) return true;
-  if (maximo !== null && dias > maximo) return true;
-  return false;
-};
-
 /**
  * Campo de fecha que muestra siempre `dd/mm/aaaa`.
  *
@@ -80,16 +59,14 @@ const fueraDeRango = (iso: string, min?: string, max?: string): boolean => {
  * el locale del navegador, no segun el `lang` del documento: en un navegador en
  * ingles se ve `mm/dd/yyyy` aunque la pagina sea `lang="es"`. Este componente
  * muestra un input de texto con el formato fijo y superpone un
- * `<input type="date">` transparente que solo aporta el calendario y el
- * `min`/`max` nativos (no intercepta clics: el texto se escribe igual).
+ * `<input type="date">` transparente que solo aporta el calendario nativo
+ * (no intercepta clics: el texto se escribe igual).
  *
  * El valor sigue siendo ISO, asi que no cambia nada en submits ni validaciones.
  */
 export const DateInput: React.FC<DateInputProps> = ({
   value,
   onChange,
-  min,
-  max,
   required,
   disabled,
   error,
@@ -116,14 +93,14 @@ export const DateInput: React.FC<DateInputProps> = ({
     setTexto(nuevo);
     const iso = textoAIso(nuevo);
     // Solo se propaga cuando la fecha esta completa y es real.
-    if (iso && !fueraDeRango(iso, min, max)) onChange(iso);
+    if (iso) onChange(iso);
   };
 
   const salir = () => {
     setTocado(true);
     const iso = textoAIso(texto);
-    // Texto incompleto, fecha invalida o fuera del rango: se descarta.
-    if (!iso || fueraDeRango(iso, min, max)) setTexto(isoATexto(value));
+    // Texto incompleto o fecha invalida: se descarta.
+    if (!iso) setTexto(isoATexto(value));
     onBlur?.();
   };
 
@@ -142,7 +119,7 @@ export const DateInput: React.FC<DateInputProps> = ({
     const iso = e.target.value;
     setTexto(isoATexto(iso));
     setTocado(false);
-    if (iso && !fueraDeRango(iso, min, max)) onChange(iso);
+    if (iso) onChange(iso);
   };
 
   const invalido = tocado && texto.trim() !== "" && textoAIso(texto) === null;
@@ -180,7 +157,7 @@ export const DateInput: React.FC<DateInputProps> = ({
         >
           <Calendar className="h-4 w-4" />
         </button>
-        {/* Calendario nativo transparente: solo aporta el popup y min/max.
+        {/* Calendario nativo transparente: solo aporta el popup.
             `pointer-events-none` para no bloquear la escritura en el campo visible. */}
         <input
           ref={nativoRef}
@@ -189,8 +166,6 @@ export const DateInput: React.FC<DateInputProps> = ({
           aria-hidden="true"
           disabled={disabled}
           value={value || ""}
-          min={min}
-          max={max}
           onChange={desdeCalendario}
           className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
         />

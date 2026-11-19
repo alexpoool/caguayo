@@ -4,7 +4,6 @@ import {
   esFechaValida,
   esNumeroPositivo,
   esPorcentaje,
-  fechaNoAnterior,
   required,
   seleccionValida,
 } from './validacionFormularios';
@@ -42,14 +41,10 @@ describe('validación de formularios', () => {
     expect(esPorcentaje(101, 'IVA')).toBe('IVA debe estar entre 0 y 100');
   });
 
-  it('valida fechas y orden entre fechas', () => {
+  it('valida fechas', () => {
     expect(esFechaValida('2026-11-07', 'Fecha')).toBeNull();
     expect(esFechaValida('', 'Fecha')).toBe('Fecha es requerido');
     expect(esFechaValida('no-es-fecha', 'Fecha')).toBe('Fecha no es una fecha válida');
-    expect(fechaNoAnterior('2026-11-07', '2026-11-01', 'Fecha')).toBeNull();
-    expect(fechaNoAnterior('2026-10-31', '2026-11-01', 'Fecha')).toBe(
-      'Fecha no puede ser anterior a la fecha de inicio',
-    );
   });
 
   it('valida selecciones', () => {

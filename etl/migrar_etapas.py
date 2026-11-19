@@ -329,10 +329,10 @@ def _monto_de_etapa(f, simbolo):
 def _payload_etapa_real(f, numero, contrato, ids_moneda, simbolo, proyecto=None):
     """Payload de una etapa que sí venía en el legacy, en la moneda `simbolo`.
 
-    Si la etapa no trae nombre o descripción, hereda los del proyecto. Para el
-    nombre se usa la descripción del proyecto antes que su código: es el dato
-    que ve el usuario en la pantalla de proyectos. El código queda de respaldo
-    para no dejar la etapa sin nombre.
+    Si la etapa no trae nombre, hereda la descripción del proyecto. Si el
+    proyecto tampoco tiene descripción, se usa `NOMBRE_ETAPA_SINTETICA` para no
+    dejar la etapa sin nombre: ni el código del proyecto ni el nombre del
+    contrato son respaldo.
     """
     valor = _monto_de_etapa(f, simbolo)
     fecha_contrato = fecha_legado(contrato.get("fecha")) if contrato else None
@@ -344,15 +344,14 @@ def _payload_etapa_real(f, numero, contrato, ids_moneda, simbolo, proyecto=None)
     # que es mejor que fecharlos mal.
     fecha_pago = fecha_legado(f.get("fecha_pago"))
 
-    nombre_proyecto, descripcion_proyecto = proyecto or (None, None)
+    _, descripcion_proyecto = proyecto or (None, None)
     nombre = (no_vacio(f.get("nombre_etapa"))
               or no_vacio(descripcion_proyecto)
-              or no_vacio(nombre_proyecto)
-              or (no_vacio(contrato.get("nombre_contrato")) if contrato else None))
+              or NOMBRE_ETAPA_SINTETICA)
     payload = {
         "id_solicitud_servicio": None,  # lo pone quien agrupa
         "numero_etapa": numero,
-        "nombre_etapa": (nombre or NOMBRE_ETAPA_SINTETICA)[:LARGO_NOMBRE_ETAPA],
+        "nombre_etapa": nombre[:LARGO_NOMBRE_ETAPA],
         "fecha_entrega": fecha_entrega,
         "fecha_pago": fecha_pago,
         "descripcion": (no_vacio(f.get("descripcion_detallada"))
@@ -371,19 +370,17 @@ def _payload_etapa_sintetica(contrato, ids_moneda, simbolo, proyecto=None):
     El importe sale del contrato y la fecha de su firma. Ningún contrato tiene
     dos solicitudes sin etapa —comprobado sobre el volcado—, así que repartir el
     importe del contrato no duplica nada. El nombre y la descripción salen del
-    proyecto, que es lo único que existe para una etapa que no estaba; para el
-    nombre se usa la descripción del proyecto y su código queda de respaldo.
+    proyecto, que es lo único que existe para una etapa que no estaba; si el
+    proyecto no tiene descripción, el nombre es `NOMBRE_ETAPA_SINTETICA`.
     """
     col = "valor_contratocup" if simbolo == "CUP" else "valor_contratocuc"
     valor = rl.decimal_legacy(contrato.get(col))
     fecha, avisos_fecha = rl.fecha_con_respaldo(contrato.get("fecha"), [])
-    nombre_proyecto, descripcion_proyecto = proyecto or (None, None)
+    _, descripcion_proyecto = proyecto or (None, None)
     payload = {
         "id_solicitud_servicio": None,
         "numero_etapa": 1,
         "nombre_etapa": (no_vacio(descripcion_proyecto)
-                         or no_vacio(nombre_proyecto)
-                         or no_vacio(contrato.get("nombre_contrato"))
                          or NOMBRE_ETAPA_SINTETICA)[:LARGO_NOMBRE_ETAPA],
         "fecha_entrega": fecha,
         "fecha_pago": None,
