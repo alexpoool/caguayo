@@ -10,6 +10,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import com.itemli.mobile.features.reports.domain.entities.ReportDefinition
+import com.itemli.mobile.features.reports.domain.entities.ReportColumnAlign
 
 /**
  * Tarjeta del catálogo de reportes.
@@ -230,10 +240,25 @@ private fun ReportDateSelector(
 fun ReportPreviewTable(
     definition: ReportDefinition,
     rows: List<Map<String, Any?>>,
+    visibleColumnCount: Int,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val columns = definition.columns.take(3)
+    val columns = definition.columns.take(visibleColumnCount.coerceIn(1, 5))
     val cardShape = RoundedCornerShape(18.dp)
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(listState, rows.size, hasMore, isLoadingMore) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+            .collectLatest { lastVisible ->
+                if (hasMore && !isLoadingMore && lastVisible >= rows.size - 3) {
+                    onLoadMore()
+                }
+            }
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -242,15 +267,15 @@ fun ReportPreviewTable(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
-        Column {
+        Column(Modifier.fillMaxWidth().fillMaxHeight()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFFE7F0FF))
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 15.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                columns.forEachIndexed { index, column ->
+                columns.forEach { column ->
                     Text(
                         text = column.label,
                         style = MaterialTheme.typography.titleSmall.copy(
@@ -258,57 +283,82 @@ fun ReportPreviewTable(
                         ),
                         color = Color(0xFF173C78),
                         modifier = Modifier.weight(1f),
-                        textAlign = if (index == 2) androidx.compose.ui.text.style.TextAlign.End
-                            else androidx.compose.ui.text.style.TextAlign.Start,
+                        textAlign = if (column.align == ReportColumnAlign.Right)
+                            androidx.compose.ui.text.style.TextAlign.End
+                        else androidx.compose.ui.text.style.TextAlign.Start,
+                        maxLines = 2,
                     )
                 }
             }
 
-            rows.forEachIndexed { rowIndex, row ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 13.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    columns.forEachIndexed { index, column ->
-                        val value = (row[column.key] ?: "—").toString()
-                        if (index == 2) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+            ) {
+                itemsIndexed(rows) { rowIndex, row ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        columns.forEach { column ->
+                            val value = (row[column.key] ?: "—").toString()
+                            val numeric = value.replace(",", "").toDoubleOrNull() != null
                             Box(
                                 modifier = Modifier.weight(1f),
-                                contentAlignment = Alignment.CenterEnd,
+                                contentAlignment = if (column.align == ReportColumnAlign.Right)
+                                    Alignment.CenterEnd else Alignment.CenterStart,
                             ) {
-                                Surface(
-                                    color = Color(0xFFE5EFFF),
-                                    shape = RoundedCornerShape(50),
-                                ) {
+                                if (numeric && column.align == ReportColumnAlign.Right) {
+                                    Surface(
+                                        color = Color(0xFFE5EFFF),
+                                        shape = RoundedCornerShape(50),
+                                    ) {
+                                        Text(
+                                            text = value,
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                            ),
+                                            color = Color(0xFF123D79),
+                                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                                            maxLines = 1,
+                                        )
+                                    }
+                                } else {
                                     Text(
                                         text = value,
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                                        ),
-                                        color = Color(0xFF123D79),
-                                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 6.dp),
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color(0xFF53627A),
+                                        maxLines = 2,
                                     )
                                 }
                             }
-                        } else {
+                        }
+                    }
+                    if (rowIndex < rows.lastIndex) {
+                        HorizontalDivider(color = Color(0xFFE8EDF5), thickness = 1.dp)
+                    }
+                }
+                if (isLoadingMore) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFF0752D8),
+                            )
                             Text(
-                                text = value,
-                                style = MaterialTheme.typography.bodyLarge,
+                                "  Cargando más registros…",
                                 color = Color(0xFF53627A),
-                                modifier = Modifier.weight(1f),
-                                maxLines = 2,
+                                style = MaterialTheme.typography.bodySmall,
                             )
                         }
                     }
-                }
-                if (rowIndex < rows.lastIndex) {
-                    HorizontalDivider(
-                        color = Color(0xFFE8EDF5),
-                        thickness = 1.dp,
-                    )
                 }
             }
         }
