@@ -310,29 +310,16 @@ fun ReportPreviewTable(
                                 contentAlignment = if (column.align == ReportColumnAlign.Right)
                                     Alignment.CenterEnd else Alignment.CenterStart,
                             ) {
-                                if (numeric && column.align == ReportColumnAlign.Right) {
-                                    Surface(
-                                        color = Color(0xFFE5EFFF),
-                                        shape = RoundedCornerShape(50),
-                                    ) {
-                                        Text(
-                                            text = value,
-                                            style = MaterialTheme.typography.bodyMedium.copy(
-                                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                                            ),
-                                            color = Color(0xFF123D79),
-                                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
-                                            maxLines = 1,
-                                        )
-                                    }
-                                } else {
-                                    Text(
-                                        text = value,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = Color(0xFF53627A),
-                                        maxLines = 2,
-                                    )
-                                }
+                                Text(
+                                    text = value,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = if (numeric && column.align == ReportColumnAlign.Right)
+                                            androidx.compose.ui.text.font.FontWeight.SemiBold
+                                        else androidx.compose.ui.text.font.FontWeight.Normal,
+                                    ),
+                                    color = Color(0xFF53627A),
+                                    maxLines = 2,
+                                )
                             }
                         }
                     }
