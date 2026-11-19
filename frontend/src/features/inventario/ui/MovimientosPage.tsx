@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { TipoMovimiento } from '../domain/inventario';
 import type { CasosUsoInventario } from '../application/casos-uso';
 import { useMovimientos } from './useMovimientos';
+import { nombreMostrado } from '@/utils/nombre';
 import { MovimientoRecepcionForm, PrecioExtraForm } from './movimientos/MovimientoForm';
 import { MovimientoAjusteForm } from './movimientos/MovimientoAjusteForm';
 import {
@@ -708,7 +709,7 @@ export function MovimientosPage({ casosUso }: { casosUso: CasosUsoInventario }) 
                             <Building className="h-3 w-3" />
                             Proveedor
                           </p>
-                          <p className="font-bold text-gray-900">{detailModal.movimiento?.provedor?.nombre || 'N/A'}</p>
+                          <p className="font-bold text-gray-900">{nombreMostrado(detailModal.movimiento?.cliente) || 'N/A'}</p>
                         </div>
                         <div className="bg-gray-50 p-4 rounded-xl">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
@@ -778,14 +779,14 @@ export function MovimientosPage({ casosUso }: { casosUso: CasosUsoInventario }) 
                             <Building className="h-3 w-3" />
                             Proveedor
                           </p>
-                          <p className="font-bold text-gray-900">{detailModal.movimiento?.provedor?.nombre || 'N/A'}</p>
+                          <p className="font-bold text-gray-900">{nombreMostrado(detailModal.movimiento?.cliente) || 'N/A'}</p>
                         </div>
                         <div className="bg-gray-50 p-4 rounded-xl">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <FileText className="h-3 w-3" />
                             Cliente
                           </p>
-                          <p className="font-bold text-gray-900">{detailModal.movimiento?.cliente?.nombre || 'N/A'}</p>
+                          <p className="font-bold text-gray-900">{nombreMostrado(detailModal.movimiento?.cliente) || 'N/A'}</p>
                         </div>
                         <div className="bg-gray-50 p-4 rounded-xl">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">

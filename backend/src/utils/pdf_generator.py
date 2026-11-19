@@ -277,7 +277,7 @@ def generar_pdf_clientes(
         data.append(
             [
                 str(idx),
-                str(c.get("nombre", "")),
+                str(c.get("nombre_completo") or c.get("nombre", "")),
                 str(c.get("reeup", "")),
                 str(c.get("nit", "")),
                 str(c.get("direccion", "")),

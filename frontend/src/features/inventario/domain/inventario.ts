@@ -50,7 +50,6 @@ export interface RecepcionStock {
 
 /** Movimiento pendiente con datos de origen que muestra la bandeja. */
 export type MovimientoPendiente = Movimiento & {
-  provedor?: { nombre: string };
   convenio?: { nombre_convenio: string };
   anexo?: { nombre_anexo: string; numero_anexo: string };
 };

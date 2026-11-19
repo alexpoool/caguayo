@@ -8,6 +8,7 @@ import ReportNotes from "@/shared/ui/components/ReportNotes";
 
 
 import { abrirBlob, descargarBlob } from '@/utils/archivos';
+import { nombreMostrado } from '@/utils/nombre';
 
 const ReporteLiquidaciones: React.FC<{ casosUso: CasosUsoReportes }> = ({ casosUso }) => {
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -15,7 +16,7 @@ const ReporteLiquidaciones: React.FC<{ casosUso: CasosUsoReportes }> = ({ casosU
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [idCliente, setIdCliente] = useState<number | null>(null);
-  const [clientes, setClientes] = useState<{id_cliente: number; nombre: string; codigo: string}[]>([]);
+  const [clientes, setClientes] = useState<{id_cliente: number; nombre: string; nombre_completo?: string; codigo: string}[]>([]);
   const [notas, setNotas] = useState("");
 
   const { user } = useAuth();
@@ -103,7 +104,7 @@ const ReporteLiquidaciones: React.FC<{ casosUso: CasosUsoReportes }> = ({ casosU
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Cliente</label>
                   <select value={idCliente ?? ""} onChange={e => setIdCliente(e.target.value ? Number(e.target.value) : null)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-brand-500 bg-white">
                     <option value="">Todos</option>
-                    {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.codigo ? c.codigo + " - " : ""}{c.nombre}</option>)}
+                    {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.codigo ? c.codigo + " - " : ""}{nombreMostrado(c)}</option>)}
                   </select>
                 </div>
               </div>

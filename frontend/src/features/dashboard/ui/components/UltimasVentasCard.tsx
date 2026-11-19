@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from '@/shared/ui/components';
 import { formatFecha } from '../../../../utils/fecha';
+import { nombreMostrado } from '../../../../utils/nombre';
 import type { VentaReciente } from '../../domain/dashboard';
 
 export function UltimasVentasCard({
@@ -69,7 +70,7 @@ export function UltimasVentasCard({
                       })}
                     </p>
                     <p className="truncate text-xs text-gray-500">
-                      {venta.cliente?.nombre || 'Cliente no registrado'} •{' '}
+                      {nombreMostrado(venta.cliente) || 'Cliente no registrado'} •{' '}
                       {formatFecha(venta.fecha)}
                     </p>
                   </div>

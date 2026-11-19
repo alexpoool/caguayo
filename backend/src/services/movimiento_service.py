@@ -31,11 +31,28 @@ from src.dto import (
     MovimientoAjusteRead,
 )
 from src.utils import generar_codigo_item_anexo
+from src.utils.nombres import nombres_completos_por_cliente
 
 logger = logging.getLogger(__name__)
 
 
 class MovimientoService:
+    @staticmethod
+    async def _completar_nombres_clientes(
+        db: AsyncSession, movimientos: List[MovimientoRead]
+    ) -> List[MovimientoRead]:
+        """Rellena ``cliente.nombre_completo`` en los DTO de movimientos."""
+        nombres = await nombres_completos_por_cliente(
+            db, [m.id_cliente for m in movimientos if m.id_cliente]
+        )
+        for movimiento in movimientos:
+            if movimiento.cliente is not None:
+                movimiento.cliente.nombre_completo = (
+                    nombres.get(movimiento.id_cliente)
+                    or movimiento.cliente.nombre
+                )
+        return movimientos
+
     @staticmethod
     async def _revertir_devolucion_anexo(
         db: AsyncSession, movimiento: Movimiento
@@ -160,6 +177,9 @@ class MovimientoService:
                 raise ValueError("No se pudo recargar el movimiento con relaciones")
 
             result = MovimientoRead.model_validate(db_movimiento_con_relaciones)
+            result = (
+                await MovimientoService._completar_nombres_clientes(db, [result])
+            )[0]
             logger.info("Movimiento convertido a DTO exitosamente")
             return result
         except Exception as e:
@@ -173,7 +193,12 @@ class MovimientoService:
         db: AsyncSession, movimiento_id: int
     ) -> Optional[MovimientoRead]:
         db_movimiento = await movimiento_repo.get(db, id=movimiento_id)
-        return MovimientoRead.from_orm(db_movimiento) if db_movimiento else None
+        if not db_movimiento:
+            return None
+        movimiento = MovimientoRead.from_orm(db_movimiento)
+        return (
+            await MovimientoService._completar_nombres_clientes(db, [movimiento])
+        )[0]
 
     @staticmethod
     async def get_movimientos(
@@ -192,7 +217,7 @@ class MovimientoService:
             except Exception as e:
                 logger.warning(f"Error validating movimiento {m.id_movimiento}: {e}")
                 continue
-        return results
+        return await MovimientoService._completar_nombres_clientes(db, results)
 
     @staticmethod
     async def get_movimientos_pendientes(db: AsyncSession) -> List[MovimientoRead]:
@@ -204,7 +229,7 @@ class MovimientoService:
             except Exception as e:
                 logger.warning(f"Error validating movimiento {m.id_movimiento}: {e}")
                 continue
-        return results
+        return await MovimientoService._completar_nombres_clientes(db, results)
 
     @staticmethod
     async def confirmar_movimiento(
@@ -232,7 +257,12 @@ class MovimientoService:
 
         # Si ya está confirmado, recargar y devolver
         if db_movimiento.estado == "confirmado":
-            return MovimientoRead.from_orm(db_movimiento)
+            movimiento = MovimientoRead.from_orm(db_movimiento)
+            return (
+                await MovimientoService._completar_nombres_clientes(
+                    db, [movimiento]
+                )
+            )[0]
 
         # No permitir confirmar movimientos cancelados
         if db_movimiento.estado == "cancelado":
@@ -416,7 +446,10 @@ class MovimientoService:
         if db_movimiento_con_relaciones is None:
             raise ValueError("No se pudo recargar el movimiento después de confirmar")
 
-        return MovimientoRead.from_orm(db_movimiento_con_relaciones)
+        movimiento = MovimientoRead.from_orm(db_movimiento_con_relaciones)
+        return (
+            await MovimientoService._completar_nombres_clientes(db, [movimiento])
+        )[0]
 
     @staticmethod
     async def cancelar_movimiento(
@@ -445,7 +478,12 @@ class MovimientoService:
             raise ValueError("Movimiento no encontrado")
 
         if db_movimiento.estado == "cancelado":
-            return MovimientoRead.from_orm(db_movimiento)
+            movimiento = MovimientoRead.from_orm(db_movimiento)
+            return (
+                await MovimientoService._completar_nombres_clientes(
+                    db, [movimiento]
+                )
+            )[0]
 
         if db_movimiento.estado != "confirmado":
             raise ValueError(
@@ -575,7 +613,10 @@ class MovimientoService:
         if db_movimiento_con_relaciones is None:
             raise ValueError("No se pudo recargar el movimiento después de cancelar")
 
-        return MovimientoRead.from_orm(db_movimiento_con_relaciones)
+        movimiento = MovimientoRead.from_orm(db_movimiento_con_relaciones)
+        return (
+            await MovimientoService._completar_nombres_clientes(db, [movimiento])
+        )[0]
 
     @staticmethod
     async def eliminar_movimiento(
@@ -612,7 +653,10 @@ class MovimientoService:
             await MovimientoService._revertir_devolucion_anexo(db, db_movimiento)
 
         await movimiento_repo.remove(db, id=movimiento_id)
-        return MovimientoRead.from_orm(db_movimiento)
+        movimiento = MovimientoRead.from_orm(db_movimiento)
+        return (
+            await MovimientoService._completar_nombres_clientes(db, [movimiento])
+        )[0]
 
     @staticmethod
     async def get_productos_by_anexo(db: AsyncSession, id_anexo: int) -> List[dict]:
@@ -901,6 +945,13 @@ class MovimientoService:
         # Ejemplo: 202651025100 -> año=2026, convenio=5, anexo=10, producto=25, movimiento=100
         codigo = movimiento.codigo
 
+        nombres = await nombres_completos_por_cliente(
+            db, [movimiento.id_cliente] if movimiento.id_cliente else []
+        )
+        proveedor_nombre = nombres.get(movimiento.id_cliente) or (
+            movimiento.cliente.nombre if movimiento.cliente else None
+        )
+
         # Intentar extraer las partes del código
         # El código tiene formato: YYYY + id_convenio + id_anexo + id_producto + id_movimiento
         # Necesitamos determinar dónde termina cada parte
@@ -914,7 +965,7 @@ class MovimientoService:
                 "anio": anio,
                 "proveedor": {
                     "id_cliente": movimiento.id_cliente,
-                    "nombre": movimiento.cliente.nombre if movimiento.cliente else None,
+                    "nombre": proveedor_nombre,
                 }
                 if movimiento.cliente
                 else None,
@@ -944,7 +995,7 @@ class MovimientoService:
                 "codigo": codigo,
                 "proveedor": {
                     "id_cliente": movimiento.id_cliente,
-                    "nombre": movimiento.cliente.nombre if movimiento.cliente else None,
+                    "nombre": proveedor_nombre,
                 }
                 if movimiento.cliente
                 else None,
@@ -975,7 +1026,7 @@ class MovimientoService:
 
         Returns lista de recepciones con información de producto, cantidad y dependencia.
         """
-        from src.models import Cliente, Convenio, Anexo
+        from src.models import Convenio, Anexo
 
         # Primero obtener los movimientos de tipo RECEPCION
         # Buscar el ID del tipo RECEPCION
@@ -998,6 +1049,10 @@ class MovimientoService:
         results = await db.exec(statement)
         movimientos = results.all()
 
+        nombres_clientes = await nombres_completos_por_cliente(
+            db, [mov.id_cliente for mov in movimientos if mov.id_cliente]
+        )
+
         recepciones = []
         for mov in movimientos:
             # Obtener producto
@@ -1011,14 +1066,9 @@ class MovimientoService:
                 dependencia.nombre if dependencia else "Sin dependencia"
             )
 
-            # Obtener cliente
-            cliente_nombre = None
-            if mov.id_cliente:
-                from src.models import Cliente
-
-                cliente = await db.get(Cliente, mov.id_cliente)
-                if cliente:
-                    cliente_nombre = cliente.nombre
+            cliente_nombre = (
+                nombres_clientes.get(mov.id_cliente) if mov.id_cliente else None
+            )
 
             # Obtener anexo
             anexo_nombre = None

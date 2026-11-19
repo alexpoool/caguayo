@@ -14,6 +14,7 @@ import type {
   FiltroTipoPersona,
 } from "../../domain/terceros";
 import toast from "react-hot-toast";
+import { nombreMostrado } from "@/utils/nombre";
 
 type TipoPersona = "NATURAL" | "JURIDICA" | "TCP";
 
@@ -173,7 +174,7 @@ export function useClientesLogic(casosUso: CasosUsoTerceros) {
     setConfirmModal({
       isOpen: true,
       title: `¿Eliminar ${nombreTipo}?`,
-      message: `¿Está seguro de eliminar al ${nombreTipo} "${cliente.nombre}"? Esta acción no se puede deshacer. Si tiene ventas, compras, contratos o convenios asociados, también se eliminarán.`,
+      message: `¿Está seguro de eliminar al ${nombreTipo} "${nombreMostrado(cliente)}"? Esta acción no se puede deshacer. Si tiene ventas, compras, contratos o convenios asociados, también se eliminarán.`,
       onConfirm: () => deleteMutation.mutate(cliente.id_cliente),
       type: "danger",
     });

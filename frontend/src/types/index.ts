@@ -80,6 +80,7 @@ export interface Movimiento {
   cliente?: {
     id_cliente: number;
     nombre: string;
+    nombre_completo?: string | null;
   };
 }
 
@@ -347,7 +348,7 @@ export interface ProductosUpdate {
 export interface OrigenRecepcion {
   codigo: string;
   anio?: number;
-  cliente?: {
+  proveedor?: {
     id_cliente: number;
     nombre: string;
   };

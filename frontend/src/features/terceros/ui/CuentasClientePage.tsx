@@ -18,6 +18,7 @@ import {
   Globe,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { nombreMostrado } from "@/utils/nombre";
 import {
   Button,
   Input,
@@ -88,16 +89,17 @@ export function CuentasClientePage({ casosUso }: { casosUso: CasosUsoTerceros })
     queryFn: () => (idCliente ? casosUso.obtenerCliente(idCliente) : null),
     enabled: Boolean(idCliente),
   });
+  const nombreCliente = nombreMostrado(clienteInfo);
 
   useEffect(() => {
-    if (view === "form" && !editingCuenta && clienteInfo?.nombre) {
+    if (view === "form" && !editingCuenta && nombreCliente) {
       setFormData((prev) =>
         prev.titular.trim().length > 0
           ? prev
-          : { ...prev, titular: clienteInfo.nombre },
+          : { ...prev, titular: nombreCliente },
       );
     }
-  }, [view, editingCuenta, clienteInfo?.nombre]);
+  }, [view, editingCuenta, nombreCliente]);
 
   const { data: cuentas = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["cuentas_cliente", idCliente],
@@ -296,7 +298,7 @@ export function CuentasClientePage({ casosUso }: { casosUso: CasosUsoTerceros })
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">{titulo}</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              {clienteInfo?.nombre || `ID #${idCliente}`} · {cuentas.length} cuenta(s)
+              {nombreCliente || `ID #${idCliente}`} · {cuentas.length} cuenta(s)
             </p>
           </div>
         </div>
@@ -511,7 +513,7 @@ export function CuentasClientePage({ casosUso }: { casosUso: CasosUsoTerceros })
                   <CreditCard className="h-5 w-5 text-white" />
                 </div>
                 Información de la cuenta de:{" "}
-                {clienteInfo?.nombre || (esProveedor ? "Proveedor" : "Cliente")}
+                {nombreCliente || (esProveedor ? "Proveedor" : "Cliente")}
               </CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">

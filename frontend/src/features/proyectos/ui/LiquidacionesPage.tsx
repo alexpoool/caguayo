@@ -4,6 +4,7 @@ import { useAuth } from '@/shared/ui/auth';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { nombreMostrado } from '@/utils/nombre';
 import { Button, Card, Label, Input, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ModalOverlay, FormModal, ConfirmModal,
   CreateButton,
   IconButton,
@@ -667,7 +668,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
   const getPersonaNombre = (id?: number) => {
     if (!id) return 'N/A';
     const persona = personas.find((p: Cliente) => p.id_cliente === id);
-    return persona ? persona.nombre : `Persona #${id}`;
+    return persona ? nombreMostrado(persona) : `Persona #${id}`;
   };
 
   const getMonedaSimbolo = (id?: number) => {
@@ -693,7 +694,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     const empresaEmail = empresa?.email || '';
     const empresaReeup = empresa?.reeup || '';
     
-    const nombreRealizador = realizador?.nombre || 'N/A';
+    const nombreRealizador = nombreMostrado(realizador) || 'N/A';
     const cedulaRealizador = realizador?.nit || 'N/A';
     const direccionRealizador = realizador?.direccion || '';
     
@@ -1287,7 +1288,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                     <option value="">Seleccionar persona</option>
                     {personasEtapa.map((persona: Cliente) => (
                       <option key={persona.id_cliente} value={persona.id_cliente}>
-                        {persona.nombre}
+                        {nombreMostrado(persona)}
                       </option>
                     ))}
                   </select>

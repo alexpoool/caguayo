@@ -5,6 +5,7 @@ import type { UsuarioSesion } from '@/shared/domain/sesion';
 
 import { formatCifra } from '@/utils/decimal';
 import { formatFecha } from '@/utils/fecha';
+import { nombreMostrado } from '@/utils/nombre';
 import { empresaActual } from '@/config/branding';
 
 export type TipoDocumento = 'OFERTA' | 'PRE-FACTURA' | 'FACTURA';
@@ -43,7 +44,7 @@ export function getFacturaServicioDocument(
 
   const clienteId = solicitud?.id_cliente;
   const cliente = clientesData.find(c => Number(c.id_cliente) === Number(clienteId));
-  const nombreCliente = cliente?.nombre || 'N/A';
+  const nombreCliente = nombreMostrado(cliente) || 'N/A';
   const provinciaCliente = cliente?.provincia?.nombre || 'N/A';
   const municipioCliente = cliente?.municipio?.nombre || 'N/A';
   const direccionCliente = cliente?.direccion || 'N/A';

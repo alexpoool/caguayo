@@ -30,13 +30,37 @@ export interface VentaReciente {
   total: number;
   estado: 'PENDIENTE' | 'COMPLETADA' | 'ANULADA';
   fecha: string;
-  cliente?: { nombre: string } | null;
+  cliente?: {
+    nombre: string;
+    nombre_completo?: string | null;
+    cliente_natural?: {
+      nombre?: string | null;
+      primer_apellido?: string | null;
+      segundo_apellido?: string | null;
+    } | null;
+    cliente_tcp?: {
+      nombre?: string | null;
+      primer_apellido?: string | null;
+      segundo_apellido?: string | null;
+    } | null;
+  } | null;
 }
 
 /** Proyección de cliente que necesita el panel. */
 export interface ClienteReciente {
   id_cliente: number;
   nombre: string;
+  nombre_completo?: string | null;
+  cliente_natural?: {
+    nombre?: string | null;
+    primer_apellido?: string | null;
+    segundo_apellido?: string | null;
+  } | null;
+  cliente_tcp?: {
+    nombre?: string | null;
+    primer_apellido?: string | null;
+    segundo_apellido?: string | null;
+  } | null;
   fecha_registro: string;
 }
 

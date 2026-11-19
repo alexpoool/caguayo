@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
 import { formatFecha, toISODateLocal} from '@/utils/fecha';
+import { nombreMostrado } from '@/utils/nombre';
 
 type View = 'list' | 'form';
 
@@ -121,7 +122,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
   const filteredClientes = useMemo(() => {
     if (!clienteSearch) return clientes;
     const term = clienteSearch.toLowerCase();
-    return clientes.filter(c => c.nombre.toLowerCase().includes(term));
+    return clientes.filter(c => nombreMostrado(c).toLowerCase().includes(term));
   }, [clientes, clienteSearch]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [allEtapas, setAllEtapas] = useState<Etapa[]>([]);
@@ -522,7 +523,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                   </>
                 }
                 fields={[
-                  { label: 'Cliente', value: clientes.find(c => c.id_cliente === item.id_cliente)?.nombre || 'N/A' },
+                  { label: 'Cliente', value: nombreMostrado(clientes.find(c => c.id_cliente === item.id_cliente)) || 'N/A' },
                   { label: 'Ofertas', value: ofertas.total },
                   { label: 'Etapas', value: etapasCount },
                 ]}
@@ -672,7 +673,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-gray-400" />
-                        {clientes.find(c => c.id_cliente === item.id_cliente)?.nombre || 'N/A'}
+                        {nombreMostrado(clientes.find(c => c.id_cliente === item.id_cliente)) || 'N/A'}
                       </div>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -772,7 +773,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                     placeholder="Buscar cliente..."
                     value={
                       formData.id_cliente
-                        ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
+                        ? (nombreMostrado(clientes.find(c => c.id_cliente === Number(formData.id_cliente))) || '')
                         : clienteSearch
                     }
                     disabled={!!formData.id_cliente}
@@ -810,7 +811,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                             setShowClienteDropdown(false);
                           }}
                         >
-                          <span className="font-medium text-gray-900">{c.nombre}</span>
+                          <span className="font-medium text-gray-900">{nombreMostrado(c)}</span>
                           <span className="text-xs text-gray-400 ml-2">({c.tipo_persona})</span>
                         </button>
                       ))
@@ -938,7 +939,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
               {(detailModal.item.id_cliente) && (
                 <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-4 rounded-xl border border-brand-100">
                   <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Cliente</p>
-                  <p className="font-bold text-gray-900">{clientes.find(c => c.id_cliente === detailModal.item?.id_cliente)?.nombre || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{nombreMostrado(clientes.find(c => c.id_cliente === detailModal.item?.id_cliente)) || 'N/A'}</p>
                 </div>
               )}
               {detailModal.item.descripcion && (
@@ -991,7 +992,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Cliente</p>
-                    <p className="font-bold text-gray-900">{contratoModal.item.cliente?.nombre || 'N/A'}</p>
+                    <p className="font-bold text-gray-900">{nombreMostrado(contratoModal.item.cliente) || 'N/A'}</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Monto</p>
@@ -1150,7 +1151,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                         <option value="">Seleccionar...</option>
                         {aprobarModal.contratos.map(c => (
                           <option key={c.id_contrato} value={c.id_contrato}>
-                            {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {c.cliente?.nombre || 'Sin cliente'}
+                            {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {nombreMostrado(c.cliente) || 'Sin cliente'}
                           </option>
                         ))}
                       </select>
@@ -1179,7 +1180,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                             placeholder="Buscar cliente..."
                             value={
                               formContrato.id_cliente
-                                ? (clientes.find(c => c.id_cliente === Number(formContrato.id_cliente))?.nombre || '')
+                                ? (nombreMostrado(clientes.find(c => c.id_cliente === Number(formContrato.id_cliente))) || '')
                                 : clienteSearch
                             }
                             disabled={!!formContrato.id_cliente}
@@ -1217,7 +1218,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                                     setShowClienteDropdown(false);
                                   }}
                                 >
-                                  <span className="font-medium text-gray-900">{c.nombre}</span>
+                                  <span className="font-medium text-gray-900">{nombreMostrado(c)}</span>
                                   <span className="text-xs text-gray-400 ml-2">({c.tipo_persona})</span>
                                 </button>
                               ))
@@ -1334,7 +1335,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                       <option value="">Seleccionar...</option>
                       {aprobarModal.contratos.map(c => (
                         <option key={c.id_contrato} value={c.id_contrato}>
-                          {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {c.cliente?.nombre || 'Sin cliente'}
+                          {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {nombreMostrado(c.cliente) || 'Sin cliente'}
                         </option>
                       ))}
                     </select>
@@ -1373,7 +1374,7 @@ export function SolicitudesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
                         <option value="">Seleccionar contrato</option>
                         {aprobarModal.contratos.map(c => (
                           <option key={c.id_contrato} value={c.id_contrato}>
-                            {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {c.cliente?.nombre || 'Sin cliente'}
+                            {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {nombreMostrado(c.cliente) || 'Sin cliente'}
                           </option>
                         ))}
                       </select>

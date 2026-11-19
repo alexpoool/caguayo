@@ -15,7 +15,7 @@ const ReporteOnat: React.FC<{ casosUso: CasosUsoReportes }> = ({ casosUso }) => 
   const [pdfLoading, setPdfLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [personas, setPersonas] = useState<{id_persona: number; nombre: string}[]>([]);
+  const [personas, setPersonas] = useState<{id_persona: number; nombre: string; apellidos?: string}[]>([]);
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [idMoneda, setIdMoneda] = useState<number | null>(null);
@@ -117,7 +117,7 @@ const ReporteOnat: React.FC<{ casosUso: CasosUsoReportes }> = ({ casosUso }) => 
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Persona / Creador</label>
                   <select value={idPersona ?? ""} onChange={e => setIdPersona(e.target.value ? Number(e.target.value) : null)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-rose-500 bg-white">
                     <option value="">Todas</option>
-                    {personas.map(p => <option key={p.id_persona} value={p.id_persona}>{p.nombre}</option>)}
+                    {personas.map(p => <option key={p.id_persona} value={p.id_persona}>{[p.nombre, p.apellidos].filter(Boolean).join(" ")}</option>)}
                   </select>
                 </div>
               </div>

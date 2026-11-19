@@ -153,6 +153,9 @@ class DashboardService:
             load_options=[
                 selectinload(Ventas.cliente).selectinload(Cliente.provincia),
                 selectinload(Ventas.cliente).selectinload(Cliente.municipio),
+                selectinload(Ventas.cliente).selectinload(Cliente.cliente_natural),
+                selectinload(Ventas.cliente).selectinload(Cliente.cliente_juridica),
+                selectinload(Ventas.cliente).selectinload(Cliente.cliente_tcp),
                 selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
             ],
         )

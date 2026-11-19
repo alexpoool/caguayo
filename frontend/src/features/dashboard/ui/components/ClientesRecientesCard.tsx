@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from '@/shared/ui/components';
 import { formatFecha } from '../../../../utils/fecha';
+import { nombreMostrado } from '../../../../utils/nombre';
 import type { ClienteReciente } from '../../domain/dashboard';
 
 function iniciales(nombre: string): string {
@@ -47,11 +48,11 @@ export function ClientesRecientesCard({
                 onClick={() => onCliente(cliente.id_cliente)}
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 font-semibold text-brand-600">
-                  {iniciales(cliente.nombre)}
+                  {iniciales(nombreMostrado(cliente))}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-gray-900">
-                    {cliente.nombre}
+                    {nombreMostrado(cliente)}
                   </p>
                   <p className="truncate text-xs text-gray-500">
                     {formatFecha(cliente.fecha_registro) ||

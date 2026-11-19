@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { MovimientoPendiente } from '../domain/inventario';
 import type { CasosUsoInventario } from '../application/casos-uso';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
+import { nombreMostrado } from '@/utils/nombre';
 
 import { Card, ConfirmModal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Input, IconButton, MobileRecordCard, ModalOverlay } from '@/shared/ui/components';
 import {
@@ -734,7 +735,7 @@ export function MovimientosPendientesPage({
                             <Building className="h-3 w-3" />
                             Proveedor
                           </p>
-                          <p className="font-bold text-gray-900">{detailModal.movimiento?.provedor?.nombre || 'N/A'}</p>
+                          <p className="font-bold text-gray-900">{nombreMostrado(detailModal.movimiento?.cliente) || 'N/A'}</p>
                         </div>
                         <div className="bg-gray-50 p-4 rounded-xl">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">

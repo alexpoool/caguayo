@@ -8,7 +8,7 @@ from src.models.cliente import Cliente
 from src.models.cliente_juridica import ClienteJuridica
 from src.models.cliente_natural import ClienteNatural
 from src.models.cliente_tcp import ClienteTCP
-from src.models.contrato import Contrato, EstadoContrato, TipoContrato
+from src.models.contrato import Contrato
 from src.models.dependencia import Dependencia, Municipio, Provincia
 from src.models.liquidacion import Liquidacion
 from src.models.moneda import Moneda
@@ -23,7 +23,10 @@ from src.models.servicio import (
     PersonaLiquidacion,
     SolicitudServicio,
 )
-from src.utils.nombres import componer_nombre_completo
+from src.utils.nombres import (
+    componer_nombre_completo,
+    nombres_completos_por_cliente,
+)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -63,6 +66,10 @@ async def get_registro_clientes(
         for rj in reup_result.scalars().all():
             reup_map[rj.id_cliente] = rj.codigo_reup
 
+    nombres = await nombres_completos_por_cliente(
+        db, [r[0].id_cliente for r in rows]
+    )
+
     data = []
     for r in rows:
         cliente: Cliente = r[0]
@@ -70,6 +77,8 @@ async def get_registro_clientes(
             {
                 "id_cliente": cliente.id_cliente,
                 "nombre": cliente.nombre,
+                "nombre_completo": nombres.get(cliente.id_cliente)
+                or cliente.nombre,
                 "reeup": reup_map.get(cliente.id_cliente, ""),
                 "nit": cliente.nit or "",
                 "direccion": cliente.direccion or "",
@@ -620,6 +629,10 @@ async def get_registro_proyectos(
     result = await db.execute(query)
     rows = result.all()
 
+    nombres = await nombres_completos_por_cliente(
+        db, [r[0].id_cliente for r in rows]
+    )
+
     data = []
     for r in rows:
         solicitud: SolicitudServicio = r[0]
@@ -634,7 +647,9 @@ async def get_registro_proyectos(
                 "codigo": solicitud.codigo_solicitud or solicitud.codigo_proyecto or "",
                 "nombre": solicitud.descripcion or solicitud.codigo_solicitud or "",
                 "contrato": r.contrato_nombre or "",
-                "cliente": r.cliente_nombre or "",
+                "cliente": nombres.get(solicitud.id_cliente)
+                or r.cliente_nombre
+                or "",
                 "fecha": solicitud.fecha_solicitud,
                 "valor": float(0),
                 "moneda": moneda_str,
@@ -704,13 +719,18 @@ async def get_registro_creadores(
     result = await db.execute(query)
     rows = result.all()
 
+    nombres = await nombres_completos_por_cliente(
+        db, [r[0].id_cliente for r in rows]
+    )
+
     data = []
     for r in rows:
         cliente: Cliente = r[0]
         data.append(
             {
                 "id_cliente": cliente.id_cliente,
-                "nombre_completo": cliente.nombre,
+                "nombre_completo": nombres.get(cliente.id_cliente)
+                or cliente.nombre,
                 "direccion": cliente.direccion or "",
                 "municipio": r.municipio_nombre or "",
                 "provincia": r.provincia_nombre or "",
@@ -794,13 +814,19 @@ async def get_informe_desempeno(
     result = await db.execute(query)
     rows = result.all()
 
+    nombres = await nombres_completos_por_cliente(
+        db, [r[0].id_persona for r in rows]
+    )
+
     data = []
     for r in rows:
         pe: PersonaEtapa = r[0]
         data.append(
             {
                 "id_persona": pe.id_persona,
-                "persona_nombre": r.persona_nombre,
+                "persona_nombre": nombres.get(pe.id_persona)
+                or r.persona_nombre
+                or "",
                 "persona_codigo": r.persona_codigo,
                 "codigo_proyecto": r.codigo_proyecto or "",
                 "proyecto_descripcion": r.proyecto_descripcion or "",
@@ -899,6 +925,10 @@ async def get_reporte_onat(
     result = await db.execute(query)
     rows = result.all()
 
+    nombres = await nombres_completos_por_cliente(
+        db, [r[0].id_persona for r in rows]
+    )
+
     data = []
     for r in rows:
         pl: PersonaLiquidacion = r[0]
@@ -908,7 +938,9 @@ async def get_reporte_onat(
                 "numero": pl.numero or "",
                 "fecha_emision": pl.fecha_emision,
                 "fecha_liquidacion": pl.fecha_liquidacion,
-                "persona_nombre": r.persona_nombre or "",
+                "persona_nombre": nombres.get(pl.id_persona)
+                or r.persona_nombre
+                or "",
                 "carnet_identidad": r.carnet_identidad or "",
                 "numero_registro": r.numero_registro or "",
                 "nit": r.persona_nit or "",
@@ -1083,6 +1115,10 @@ async def get_resumen_liquidaciones(
     result = await db.execute(query)
     rows = result.all()
 
+    nombres = await nombres_completos_por_cliente(
+        db, [r[0].id_cliente for r in rows]
+    )
+
     # ── Productos de TODAS las liquidaciones en una sola consulta ────────────
     liquidacion_ids = [r[0].id_liquidacion for r in rows]
     productos_por_liquidacion: Dict[int, List[Dict[str, Any]]] = {}
@@ -1133,7 +1169,9 @@ async def get_resumen_liquidaciones(
             "codigo": liq.codigo,
             "fecha_emision": liq.fecha_emision,
             "fecha_liquidacion": liq.fecha_liquidacion,
-            "cliente_nombre": r.cliente_nombre,
+            "cliente_nombre": nombres.get(liq.id_cliente)
+            or r.cliente_nombre
+            or "",
             "cliente_nit": r.cliente_nit or "",
             "cliente_codigo": r.cliente_codigo,
             "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})"
@@ -1178,28 +1216,54 @@ async def get_resumen_liquidaciones(
 
 
 async def get_personas_list(db: AsyncSession) -> List[Dict[str, Any]]:
-    """Retorna lista de clientes de tipo NATURAL para usar en filtros."""
+    """Retorna personas naturales y TCP para usar en filtros."""
     query = (
         select(
             Cliente.id_cliente,
             Cliente.nombre,
+            Cliente.tipo_persona,
+            ClienteNatural.nombre.label("natural_nombre"),
+            ClienteNatural.primer_apellido.label("natural_primer_apellido"),
+            ClienteNatural.segundo_apellido.label("natural_segundo_apellido"),
             ClienteNatural.carnet_identidad,
+            ClienteTCP.nombre.label("tcp_nombre"),
+            ClienteTCP.primer_apellido.label("tcp_primer_apellido"),
+            ClienteTCP.segundo_apellido.label("tcp_segundo_apellido"),
+            ClienteTCP.numero_registro_proyecto,
         )
-        .join(ClienteNatural, Cliente.id_cliente == ClienteNatural.id_cliente)
+        .outerjoin(ClienteNatural, Cliente.id_cliente == ClienteNatural.id_cliente)
+        .outerjoin(ClienteTCP, Cliente.id_cliente == ClienteTCP.id_cliente)
         .where(
-            Cliente.tipo_persona == "NATURAL",
+            Cliente.tipo_persona.in_(["NATURAL", "TCP"]),
             Cliente.tipo_relacion.in_(["CLIENTE", "AMBAS"]),
         )
         .order_by(Cliente.nombre)
     )
     result = await db.execute(query)
     rows = result.all()
-    return [
-        {
-            "id_persona": row.id_cliente,
-            "nombre": row.nombre,
-            "apellidos": "",  # Cliente.nombre es el nombre completo
-            "carnet_identidad": row.carnet_identidad or "",
-        }
-        for row in rows
-    ]
+
+    personas: List[Dict[str, Any]] = []
+    for row in rows:
+        if row.tipo_persona == "TCP":
+            nombre = row.tcp_nombre or row.nombre
+            apellidos = componer_nombre_completo(
+                None, row.tcp_primer_apellido, row.tcp_segundo_apellido
+            )
+            carnet = row.numero_registro_proyecto or ""
+        else:
+            nombre = row.natural_nombre or row.nombre
+            apellidos = componer_nombre_completo(
+                None, row.natural_primer_apellido, row.natural_segundo_apellido
+            )
+            carnet = row.carnet_identidad or ""
+
+        personas.append(
+            {
+                "id_persona": row.id_cliente,
+                "nombre": nombre,
+                "apellidos": apellidos,
+                "carnet_identidad": carnet,
+            }
+        )
+
+    return personas
