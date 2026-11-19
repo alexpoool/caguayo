@@ -59,6 +59,7 @@ fun ReportDetailAdaptiveLayout(
             actionIcon = Icons.Filled.Tune,
             actionDescription = "Abrir filtros",
             onAction = { showFilters = true },
+            titleMaxLines = 2,
             leadingActions = {
                 IconButton(onClick = onShare, enabled = !state.isShareLoading) {
                     if (state.isShareLoading) CircularProgressIndicator(
