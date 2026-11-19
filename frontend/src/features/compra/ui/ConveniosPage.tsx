@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useInfiniteList } from "@/shared/ui/hooks/useInfiniteList";
 import { useDebounce } from "@/shared/ui/hooks/useDebounce";
@@ -73,6 +73,10 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const rutaAnexos = location.pathname.startsWith("/terceros")
+    ? "/terceros/anexos"
+    : "/compra/anexos";
   const [searchParams] = useSearchParams();
   const initialProveedor = searchParams.get("proveedor");
   const [filtroProveedor] = useState<number | null>(
@@ -407,7 +411,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      navigate(`/compra/anexos?convenio=${convenio.id_convenio}`)
+                      navigate(`${rutaAnexos}?convenio=${convenio.id_convenio}`)
                     }
                     className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
                   >
@@ -484,7 +488,7 @@ export function ConveniosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/compra/anexos?convenio=${convenio.id_convenio}`);
+                          navigate(`${rutaAnexos}?convenio=${convenio.id_convenio}`);
                         }}
                         className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
                       >

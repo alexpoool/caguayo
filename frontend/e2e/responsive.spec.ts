@@ -89,6 +89,11 @@ const rutas = [
   '/terceros/registro-clientes',
   '/terceros/registro-proveedores',
   '/terceros/registro-realizadores',
+  '/terceros/proveedores',
+  '/terceros/cuentas',
+  '/terceros/convenios',
+  '/terceros/liquidaciones',
+  '/terceros/anexos',
   '/clientes',
 
   '/compra',

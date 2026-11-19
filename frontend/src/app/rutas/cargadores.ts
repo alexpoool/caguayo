@@ -113,6 +113,11 @@ const PRECARGA: EntradaPrecarga[] = [
   { prefijo: '/compra/clientes', cargar: cargarTerceros },
   { prefijo: '/compra/proveedores', cargar: cargarTerceros },
   { prefijo: '/compra/cuentas', cargar: cargarTerceros },
+  { prefijo: '/terceros/proveedores', cargar: cargarTerceros },
+  { prefijo: '/terceros/cuentas', cargar: cargarTerceros },
+  { prefijo: '/terceros/convenios', cargar: cargarCompra },
+  { prefijo: '/terceros/liquidaciones', cargar: cargarCompra },
+  { prefijo: '/terceros/anexos', cargar: cargarCompra },
   { prefijo: '/terceros', cargar: cargarTerceros },
   { prefijo: '/clientes', cargar: cargarTerceros },
 

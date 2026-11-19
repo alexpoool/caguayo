@@ -31,6 +31,7 @@ export function useClientesLogic(casosUso: CasosUsoTerceros) {
   const isProveedorView =
     location.pathname.includes("/compra/clientes") ||
     location.pathname.includes("/compra/proveedores") ||
+    location.pathname.includes("/terceros/proveedores") ||
     location.search.includes("tipo=proveedor");
 
   const defaultTipoRelacion = isProveedorView ? "PROVEEDOR" : "CLIENTE";

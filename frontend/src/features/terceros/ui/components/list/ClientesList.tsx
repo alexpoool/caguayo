@@ -1,5 +1,5 @@
 import { useState, RefObject } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   User,
   Search,
@@ -74,6 +74,9 @@ export function ClientesList({
   casosUso,
 }: ClientesListProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const rutaProveedor = (segmento: string) =>
+    `${location.pathname.startsWith("/terceros") ? "/terceros" : "/compra"}/${segmento}`;
   const [detailModal, setDetailModal] = useState<{
     isOpen: boolean;
     cliente: Cliente | null;
@@ -270,7 +273,7 @@ export function ClientesList({
                     onClick={() =>
                       navigate(
                         isProveedorView
-                          ? `/compra/cuentas?proveedor=${cliente.id_cliente}`
+                          ? `${rutaProveedor("cuentas")}?proveedor=${cliente.id_cliente}`
                           : `/ventas/cuentas?cliente=${cliente.id_cliente}`,
                       )
                     }
@@ -284,7 +287,7 @@ export function ClientesList({
                     size="sm"
                     onClick={() =>
                       isProveedorView
-                        ? navigate(`/compra/convenios?proveedor=${cliente.id_cliente}`)
+                        ? navigate(`${rutaProveedor("convenios")}?proveedor=${cliente.id_cliente}`)
                         : navigate(`/ventas/contratos?cliente=${cliente.id_cliente}`)
                     }
                     className={`gap-1 ${
@@ -301,7 +304,7 @@ export function ClientesList({
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        navigate(`/compra/liquidaciones?proveedor=${cliente.id_cliente}`)
+                        navigate(`${rutaProveedor("liquidaciones")}?proveedor=${cliente.id_cliente}`)
                       }
                       className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                     >
@@ -437,7 +440,7 @@ export function ClientesList({
                         onClick={() =>
                           navigate(
                             isProveedorView
-                              ? `/compra/cuentas?proveedor=${cliente.id_cliente}`
+                              ? `${rutaProveedor("cuentas")}?proveedor=${cliente.id_cliente}`
                               : `/ventas/cuentas?cliente=${cliente.id_cliente}`,
                           )
                         }
@@ -454,7 +457,7 @@ export function ClientesList({
                         onClick={() =>
                           isProveedorView
                             ? navigate(
-                                `/compra/convenios?proveedor=${cliente.id_cliente}`,
+                                `${rutaProveedor("convenios")}?proveedor=${cliente.id_cliente}`,
                               )
                             : navigate(
                                 `/ventas/contratos?cliente=${cliente.id_cliente}`,
@@ -477,7 +480,7 @@ export function ClientesList({
                           size="sm"
                           onClick={() =>
                             navigate(
-                              `/compra/liquidaciones?proveedor=${cliente.id_cliente}`,
+                              `${rutaProveedor("liquidaciones")}?proveedor=${cliente.id_cliente}`,
                             )
                           }
                           className="gap-1 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"

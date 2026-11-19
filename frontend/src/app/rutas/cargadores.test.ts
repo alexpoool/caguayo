@@ -38,6 +38,14 @@ describe('cargarRuta', () => {
     expect(cargarRuta('/dj08')).toBe(cargarDj08);
   });
 
+  it('carga el chunk correcto en las rutas de proveedores de Terceros', () => {
+    expect(cargarRuta('/terceros/proveedores')).toBe(cargarTerceros);
+    expect(cargarRuta('/terceros/cuentas')).toBe(cargarTerceros);
+    expect(cargarRuta('/terceros/convenios')).toBe(cargarCompra);
+    expect(cargarRuta('/terceros/liquidaciones')).toBe(cargarCompra);
+    expect(cargarRuta('/terceros/anexos')).toBe(cargarCompra);
+  });
+
   it('carga solo la página de proyectos pedida', () => {
     expect(cargarRuta('/proyectos/etapas')).toBe(cargarProyectosEtapas);
     expect(cargarRuta('/proyectos/servicios')).toBe(cargarProyectosServicios);

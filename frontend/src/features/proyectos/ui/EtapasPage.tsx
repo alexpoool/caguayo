@@ -15,7 +15,15 @@ import { useMonedaContrato } from './hooks/useMonedaContrato';
 
 type View = 'list' | 'form';
 
+type SolicitudInfo = {
+  codigo_solicitud?: string;
+  codigo_proyecto?: string;
+  numero?: string;
+  descripcion?: string;
+};
+
 const ETAPA_FORM_ID = 'etapa-form';
+const LARGO_NOMBRE_ETAPA = 150;
 
 export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
   const navigate = useNavigate();
@@ -27,7 +35,8 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
 
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [solicitudInfo, setSolicitudInfo] = useState<{ codigo_solicitud?: string; codigo_proyecto?: string; numero?: string } | null>(null);
+  const [solicitudInfo, setSolicitudInfo] = useState<SolicitudInfo | null>(null);
+  const solicitudIdRef = useRef(solicitudId);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -60,12 +69,30 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadInitialData(); }, []);
 
-  useEffect(() => {
-    if (solicitudId) {
-      casosUso.getSolicitud(Number(solicitudId))
-        .then(s => setSolicitudInfo({ codigo_solicitud: s.codigo_solicitud, codigo_proyecto: s.codigo_proyecto, numero: s.numero }))
-        .catch(() => setSolicitudInfo(null));
+  const cargarSolicitudInfo = async (): Promise<SolicitudInfo | null> => {
+    const id = solicitudId;
+    if (!id) return null;
+    try {
+      const s = await casosUso.getSolicitud(Number(id));
+      if (solicitudIdRef.current !== id) return null;
+      const info: SolicitudInfo = {
+        codigo_solicitud: s.codigo_solicitud,
+        codigo_proyecto: s.codigo_proyecto,
+        numero: s.numero,
+        descripcion: s.descripcion,
+      };
+      setSolicitudInfo(info);
+      return info;
+    } catch {
+      if (solicitudIdRef.current === id) setSolicitudInfo(null);
+      return null;
     }
+  };
+
+  useEffect(() => {
+    solicitudIdRef.current = solicitudId;
+    setSolicitudInfo(null);
+    if (solicitudId) cargarSolicitudInfo();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [solicitudId]);
 
@@ -213,11 +240,30 @@ export function EtapasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
         pagada: item.pagada,
         tipo_etapa: item.tipo_etapa || 'TAREAS'
       });
-    } else {
-      resetForm();
-      setFormData({ tipo_etapa: 'TAREAS', fecha_entrega: hoy, fecha_pago: addYears(hoy, 1), id_moneda: monedaContrato || '' });
+      setView('form');
+      return;
     }
-    setView('form');
+
+    const abrirNuevaEtapa = (info: SolicitudInfo | null) => {
+      resetForm();
+      setFormData({
+        tipo_etapa: 'TAREAS',
+        fecha_entrega: hoy,
+        fecha_pago: addYears(hoy, 1),
+        id_moneda: monedaContrato || '',
+        nombre_etapa: (info?.descripcion || info?.codigo_proyecto || info?.codigo_solicitud || '').slice(0, LARGO_NOMBRE_ETAPA),
+        descripcion: info?.descripcion || '',
+      });
+      setView('form');
+    };
+
+    // Si la solicitud aún no cargó, se consulta antes de abrir para que la
+    // etapa nueva nazca con el nombre y la descripción del proyecto.
+    if (solicitudInfo || !solicitudId) {
+      abrirNuevaEtapa(solicitudInfo);
+      return;
+    }
+    cargarSolicitudInfo().then(abrirNuevaEtapa);
   };
 
   const filteredEtapas = useMemo(() => {

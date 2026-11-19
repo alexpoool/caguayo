@@ -181,6 +181,23 @@ def _solicitudes_del_destino(conn):
         return {s: c for s, c in cur.fetchall()}
 
 
+def _proyectos_del_destino(conn):
+    """`id_solicitud_servicio` -> (código del proyecto, descripción).
+
+    El código es el nombre visible del proyecto y queda como respaldo del nombre
+    de la etapa. La descripción se usa como nombre y descripción de la etapa
+    cuando el legacy no las trae, para que no llegue vacía al destino.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id_solicitud_servicio,"
+            "       COALESCE(NULLIF(BTRIM(codigo_proyecto), ''), codigo_solicitud),"
+            "       descripcion"
+            "  FROM %s" % TABLA_SOLICITUD)
+        return {i: (nombre, descripcion)
+                for i, nombre, descripcion in cur.fetchall()}
+
+
 def _contrato_destino_por_legacy(conn):
     """`id_contrato` del legacy -> {símbolo: `id_contrato` del destino}.
 
@@ -309,8 +326,14 @@ def _monto_de_etapa(f, simbolo):
     return rl.decimal_legacy(f.get(col))
 
 
-def _payload_etapa_real(f, numero, contrato, ids_moneda, simbolo):
-    """Payload de una etapa que sí venía en el legacy, en la moneda `simbolo`."""
+def _payload_etapa_real(f, numero, contrato, ids_moneda, simbolo, proyecto=None):
+    """Payload de una etapa que sí venía en el legacy, en la moneda `simbolo`.
+
+    Si la etapa no trae nombre o descripción, hereda los del proyecto. Para el
+    nombre se usa la descripción del proyecto antes que su código: es el dato
+    que ve el usuario en la pantalla de proyectos. El código queda de respaldo
+    para no dejar la etapa sin nombre.
+    """
     valor = _monto_de_etapa(f, simbolo)
     fecha_contrato = fecha_legado(contrato.get("fecha")) if contrato else None
     fecha_entrega, avisos_fecha = rl.fecha_con_respaldo(
@@ -321,7 +344,10 @@ def _payload_etapa_real(f, numero, contrato, ids_moneda, simbolo):
     # que es mejor que fecharlos mal.
     fecha_pago = fecha_legado(f.get("fecha_pago"))
 
+    nombre_proyecto, descripcion_proyecto = proyecto or (None, None)
     nombre = (no_vacio(f.get("nombre_etapa"))
+              or no_vacio(descripcion_proyecto)
+              or no_vacio(nombre_proyecto)
               or (no_vacio(contrato.get("nombre_contrato")) if contrato else None))
     payload = {
         "id_solicitud_servicio": None,  # lo pone quien agrupa
@@ -329,7 +355,8 @@ def _payload_etapa_real(f, numero, contrato, ids_moneda, simbolo):
         "nombre_etapa": (nombre or NOMBRE_ETAPA_SINTETICA)[:LARGO_NOMBRE_ETAPA],
         "fecha_entrega": fecha_entrega,
         "fecha_pago": fecha_pago,
-        "descripcion": no_vacio(f.get("descripcion_detallada")),
+        "descripcion": (no_vacio(f.get("descripcion_detallada"))
+                        or no_vacio(descripcion_proyecto)),
         "valor": valor,
         "id_moneda": ids_moneda.get(simbolo),
         "pagada": (texto(f.get("pagada_cup")) or "").strip().lower() == "si",
@@ -338,24 +365,29 @@ def _payload_etapa_real(f, numero, contrato, ids_moneda, simbolo):
     return payload, avisos_fecha
 
 
-def _payload_etapa_sintetica(contrato, ids_moneda, simbolo):
+def _payload_etapa_sintetica(contrato, ids_moneda, simbolo, proyecto=None):
     """La etapa única de una solicitud que no tenía ninguna, en su moneda.
 
     El importe sale del contrato y la fecha de su firma. Ningún contrato tiene
     dos solicitudes sin etapa —comprobado sobre el volcado—, así que repartir el
-    importe del contrato no duplica nada.
+    importe del contrato no duplica nada. El nombre y la descripción salen del
+    proyecto, que es lo único que existe para una etapa que no estaba; para el
+    nombre se usa la descripción del proyecto y su código queda de respaldo.
     """
     col = "valor_contratocup" if simbolo == "CUP" else "valor_contratocuc"
     valor = rl.decimal_legacy(contrato.get(col))
     fecha, avisos_fecha = rl.fecha_con_respaldo(contrato.get("fecha"), [])
+    nombre_proyecto, descripcion_proyecto = proyecto or (None, None)
     payload = {
         "id_solicitud_servicio": None,
         "numero_etapa": 1,
-        "nombre_etapa": (no_vacio(contrato.get("nombre_contrato"))
+        "nombre_etapa": (no_vacio(descripcion_proyecto)
+                         or no_vacio(nombre_proyecto)
+                         or no_vacio(contrato.get("nombre_contrato"))
                          or NOMBRE_ETAPA_SINTETICA)[:LARGO_NOMBRE_ETAPA],
         "fecha_entrega": fecha,
         "fecha_pago": None,
-        "descripcion": None,
+        "descripcion": no_vacio(descripcion_proyecto),
         "valor": valor,
         "id_moneda": ids_moneda.get(simbolo),
         "pagada": False,
@@ -365,7 +397,8 @@ def _payload_etapa_sintetica(contrato, ids_moneda, simbolo):
 
 
 def preparar_etapas(registro, solicitud_por_contrato, contrato_por_solicitud,
-                    solicitud_ids, ids_moneda, ya_con_etapa=()):
+                    solicitud_ids, ids_moneda, ya_con_etapa=(),
+                    proyectos_por_solicitud=None):
     """Payloads de las etapas, y de dónde sale cada artista.
 
     Devuelve (etapas, primera_por_contrato, reales_por_etapa):
@@ -389,7 +422,12 @@ def preparar_etapas(registro, solicitud_por_contrato, contrato_por_solicitud,
     solicitud, así que una solicitud con etapas no necesita ninguna más. Sin
     este filtro la segunda pasada volvería a fabricar todas las sintéticas y
     duplicaría 3.730 etapas.
+
+    `proyectos_por_solicitud` es id_solicitud -> (nombre, descripción) del
+    proyecto. Las etapas del legacy que no traen nombre ni descripción los
+    heredan de ahí, para no llegar vacías ni con un texto genérico.
     """
+    proyectos = proyectos_por_solicitud or {}
     supplemented = _suplementos_legacy()
     por_solicitud = _agrupar_etapas(registro, solicitud_por_contrato, supplemented)
     por_id_legacy = _contrato_legacy_por_id()
@@ -410,13 +448,14 @@ def preparar_etapas(registro, solicitud_por_contrato, contrato_por_solicitud,
         if id_solicitud in ya_con_etapa:
             continue
         simbolo = simbolo_de_solicitud.get(id_solicitud, "CUC")
+        proyecto = proyectos.get(id_solicitud)
         for numero, f in enumerate(filas, start=1):
             base = f.get("id_contrato")
             if base in (None, "", "0"):
                 base = supplemented.get(f.get("id_suplemento"))
             contrato = por_id_legacy.get(base)
             payload, avisos = _payload_etapa_real(f, numero, contrato, ids_moneda,
-                                                  simbolo)
+                                                  simbolo, proyecto)
             payload["id_solicitud_servicio"] = id_solicitud
             indice = len(etapas)
             etapas.append(payload)
@@ -448,7 +487,8 @@ def preparar_etapas(registro, solicitud_por_contrato, contrato_por_solicitud,
             id_contrato_legacy, contrato, simbolo = encontrado
         else:
             id_contrato_legacy, contrato, simbolo = None, {}, "CUC"
-        payload, avisos = _payload_etapa_sintetica(contrato, ids_moneda, simbolo)
+        payload, avisos = _payload_etapa_sintetica(
+            contrato, ids_moneda, simbolo, proyectos.get(id_solicitud))
         payload["id_solicitud_servicio"] = id_solicitud
         indice = len(etapas)
         etapas.append(payload)
@@ -780,6 +820,7 @@ def cargar_etapas(registro=None, dry_run=True, diag=None):
         # Los mapas salen del destino, que ya tiene los contratos partidos y sus
         # dos solicitudes: no hace falta que la Fase N pase nada.
         solicitud_por_contrato, contrato_por_solicitud = _solicitud_por_contrato(conn)
+        proyectos_por_solicitud = _proyectos_del_destino(conn)
         # En simulación no se escribe nada, así que no se busca ni se crea el
         # servicio genérico: se simula con el código puesto y sin id, que es lo
         # que se verá si luego la inserción del catálogo falla.
@@ -794,7 +835,8 @@ def cargar_etapas(registro=None, dry_run=True, diag=None):
               "Fase N tiene que correr antes: sin solicitud no hay etapa.")
     etapas, primera, reales = preparar_etapas(
         registro, solicitud_por_contrato, contrato_por_solicitud,
-        set(ids_solicitud.values()), ids_moneda, ya_con_etapa)
+        set(ids_solicitud.values()), ids_moneda, ya_con_etapa,
+        proyectos_por_solicitud)
 
     if not etapas:
         print("  Ninguna etapa que migrar: %d solicitud(es) ya tienen etapa."

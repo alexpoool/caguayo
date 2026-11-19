@@ -48,12 +48,16 @@ export function CuentasClientePage({ casosUso }: { casosUso: CasosUsoTerceros })
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
-  const volverA = location.pathname.startsWith('/compra') ? '/compra' : '/venta';
   const [searchParams] = useSearchParams();
 
   const idClienteParam = searchParams.get("cliente") || searchParams.get("proveedor");
   const idCliente = idClienteParam ? Number(idClienteParam) : null;
   const esProveedor = Boolean(searchParams.get("proveedor"));
+  const volverA = location.pathname.startsWith('/compra')
+    ? '/compra'
+    : location.pathname.startsWith('/terceros')
+      ? (esProveedor ? '/terceros/proveedores' : '/clientes')
+      : '/venta';
 
   const [view, setView] = useState<"list" | "form">("list");
   const [editingCuenta, setEditingCuenta] = useState<Cuenta | null>(null);

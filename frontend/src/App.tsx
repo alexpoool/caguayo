@@ -468,8 +468,8 @@ const TERCEROS_SECCIONES: { id: string; label: string; items: AdminSeccionItem[]
     id: 'compra',
     label: 'Compra',
     items: [
-      { to: '/compra/clientes', label: 'Proveedores', icon: Briefcase, func: 'proveedores' },
-      { to: '/compra/convenios', label: 'Convenios', icon: FileText, func: 'convenios' },
+      { to: '/terceros/proveedores', label: 'Proveedores', icon: Briefcase, func: 'proveedores' },
+      { to: '/terceros/convenios', label: 'Convenios', icon: FileText, func: 'convenios' },
     ],
   },
 ];
@@ -1441,6 +1441,46 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros">
                       <TercerosHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/terceros/proveedores"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros/proveedores">
+                      <ClientesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/terceros/cuentas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros/cuentas">
+                      <CuentasClientePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/terceros/convenios"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros/convenios">
+                      <CompraConveniosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/terceros/liquidaciones"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros/liquidaciones">
+                      <LiquidacionesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/terceros/anexos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros/anexos">
+                      <CompraAnexosPage />
                     </ProtectedRoute>
                   }
                 />

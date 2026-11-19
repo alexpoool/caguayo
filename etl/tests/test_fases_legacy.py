@@ -626,3 +626,52 @@ def test_sin_servicio_generico_la_tarea_se_queda_sin_codigo():
 
     assert tareas[0]["id_servicio"] is None
     assert tareas[0]["codigo_extendido"] is None
+
+
+# --------------------------------------------------------------------------
+# Nombre y descripción heredados del proyecto
+# --------------------------------------------------------------------------
+def _etapa_legacy(**cambios):
+    fila = {"pago_cuc": "0.00", "pago_cup": "0.00"}
+    fila.update(cambios)
+    return fila
+
+
+def test_etapa_sin_nombre_ni_descripcion_hereda_del_proyecto():
+    payload, _ = migrar_etapas._payload_etapa_real(
+        _etapa_legacy(), 1, {}, {"CUC": 2}, "CUC",
+        ("Proyecto1", "Descripción del proyecto"))
+
+    assert payload["nombre_etapa"] == "Descripción del proyecto"
+    assert payload["descripcion"] == "Descripción del proyecto"
+
+
+def test_etapa_sin_nombre_usa_el_codigo_si_el_proyecto_no_tiene_descripcion():
+    payload, _ = migrar_etapas._payload_etapa_real(
+        _etapa_legacy(), 1, {}, {"CUC": 2}, "CUC",
+        ("Proyecto1", None))
+
+    assert payload["nombre_etapa"] == "Proyecto1"
+    assert payload["descripcion"] is None
+
+
+def test_etapa_con_texto_propio_no_se_sobrescribe():
+    payload, _ = migrar_etapas._payload_etapa_real(
+        _etapa_legacy(nombre_etapa="Etapa 1",
+                      descripcion_detallada="Detalle propio"),
+        1, {}, {"CUC": 2}, "CUC",
+        ("Proyecto1", "Descripción del proyecto"))
+
+    assert payload["nombre_etapa"] == "Etapa 1"
+    assert payload["descripcion"] == "Detalle propio"
+
+
+def test_etapa_sintetica_hereda_del_proyecto():
+    contrato = {"nombre_contrato": "Contrato X", "fecha": "2020-01-01",
+                "valor_contratocuc": "100.00", "valor_contratocup": "0.00"}
+
+    payload, _ = migrar_etapas._payload_etapa_sintetica(
+        contrato, {"CUC": 2}, "CUC", ("Proyecto1", "Descripción del proyecto"))
+
+    assert payload["nombre_etapa"] == "Descripción del proyecto"
+    assert payload["descripcion"] == "Descripción del proyecto"

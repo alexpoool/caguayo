@@ -6,11 +6,11 @@ import { ClientesList } from "./components/list/ClientesList";
 import { ConfirmModal } from "@/shared/ui/components";
 import type { CasosUsoTerceros } from "../application/casos-uso";
 
-// La misma página se usa en /clientes, /venta/clientes, /compra/clientes y
-// /compra/proveedores. Al cambiar de ruta React reutiliza el componente y su
-// estado, lo que mostraba la lista de clientes en la vista de proveedores (y
-// viceversa) hasta que llegaba la nueva consulta. La key fuerza un montaje
-// limpio en cada ruta.
+// La misma página se usa en /clientes, /venta/clientes, /compra/clientes,
+// /compra/proveedores y /terceros/proveedores. Al cambiar de ruta React
+// reutiliza el componente y su estado, lo que mostraba la lista de clientes
+// en la vista de proveedores (y viceversa) hasta que llegaba la nueva
+// consulta. La key fuerza un montaje limpio en cada ruta.
 export function ClientesPage({ casosUso }: { casosUso: CasosUsoTerceros }) {
   const { pathname, search } = useLocation();
   return (
