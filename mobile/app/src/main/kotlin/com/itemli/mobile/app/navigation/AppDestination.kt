@@ -19,4 +19,7 @@ sealed class AppDestination(val route: String, val label: String, val icon: Imag
     data object ReportDetail : AppDestination("report-detail/{reportId}", "Detalle", null) {
         fun route(reportId: String) = "report-detail/$reportId"
     }
+    data object ReportChart : AppDestination("report-chart/{reportId}", "Gráficos", null) {
+        fun route(reportId: String) = "report-chart/$reportId"
+    }
 }
