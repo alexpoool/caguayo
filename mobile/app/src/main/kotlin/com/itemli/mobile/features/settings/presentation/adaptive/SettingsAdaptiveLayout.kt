@@ -103,7 +103,7 @@ fun SettingsAdaptiveLayout(
                 }
             }
         }
-        Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Security, contentDescription = null, tint = BrandPrimary)
                 Column(Modifier.padding(start = 12.dp)) {
@@ -111,7 +111,7 @@ fun SettingsAdaptiveLayout(
                     Text(
                         if (state.appLockEnabled) "Autenticación biométrica activada" else "Autenticación biométrica desactivada",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
