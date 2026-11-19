@@ -5,6 +5,11 @@ from typing import List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import psycopg2
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+from src.database.connection import get_auth_session
+from src.models import ConexionDatabase
+from fastapi import Depends
 
 load_dotenv()
 
@@ -31,7 +36,6 @@ class ConexionTestRequest(BaseModel):
 @router.get("", response_model=List[ConexionResponse])
 async def get_conexiones():
     """Lista bases de datos sin modificar su estructura ni sus datos."""
-    from src.services.database_service import DatabaseService
 
     try:
         conn = psycopg2.connect(
