@@ -65,91 +65,43 @@ async def get_conexiones():
 
 
 @router.post("/test")
-async def test_conexion(data: ConexionTestRequest):
-    """Prueba la conexión a una base de datos específica"""
-    host = data.host if data.host != "localhost" else os.getenv("ADMIN_DB_HOST", "localhost")
+async def test_conexion(data: ConexionTestRequest, db: AsyncSession = Depends(get_auth_session)):
+    """Comprueba conexión y esquema mínimo sin modificar la base de datos."""
+    conn = None
+    cur = None
     try:
-        conn = psycopg2.connect(
-            host=host,
-            port=data.puerto,
-            user=os.getenv("LECTOR_USER"),
-            password=os.getenv("LECTOR_PASSWORD"),
-            database=data.nombre_database,
-            client_encoding="utf8",
-        )
+        result = await db.exec(select(ConexionDatabase).where(ConexionDatabase.nombre_database == data.nombre_database))
+        saved = result.first()
+        host = (saved.host if saved else None) or os.getenv("ADMIN_DB_HOST", "localhost")
+        port = saved.puerto if saved else int(os.getenv("ADMIN_DB_PORT", 5432))
+        user = (saved.usuario if saved else None) or os.getenv("ADMIN_DB_USER", "postgres")
+        password = (saved.contrasenia if saved else None) or os.getenv("ADMIN_DB_PASSWORD")
+        conn = psycopg2.connect(host=host, port=port, user=user, password=password, database=data.nombre_database, connect_timeout=5, client_encoding="utf8")
         cur = conn.cursor()
-        cur.execute("SELECT 1")
-        cur.close()
-        conn.close()
-        return {"success": True, "message": "Conexión exitosa"}
-    except Exception as e:
-        return {"success": False, "message": str(e)}
-
-
-class DependenciaResponse(BaseModel):
-    id_dependencia: int
-    nombre: str
-
-
-class GrupoResponse(BaseModel):
-    id_grupo: int
-    nombre: str
-    descripcion: str | None = None
-
-
-@router.get("/{db_name}/dependencias", response_model=List[DependenciaResponse])
-async def get_dependencias_por_db(db_name: str):
-    """Obtiene las dependencias de una base de datos específica"""
-    try:
-        conn = psycopg2.connect(
-            host=os.getenv("ADMIN_DB_HOST", "localhost"),
-            port=int(os.getenv("ADMIN_DB_PORT", 5432)),
-            user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD"),
-            database=db_name,
-            client_encoding="utf8",
-        )
-        cur = conn.cursor()
-        cur.execute("SELECT id_dependencia, nombre FROM dependencia ORDER BY nombre")
-        dependencias = [
-            DependenciaResponse(id_dependencia=row[0], nombre=row[1])
-            for row in cur.fetchall()
-        ]
-        cur.close()
-        conn.close()
-        return dependencias
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Error al obtener dependencias de {db_name}: {str(e)}",
-        )
-
-
-@router.get("/{db_name}/grupos", response_model=List[GrupoResponse])
-async def get_grupos_por_db(db_name: str):
-    """Obtiene los grupos de usuarios de una base de datos específica."""
-    try:
-        conn = psycopg2.connect(
-            host=os.getenv("ADMIN_DB_HOST", "localhost"),
-            port=int(os.getenv("ADMIN_DB_PORT", 5432)),
-            user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD"),
-            database=db_name,
-            client_encoding="utf8",
-        )
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT id_grupo, nombre, descripcion FROM grupo ORDER BY nombre"
-        )
-        grupos = [
-            GrupoResponse(id_grupo=row[0], nombre=row[1], descripcion=row[2])
-            for row in cur.fetchall()
-        ]
-        cur.close()
-        conn.close()
-        return grupos
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Error al obtener grupos de {db_name}: {str(e)}",
-        )
+        required = {
+            "usuarios": {"id_usuario", "alias", "contrasenia", "nombre", "primer_apellido", "ci", "cargo", "id_grupo", "id_dependencia"},
+            "dependencia": {"id_dependencia", "nombre", "base_datos", "host", "puerto", "id_provincia", "id_municipio"},
+            "provincia": {"id_provincia", "nombre"},
+            "municipio": {"id_municipio", "id_provincia", "nombre"},
+            "grupo": {"id_grupo", "nombre"},
+            "grupo_funcionalidad": {"id_grupo", "id_funcionalidad"},
+            "funcionalidad": {"id_funcionalidad", "nombre"},
+            "sesion": {"id_sesion", "id_usuario", "token", "base_datos", "fecha_expiracion"},
+        }
+        cur.execute("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ANY(%s)", (list(required.keys()),))
+        actual = {}
+        for table_name, column_name in cur.fetchall():
+            actual.setdefault(table_name, set()).add(column_name)
+        missing = [name for name, columns in required.items() if columns - actual.get(name, set())]
+        if missing:
+            logger.info("Database %s rejected because its ITEMLI schema is incomplete", data.nombre_database)
+            return {"success": False, "message": "La base de datos no tiene la estructura requerida por ITEMLI Reports."}
+        return {"success": True, "message": "Conexión y estructura compatibles"}
+    except Exception as exc:
+        logger.warning("Database compatibility check failed for %s: %s", data.nombre_database, type(exc).__name__)
+        return {"success": False, "message": "No se pudo conectar o validar esta base de datos. Puedes seleccionar otra."}
+    finally:
+        if cur is not None:
+            cur.close()
+        if conn is not None:
+            conn.close()
