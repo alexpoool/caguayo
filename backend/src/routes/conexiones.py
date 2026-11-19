@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import psycopg2
 from sqlmodel import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_auth_session
 from src.models import ConexionDatabase
@@ -74,8 +75,12 @@ async def test_conexion(data: ConexionTestRequest, db: AsyncSession = Depends(ge
     conn = None
     cur = None
     try:
-        result = await db.exec(select(ConexionDatabase).where(ConexionDatabase.nombre_database == data.nombre_database))
-        saved = result.first()
+        try:
+            result = await db.exec(select(ConexionDatabase).where(ConexionDatabase.nombre_database == data.nombre_database))
+            saved = result.first()
+        except SQLAlchemyError:
+            await db.rollback()
+            saved = None
         host = (saved.host if saved else None) or os.getenv("ADMIN_DB_HOST", "localhost")
         port = saved.puerto if saved else int(os.getenv("ADMIN_DB_PORT", 5432))
         user = (saved.usuario if saved else None) or os.getenv("ADMIN_DB_USER", "postgres")
