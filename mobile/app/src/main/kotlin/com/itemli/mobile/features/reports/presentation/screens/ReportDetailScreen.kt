@@ -59,6 +59,7 @@ fun ReportDetailScreen(
             state = state,
             onFilterChange = viewModel::onFilterChange,
             onRefresh = viewModel::refresh,
+            onLoadMore = viewModel::loadMore,
             onDownloadPdf = viewModel::downloadPdf,
             onBack = onBack,
         )
