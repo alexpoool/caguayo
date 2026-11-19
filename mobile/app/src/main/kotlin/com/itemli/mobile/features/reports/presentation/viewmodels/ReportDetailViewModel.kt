@@ -26,6 +26,8 @@ data class ReportDetailUiState(
     val filterOptions: Map<String, List<ReportFilterOption>> = emptyMap(),
     val preview: ReportPreview? = null,
     val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val hasMore: Boolean = false,
     val error: String? = null,
     /** true mientras se descarga el PDF. */
     val isPdfLoading: Boolean = false,
@@ -139,21 +141,37 @@ class ReportDetailViewModel(
 
     fun refresh() {
         val definition = _state.value.definition ?: return
+        val filters = _state.value.filters
         val missingFilter = definition.filters.firstOrNull { filter ->
-            filter.required && _state.value.filters[filter.id].isNullOrBlank()
+            filter.required && filters[filter.id].isNullOrBlank()
         }
         if (missingFilter != null) {
             _state.value = _state.value.copy(error = "Falta un filtro obligatorio")
             return
         }
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true)
-            when (val result = getPreviewUseCase(definition, _state.value.filters)) {
-                is AppResult.Success -> _state.value = _state.value.copy(
-                    isLoading = false,
-                    preview = result.value.copy(rows = result.value.rows.filterNot { row -> row.keys.any { key -> key == "id" || key.startsWith("id_") } }.take(3)),
-                    error = null,
-                )
+            _state.value = _state.value.copy(
+                isLoading = true,
+                isLoadingMore = false,
+                hasMore = false,
+                preview = null,
+                error = null,
+            )
+            when (val result = getPreviewUseCase(definition, filters, PAGE_SIZE, 0)) {
+                is AppResult.Success -> {
+                    val preview = result.value.copy(
+                        rows = result.value.rows.filterNot { row ->
+                            row.keys.any { key -> key == "id" || key.startsWith("id_") }
+                        },
+                    )
+                    val total = preview.totalRows()
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        preview = preview,
+                        hasMore = preview.rows.size < total,
+                        error = null,
+                    )
+                }
                 is AppResult.Failure -> _state.value = _state.value.copy(
                     isLoading = false,
                     preview = null,
@@ -161,6 +179,50 @@ class ReportDetailViewModel(
                 )
             }
         }
+    }
+
+    /** Solicita la siguiente página cuando el usuario se acerca al final del scroll. */
+    fun loadMore() {
+        val current = _state.value
+        val definition = current.definition ?: return
+        val preview = current.preview ?: return
+        if (current.isLoading || current.isLoadingMore || !current.hasMore) return
+        val offset = preview.rows.size
+        val filters = current.filters
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoadingMore = true)
+            when (val result = getPreviewUseCase(definition, filters, PAGE_SIZE, offset)) {
+                is AppResult.Success -> {
+                    val newRows = result.value.rows.filterNot { row ->
+                        row.keys.any { key -> key == "id" || key.startsWith("id_") }
+                    }
+                    val combined = (preview.rows + newRows).distinct()
+                    val updated = result.value.copy(rows = combined, fromCache = result.value.fromCache)
+                    _state.value = _state.value.copy(
+                        isLoadingMore = false,
+                        preview = updated,
+                        hasMore = newRows.isNotEmpty() && combined.size < updated.totalRows(),
+                        error = null,
+                    )
+                }
+                is AppResult.Failure -> _state.value = _state.value.copy(
+                    isLoadingMore = false,
+                    error = result.error.message ?: "No se pudieron cargar más registros",
+                )
+            }
+        }
+    }
+
+    private fun com.itemli.mobile.features.reports.domain.entities.ReportPreview.totalRows(): Int {
+        val value = totals["total_items"] ?: totals["total_brackets"] ?: rows.size
+        return when (value) {
+            is Number -> value.toInt()
+            else -> value.toString().toIntOrNull() ?: rows.size
+        }
+    }
+
+    private companion object {
+        const val PAGE_SIZE = 10
     }
 
     /** Descarga el PDF con los filtros actuales y lo guarda en cacheDir/pdf. */
