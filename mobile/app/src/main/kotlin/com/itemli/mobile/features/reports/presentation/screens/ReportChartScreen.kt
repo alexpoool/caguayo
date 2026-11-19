@@ -168,12 +168,14 @@ private fun buildChartEntries(
         "mincult" -> "bracket" to arrayOf("total_devengado")
         else -> "nombre" to arrayOf("cantidad")
     }
-    if (amountKeys.all { key -> rows.none { it[key] is Number || it[key]?.toString()?.toDoubleOrNull() != null } }) {
-        val total = (totals["total_items"] as? Number)?.toDouble() ?: rows.size.toDouble()
-        return listOf(ChartEntry("Registros", total)).filter { it.value > 0 }
+    val hasNumericValues = amountKeys.any { key ->
+        rows.any { it[key] is Number || it[key]?.toString()?.replace(",", ".")?.toDoubleOrNull() != null }
     }
     return rows.groupBy { text(it, groupKey) }
-        .map { (label, group) -> ChartEntry(label, group.sumOf { value(it, *amountKeys) }) }
+        .map { (label, group) ->
+            val amount = if (hasNumericValues) group.sumOf { value(it, *amountKeys) } else group.size.toDouble()
+            ChartEntry(label, amount)
+        }
         .filter { it.value > 0 }
         .sortedByDescending { it.value }
         .take(10)
