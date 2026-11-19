@@ -205,7 +205,8 @@ fun ReportChartScreen(
                             val filter = definition?.filters?.firstOrNull { it.id == filterId }
                                 ?: return@mapNotNull null
                             val displayValue = filterOptions[filterId]
-                                ?.firstOrNull { it.value == value }?.label ?: value
+                                ?.firstOrNull { it.value == value }?.label
+                                ?: if (filterId.startsWith("id_")) "Opción seleccionada" else value
                             filter.label to displayValue
                         }.toMap()
                         downloading = true
