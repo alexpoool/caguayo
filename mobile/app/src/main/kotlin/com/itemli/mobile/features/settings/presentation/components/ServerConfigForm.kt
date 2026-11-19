@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
@@ -26,9 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/**
- * Formulario de ajustes (URL base y proxy corporativo).
- */
 @Composable
 fun ServerConfigForm(
     baseUrl: String,
@@ -41,7 +37,6 @@ fun ServerConfigForm(
     isTesting: Boolean,
     appLockEnabled: Boolean = false,
     appLockSupported: Boolean = true,
-    /** Nombre visible de la carpeta de PDFs (null = carpeta interna de la app). */
     pdfDirName: String? = null,
     onBaseUrlChange: (String) -> Unit,
     onProxyChange: (Boolean, String, String, String, String) -> Unit,
@@ -71,97 +66,87 @@ fun ServerConfigForm(
         }
 
         if (showProxy) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(
-                checked = useProxy,
-                onCheckedChange = { checked -> onProxyChange(checked, proxyHost, proxyPort, proxyUser, proxyPassword) },
-            )
-            Text("Usar proxy corporativo")
-            IconButton(onClick = { showProxyHelp = true }) {
-                Icon(
-                    imageVector = Icons.Filled.Info,
-                    contentDescription = "Cómo conectarse al proxy",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = useProxy,
+                    onCheckedChange = { enabled ->
+                        onProxyChange(enabled, proxyHost, proxyPort, proxyUser, proxyPassword)
+                    },
+                )
+                Text("Usar proxy corporativo")
+                IconButton(onClick = { showProxyHelp = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = "Cómo conectarse al proxy",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+            if (useProxy) {
+                OutlinedTextField(
+                    value = proxyHost,
+                    onValueChange = { onProxyChange(useProxy, it, proxyPort, proxyUser, proxyPassword) },
+                    label = { Text("Host del proxy") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = proxyPort,
+                    onValueChange = { onProxyChange(useProxy, proxyHost, it, proxyUser, proxyPassword) },
+                    label = { Text("Puerto") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = proxyUser,
+                    onValueChange = { onProxyChange(useProxy, proxyHost, proxyPort, it, proxyPassword) },
+                    label = { Text("Usuario (opcional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = proxyPassword,
+                    onValueChange = { onProxyChange(useProxy, proxyHost, proxyPort, proxyUser, it) },
+                    label = { Text("Contraseña (opcional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
 
-        }
         if (showSecurity && appLockSupported) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = appLockEnabled,
-                    onCheckedChange = onAppLockChange,
-                )
+                Switch(checked = appLockEnabled, onCheckedChange = onAppLockChange)
                 Text("Bloquear la app con biometría")
             }
         }
 
         if (showPdf) {
-        Text("Descargas de PDF", style = MaterialTheme.typography.titleMedium)
-        Text(
-            text = pdfDirName?.let { "Carpeta: $it" }
-                ?: "Carpeta interna de la app (privada). Elige una carpeta para verlos con el explorador de archivos.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onPickPdfDir) {
-                Text("Elegir carpeta…")
-            }
-            if (pdfDirName != null) {
-                OutlinedButton(onClick = onResetPdfDir) {
-                    Text("Restablecer")
+            Text("Descargas de PDF", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = pdfDirName?.let { "Carpeta: $it" }
+                    ?: "Carpeta interna de la app (privada).",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onPickPdfDir) { Text("Elegir carpeta…") }
+                if (pdfDirName != null) {
+                    OutlinedButton(onClick = onResetPdfDir) { Text("Restablecer") }
                 }
             }
         }
 
-        if (useProxy && showProxy) {
-            OutlinedTextField(
-                value = proxyHost,
-                onValueChange = { onProxyChange(useProxy, it, proxyPort, proxyUser, proxyPassword) },
-                label = { Text("Host del proxy") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = proxyPort,
-                onValueChange = { onProxyChange(useProxy, proxyHost, it, proxyUser, proxyPassword) },
-                label = { Text("Puerto") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = proxyUser,
-                onValueChange = { onProxyChange(useProxy, proxyHost, proxyPort, it, proxyPassword) },
-                label = { Text("Usuario (opcional)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = proxyPassword,
-                onValueChange = { onProxyChange(useProxy, proxyHost, proxyPort, proxyUser, it) },
-                label = { Text("Contraseña (opcional)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        }
         if (showServer || showProxy) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(
-                onClick = onSave,
-                enabled = !isLoading,
-            ) { Text("Guardar") }
-
-            OutlinedButton(
-                onClick = onTest,
-                enabled = !isTesting && baseUrl.isNotBlank(),
-            ) {
-                if (isTesting) CircularProgressIndicator() else Text("Probar conexión")
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(onClick = onSave, enabled = !isLoading) { Text("Guardar") }
+                OutlinedButton(
+                    onClick = onTest,
+                    enabled = !isTesting && baseUrl.isNotBlank(),
+                ) {
+                    if (isTesting) CircularProgressIndicator() else Text("Probar conexión")
+                }
             }
-        }
         }
     }
 
