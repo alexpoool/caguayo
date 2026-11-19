@@ -24,10 +24,7 @@ class FontSizePreferences(private val context: Context) {
         const val MIN_SCALE = 0.85f
         const val MAX_SCALE = 1.30f
         val PRESETS = listOf(0.85f, 1.0f, 1.15f, 1.30f)
-    }
-
-    private companion object Keys {
-        val KEY_FONT_SCALE = floatPreferencesKey("font_scale")
+        private val KEY_FONT_SCALE = floatPreferencesKey("font_scale")
     }
 }
 
