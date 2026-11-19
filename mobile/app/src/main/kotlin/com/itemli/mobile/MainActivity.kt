@@ -9,6 +9,8 @@ import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.itemli.mobile.app.navigation.ItemliAppRoot
@@ -17,6 +19,7 @@ import com.itemli.mobile.shared.ui.components.AppLockGate
 import com.itemli.mobile.shared.ui.theme.ItemliTheme
 import com.itemli.mobile.shared.ui.theme.AppThemeMode
 import com.itemli.mobile.shared.ui.theme.ThemePreferences
+import com.itemli.mobile.shared.ui.theme.FontSizePreferences
 import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 
@@ -40,16 +43,21 @@ class MainActivity : FragmentActivity() {
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
             val themePreferences = remember { ThemePreferences(applicationContext) }
+            val fontSizePreferences = remember { FontSizePreferences(applicationContext) }
+            val fontScale by fontSizePreferences.scale.collectAsState(initial = FontSizePreferences.DEFAULT_SCALE)
+            val density = LocalDensity.current
             val themeMode by themePreferences.mode.collectAsState(initial = AppThemeMode.SYSTEM)
             val darkTheme = when (themeMode) {
                 AppThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
                 AppThemeMode.LIGHT -> false
                 AppThemeMode.DARK -> true
             }
-            ItemliTheme(darkTheme = darkTheme) {
+            CompositionLocalProvider(LocalDensity provides density.copy(fontScale = fontScale)) {
+              ItemliTheme(darkTheme = darkTheme) {
                 AppLockGate {
                     ItemliAppRoot(windowSizeClass = windowSizeClass)
                 }
+              }
             }
         }
     }
