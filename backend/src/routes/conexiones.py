@@ -88,8 +88,8 @@ async def test_conexion(data: ConexionTestRequest, db: AsyncSession = Depends(ge
         conn = psycopg2.connect(host=host, port=port, user=user, password=password, database=data.nombre_database, connect_timeout=5, client_encoding="utf8")
         cur = conn.cursor()
         required = {
-            "usuarios": {"id_usuario", "alias", "contrasenia", "nombre", "primer_apellido", "ci", "cargo", "id_grupo", "id_dependencia"},
-            "dependencia": {"id_dependencia", "nombre", "base_datos", "host", "puerto", "id_provincia", "id_municipio"},
+            "usuarios": {"id_usuario", "alias", "contrasenia", "nombre", "primer_apellido", "segundo_apellido", "ci", "cargo", "id_grupo", "id_dependencia"},
+            "dependencia": {"id_dependencia", "id_tipo_dependencia", "codigo_padre", "nombre", "denominacion", "nit", "reeup", "direccion", "telefono", "email", "web", "base_datos", "host", "puerto", "id_provincia", "id_municipio"},
             "provincia": {"id_provincia", "nombre"},
             "municipio": {"id_municipio", "id_provincia", "nombre"},
             "grupo": {"id_grupo", "nombre"},
