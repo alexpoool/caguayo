@@ -159,6 +159,7 @@ class SettingsViewModel(
                 AppConfig.ServerConfig(
                     baseUrl = url,
                     proxy = proxy,
+                    pdfDirUri = _state.value.pdfDirUri,
                 ),
             )
             when (result) {
@@ -199,8 +200,9 @@ class SettingsViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(isTesting = true)
             val result = apiClient.ping()
-            _state.value = _state.value.copy(isTesting = false)
-            onResult(result.isSuccess, result.exceptionOrNull()?.message ?: "OK")
+            val message = if (result.isSuccess) "Conexión correcta" else (result.exceptionOrNull()?.message ?: "No se pudo conectar")
+            _state.value = _state.value.copy(isTesting = false, message = message)
+            onResult(result.isSuccess, message)
         }
     }
 }
