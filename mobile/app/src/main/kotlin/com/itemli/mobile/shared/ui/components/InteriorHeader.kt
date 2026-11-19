@@ -14,7 +14,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -48,7 +48,7 @@ fun InteriorHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
-            Icon(Icons.Filled.ArrowBack, contentDescription = "Volver",
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver",
                 tint = Color.White, modifier = Modifier.size(22.dp).clickable(onClick = onBack))
             Spacer(Modifier.width(16.dp))
         }
