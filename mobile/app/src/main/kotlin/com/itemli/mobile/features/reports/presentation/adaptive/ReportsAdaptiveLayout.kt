@@ -216,7 +216,7 @@ private fun ReportRow(definition: ReportDefinition, onClick: () -> Unit) {
             }
             Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(definition.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(definition.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Clip)
                 Text(definition.description, style = MaterialTheme.typography.bodySmall, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Icon(Icons.Filled.ChevronRight, contentDescription = "Abrir", tint = Color(0xFF294B83))
