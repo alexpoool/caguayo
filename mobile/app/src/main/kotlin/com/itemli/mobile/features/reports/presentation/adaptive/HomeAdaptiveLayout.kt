@@ -82,7 +82,7 @@ fun HomeAdaptiveLayout(
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize().background(HomeSurface),
     ) {
-        val shortHeight = maxHeight < 620.dp
+        val shortHeight = maxHeight < 700.dp
         val compactWidth = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
         Column(
             modifier = Modifier
