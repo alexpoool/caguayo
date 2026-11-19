@@ -31,9 +31,11 @@ class ReportsRepositoryImpl(
     override suspend fun preview(
         definition: ReportDefinition,
         filters: Map<String, String>,
+        limit: Int,
+        offset: Int,
     ): AppResult<ReportPreview> {
-        val cacheKey = previewCacheKey(definition, filters)
-        val result = runCatching { fetchPreview(definition, filters) }
+        val cacheKey = previewCacheKey(definition, filters) + "#" + limit + ":" + offset
+        val result = runCatching { fetchPreview(definition, filters, limit, offset) }
 
         if (result.isSuccess) {
             val preview = result.getOrThrow()
@@ -69,9 +71,13 @@ class ReportsRepositoryImpl(
     private suspend fun fetchPreview(
         definition: ReportDefinition,
         filters: Map<String, String>,
+        limit: Int,
+        offset: Int,
     ): ReportPreview = when (definition.id) {
         ReportCatalog.existencias.id -> {
-            val dto = api().existenciasPreview(
+            val dto = api(,
+                limit = limit,
+                offset = offset).existenciasPreview(
                 dependenciaId = filters.requiredFilter("id_dependencia"),
             )
             ReportPreview(
@@ -83,7 +89,9 @@ class ReportsRepositoryImpl(
             )
         }
         ReportCatalog.proveedoresDependencia.id -> {
-            val dto = api().proveedoresPreview(
+            val dto = api(,
+                limit = limit,
+                offset = offset).proveedoresPreview(
                 dependenciaId = filters.optionalFilter("id_dependencia"),
                 provinciaId = filters.optionalFilter("id_provincia"),
             )
@@ -93,7 +101,9 @@ class ReportsRepositoryImpl(
             )
         }
         ReportCatalog.movimientosDependencia.id -> {
-            val dto = api().movimientosDependenciaPreview(
+            val dto = api(,
+                limit = limit,
+                offset = offset).movimientosDependenciaPreview(
                 dependenciaId = filters.requiredFilter("id_dependencia"),
                 fechaInicio = filters.requiredFilter("fecha_inicio"),
                 fechaFin = filters.requiredFilter("fecha_fin"),
@@ -110,7 +120,9 @@ class ReportsRepositoryImpl(
             )
         }
         ReportCatalog.movimientosProducto.id -> {
-            val dto = api().movimientosProductoPreview(
+            val dto = api(,
+                limit = limit,
+                offset = offset).movimientosProductoPreview(
                 dependenciaId = filters.requiredFilter("id_dependencia"),
                 productoId = filters.optionalFilter("id_producto"),
                 fechaInicio = filters.requiredFilter("fecha_inicio"),
@@ -126,14 +138,18 @@ class ReportsRepositoryImpl(
             )
         }
         ReportCatalog.clientes.id -> {
-            val dto = api().clientesPreview()
+            val dto = api(,
+                limit = limit,
+                offset = offset).clientesPreview()
             ReportPreview(
                 rows = dto.toRows(definition),
                 totals = mapOf("total_items" to (dto.total_items ?: 0)),
             )
         }
         ReportCatalog.proyectos.id -> {
-            val dto = api().proyectosPreview(
+            val dto = api(,
+                limit = limit,
+                offset = offset).proyectosPreview(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
                 fechaFin = filters.optionalFilter("fecha_fin"),
             )
@@ -143,7 +159,9 @@ class ReportsRepositoryImpl(
             )
         }
         ReportCatalog.desempeno.id -> {
-            val dto = api().desempenoPreview(
+            val dto = api(,
+                limit = limit,
+                offset = offset).desempenoPreview(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
                 fechaFin = filters.optionalFilter("fecha_fin"),
                 personaId = filters.optionalFilter("id_persona"),
@@ -159,7 +177,9 @@ class ReportsRepositoryImpl(
             )
         }
         ReportCatalog.onat.id -> {
-            val dto = api().onatPreview(
+            val dto = api(,
+                limit = limit,
+                offset = offset).onatPreview(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
                 fechaFin = filters.optionalFilter("fecha_fin"),
                 monedaId = filters.optionalFilter("id_moneda"),
@@ -174,7 +194,9 @@ class ReportsRepositoryImpl(
             )
         }
         ReportCatalog.mincult.id -> {
-            val dto = api().mincultPreview(
+            val dto = api(,
+                limit = limit,
+                offset = offset).mincultPreview(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
                 fechaFin = filters.optionalFilter("fecha_fin"),
             )
@@ -188,7 +210,9 @@ class ReportsRepositoryImpl(
             )
         }
         ReportCatalog.realizadores.id -> {
-            val dto = api().realizadoresPreview(
+            val dto = api(,
+                limit = limit,
+                offset = offset).realizadoresPreview(
                 provinciaId = filters.optionalFilter("id_provincia"),
                 municipioId = filters.optionalFilter("id_municipio"),
                 vigencia = filters.optionalFilter("vigencia"),
@@ -200,7 +224,9 @@ class ReportsRepositoryImpl(
             )
         }
         ReportCatalog.liquidaciones.id -> {
-            val dto = api().liquidacionesPreview(
+            val dto = api(,
+                limit = limit,
+                offset = offset).liquidacionesPreview(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
                 fechaFin = filters.optionalFilter("fecha_fin"),
                 clienteId = filters.optionalFilter("id_cliente"),
