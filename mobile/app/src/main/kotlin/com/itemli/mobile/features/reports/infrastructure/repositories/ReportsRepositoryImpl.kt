@@ -76,7 +76,7 @@ class ReportsRepositoryImpl(
     ): ReportPreview = when (definition.id) {
         ReportCatalog.existencias.id -> {
             val dto = api().existenciasPreview(
-                dependenciaId = filters.requiredFilter("id_dependencia"),,
+                dependenciaId = filters.requiredFilter("id_dependencia"),
                 limit = limit,
                 offset = offset
             )
@@ -91,7 +91,7 @@ class ReportsRepositoryImpl(
         ReportCatalog.proveedoresDependencia.id -> {
             val dto = api().proveedoresPreview(
                 dependenciaId = filters.optionalFilter("id_dependencia"),
-                provinciaId = filters.optionalFilter("id_provincia"),,
+                provinciaId = filters.optionalFilter("id_provincia"),
                 limit = limit,
                 offset = offset
             )
@@ -104,7 +104,7 @@ class ReportsRepositoryImpl(
             val dto = api().movimientosDependenciaPreview(
                 dependenciaId = filters.requiredFilter("id_dependencia"),
                 fechaInicio = filters.requiredFilter("fecha_inicio"),
-                fechaFin = filters.requiredFilter("fecha_fin"),,
+                fechaFin = filters.requiredFilter("fecha_fin"),
                 limit = limit,
                 offset = offset
             )
@@ -124,7 +124,7 @@ class ReportsRepositoryImpl(
                 dependenciaId = filters.requiredFilter("id_dependencia"),
                 productoId = filters.optionalFilter("id_producto"),
                 fechaInicio = filters.requiredFilter("fecha_inicio"),
-                fechaFin = filters.requiredFilter("fecha_fin"),,
+                fechaFin = filters.requiredFilter("fecha_fin"),
                 limit = limit,
                 offset = offset
             )
@@ -147,7 +147,7 @@ class ReportsRepositoryImpl(
         ReportCatalog.proyectos.id -> {
             val dto = api().proyectosPreview(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
-                fechaFin = filters.optionalFilter("fecha_fin"),,
+                fechaFin = filters.optionalFilter("fecha_fin"),
                 limit = limit,
                 offset = offset
             )
@@ -161,7 +161,7 @@ class ReportsRepositoryImpl(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
                 fechaFin = filters.optionalFilter("fecha_fin"),
                 personaId = filters.optionalFilter("id_persona"),
-                estado = filters.optionalFilter("estado"),,
+                estado = filters.optionalFilter("estado"),
                 limit = limit,
                 offset = offset
             )
@@ -179,7 +179,7 @@ class ReportsRepositoryImpl(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
                 fechaFin = filters.optionalFilter("fecha_fin"),
                 monedaId = filters.optionalFilter("id_moneda"),
-                personaId = filters.optionalFilter("id_persona"),,
+                personaId = filters.optionalFilter("id_persona"),
                 limit = limit,
                 offset = offset
             )
@@ -194,7 +194,7 @@ class ReportsRepositoryImpl(
         ReportCatalog.mincult.id -> {
             val dto = api().mincultPreview(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
-                fechaFin = filters.optionalFilter("fecha_fin"),,
+                fechaFin = filters.optionalFilter("fecha_fin"),
                 limit = limit,
                 offset = offset
             )
@@ -212,7 +212,7 @@ class ReportsRepositoryImpl(
                 provinciaId = filters.optionalFilter("id_provincia"),
                 municipioId = filters.optionalFilter("id_municipio"),
                 vigencia = filters.optionalFilter("vigencia"),
-                textoBusqueda = filters.optionalFilter("texto_busqueda"),,
+                textoBusqueda = filters.optionalFilter("texto_busqueda"),
                 limit = limit,
                 offset = offset
             )
@@ -226,7 +226,7 @@ class ReportsRepositoryImpl(
                 fechaInicio = filters.optionalFilter("fecha_inicio"),
                 fechaFin = filters.optionalFilter("fecha_fin"),
                 clienteId = filters.optionalFilter("id_cliente"),
-                monedaId = filters.optionalFilter("id_moneda"),,
+                monedaId = filters.optionalFilter("id_moneda"),
                 limit = limit,
                 offset = offset
             )
