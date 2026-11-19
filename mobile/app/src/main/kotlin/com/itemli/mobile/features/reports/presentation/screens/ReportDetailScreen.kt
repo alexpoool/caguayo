@@ -24,6 +24,7 @@ fun ReportDetailScreen(
     windowSizeClass: WindowSizeClass? = null,
     reportId: String,
     onBack: () -> Unit = {},
+    onOpenChart: (String, Map<String, String>) -> Unit = { _, _ -> },
 ) {
     val viewModel: ReportDetailViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
@@ -32,6 +33,23 @@ fun ReportDetailScreen(
     LaunchedEffect(reportId) { viewModel.loadById(reportId) }
 
     // Al terminar la descarga se abre el PDF con un lector externo.
+    LaunchedEffect(state.sharePdfUri) {
+        state.sharePdfUri?.let { rawUri ->
+            runCatching {
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/pdf"
+                    putExtra(Intent.EXTRA_STREAM, Uri.parse(rawUri))
+                    putExtra(Intent.EXTRA_SUBJECT, state.definition?.title ?: "Reporte ITEMLI")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Compartir reporte PDF"))
+            }.onFailure {
+                viewModel.onPdfOpenFailed("No se pudo abrir el menú para compartir el PDF")
+            }
+            viewModel.onPdfShared()
+        }
+    }
+
     LaunchedEffect(state.pdfUri) {
         state.pdfUri?.let { uri ->
             if (!openPdf(context, uri)) {
@@ -61,6 +79,8 @@ fun ReportDetailScreen(
             onRefresh = viewModel::refresh,
             onLoadMore = viewModel::loadMore,
             onDownloadPdf = viewModel::downloadPdf,
+            onShare = viewModel::sharePdf,
+            onChart = { state.definition?.let { onOpenChart(it.id, state.filters) } },
             onBack = onBack,
         )
     }
