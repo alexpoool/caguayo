@@ -14,7 +14,7 @@ enum class AppThemeMode(val storageValue: String) {
 
     companion object {
         fun fromStorage(value: String?): AppThemeMode =
-            entries.firstOrNull { it.storageValue == value } ?: SYSTEM
+            values().firstOrNull { it.storageValue == value } ?: SYSTEM
     }
 }
 
