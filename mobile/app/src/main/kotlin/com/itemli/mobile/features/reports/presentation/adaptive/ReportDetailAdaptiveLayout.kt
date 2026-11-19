@@ -12,6 +12,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +36,7 @@ fun ReportDetailAdaptiveLayout(
     state: ReportDetailUiState,
     onFilterChange: (String, String) -> Unit,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit = {},
     onDownloadPdf: () -> Unit = {},
     onBack: () -> Unit = {},
 ) {
@@ -52,11 +56,21 @@ fun ReportDetailAdaptiveLayout(
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (state.isLoading && state.preview == null) {
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator(color = Color(0xFF0752D8)) }
+            }
             state.preview?.let { preview ->
                 ReportPreviewTable(
                     definition = definition,
                     rows = preview.rows,
-                    modifier = Modifier.fillMaxWidth(),
+                    visibleColumnCount = if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Compact) 3 else 5,
+                    isLoadingMore = state.isLoadingMore,
+                    hasMore = state.hasMore,
+                    onLoadMore = onLoadMore,
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                 )
             }
         }
