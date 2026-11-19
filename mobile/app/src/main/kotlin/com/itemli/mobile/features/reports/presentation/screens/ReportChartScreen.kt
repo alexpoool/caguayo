@@ -32,7 +32,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,6 +49,10 @@ import androidx.compose.ui.unit.dp
 import com.itemli.mobile.features.reports.application.usecases.GetReportPreviewUseCase
 import com.itemli.mobile.features.reports.application.usecases.GetReportsCatalogUseCase
 import com.itemli.mobile.features.reports.domain.entities.ReportDefinition
+import com.itemli.mobile.features.reports.infrastructure.datasources.ReportFilterOptionsApi
+import com.itemli.mobile.features.reports.infrastructure.datasources.ReportFilterOption
+import com.itemli.mobile.features.reports.presentation.components.ReportFilterForm
+import com.itemli.mobile.shared.infrastructure.ApiClient
 import com.itemli.mobile.shared.domain.AppResult
 import com.itemli.mobile.shared.ui.components.InteriorHeader
 import kotlinx.coroutines.Dispatchers
@@ -73,6 +76,7 @@ fun ReportChartScreen(
     val scope = rememberCoroutineScope()
     val catalogUseCase: GetReportsCatalogUseCase = koinInject()
     val previewUseCase: GetReportPreviewUseCase = koinInject()
+    val apiClient: ApiClient = koinInject()
     var title by remember { mutableStateOf("Gráficos del reporte") }
     var entries by remember { mutableStateOf<List<ChartEntry>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -80,6 +84,7 @@ fun ReportChartScreen(
     var activeFilters by remember(reportId, filters) { mutableStateOf(filters.toMap()) }
     var draftFilters by remember(reportId, filters) { mutableStateOf(filters.toMap()) }
     var definition by remember { mutableStateOf<ReportDefinition?>(null) }
+    var filterOptions by remember { mutableStateOf<Map<String, List<ReportFilterOption>>>(emptyMap()) }
     var showFilters by remember { mutableStateOf(false) }
     var downloading by remember { mutableStateOf(false) }
 
@@ -98,6 +103,55 @@ fun ReportChartScreen(
         }
         definition = reportDefinition
         title = reportDefinition.title
+        // Usa los mismos catálogos que el formulario del detalle: el ID solo
+        // viaja a la API; la interfaz siempre muestra el nombre de la opción.
+        val filterApi = runCatching {
+            apiClient.createService(ReportFilterOptionsApi::class.java)
+        }.getOrNull()
+        val loadedOptions = mutableMapOf<String, List<ReportFilterOption>>()
+        if (filterApi != null) {
+            reportDefinition.filters.forEach { filter ->
+                val options = runCatching {
+                    when (filter.id) {
+                        "id_dependencia" -> filterApi.dependencies().map {
+                            ReportFilterOption(it.id_dependencia.toString(), it.nombre)
+                        }
+                        "id_provincia" -> filterApi.provinces().map {
+                            ReportFilterOption(it.id_provincia.toString(), it.nombre)
+                        }
+                        "id_municipio" -> filterApi.municipalities().map {
+                            ReportFilterOption(it.id_municipio.toString(), it.nombre)
+                        }
+                        "vigencia" -> listOf(
+                            ReportFilterOption("activo", "Activo"),
+                            ReportFilterOption("inactivo", "Inactivo"),
+                        )
+                        "id_moneda" -> filterApi.currencies().map {
+                            ReportFilterOption(
+                                it.id_moneda.toString(),
+                                listOf(it.nombre, it.simbolo).filter(String::isNotBlank).joinToString(" · "),
+                            )
+                        }
+                        "id_persona", "id_cliente" -> filterApi.people().map {
+                            ReportFilterOption(it.id_persona.toString(), it.nombre)
+                        }
+                        "id_producto" -> filterApi.products().map {
+                            ReportFilterOption(
+                                it.id_producto.toString(),
+                                listOf(it.codigo, it.nombre).filter(String::isNotBlank).joinToString(" · "),
+                            )
+                        }
+                        "estado" -> listOf(
+                            ReportFilterOption("pagada", "Pagada"),
+                            ReportFilterOption("pendiente", "Pendiente"),
+                        )
+                        else -> emptyList()
+                    }
+                }.getOrDefault(emptyList())
+                loadedOptions[filter.id] = options
+            }
+        }
+        filterOptions = loadedOptions
         val allRows = mutableListOf<Map<String, Any?>>()
         var offset = 0
         var total = Int.MAX_VALUE
@@ -147,7 +201,13 @@ fun ReportChartScreen(
                     onClick = {
                         val chartTitle = title
                         val chartEntries = entries
-                        val chartFilters = activeFilters
+                        val chartFilters = activeFilters.mapNotNull { (filterId, value) ->
+                            val filter = definition?.filters?.firstOrNull { it.id == filterId }
+                                ?: return@mapNotNull null
+                            val displayValue = filterOptions[filterId]
+                                ?.firstOrNull { it.value == value }?.label ?: value
+                            filter.label to displayValue
+                        }.toMap()
                         downloading = true
                         scope.launch {
                             val saved = withContext(Dispatchers.IO) {
@@ -225,26 +285,28 @@ fun ReportChartScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text("Los cambios se aplicarán al gráfico al confirmar.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF667085))
-                    reportDefinition?.filters?.forEach { filter ->
-                        val label = filter.id.replace('_', ' ').replaceFirstChar { it.uppercase() }
-                        OutlinedTextField(
-                            value = draftFilters[filter.id].orEmpty(),
-                            onValueChange = { value ->
-                                draftFilters = if (value.isBlank()) draftFilters - filter.id else draftFilters + (filter.id to value)
+                    reportDefinition?.let { currentDefinition ->
+                        ReportFilterForm(
+                            definition = currentDefinition,
+                            values = draftFilters,
+                            options = filterOptions,
+                            onFilterChange = { filterId, value ->
+                                draftFilters = if (value.isBlank()) {
+                                    draftFilters - filterId
+                                } else {
+                                    draftFilters + (filterId to value)
+                                }
+                            },
+                            onRefresh = {
+                                activeFilters = draftFilters.toMap()
+                                showFilters = false
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text(label + if (filter.required) " *" else "") },
-                            singleLine = true,
                         )
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    activeFilters = draftFilters.toMap()
-                    showFilters = false
-                }) { Text("Aplicar") }
-            },
+            confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showFilters = false }) { Text("Cancelar") }
             },
