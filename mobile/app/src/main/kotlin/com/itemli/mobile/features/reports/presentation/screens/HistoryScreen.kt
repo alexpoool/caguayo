@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import com.itemli.mobile.features.reports.infrastructure.storage.DownloadedReport
 import com.itemli.mobile.features.reports.infrastructure.storage.ReportPdfStorage
@@ -50,6 +55,7 @@ import org.koin.core.context.GlobalContext
 @Composable
 fun HistoryScreen(onBack: () -> Unit = {}) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val storage = remember { GlobalContext.get().get<ReportPdfStorage>() }
     val scope = rememberCoroutineScope()
     var downloads by remember { mutableStateOf<List<DownloadedReport>>(emptyList()) }
@@ -59,6 +65,13 @@ fun HistoryScreen(onBack: () -> Unit = {}) {
         scope.launch { downloads = storage.listDownloads() }
     }
     LaunchedEffect(Unit) { reload() }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) reload()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Column(
         Modifier.fillMaxSize().background(Color(0xFFF3F6FF)).padding(20.dp),
@@ -125,6 +138,18 @@ fun HistoryScreen(onBack: () -> Unit = {}) {
                                     color = Color(0xFF667085),
                                 )
                                 Text("Tocar para abrir PDF", style = MaterialTheme.typography.labelSmall, color = Color(0xFF0752D8))
+                            }
+                            IconButton(onClick = {
+                                runCatching {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "application/pdf"
+                                        putExtra(Intent.EXTRA_STREAM, item.uri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "Compartir informe PDF"))
+                                }
+                            }) {
+                                Icon(Icons.Filled.Share, contentDescription = "Compartir PDF", tint = Color(0xFF0752D8))
                             }
                             IconButton(onClick = { pendingDelete = item }) {
                                 Icon(Icons.Filled.DeleteOutline, contentDescription = "Eliminar descarga", tint = Color(0xFF7B8798))
