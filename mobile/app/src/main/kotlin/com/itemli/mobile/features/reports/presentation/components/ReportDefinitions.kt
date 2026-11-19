@@ -1,12 +1,22 @@
 package com.itemli.mobile.features.reports.presentation.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.border
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.OutlinedButton
@@ -222,33 +232,85 @@ fun ReportPreviewTable(
     rows: List<Map<String, Any?>>,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFE6F0FF), RoundedCornerShape(10.dp))
-                .padding(horizontal = 10.dp, vertical = 12.dp),
-        ) {
-            definition.columns.take(3).forEach { column ->
-                Text(
-                    text = column.label,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
-                    color = Color(0xFF173C78),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-        rows.forEach { row ->
-            Row(modifier = Modifier.fillMaxWidth()) {
-                definition.columns.take(3).forEach { column ->
+    val columns = definition.columns.take(3)
+    val cardShape = RoundedCornerShape(18.dp)
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .border(1.dp, Color(0xFFDCE6F5), cardShape),
+        shape = cardShape,
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFE7F0FF))
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                columns.forEachIndexed { index, column ->
                     Text(
-                        text = (row[column.key] ?: "").toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f).padding(0.dp),
+                        text = column.label,
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        ),
+                        color = Color(0xFF173C78),
+                        modifier = Modifier.weight(1f),
+                        textAlign = if (index == 2) androidx.compose.ui.text.style.TextAlign.End
+                            else androidx.compose.ui.text.style.TextAlign.Start,
+                    )
+                }
+            }
+
+            rows.forEachIndexed { rowIndex, row ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    columns.forEachIndexed { index, column ->
+                        val value = (row[column.key] ?: "—").toString()
+                        if (index == 2) {
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterEnd,
+                            ) {
+                                Surface(
+                                    color = Color(0xFFE5EFFF),
+                                    shape = RoundedCornerShape(50),
+                                ) {
+                                    Text(
+                                        text = value,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                        ),
+                                        color = Color(0xFF123D79),
+                                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 6.dp),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    )
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = value,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color(0xFF53627A),
+                                modifier = Modifier.weight(1f),
+                                maxLines = 2,
+                            )
+                        }
+                    }
+                }
+                if (rowIndex < rows.lastIndex) {
+                    HorizontalDivider(
+                        color = Color(0xFFE8EDF5),
+                        thickness = 1.dp,
                     )
                 }
             }
         }
     }
 }
-
