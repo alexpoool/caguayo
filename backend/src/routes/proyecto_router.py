@@ -15,6 +15,11 @@ from src.utils.pdf_generator import generar_pdf_creadores
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/proyecto", tags=["proyecto"])
 
+
+def _paginate_preview(items, limit: Optional[int], offset: int):
+    """Paginate only when a client explicitly requests it; preserve web defaults."""
+    return items if limit is None else _paginate_preview(items, limit, offset)
+
 async def get_current_user_required(
     authorization: Optional[str] = Header(None),
     db_auth: AsyncSession = Depends(get_auth_session),
@@ -95,7 +100,7 @@ async def preview_creadores(
     texto_busqueda: Optional[str] = Query(None, description="Texto de búsqueda"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -117,7 +122,7 @@ async def preview_creadores(
         )
 
         return {
-            "items": data[offset:offset + limit],
+            "items": _paginate_preview(data, limit, offset),
             "total_items": len(data),
             "grupos_municipio": meta.get("grupos_municipio", {}),
         }
