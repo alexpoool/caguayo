@@ -20,11 +20,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.itemli.mobile.features.settings.presentation.adaptive.SettingsAdaptiveLayout
+import com.itemli.mobile.features.settings.presentation.adaptive.SettingsSection
 import com.itemli.mobile.features.settings.presentation.viewmodels.SettingsViewModel
 import com.itemli.mobile.features.reports.infrastructure.storage.ReportPdfStorage
 import com.itemli.mobile.shared.ui.components.SecureScreen
-import com.itemli.mobile.shared.ui.theme.AppThemeMode
-import com.itemli.mobile.shared.ui.theme.ThemePreferences
+import com.itemli.mobile.shared.ui.theme.FontSizePreferences
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -41,9 +41,10 @@ fun SettingsScreen(
     val viewModel: SettingsViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
-    val themePreferences = remember { ThemePreferences(context.applicationContext) }
-    val themeMode by themePreferences.mode.collectAsState(initial = AppThemeMode.SYSTEM)
+    val fontSizePreferences = remember { FontSizePreferences(context.applicationContext) }
+    val fontScale by fontSizePreferences.scale.collectAsState(initial = FontSizePreferences.DEFAULT_SCALE)
     val coroutineScope = rememberCoroutineScope()
+    var section by remember { mutableStateOf<SettingsSection?>(null) }
     val pdfStorage = remember { ReportPdfStorage(context) }
 
     // Nombre visible de la carpeta elegida, para mostrarla en el formulario.
@@ -82,8 +83,10 @@ fun SettingsScreen(
                 /* snackbar pendiente */
             } },
             pdfDirName = pdfDirName,
-            themeMode = themeMode,
-            onThemeModeChange = { mode -> coroutineScope.launch { themePreferences.setMode(mode) } },
+            fontScale = fontScale,
+            onFontScaleChange = { scale -> coroutineScope.launch { fontSizePreferences.setScale(scale) } },
+            section = section,
+            onOpenSection = { section = it },
             onBack = onBack,
         )
     }
