@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -33,6 +34,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -72,20 +75,25 @@ private val homeModules = listOf(
 @Composable
 fun HomeAdaptiveLayout(
     alias: String,
+    windowSizeClass: WindowSizeClass,
     onOpenReports: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(HomeSurface)
-            .verticalScroll(rememberScrollState()),
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize().background(HomeSurface),
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(330.dp)) {
+        val shortHeight = maxHeight < 620.dp
+        val compactWidth = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (shortHeight) Modifier.verticalScroll(rememberScrollState()) else Modifier),
+        ) {
+        Box(modifier = Modifier.fillMaxWidth().height(if (shortHeight) 250.dp else 300.dp)) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp)
+                    .height(if (shortHeight) 225.dp else 270.dp)
                     .background(
                         Brush.linearGradient(
                             colors = listOf(Navy, Color(0xFF073F91), Blue),
@@ -98,7 +106,7 @@ fun HomeAdaptiveLayout(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .padding(bottom = 0.dp)
-                    .height(92.dp)
+                    .height(if (shortHeight) 76.dp else 92.dp)
                     .clip(RoundedCornerShape(topStart = 100.dp, topEnd = 12.dp))
                     .background(
                         Brush.horizontalGradient(
@@ -134,7 +142,7 @@ fun HomeAdaptiveLayout(
                         }
                     }
                 }
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(if (shortHeight) 16.dp else 28.dp))
                 Text("Hola, $alias", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(5.dp))
                 Text(
@@ -158,14 +166,20 @@ fun HomeAdaptiveLayout(
             }
         }
 
+        if (shortHeight) {
+            Spacer(Modifier.height(16.dp))
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
+
         Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 0.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = if (compactWidth) 12.dp else 24.dp),
             shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 22.dp, bottomEnd = 22.dp),
             color = Color.White,
             shadowElevation = 4.dp,
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+                modifier = Modifier.padding(horizontal = if (compactWidth) 16.dp else 22.dp, vertical = if (shortHeight) 12.dp else 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -176,7 +190,7 @@ fun HomeAdaptiveLayout(
                 }
                 androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxWidth().height(260.dp),
+                    modifier = Modifier.fillMaxWidth().height(if (shortHeight) 210.dp else 260.dp),
                     contentPadding = PaddingValues(0.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -188,7 +202,8 @@ fun HomeAdaptiveLayout(
                 }
             }
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
+        }
     }
 }
 
