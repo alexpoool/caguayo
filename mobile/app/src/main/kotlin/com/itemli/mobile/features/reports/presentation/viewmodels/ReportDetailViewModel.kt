@@ -16,6 +16,10 @@ import com.itemli.mobile.shared.domain.AppResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Estado de la pantalla de detalle de un reporte.
@@ -56,9 +60,12 @@ class ReportDetailViewModel(
     private val _state = MutableStateFlow(ReportDetailUiState())
     val state: StateFlow<ReportDetailUiState> = _state
     private var previewRequestVersion: Long = 0L
+    private var loadedReportId: String? = null
 
     /** Carga la definición del reporte a partir del catálogo. */
     fun loadById(reportId: String) {
+        if (loadedReportId == reportId) return
+        loadedReportId = reportId
         viewModelScope.launch {
             when (val catalog = getCatalogUseCase()) {
                 is AppResult.Success -> {
@@ -99,40 +106,46 @@ class ReportDetailViewModel(
         viewModelScope.launch {
             val api = runCatching { apiClient.createService(ReportFilterOptionsApi::class.java) }.getOrNull()
                 ?: return@launch
-            val options = mutableMapOf<String, List<ReportFilterOption>>()
-            definition.filters.forEach { filter ->
-                val values = runCatching {
-                    when (filter.id) {
-                        "id_dependencia" -> api.dependencies().map {
-                            ReportFilterOption(it.id_dependencia.toString(), it.nombre)
-                        }
-                        "id_provincia" -> api.provinces().map {
-                            ReportFilterOption(it.id_provincia.toString(), it.nombre)
-                        }
-                        "id_municipio" -> api.municipalities().map {
-                            ReportFilterOption(it.id_municipio.toString(), it.nombre)
-                        }
-                        "vigencia" -> listOf(
-                            ReportFilterOption("activo", "Activo"),
-                            ReportFilterOption("inactivo", "Inactivo"),
-                        )
-                        "id_moneda" -> api.currencies().map {
-                            ReportFilterOption(it.id_moneda.toString(), listOf(it.nombre, it.simbolo).filter(String::isNotBlank).joinToString(" · "))
-                        }
-                        "id_persona", "id_cliente" -> api.people().map {
-                            ReportFilterOption(it.id_persona.toString(), it.nombre)
-                        }
-                        "id_producto" -> api.products().map {
-                            ReportFilterOption(it.id_producto.toString(), listOf(it.codigo, it.nombre).filter(String::isNotBlank).joinToString(" · "))
-                        }
-                        "estado" -> listOf(
-                            ReportFilterOption("pagada", "Pagada"),
-                            ReportFilterOption("pendiente", "Pendiente"),
-                        )
-                        else -> emptyList()
+            val filterIds = definition.filters.map { it.id }.distinct()
+            val options = coroutineScope {
+                filterIds.map { filterId ->
+                    async {
+                        val cached = ReportFilterOptionsCache.values[filterId]
+                        val values = cached ?: runCatching {
+                            when (filterId) {
+                                "id_dependencia" -> api.dependencies().map {
+                                    ReportFilterOption(it.id_dependencia.toString(), it.nombre)
+                                }
+                                "id_provincia" -> api.provinces().map {
+                                    ReportFilterOption(it.id_provincia.toString(), it.nombre)
+                                }
+                                "id_municipio" -> api.municipalities().map {
+                                    ReportFilterOption(it.id_municipio.toString(), it.nombre)
+                                }
+                                "vigencia" -> listOf(
+                                    ReportFilterOption("activo", "Activo"),
+                                    ReportFilterOption("inactivo", "Inactivo"),
+                                )
+                                "id_moneda" -> api.currencies().map {
+                                    ReportFilterOption(it.id_moneda.toString(), listOf(it.nombre, it.simbolo).filter(String::isNotBlank).joinToString(" · "))
+                                }
+                                "id_persona", "id_cliente" -> api.people().map {
+                                    ReportFilterOption(it.id_persona.toString(), it.nombre)
+                                }
+                                "id_producto" -> api.products().map {
+                                    ReportFilterOption(it.id_producto.toString(), listOf(it.codigo, it.nombre).filter(String::isNotBlank).joinToString(" · "))
+                                }
+                                "estado" -> listOf(
+                                    ReportFilterOption("pagada", "Pagada"),
+                                    ReportFilterOption("pendiente", "Pendiente"),
+                                )
+                                else -> emptyList()
+                            }
+                        }.getOrDefault(emptyList())
+                        if (values.isNotEmpty()) ReportFilterOptionsCache.values.putIfAbsent(filterId, values)
+                        filterId to values
                     }
-                }.getOrDefault(emptyList())
-                options[filter.id] = values
+                }.awaitAll().toMap()
             }
             _state.value = _state.value.copy(filterOptions = options)
         }
@@ -321,4 +334,10 @@ class ReportDetailViewModel(
     fun onPdfOpenFailed(message: String) {
         _state.value = _state.value.copy(pdfUri = null, pdfError = message)
     }
+}
+
+
+/** Catálogos de filtros estables durante la sesión: evita repetir llamadas al cambiar de reporte. */
+private object ReportFilterOptionsCache {
+    val values = ConcurrentHashMap<String, List<ReportFilterOption>>()
 }
