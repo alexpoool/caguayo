@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -22,6 +23,9 @@ import com.itemli.mobile.features.settings.presentation.adaptive.SettingsAdaptiv
 import com.itemli.mobile.features.settings.presentation.viewmodels.SettingsViewModel
 import com.itemli.mobile.features.reports.infrastructure.storage.ReportPdfStorage
 import com.itemli.mobile.shared.ui.components.SecureScreen
+import com.itemli.mobile.shared.ui.theme.AppThemeMode
+import com.itemli.mobile.shared.ui.theme.ThemePreferences
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -37,6 +41,9 @@ fun SettingsScreen(
     val viewModel: SettingsViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val themePreferences = remember { ThemePreferences(context.applicationContext) }
+    val themeMode by themePreferences.mode.collectAsState(initial = AppThemeMode.SYSTEM)
+    val coroutineScope = rememberCoroutineScope()
     val pdfStorage = remember { ReportPdfStorage(context) }
 
     // Nombre visible de la carpeta elegida, para mostrarla en el formulario.
@@ -75,6 +82,8 @@ fun SettingsScreen(
                 /* snackbar pendiente */
             } },
             pdfDirName = pdfDirName,
+            themeMode = themeMode,
+            onThemeModeChange = { mode -> coroutineScope.launch { themePreferences.setMode(mode) } },
             onBack = onBack,
         )
     }
