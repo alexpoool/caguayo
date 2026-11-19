@@ -34,6 +34,8 @@ data class ReportDetailUiState(
     /** content:// del PDF guardado, listo para abrir con ACTION_VIEW. */
     val pdfUri: String? = null,
     val pdfError: String? = null,
+    val sharePdfUri: String? = null,
+    val isShareLoading: Boolean = false,
 )
 
 /**
@@ -269,6 +271,46 @@ class ReportDetailViewModel(
             }
         }
     }
+
+    /** Genera el PDF completo con los filtros vigentes y prepara el archivo para compartir. */
+    fun sharePdf() {
+        val definition = _state.value.definition ?: return
+        val filters = _state.value.filters.toMap()
+        val missingFilter = definition.filters.firstOrNull { it.required && filters[it.id].isNullOrBlank() }
+        if (missingFilter != null) {
+            _state.value = _state.value.copy(pdfError = "Falta un filtro obligatorio")
+            return
+        }
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isShareLoading = true, pdfError = null, sharePdfUri = null)
+            when (val result = downloadPdfUseCase(definition, filters)) {
+                is AppResult.Success -> {
+                    val stamp = java.time.LocalDateTime.now()
+                        .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
+                    val fileName = "${definition.id}_${stamp}.pdf"
+                    val uri = runCatching {
+                        val internal = pdfStorage.saveToHistory(result.value, fileName)
+                        val dirUri = runCatching { pdfDirProvider() }.getOrNull()
+                        dirUri?.takeIf { it.isNotBlank() }?.let {
+                            pdfStorage.saveExternal(result.value, fileName, android.net.Uri.parse(it))
+                        }
+                        internal
+                    }.getOrNull()
+                    _state.value = _state.value.copy(
+                        isShareLoading = false,
+                        sharePdfUri = uri?.toString(),
+                        pdfError = if (uri == null) "No se pudo guardar el PDF para compartir" else null,
+                    )
+                }
+                is AppResult.Failure -> _state.value = _state.value.copy(
+                    isShareLoading = false,
+                    pdfError = result.error.message ?: "No se pudo generar el PDF",
+                )
+            }
+        }
+    }
+
+    fun onPdfShared() { _state.value = _state.value.copy(sharePdfUri = null) }
 
     /** Llamar tras abrir el PDF para permitir descargarlo de nuevo. */
     fun onPdfOpened() {
