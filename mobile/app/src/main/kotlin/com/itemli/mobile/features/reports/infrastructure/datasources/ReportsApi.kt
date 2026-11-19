@@ -13,20 +13,26 @@ interface ReportsApi {
     @GET("reportes/existencias/preview")
     suspend fun existenciasPreview(
         @Query("id_dependencia") dependenciaId: String,
-    ): ExistenciasPreviewDto
+    
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): ExistenciasPreviewDto
 
     @GET("reportes/proveedores-dependencia/preview")
     suspend fun proveedoresPreview(
         @Query("id_dependencia") dependenciaId: String?,
         @Query("id_provincia") provinciaId: String?,
-    ): ProveedoresPreviewDto
+    
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): ProveedoresPreviewDto
 
     @GET("reportes/movimientos-dependencia/preview")
     suspend fun movimientosDependenciaPreview(
         @Query("id_dependencia") dependenciaId: String,
         @Query("fecha_inicio") fechaInicio: String,
         @Query("fecha_fin") fechaFin: String,
-    ): MovimientosDependenciaPreviewDto
+    
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): MovimientosDependenciaPreviewDto
 
     @GET("reportes/movimientos-producto/preview")
     suspend fun movimientosProductoPreview(
@@ -34,16 +40,22 @@ interface ReportsApi {
         @Query("id_producto") productoId: String?,
         @Query("fecha_inicio") fechaInicio: String,
         @Query("fecha_fin") fechaFin: String,
-    ): MovimientosProductoPreviewDto
+    
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): MovimientosProductoPreviewDto
 
     @GET("reportes/clientes/preview")
-    suspend fun clientesPreview(): ClientesPreviewDto
+    suspend fun clientesPreview(
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): ClientesPreviewDto
 
     @GET("reportes/proyectos/preview")
     suspend fun proyectosPreview(
         @Query("fecha_inicio") fechaInicio: String?,
         @Query("fecha_fin") fechaFin: String?,
-    ): ProyectosPreviewDto
+    
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): ProyectosPreviewDto
 
     @GET("reportes/desempeno/preview")
     suspend fun desempenoPreview(
@@ -51,7 +63,9 @@ interface ReportsApi {
         @Query("fecha_fin") fechaFin: String?,
         @Query("id_persona") personaId: String?,
         @Query("estado") estado: String?,
-    ): DesempenoPreviewDto
+    
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): DesempenoPreviewDto
 
     @GET("reportes/onat/preview")
     suspend fun onatPreview(
@@ -59,13 +73,17 @@ interface ReportsApi {
         @Query("fecha_fin") fechaFin: String?,
         @Query("id_moneda") monedaId: String?,
         @Query("id_persona") personaId: String?,
-    ): OnatPreviewDto
+    
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): OnatPreviewDto
 
     @GET("reportes/mincult/preview")
     suspend fun mincultPreview(
         @Query("fecha_inicio") fechaInicio: String?,
         @Query("fecha_fin") fechaFin: String?,
-    ): MincultPreviewDto
+    
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): MincultPreviewDto
 
     @GET("proyecto/preview")
     suspend fun realizadoresPreview(
@@ -73,7 +91,9 @@ interface ReportsApi {
         @Query("id_municipio") municipioId: String?,
         @Query("vigencia") vigencia: String?,
         @Query("texto_busqueda") textoBusqueda: String?,
-    ): RealizadoresPreviewDto
+    
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): RealizadoresPreviewDto
 
     @GET("reportes/liquidaciones/preview")
     suspend fun liquidacionesPreview(
@@ -81,7 +101,9 @@ interface ReportsApi {
         @Query("fecha_fin") fechaFin: String?,
         @Query("id_cliente") clienteId: String?,
         @Query("id_moneda") monedaId: String?,
-    ): LiquidacionesPreviewDto
+    
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,): LiquidacionesPreviewDto
 
     /** Descarga el PDF de un reporte (`definition.pdfPath`). */
     @retrofit2.http.Streaming
