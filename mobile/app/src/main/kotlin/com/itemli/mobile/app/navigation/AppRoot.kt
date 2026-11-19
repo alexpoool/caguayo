@@ -20,6 +20,7 @@ import com.itemli.mobile.features.auth.presentation.screens.LoginScreen
 import com.itemli.mobile.features.reports.presentation.screens.HomeScreen
 import com.itemli.mobile.features.reports.presentation.screens.HistoryScreen
 import com.itemli.mobile.features.reports.presentation.screens.ReportDetailScreen
+import com.itemli.mobile.features.reports.presentation.screens.ReportChartScreen
 import com.itemli.mobile.features.reports.presentation.screens.ReportsCatalogScreen
 import com.itemli.mobile.features.settings.presentation.screens.SettingsScreen
 import com.itemli.mobile.shared.infrastructure.SessionManager
@@ -110,6 +111,23 @@ fun AppRoot(
                 ReportDetailScreen(
                     windowSizeClass = windowSizeClass,
                     reportId = entry.arguments?.getString("reportId").orEmpty(),
+                    onBack = { navController.popBackStack() },
+                    onOpenChart = { chartReportId, filters ->
+                        navController.currentBackStackEntry?.savedStateHandle?.set("chart_filters", HashMap(filters))
+                        navController.navigate(AppDestination.ReportChart.route(chartReportId))
+                    },
+                )
+            }
+            composable(
+                AppDestination.ReportChart.route,
+                arguments = listOf(navArgument("reportId") { defaultValue = "" }),
+            ) { entry ->
+                val chartFilters = navController.previousBackStackEntry
+                    ?.savedStateHandle?.get<HashMap<String, String>>("chart_filters")
+                    ?.toMap().orEmpty()
+                ReportChartScreen(
+                    reportId = entry.arguments?.getString("reportId").orEmpty(),
+                    filters = chartFilters,
                     onBack = { navController.popBackStack() },
                 )
             }
