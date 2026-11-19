@@ -110,6 +110,7 @@ fun ServerConfigForm(
                     onValueChange = { onProxyChange(useProxy, proxyHost, proxyPort, proxyUser, it) },
                     label = { Text("Contraseña (opcional)") },
                     singleLine = true,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
