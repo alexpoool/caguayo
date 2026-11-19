@@ -40,6 +40,11 @@ from src.utils.pdf_generator import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reportes", tags=["reportes"])
 
+
+def _paginate_preview(items, limit: Optional[int], offset: int):
+    """Paginate only when a client explicitly requests it; preserve web defaults."""
+    return items if limit is None else _paginate_preview(items, limit, offset)
+
 async def get_current_user_required(
     authorization: Optional[str] = Header(None),
     db_auth: AsyncSession = Depends(get_auth_session),
@@ -657,7 +662,7 @@ async def preview_existencias(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -679,7 +684,7 @@ async def preview_existencias(
 
         return {
             "dependencia": dependencia_info,
-            "items": existencias[offset:offset + limit],
+            "items": _paginate_preview(existencias, limit, offset),
             "total_items": len(existencias),
             "total_cantidad": total_cantidad,
         }
@@ -697,7 +702,7 @@ async def preview_movimientos_dependencia(
     fecha_fin: date = Query(..., description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -735,7 +740,7 @@ async def preview_movimientos_dependencia(
 
         return {
             "dependencia": dependencia_info,
-            "items": movimientos[offset:offset + limit],
+            "items": _paginate_preview(movimientos, limit, offset),
             "total_items": len(movimientos),
             "total_saldo_inicial": total_saldo_inicial,
             "total_saldo_final": total_saldo_final,
@@ -757,7 +762,7 @@ async def preview_movimientos_producto(
     fecha_fin: date = Query(..., description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -799,7 +804,7 @@ async def preview_movimientos_producto(
         return {
             "dependencia": dependencia_info,
             "producto": producto_info,
-            "items": items[offset:offset + limit],
+            "items": _paginate_preview(items, limit, offset),
             "total_items": len(items),
             "total_entradas": total_entradas,
             "total_salidas": total_salidas,
@@ -817,7 +822,7 @@ async def preview_proveedores_dependencia(
     id_provincia: Optional[int] = Query(None, description="Filtrar por provincia (opcional)"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -839,7 +844,7 @@ async def preview_proveedores_dependencia(
 
         return {
             "dependencia": dependencia_info,
-            "items": proveedores[offset:offset + limit],
+            "items": _paginate_preview(proveedores, limit, offset),
             "total_items": len(proveedores),
         }
     except Exception as e:
@@ -858,7 +863,7 @@ async def preview_proveedores_dependencia(
 async def preview_clientes(
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -874,7 +879,7 @@ async def preview_clientes(
         )
 
         return {
-            "items": data[offset:offset + limit],
+            "items": _paginate_preview(data, limit, offset),
             "total_items": len(data),
         }
     except Exception as e:
@@ -895,7 +900,7 @@ async def preview_proyectos(
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -925,7 +930,7 @@ async def preview_proyectos(
         )
 
         return {
-            "items": items[offset:offset + limit],
+            "items": _paginate_preview(items, limit, offset),
             "total_items": len(items),
         }
     except Exception as e:
@@ -948,7 +953,7 @@ async def preview_desempeno(
     estado: Optional[str] = Query(None, description="Estado (pagada/pendiente)"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -983,7 +988,7 @@ async def preview_desempeno(
         )
 
         return {
-            "items": items[offset:offset + limit],
+            "items": _paginate_preview(items, limit, offset),
             "total_items": len(items),
             "totales_por_persona": meta.get("totales_por_persona", {}),
             "gran_total_cobro": meta.get("gran_total_cobro", 0),
@@ -1009,7 +1014,7 @@ async def preview_onat(
     id_persona: Optional[int] = Query(None, description="Filtrar por creador"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -1044,7 +1049,7 @@ async def preview_onat(
         )
 
         return {
-            "items": items[offset:offset + limit],
+            "items": _paginate_preview(items, limit, offset),
             "total_items": len(items),
             "totales": meta.get("totales", {}),
         }
@@ -1066,7 +1071,7 @@ async def preview_mincult(
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -1086,7 +1091,7 @@ async def preview_mincult(
         )
 
         return {
-            "items": data[offset:offset + limit],
+            "items": _paginate_preview(data, limit, offset),
             "total_brackets": len(data),
             "total_liquidaciones": meta.get("total_liquidaciones", 0),
             "total_devengado_general": meta.get("total_devengado_general", 0),
@@ -1111,7 +1116,7 @@ async def preview_liquidaciones(
     id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: int = Query(10, ge=1, le=100),
+    limit: Optional[int] = Query(None, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
@@ -1146,7 +1151,7 @@ async def preview_liquidaciones(
         )
 
         return {
-            "items": items[offset:offset + limit],
+            "items": _paginate_preview(items, limit, offset),
             "total_items": len(items),
             "totales": meta.get("totales", {}),
         }
