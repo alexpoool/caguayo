@@ -1,5 +1,7 @@
 from typing import List
 import os
+import logging
+from sqlalchemy.exc import SQLAlchemyError
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlmodel.ext.asyncio.session import AsyncSession
 from jose import jwt
@@ -17,6 +19,7 @@ from src.dto.auth_dto import (
 )
 
 router = APIRouter(prefix="/auth", tags=["autenticacion"])
+logger = logging.getLogger(__name__)
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
@@ -29,7 +32,11 @@ async def login(
     db: AsyncSession = Depends(get_auth_session),
 ):
     """Iniciar sesión en el sistema"""
-    result = await auth_service.login(db, login_data)
+    try:
+        result = await auth_service.login(db, login_data)
+    except SQLAlchemyError as exc:
+        logger.warning("Login failed due to database error: %s", type(exc).__name__, exc_info=True)
+        raise HTTPException(status_code=400, detail="No se pudo utilizar esta base de datos. Comprueba que sea compatible con ITEMLI Reports o selecciona otra.") from exc
     if not result:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     return result
