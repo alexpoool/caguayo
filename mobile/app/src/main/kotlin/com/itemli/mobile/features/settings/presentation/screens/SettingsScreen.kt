@@ -1,12 +1,10 @@
 package com.itemli.mobile.features.settings.presentation.screens
 
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,11 +14,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.itemli.mobile.features.settings.presentation.adaptive.SettingsAdaptiveLayout
-import com.itemli.mobile.features.settings.presentation.adaptive.SettingsSection
 import com.itemli.mobile.features.settings.presentation.adaptive.SettingsSection
 import com.itemli.mobile.features.settings.presentation.viewmodels.SettingsViewModel
 import com.itemli.mobile.features.reports.infrastructure.storage.ReportPdfStorage
@@ -45,7 +41,7 @@ fun SettingsScreen(
     val fontSizePreferences = remember { FontSizePreferences(context.applicationContext) }
     val fontScale by fontSizePreferences.scale.collectAsState(initial = FontSizePreferences.DEFAULT_SCALE)
     val coroutineScope = rememberCoroutineScope()
-    var section by remember { mutableStateOf<SettingsSection?>(null) }
+    var section by remember { mutableStateOf(SettingsSection.HOME) }
     val pdfStorage = remember { ReportPdfStorage(context) }
 
     // Nombre visible de la carpeta elegida, para mostrarla en el formulario.
