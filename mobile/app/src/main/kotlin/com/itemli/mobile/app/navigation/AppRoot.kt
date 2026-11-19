@@ -66,7 +66,13 @@ fun AppRoot(
     AdaptiveAppScaffold(
         windowSizeClass = windowSizeClass,
         currentRoute = currentRoute,
-        onNavigate = { dest -> navController.navigate(dest.route) { launchSingleTop = true } },
+        onNavigate = { dest ->
+            navController.navigate(dest.route) {
+                popUpTo(AppDestination.Home.route) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        },
     ) {
         NavHost(
             navController = navController,
