@@ -316,12 +316,16 @@ async def get_movimientos_dependencia(
             Productos.precio_compra.label("precio_compra"),
         )
         .join(Movimiento, Movimiento.id_producto == Productos.id_producto)
-        .join(Productos, Movimiento.id_producto == Productos.id_producto)
         .filter(
             Movimiento.id_dependencia == id_dependencia,
             Movimiento.estado == "confirmado",
         )
-        .group_by(Productos.id_producto, Productos.codigo, Productos.nombre)
+        .group_by(
+            Productos.id_producto,
+            Productos.codigo,
+            Productos.nombre,
+            Productos.precio_compra,
+        )
     )
     base_result = await db.execute(productos_base)
     productos_base_map = {
