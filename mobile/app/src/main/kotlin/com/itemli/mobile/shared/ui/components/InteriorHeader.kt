@@ -37,9 +37,10 @@ fun InteriorHeader(
     actionDescription: String? = null,
     onAction: (() -> Unit)? = null,
     leadingActions: @Composable RowScope.() -> Unit = {},
+    titleMaxLines: Int = 1,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(52.dp)
+        modifier = Modifier.fillMaxWidth().height(if (titleMaxLines > 1) 68.dp else 52.dp)
             .drawBehind {
                 val bleed = 20.dp.toPx()
                 drawRect(color = HeaderNavy, topLeft = Offset(-bleed, 0f), size = Size(size.width + bleed * 2, size.height))
@@ -56,8 +57,8 @@ fun InteriorHeader(
             modifier = Modifier.weight(1f),
             color = Color.White,
             style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            maxLines = titleMaxLines,
+            overflow = TextOverflow.Clip,
         )
         Spacer(Modifier.width(8.dp))
         leadingActions()
