@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,8 +51,15 @@ fun InteriorHeader(
                 tint = Color.White, modifier = Modifier.size(22.dp).clickable(onClick = onBack))
             Spacer(Modifier.width(16.dp))
         }
-        Text(title, color = Color.White, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.weight(1f))
+        Text(
+            title,
+            modifier = Modifier.weight(1f),
+            color = Color.White,
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.width(8.dp))
         leadingActions()
         if (actionIcon != null) {
             val iconModifier = if (onAction != null) Modifier.clickable(onClick = onAction) else Modifier
