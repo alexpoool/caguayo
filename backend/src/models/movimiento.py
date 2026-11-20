@@ -34,6 +34,8 @@ class Movimiento(SQLModel, table=True):
         Index("idx_movimiento_fecha", "fecha"),
         Index("idx_movimiento_producto", "id_producto"),
         Index("idx_movimiento_tipo", "id_tipo_movimiento"),
+        Index("idx_movimiento_dependencia_estado_fecha", "id_dependencia", "estado", "fecha"),
+        Index("idx_movimiento_producto_estado", "id_producto", "estado"),
     )
 
     id_movimiento: Optional[int] = Field(
