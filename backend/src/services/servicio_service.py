@@ -7,6 +7,7 @@ from src.core.exceptions import BusinessLogicError
 from src.utils.codigos_entidad import (
     generar_codigo,
     generar_codigo_correlativo,
+    generar_numero_liquidacion_persona,
     siguiente_secuencia_anio,
 )
 from src.models.servicio import (
@@ -1022,12 +1023,14 @@ class PersonaLiquidacionService:
         comision_admin = Decimal(str(data.comision_admin_obra or 0))
         neto_pagar = subtotal - gasto_empresa - comision - comision_admin
 
+        fecha_emision = data.fecha_emision or date.today()
+
         liquidacion_data = PersonaLiquidacionCreate(
             numero=data.numero,
             id_etapa=data.id_etapa,
             id_persona=data.id_persona,
             id_pago=data.id_pago,
-            fecha_emision=data.fecha_emision,
+            fecha_emision=fecha_emision,
             fecha_liquidacion=data.fecha_liquidacion,
             descripcion=data.descripcion,
             id_moneda=data.id_moneda,
@@ -1046,12 +1049,13 @@ class PersonaLiquidacionService:
             observacion=data.observacion,
         )
 
-        liquidacion_data.numero = None
+        anio = fecha_emision.year
+        secuencia = await persona_liquidacion_repo.siguiente_secuencia(db, anio)
+        liquidacion_data.numero = generar_numero_liquidacion_persona(
+            denominacion, anio, secuencia
+        )
 
         liquidacion = await persona_liquidacion_repo.create(db, obj_in=liquidacion_data)
-        await db.flush()
-        liquidacion.numero = generar_codigo(denominacion or "", datetime.now().year, liquidacion.id_liquidacion)
-        db.add(liquidacion)
 
         if data.id_pago and importe > 0:
             pago = await pago_factura_servicio_repo.get(db, data.id_pago)

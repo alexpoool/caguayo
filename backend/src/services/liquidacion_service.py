@@ -180,24 +180,11 @@ class LiquidacionService:
 
         fecha_emision = data.fecha_emision or date.today()
 
-        # Secuencial global por cliente (MAX del secuencial del cliente + 1)
-        from sqlalchemy import text
-
-        stmt_sec = text(
-            "SELECT COALESCE(MAX(seg::int), 0) "
-            "FROM ("
-            "SELECT NULLIF(SPLIT_PART(codigo, '.', -1), '') AS seg "
-            "FROM liquidacion "
-            "WHERE id_cliente = :id_cliente AND codigo IS NOT NULL AND codigo <> ''"
-            ") s WHERE seg ~ '^[0-9]+$'"
+        # Secuencial global por año. Continúa la serie del legacy:
+        # LEG-115-5662 -> 116. No reinicia por cliente.
+        secuencia = await liquidacion_repo.siguiente_secuencia(
+            db, fecha_emision.year
         )
-        result_sec = await db.exec(
-            stmt_sec,
-            params={
-                "id_cliente": data.id_cliente,
-            },
-        )
-        secuencia = result_sec.one()[0] + 1
 
         db_liquidacion = Liquidacion(
             codigo=generar_codigo_liquidacion(

@@ -6,6 +6,7 @@ from .codigos_entidad import (
     generar_codigo_anexo,
     generar_codigo_item_anexo,
     generar_codigo_liquidacion,
+    generar_numero_liquidacion_persona,
     generar_codigo_factura,
     generar_codigo_item_factura,
     generar_codigo_venta_efectivo,
@@ -15,6 +16,9 @@ from .codigos_entidad import (
     generar_codigo_correlativo,
     siguiente_secuencia,
     siguiente_secuencia_anio,
+    siguiente_secuencia_liquidacion,
+    bloquear_secuencia_liquidacion,
+    secuencia_de_codigo,
 )
 from .auth import _get_nit_from_token, _get_denominacion_from_token, _get_user_dependencia_id, verify_auth
 from .pdf_template import PDFTemplate, format_quantity
@@ -27,6 +31,7 @@ __all__ = [
     "generar_codigo_anexo",
     "generar_codigo_item_anexo",
     "generar_codigo_liquidacion",
+    "generar_numero_liquidacion_persona",
     "generar_codigo_factura",
     "generar_codigo_item_factura",
     "generar_codigo_venta_efectivo",
@@ -36,6 +41,9 @@ __all__ = [
     "generar_codigo_correlativo",
     "siguiente_secuencia",
     "siguiente_secuencia_anio",
+    "siguiente_secuencia_liquidacion",
+    "bloquear_secuencia_liquidacion",
+    "secuencia_de_codigo",
     "_get_nit_from_token",
     "_get_denominacion_from_token",
     "_get_user_dependencia_id",

@@ -39,6 +39,7 @@ from src.dto.servicio_dto import (
     ItemOfertaCreate,
 )
 from src.repository.base import CRUDBase
+from src.utils.codigos_entidad import siguiente_secuencia_liquidacion
 
 
 # ==========================================
@@ -355,6 +356,12 @@ pago_factura_servicio_repo = PagoFacturaServicioRepository(PagoFacturaServicio)
 class PersonaLiquidacionRepository(
     CRUDBase[PersonaLiquidacion, PersonaLiquidacionCreate, PersonaLiquidacionUpdate]
 ):
+    async def siguiente_secuencia(self, db: AsyncSession, anio: int) -> int:
+        """Siguiente número visible del año, continuando la serie del legacy."""
+        return await siguiente_secuencia_liquidacion(
+            db, "persona_liquidacion", "numero", anio
+        )
+
     async def get_all_with_details(
         self, db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[PersonaLiquidacion]:

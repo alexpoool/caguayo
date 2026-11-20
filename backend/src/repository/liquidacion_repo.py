@@ -7,6 +7,7 @@ from src.repository.base import CRUDBase
 from src.models.cliente import Cliente
 from src.models.liquidacion import Liquidacion
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
+from src.utils.codigos_entidad import siguiente_secuencia_liquidacion
 from src.utils.nombres import filtro_nombre_completo
 
 ModelType = TypeVar("ModelType")
@@ -32,6 +33,12 @@ def _aplicar_busqueda(statement, search: Optional[str]):
 
 
 class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
+    async def siguiente_secuencia(self, db: AsyncSession, anio: int) -> int:
+        """Siguiente número visible del año, continuando la serie del legacy."""
+        return await siguiente_secuencia_liquidacion(
+            db, "liquidacion", "codigo", anio
+        )
+
     async def get_by_codigo(
         self, db: AsyncSession, codigo: str
     ) -> Optional[Liquidacion]:

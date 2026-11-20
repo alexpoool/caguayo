@@ -8,8 +8,11 @@ from sqlalchemy import text
 from src.utils.codigos_entidad import (
     generar_codigo_contrato,
     generar_codigo_correlativo,
+    generar_numero_liquidacion_persona,
+    secuencia_de_codigo,
     siguiente_secuencia,
     siguiente_secuencia_anio,
+    siguiente_secuencia_liquidacion,
 )
 
 
@@ -84,3 +87,92 @@ async def test_siguiente_secuencia_anio_sin_codigos(db_session):
         db_session, "tmp_test_codigos_vacio", "codigo", 2027
     )
     assert sec == 1
+
+
+@pytest.mark.parametrize(
+    "codigo, esperado",
+    [
+        ("LEG-115-5662", 115),
+        ("LEG-115", None),
+        ("LEG-5662", None),
+        ("LEG--238-1043", None),
+        ("LEG-", None),
+        ("FT.26.115", 115),
+        ("FT.26.115-1043", 115),
+        ("CAG.26.5.115", 115),
+        ("1.CAG.26.5.115", 115),
+        ("CAG.26.5.001", 1),
+        ("CAG.26.5.000", None),
+        ("FT.26.", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_secuencia_de_codigo_entiende_legacy_y_app(codigo, esperado):
+    assert secuencia_de_codigo(codigo) == esperado
+
+
+def test_generar_numero_liquidacion_persona():
+    assert generar_numero_liquidacion_persona("FT", 2026, 116) == "FT.26.116"
+
+
+@pytest.mark.asyncio
+async def test_siguiente_secuencia_liquidacion_continua_legacy(db_session):
+    await db_session.exec(
+        text(
+            "CREATE TEMP TABLE tmp_liq_legacy "
+            "(codigo varchar(50), fecha_emision date) ON COMMIT DROP"
+        )
+    )
+    await db_session.exec(
+        text(
+            "INSERT INTO tmp_liq_legacy (codigo, fecha_emision) VALUES "
+            "('LEG-115-5662', '2026-01-01'), "
+            "('CAG.26.5.001', '2026-02-01'), "
+            "('LEG-114-5661', '2025-12-31')"
+        )
+    )
+
+    assert (
+        await siguiente_secuencia_liquidacion(
+            db_session, "tmp_liq_legacy", "codigo", 2026
+        )
+        == 116
+    )
+    assert (
+        await siguiente_secuencia_liquidacion(
+            db_session, "tmp_liq_legacy", "codigo", 2025
+        )
+        == 115
+    )
+
+
+@pytest.mark.asyncio
+async def test_siguiente_secuencia_liquidacion_proyectos(db_session):
+    await db_session.exec(
+        text(
+            "CREATE TEMP TABLE tmp_liq_proyectos "
+            "(numero varchar(50), fecha_emision date) ON COMMIT DROP"
+        )
+    )
+    await db_session.exec(
+        text(
+            "INSERT INTO tmp_liq_proyectos (numero, fecha_emision) VALUES "
+            "('FT.26.115', '2026-01-01'), "
+            "('FT.26.115-1043', '2026-01-02'), "
+            "('FT.25.900', '2025-12-31')"
+        )
+    )
+
+    assert (
+        await siguiente_secuencia_liquidacion(
+            db_session, "tmp_liq_proyectos", "numero", 2026
+        )
+        == 116
+    )
+    assert (
+        await siguiente_secuencia_liquidacion(
+            db_session, "tmp_liq_proyectos", "numero", 2025
+        )
+        == 901
+    )

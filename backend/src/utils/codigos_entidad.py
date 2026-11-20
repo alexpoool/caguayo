@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 
 from sqlalchemy import text
@@ -67,12 +68,20 @@ def generar_codigo_liquidacion(
     denominacion: str, anio: int, id_cliente: int, secuencia: int
 ) -> str:
     """Código de liquidación: {den}.{año_2d}.{id_cliente}.{secuencia:03d}.
-    El secuencial es global por cliente.
-    Ej: FT.26.1.001"""
+    El secuencial es global por año y continúa la serie del legacy.
+    Ej: FT.26.1.116"""
     return (
         f"{_prefijo(denominacion)}.{str(anio)[-2:]}."
         f"{id_cliente}.{secuencia:03d}"
     )
+
+
+def generar_numero_liquidacion_persona(
+    denominacion: Optional[str], anio: int, secuencia: int
+) -> str:
+    """Número de liquidación de proyecto: {den}.{año_2d}.{secuencia}.
+    Sin padding, igual que los números del legacy. Ej: FT.26.116"""
+    return f"{_prefijo(denominacion)}.{str(anio)[-2:]}.{secuencia}"
 
 
 def generar_codigo_factura(
@@ -218,3 +227,96 @@ async def siguiente_secuencia_anio(
     )
     result = await db.exec(raw, params={"patron": patron})
     return result.one()[0]
+
+
+#: `LEG-<numero_liquidacion>-<id_legacy>`: el número visible es el primero.
+#: El ETL sólo omite el número cuando el legacy viene vacío y deja `LEG-<id>`;
+#: ese caso no aporta un número visible y no debe contar para la serie.
+_RE_LEG = re.compile(r"^LEG-(-?\d+)-(-?\d+)$")
+#: Sufijo `-id` que el ETL pone a los números legacy repetidos.
+_RE_SUFIJO_ID = re.compile(r"-\d+$")
+
+
+def secuencia_de_codigo(codigo: Optional[str]) -> Optional[int]:
+    """Número visible de una liquidación, sin importar el formato.
+
+    Acepta los códigos que deja el ETL y los que genera la aplicación:
+
+      · `LEG-115-5662`      -> 115
+      · `LEG--238-1043`     -> None (negativo)
+      · `LEG-5662`          -> None (el legacy no traía número; 5662 es su id)
+      · `FT.26.115`         -> 115
+      · `FT.26.115-1043`    -> 115 (el `-1043` es el id del legacy)
+      · `CAG.26.5.115`      -> 115
+      · `1.CAG.26.5.115`    -> 115 (copia por moneda)
+
+    Devuelve None cuando no hay un número positivo reconocible.
+    """
+    if not codigo:
+        return None
+
+    valor = codigo.strip()
+    if not valor:
+        return None
+
+    coincidencia = _RE_LEG.match(valor)
+    if coincidencia:
+        numero = int(coincidencia.group(1))
+        return numero if numero > 0 else None
+
+    ultimo = valor.rsplit(".", 1)[-1].strip()
+    ultimo = _RE_SUFIJO_ID.sub("", ultimo)
+    if not ultimo.isdigit():
+        return None
+
+    numero = int(ultimo)
+    return numero if numero > 0 else None
+
+
+async def bloquear_secuencia_liquidacion(
+    db, tabla: str, campo: str, anio: int
+) -> None:
+    """Toma el lock de transacción de la serie (tabla, campo, año).
+
+    La app y los scripts de mantenimiento deben usar la misma clave para que
+    una renumeración no se cruce con un alta. El lock se libera al hacer commit.
+    """
+    clave = f"liquidacion:{tabla}:{campo}:{anio}"
+    await db.exec(
+        text("SELECT pg_advisory_xact_lock(hashtext(:clave))"),
+        params={"clave": clave},
+    )
+
+
+async def siguiente_secuencia_liquidacion(
+    db, tabla: str, campo: str, anio: int
+) -> int:
+    """Siguiente número visible de las liquidaciones de un año.
+
+    Continúa la serie que dejó la migración: con `LEG-115-5662` devuelve 116.
+    No reinicia por cliente ni usa la PK; es global por año, como el
+    `numero_liquidacion` del legacy.
+
+    Toma un lock de transacción por (tabla, año) para que dos altas
+    simultáneas no lean la misma secuencia. El lock se libera al hacer commit,
+    así que la lectura y el INSERT deben ocurrir en la misma transacción.
+    """
+    for identificador in (tabla, campo):
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", identificador):
+            raise ValueError("identificador SQL inválido: %r" % identificador)
+
+    await bloquear_secuencia_liquidacion(db, tabla, campo, anio)
+
+    raw = text(
+        f"SELECT {campo} FROM {tabla} "
+        "WHERE EXTRACT(YEAR FROM fecha_emision) = :anio "
+        f"AND {campo} IS NOT NULL AND {campo} <> ''"
+    )
+    result = await db.exec(raw, params={"anio": anio})
+
+    secuencias = [
+        secuencia
+        for (codigo,) in result.all()
+        if (secuencia := secuencia_de_codigo(codigo)) is not None
+    ]
+    return max(secuencias, default=0) + 1
