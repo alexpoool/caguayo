@@ -697,6 +697,13 @@ export const personaEtapaService = {
   async createPersonaEtapa(data: PersonaEtapaCreate): Promise<PersonaEtapa> {
     return apiClient.post<PersonaEtapa>('/persona-etapa', data);
   },
+  async updatePersonaEtapa(
+    etapaId: number,
+    personaId: number,
+    data: { cobro: number; id_moneda?: number; por_cobrar: number; liquidada: boolean },
+  ): Promise<PersonaEtapa> {
+    return apiClient.put<PersonaEtapa>(`/persona-etapa/${etapaId}/${personaId}`, data);
+  },
   async deletePersonaEtapa(etapaId: number, personaId: number): Promise<void> {
     return apiClient.delete<void>(`/persona-etapa/${etapaId}/${personaId}`);
   }
