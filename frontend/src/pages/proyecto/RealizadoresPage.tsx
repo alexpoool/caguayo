@@ -45,6 +45,7 @@ import type {
 import type { Moneda } from "../../types/moneda";
 import {
   Plus,
+  Pencil,
   Save,
   Trash2,
   ArrowLeft,
@@ -79,6 +80,7 @@ export function RealizadoresPage() {
   const [searchParams] = useSearchParams();
   const etapaParam = searchParams.get("etapa");
   const [view, setView] = useState<View>("list");
+  const [editingRecord, setEditingRecord] = useState<PersonaEtapaWithDetails | null>(null);
 
   const [personasEtapa, setPersonasEtapa] = useState<PersonaEtapaWithDetails[]>(
     [],
@@ -301,8 +303,17 @@ export function RealizadoresPage() {
         cobro: formData.cobro ? Number(formData.cobro) : 0,
         id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
       };
-      await personaEtapaService.createPersonaEtapa(data);
-      toast.success("Creado");
+      if (editingRecord) {
+        const pagado = totalesPagado.get(`${editingRecord.id_etapa}-${editingRecord.id_persona}`) || 0;
+        const porCobrar = Math.max(0, Number(data.cobro) - Number(pagado));
+        await personaEtapaService.updatePersonaEtapa(editingRecord.id_etapa, editingRecord.id_persona, {
+          cobro: data.cobro, id_moneda: data.id_moneda, por_cobrar: porCobrar, liquidada: porCobrar <= 0,
+        });
+        toast.success("Realizador actualizado");
+      } else {
+        await personaEtapaService.createPersonaEtapa(data);
+        toast.success("Creado");
+      }
       setView("list");
       resetForm();
       loadPersonas();
@@ -335,6 +346,7 @@ export function RealizadoresPage() {
 
   const resetForm = () => {
     setFormData({});
+    setEditingRecord(null);
     setPersonaSeleccionada(null);
     setBusquedaPersona("");
     setSolicitudSeleccionada(null);
@@ -342,6 +354,16 @@ export function RealizadoresPage() {
     setEtapasSolicitud([]);
     setShowDropdownPersona(false);
     setShowDropdownSolicitud(false);
+  };
+
+  const openEditForm = (item: PersonaEtapaWithDetails) => {
+    resetForm();
+    const cliente = todosClientes.find((c) => c.id_cliente === item.id_persona) || null;
+    setEditingRecord(item);
+    setPersonaSeleccionada(cliente);
+    setBusquedaPersona(getPersonaName(item.id_persona));
+    setFormData({ id_etapa: item.id_etapa, id_persona: item.id_persona, cobro: String(item.cobro ?? 0), id_moneda: item.id_moneda ?? "" });
+    setView("form");
   };
 
   const openForm = () => {
@@ -780,6 +802,15 @@ export function RealizadoresPage() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => openEditForm(item)}
+                            className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
+                            title="Editar realizador"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() =>
                               handleDelete(
                                 item.id_etapa,
@@ -814,7 +845,7 @@ export function RealizadoresPage() {
           </div>
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
-              Nuevo Realizador
+              {editingRecord ? "Editar Realizador" : "Nuevo Realizador"}
             </h2>
             <p className="text-gray-500 mt-1">
               {currentEtapa
@@ -855,7 +886,7 @@ export function RealizadoresPage() {
                     type="text"
                     placeholder="Buscar persona..."
                     value={busquedaPersona}
-                    disabled={!!personaSeleccionada}
+                    disabled={!!personaSeleccionada || !!editingRecord}
                     onChange={(e) => {
                       setBusquedaPersona(e.target.value);
                       setShowDropdownPersona(true);
@@ -934,7 +965,7 @@ export function RealizadoresPage() {
             </div>
 
             {/* Fila 2: Solicitud + Etapa (solo sin etapaParam) - lado a lado */}
-            {!etapaParam && (
+            {!etapaParam && !editingRecord && (
               <div className="flex gap-2 items-start">
                 <div ref={dropdownSolicitudRef} className="relative flex-1">
                   <Label className="text-sm font-medium">Solicitud *</Label>
@@ -1061,7 +1092,7 @@ export function RealizadoresPage() {
               className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
             >
               <Save className="h-4 w-4" />
-              Guardar
+              {editingRecord ? "Guardar cambios" : "Guardar"}
             </Button>
             <Button
               variant="outline"
