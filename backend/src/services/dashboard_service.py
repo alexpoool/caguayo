@@ -44,9 +44,11 @@ async def calcular_cantidad_producto(db: AsyncSession, producto_id: int) -> int:
 class DashboardService:
     @staticmethod
     async def get_stats(db: AsyncSession) -> DashboardStats:
-        """Obtener todas las estadísticas del dashboard."""
+        """Obtener estadísticas del dashboard usando agregaciones SQL."""
+        from src.dto import ProductoSimpleRead
+        from src.models import Categorias, Moneda
+        from sqlalchemy import case
 
-        # Fechas de referencia
         hoy = datetime.now().date()
         ayer = hoy - timedelta(days=1)
         inicio_hoy = datetime.combine(hoy, datetime.min.time())
@@ -54,102 +56,70 @@ class DashboardService:
         inicio_ayer = datetime.combine(ayer, datetime.min.time())
         fin_ayer = datetime.combine(ayer, datetime.max.time())
 
-        # Conteos principales
-        productos = await productos_repo.get_all(db)
-        total_productos = len(productos)
+        # Conteos y métricas generales sin cargar todas las filas.
+        result = await db.exec(select(
+            func.count(Ventas.id_venta).label("total"),
+            func.count(case((Ventas.estado == EstadoVenta.PENDIENTE, 1))).label("pendientes"),
+            func.count(case((Ventas.estado == EstadoVenta.COMPLETADA, 1))).label("completadas"),
+            func.count(case((Ventas.estado == EstadoVenta.ANULADA, 1))).label("anuladas"),
+            func.coalesce(func.avg(Ventas.total), 0).label("ticket"),
+        ))
+        ventas_stats = result.one()
+        total_productos = (await db.exec(select(func.count()).select_from(Productos))).one()
+        total_clientes = (await db.exec(select(func.count()).select_from(Cliente))).one()
+        total_categorias = (await db.exec(select(func.count()).select_from(Categorias))).one()
+        total_monedas = (await db.exec(select(func.count()).select_from(Moneda))).one()
 
-        ventas = await ventas_repo.get_all(db)
-        total_ventas = len(ventas)
+        periodo_result = await db.exec(select(
+            func.coalesce(func.sum(case((
+                (Ventas.fecha >= inicio_hoy) & (Ventas.fecha <= fin_hoy), Ventas.total
+            ), else_=0)), 0).label("hoy"),
+            func.count(case((
+                (Ventas.fecha >= inicio_hoy) & (Ventas.fecha <= fin_hoy), 1
+            ))).label("cantidad_hoy"),
+            func.coalesce(func.sum(case((
+                (Ventas.fecha >= inicio_ayer) & (Ventas.fecha <= fin_ayer), Ventas.total
+            ), else_=0)), 0).label("ayer"),
+        ).where(Ventas.fecha >= inicio_ayer, Ventas.fecha <= fin_hoy))
+        periodo = periodo_result.one()
+        ventas_hoy = Decimal(str(periodo.hoy or 0))
+        ventas_ayer = Decimal(str(periodo.ayer or 0))
+        ventas_hoy_cantidad = int(periodo.cantidad_hoy or 0)
+        crecimiento = float(((ventas_hoy - ventas_ayer) / ventas_ayer) * 100) if ventas_ayer > 0 else (100.0 if ventas_hoy > 0 else 0.0)
 
-        clientes = await ventas_cliente_repo.get_all(db)
-        total_clientes = len(clientes)
-
-        categorias = await categorias_repo.get_all(db)
-        total_categorias = len(categorias)
-
-        monedas = await moneda_repo.get_all(db)
-        total_monedas = len(monedas)
-
-        # Ventas de hoy (prioridad según usuario)
-        ventas_hoy_list = await ventas_repo.get_by_fecha_range(db, inicio_hoy, fin_hoy)
-        ventas_hoy = Decimal(str(sum(v.total for v in ventas_hoy_list)))
-        ventas_hoy_cantidad = len(ventas_hoy_list)
-
-        # Ventas de ayer para comparativa
-        ventas_ayer_list = await ventas_repo.get_by_fecha_range(
-            db, inicio_ayer, fin_ayer
-        )
-        ventas_ayer = Decimal(str(sum(v.total for v in ventas_ayer_list)))
-
-        # Cálculo de crecimiento porcentaje
-        if ventas_ayer > 0:
-            ventas_crecimiento_porcentaje = float(
-                ((ventas_hoy - ventas_ayer) / ventas_ayer) * 100
-            )
-        else:
-            ventas_crecimiento_porcentaje = 100.0 if ventas_hoy > 0 else 0.0
-
-        # Estados de ventas
-        ventas_pendientes = len(
-            [v for v in ventas if v.estado == EstadoVenta.PENDIENTE]
-        )
-        ventas_completadas = len(
-            [v for v in ventas if v.estado == EstadoVenta.COMPLETADA]
-        )
-        ventas_anuladas = len([v for v in ventas if v.estado == EstadoVenta.ANULADA])
-
-        # Ticket promedio
-        if ventas:
-            ticket_promedio = Decimal(str(sum(v.total for v in ventas))) / Decimal(
-                len(ventas)
-            )
-        else:
-            ticket_promedio = Decimal("0")
-
-        # Inventario - Calcular cantidades basadas en movimientos
-        # Obtener productos con cantidades calculadas
-        from src.dto import ProductoSimpleRead
-
-        productos_con_cantidad = []
+        # Calcular existencias de todos los productos en una única consulta.
+        stock_statement = select(
+            Productos.id_producto, Productos.codigo, Productos.nombre,
+            Productos.descripcion, Productos.precio_venta, Productos.precio_minimo,
+            Productos.precio_compra,
+            func.coalesce(func.sum(Movimiento.cantidad * TipoMovimiento.factor), 0).label("cantidad"),
+        ).select_from(Productos).outerjoin(
+            Movimiento,
+            (Movimiento.id_producto == Productos.id_producto) & (Movimiento.estado == "confirmado"),
+        ).outerjoin(
+            TipoMovimiento,
+            Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
+        ).group_by(Productos.id_producto)
+        stock_result = await db.exec(stock_statement)
         productos_agotados = 0
         valor_inventario_compra = Decimal("0")
         valor_inventario_venta = Decimal("0")
-
-        for p in productos:
-            cantidad = await calcular_cantidad_producto(db, p.id_producto)
-
-            # Crear DTO simple sin relaciones lazy
-            producto_dto = ProductoSimpleRead(
-                id_producto=p.id_producto,
-                codigo=p.codigo,
-                nombre=p.nombre,
-                descripcion=p.descripcion,
-                precio_venta=p.precio_venta,
-                precio_minimo=p.precio_minimo,
-                cantidad=cantidad,
-            )
-            productos_con_cantidad.append(producto_dto)
-
-            if cantidad == 0:
+        productos_stock_bajo_dto = []
+        for row in stock_result.all():
+            cantidad = int(row.cantidad or 0)
+            if cantidad <= 0:
                 productos_agotados += 1
+            valor_inventario_compra += Decimal(str(row.precio_compra or 0)) * cantidad
+            valor_inventario_venta += Decimal(str(row.precio_venta or 0)) * cantidad
+            if cantidad <= 10 and len(productos_stock_bajo_dto) < 5:
+                productos_stock_bajo_dto.append(ProductoSimpleRead(
+                    id_producto=row.id_producto, codigo=row.codigo, nombre=row.nombre,
+                    descripcion=row.descripcion, precio_venta=row.precio_venta,
+                    precio_minimo=row.precio_minimo, cantidad=cantidad,
+                ))
 
-            valor_inventario_compra += Decimal(str(p.precio_compra or 0)) * Decimal(
-                cantidad
-            )
-            valor_inventario_venta += Decimal(str(p.precio_venta or 0)) * Decimal(
-                cantidad
-            )
-
-        # Productos con stock bajo (cantidad <= 10)
-        productos_stock_bajo_dto = [
-            p for p in productos_con_cantidad if p.cantidad <= 10
-        ][:5]
-
-        # Últimas ventas (con relaciones)
         ultimas_ventas_db = await ventas_repo.get_multi(
-            db,
-            skip=0,
-            limit=5,
+            db, skip=0, limit=5,
             load_options=[
                 selectinload(Ventas.cliente).selectinload(Cliente.provincia),
                 selectinload(Ventas.cliente).selectinload(Cliente.municipio),
@@ -160,42 +130,31 @@ class DashboardService:
             ],
         )
         ultimas_ventas = [VentaRead.model_validate(v) for v in ultimas_ventas_db]
-
-        # Clientes recientes (últimos 5 registrados)
         clientes_recientes_db = await ventas_cliente_repo.get_multi(
-            db,
-            skip=0,
-            limit=5,
+            db, skip=0, limit=5,
             load_options=[
-                selectinload(Cliente.provincia),
-                selectinload(Cliente.municipio),
-                selectinload(Cliente.cuentas),
-                selectinload(Cliente.cliente_natural),
-                selectinload(Cliente.cliente_juridica),
-                selectinload(Cliente.cliente_tcp),
+                selectinload(Cliente.provincia), selectinload(Cliente.municipio),
+                selectinload(Cliente.cuentas), selectinload(Cliente.cliente_natural),
+                selectinload(Cliente.cliente_juridica), selectinload(Cliente.cliente_tcp),
             ],
         )
-        clientes_recientes = [
-            ClienteRead.model_validate(c) for c in clientes_recientes_db
-        ]
-
-        # Top productos vendidos
+        clientes_recientes = [ClienteRead.model_validate(c) for c in clientes_recientes_db]
         top_productos = await DashboardService._get_top_productos(db)
 
         return DashboardStats(
             total_productos=total_productos,
-            total_ventas=total_ventas,
+            total_ventas=int(ventas_stats.total or 0),
             total_clientes=total_clientes,
             total_categorias=total_categorias,
             total_monedas=total_monedas,
             ventas_hoy=ventas_hoy,
             ventas_hoy_cantidad=ventas_hoy_cantidad,
             ventas_ayer=ventas_ayer,
-            ventas_crecimiento_porcentaje=ventas_crecimiento_porcentaje,
-            ventas_pendientes=ventas_pendientes,
-            ventas_completadas=ventas_completadas,
-            ventas_anuladas=ventas_anuladas,
-            ticket_promedio=ticket_promedio,
+            ventas_crecimiento_porcentaje=crecimiento,
+            ventas_pendientes=int(ventas_stats.pendientes or 0),
+            ventas_completadas=int(ventas_stats.completadas or 0),
+            ventas_anuladas=int(ventas_stats.anuladas or 0),
+            ticket_promedio=Decimal(str(ventas_stats.ticket or 0)),
             productos_stock_bajo=productos_stock_bajo_dto,
             productos_agotados=productos_agotados,
             valor_inventario_compra=valor_inventario_compra,
