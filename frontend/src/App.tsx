@@ -462,7 +462,7 @@ const TERCEROS_SECCIONES: { id: string; label: string; items: AdminSeccionItem[]
     label: 'Ventas',
     items: [
       { to: '/clientes', label: 'Clientes', icon: UserCircle, func: 'clientes' },
-      { to: '/ventas/contratos', label: 'Contratos', icon: FilePlus, func: 'contratos' },
+      { to: '/terceros/contratos', label: 'Contratos', icon: FilePlus, func: 'contratos' },
     ],
   },
   {
@@ -1573,6 +1573,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/operaciones">
                       <VentaHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/terceros/contratos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros/contratos">
+                      <ContratosPage />
                     </ProtectedRoute>
                   }
                 />
