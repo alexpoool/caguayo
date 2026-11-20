@@ -35,6 +35,7 @@ from src.dto.servicio_dto import (
     TareaEtapaUpdate,
     PersonaEtapaCreate,
     PersonaEtapaRead,
+    PersonaEtapaUpdate,
     FacturaServicioCreate,
     FacturaServicioRead,
     FacturaServicioUpdate,
@@ -412,6 +413,46 @@ class PersonaEtapaService:
     async def get_by_etapa(db: AsyncSession, id_etapa: int) -> List[PersonaEtapaRead]:
         items = await persona_etapa_repo.get_by_etapa(db, id_etapa)
         return [PersonaEtapaRead(**i.model_dump()) for i in items]
+
+    @staticmethod
+    async def update(
+        db: AsyncSession,
+        id_etapa: int,
+        id_persona: int,
+        id_moneda: int,
+        data: PersonaEtapaUpdate,
+    ) -> Optional[PersonaEtapaRead]:
+        statement = select(PersonaEtapa).where(
+            PersonaEtapa.id_etapa == id_etapa,
+            PersonaEtapa.id_persona == id_persona,
+            PersonaEtapa.id_moneda == id_moneda,
+        )
+        result = await db.exec(statement)
+        obj = result.first()
+        if not obj:
+            return None
+
+        pagado_result = await db.exec(
+            select(func.coalesce(func.sum(PersonaLiquidacion.importe), 0)).where(
+                PersonaLiquidacion.id_etapa == id_etapa,
+                PersonaLiquidacion.id_persona == id_persona,
+                PersonaLiquidacion.id_moneda == id_moneda,
+                PersonaLiquidacion.confirmado == True,
+            )
+        )
+        pagado = Decimal(str(pagado_result.one() or 0))
+        nuevos_datos = data.model_dump(exclude_unset=True)
+        nuevo_cobro = nuevos_datos.get("cobro", obj.cobro)
+        if nuevo_cobro is not None and Decimal(str(nuevo_cobro)) < pagado:
+            raise BusinessLogicError(
+                "El cobro no puede ser inferior al importe de las liquidaciones confirmadas."
+            )
+
+        for field, value in nuevos_datos.items():
+            setattr(obj, field, value)
+        await db.commit()
+        await db.refresh(obj)
+        return PersonaEtapaRead(**obj.model_dump())
 
     @staticmethod
     async def delete(db: AsyncSession, id_etapa: int, id_persona: int) -> bool:
