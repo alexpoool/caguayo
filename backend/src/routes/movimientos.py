@@ -5,6 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
 from src.database.connection import get_session
 from src.services.movimiento_service import MovimientoService
+from src.repository.movimientos_repo import movimiento_repo
 from src.models import TipoMovimiento, Movimiento
 from src.dto import (
     MovimientoCreate,
@@ -35,11 +36,16 @@ async def listar_movimientos(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     tipo: str = Query(None, description="Filtrar por tipo de movimiento"),
+    search: str | None = Query(None, min_length=2, max_length=100),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
-    """Listar todos los movimientos con paginación y filtro opcional por tipo."""
+    """Listar movimientos paginados con filtro por tipo y búsqueda."""
+    response.headers["X-Total-Count"] = str(
+        await movimiento_repo.count_multi(db, tipo=tipo, search=search)
+    )
     return await MovimientoService.get_movimientos(
-        db, skip=skip, limit=limit, tipo=tipo
+        db, skip=skip, limit=limit, tipo=tipo, search=search
     )
 
 
