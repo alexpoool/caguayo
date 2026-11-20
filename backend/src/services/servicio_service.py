@@ -29,6 +29,7 @@ from src.dto.servicio_dto import (
     TareaEtapaUpdate,
     PersonaEtapaCreate,
     PersonaEtapaRead,
+    PersonaEtapaUpdate,
     FacturaServicioCreate,
     FacturaServicioRead,
     FacturaServicioUpdate,
