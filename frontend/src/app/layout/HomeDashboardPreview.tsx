@@ -3,15 +3,17 @@ import { BarChart3, BookOpen, Boxes, Briefcase, CalendarDays, ChartNoAxesCombine
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '@/shared/ui/auth';
 import { useEmpresa } from '@/config/branding';
+import { FUNCIONALIDADES_POR_MODULO } from '@/config/rutas';
 
 const MODULES = [
-  { key: 'terceros', label: 'Terceros', icon: Users, color: '#2878F0', funcs: ['clientes', 'contratos', 'proveedores', 'convenios'] },
-  { key: 'compra', label: 'Compra', icon: ShoppingCart, color: '#F59A32', funcs: ['proveedores', 'convenios', 'anexos', 'liquidaciones', 'productos_liquidacion'] },
-  { key: 'venta', label: 'Tienda', icon: Store, color: '#8B5CF6', funcs: ['clientes', 'contratos', 'suplementos', 'facturas', 'venta_efectivo'] },
-  { key: 'proyecto', label: 'Proyectos', icon: Wrench, color: '#0EA5A4', funcs: ['servicios', 'solicitudes', 'proyectos', 'facturas_servicio', 'ofertas', 'pre_facturas', 'liquidaciones_servicio'] },
-  { key: 'inventario', label: 'Inventario', icon: Boxes, color: '#10A879', funcs: ['movimientos', 'pendientes', 'productos'] },
-  { key: 'reportes', label: 'Reportes', icon: BarChart3, color: '#7C5CE7', funcs: ['reporte_existencias', 'reporte_movimientos_dependencia', 'reporte_movimientos_producto', 'reporte_proveedores', 'reporte_clientes', 'reporte_proyectos', 'reporte_creadores', 'reporte_desempeno', 'reporte_liquidaciones', 'reporte_onat', 'reporte_mincult'] },
-];
+  { key: 'terceros', label: 'Terceros', icon: Users, color: '#2878F0' },
+  { key: 'compra', label: 'Compra', icon: ShoppingCart, color: '#F59A32' },
+  { key: 'venta', label: 'Tienda', icon: Store, color: '#8B5CF6' },
+  { key: 'proyecto', label: 'Proyectos', icon: Wrench, color: '#0EA5A4' },
+  { key: 'inventario', label: 'Inventario', icon: Boxes, color: '#10A879' },
+  { key: 'reportes', label: 'Reportes', icon: BarChart3, color: '#7C5CE7' },
+  { key: 'administracion', label: 'Administración', icon: Briefcase, color: '#64748B' },
+] as const;
 
 export function HomeDashboardPreview() {
   const { funcionalidades, user } = useAuth();
@@ -19,7 +21,7 @@ export function HomeDashboardPreview() {
   const names = useMemo(() => new Set(funcionalidades.map(f => f.nombre.toLowerCase())), [funcionalidades]);
   const available = useMemo(() => MODULES.map(module => ({
     ...module,
-    count: module.funcs.filter(name => names.has(name)).length,
+    count: FUNCIONALIDADES_POR_MODULO[module.key].filter(name => names.has(name)).length,
   })).filter(module => module.count > 0), [names]);
   const totalFunctions = available.reduce((sum, module) => sum + module.count, 0);
   const today = new Date();
