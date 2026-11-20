@@ -320,6 +320,24 @@ class PersonaEtapaService:
         return [PersonaEtapaRead(**i.model_dump()) for i in items]
 
     @staticmethod
+    async def update(
+        db: AsyncSession, id_etapa: int, id_persona: int, data: PersonaEtapaUpdate
+    ) -> Optional[PersonaEtapaRead]:
+        statement = select(PersonaEtapa).where(
+            PersonaEtapa.id_etapa == id_etapa,
+            PersonaEtapa.id_persona == id_persona,
+        )
+        result = await db.exec(statement)
+        obj = result.first()
+        if not obj:
+            return None
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(obj, field, value)
+        await db.commit()
+        await db.refresh(obj)
+        return PersonaEtapaRead(**obj.model_dump())
+
+    @staticmethod
     async def delete(db: AsyncSession, id_etapa: int, id_persona: int) -> bool:
         obj = await persona_etapa_repo.remove(db, id=(id_etapa, id_persona))
         return obj is not None
