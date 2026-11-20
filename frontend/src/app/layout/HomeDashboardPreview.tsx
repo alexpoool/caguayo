@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { BarChart3, BookOpen, Boxes, Briefcase, CalendarDays, ChartNoAxesCombined, Clock3, FileText, Package, ShoppingCart, Store, Users, Wrench } from 'lucide-react';
+import { BarChart3, BookOpen, Boxes, Briefcase, CalendarDays, Clock3, FileText, Package, ShoppingCart, Store, Users, Wrench } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '@/shared/ui/auth';
 import { useEmpresa } from '@/config/branding';
@@ -43,7 +43,7 @@ export function HomeDashboardPreview() {
             <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-100">Sesión activa</span>
           </div>
         </div>
-        <ChartNoAxesCombined className="absolute bottom-5 right-8 hidden h-28 w-28 text-white/20 lg:block" strokeWidth={1.2} />
+        <BarChart3 className="absolute bottom-5 right-8 hidden h-28 w-28 text-white/20 lg:block" strokeWidth={1.2} />
       </section>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
