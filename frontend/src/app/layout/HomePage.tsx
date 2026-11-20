@@ -1,7 +1,7 @@
 import { useAuth } from '@/shared/ui/auth';
-import { PRODUCTO, useEmpresa } from '@/config/branding';
+import { useEmpresa } from '@/config/branding';
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { BarChart3, CalendarDays, ChevronDown, ChevronRight, Clock3 } from 'lucide-react';
 
 type FuncItem = {
   key: string;
@@ -133,7 +133,6 @@ const guideSteps = [
 export function HomePage() {
   const { funcionalidades, user } = useAuth();
   const empresa = useEmpresa();
-  const [logoOk, setLogoOk] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     terceros: false,
     inventario: false,
@@ -190,38 +189,21 @@ export function HomePage() {
   return (
     <div className="min-h-full w-full bg-surface">
       <div className="p-4 md:p-6 space-y-6">
-        <div className="rounded-2xl bg-gradient-to-r from-brand-500 via-panel-800 to-panel-900 text-white shadow-lg">
-          <div className="flex flex-col items-center gap-6 px-8 py-8 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold md:text-3xl">
-                Bienvenido, <span className="text-brand-100">{user?.nombre || 'Usuario'}</span> 👋
-              </h1>
-              <p className="mt-2 text-sm text-gray-200 md:text-base">
-                Has iniciado sesión como <strong>{user?.grupo?.nombre || 'Usuario'}</strong> en {empresa.nombre}.
-              </p>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-gray-300 md:justify-start md:text-sm">
-                <span>📅 {formatDate()}</span>
-                <span>🕐 {formatTime()}</span>
-                <span>💻 Sesión activa</span>
-              </div>
-            </div>
-            <div className="flex flex-col items-center">
-              {logoOk ? (
-                <img
-                  src={PRODUCTO.logo}
-                  alt={PRODUCTO.nombre}
-                  className="w-28 h-28 rounded-full object-cover shadow-lg"
-                  decoding="async"
-                  onError={() => setLogoOk(false)}
-                />
-              ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">
-                  <span className="text-4xl">🎛️</span>
-                </div>
-              )}
+        <section className="relative isolate overflow-hidden rounded-2xl bg-gradient-to-r from-[#092E83] via-[#1256C8] to-[#3288F4] px-6 py-7 text-white shadow-lg sm:px-9 sm:py-8">
+          <div className="pointer-events-none absolute -right-12 -top-24 h-72 w-72 rounded-full border-[34px] border-white/10" />
+          <div className="pointer-events-none absolute -bottom-36 right-1/4 h-72 w-72 rounded-full bg-blue-300/10 blur-2xl" />
+          <div className="relative max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-100">Panel personal · {empresa.nombre}</p>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">¡Bienvenido, {user?.nombre || 'Usuario'}! <span aria-hidden="true">👋</span></h1>
+            <p className="mt-2 max-w-2xl text-sm text-blue-50 sm:text-base">Has iniciado sesión como <strong>{user?.grupo?.nombre || 'Usuario'}</strong> en {empresa.nombre}.</p>
+            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-blue-100">
+              <span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4" />{formatDate()}</span>
+              <span className="inline-flex items-center gap-2"><Clock3 className="h-4 w-4" />{formatTime()}</span>
+              <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-100">Sesión activa</span>
             </div>
           </div>
-        </div>
+          <BarChart3 className="absolute bottom-5 right-8 hidden h-28 w-28 text-white/20 lg:block" strokeWidth={1.2} />
+        </section>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
