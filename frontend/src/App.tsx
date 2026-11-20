@@ -43,6 +43,7 @@ import {
 
 import { LoginPage } from './features/auth/ui/LoginPage';
 import { HomePage } from './app/layout/HomePage';
+import { HomeDashboardPreview } from './app/layout/HomeDashboardPreview';
 import { AuthProvider } from './app/providers/AuthProvider';
 import { useAuth } from '@/shared/ui/auth';
 import { ConfirmModal, Modal, SkeletonPagina } from '@/shared/ui/components';
@@ -712,7 +713,7 @@ function App() {
 
   useEffect(() => {
     const path = location.pathname || '/';
-    if (path === '/') {
+    if (path === '/' || path === '/home2') {
       setModuloActivo('home');
       return;
     }
@@ -862,7 +863,7 @@ function App() {
               {slimSidebar ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
             </button>
           </div>
-          {location.pathname !== '/' && (
+          {location.pathname !== '/' && location.pathname !== '/home2' && (
             <nav className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-4 ${slimSidebar ? 'px-1' : ''}`}>
               {!slimSidebar && TITULOS_MODULO[moduloActivo] && (
                 <div className="mb-4 flex items-center gap-2.5 px-4">
@@ -1261,7 +1262,7 @@ function App() {
           </nav>
         )}
 
-        {location.pathname === '/' && (
+        {(location.pathname === '/' || location.pathname === '/home2') && (
           <div className={`min-h-0 flex-1 overflow-y-auto ${slimSidebar ? 'px-2 py-3 flex justify-center' : 'px-5 py-5 space-y-5'}`}>
             {!slimSidebar && (
               <div className="space-y-2.5">
@@ -1427,6 +1428,11 @@ function App() {
                 <Route
                   path="/"
                   element={<HomePage />}
+                />
+                {/* Vista de diseño accesible escribiendo /home2 en el navegador; no se añade a la navegación. */}
+                <Route
+                  path="/home2"
+                  element={<HomeDashboardPreview />}
                 />
                 <Route
                   path="/dashboard"
