@@ -43,7 +43,6 @@ import {
 
 import { LoginPage } from './features/auth/ui/LoginPage';
 import { HomePage } from './app/layout/HomePage';
-import { HomeDashboardPreview } from './app/layout/HomeDashboardPreview';
 import { AuthProvider } from './app/providers/AuthProvider';
 import { useAuth } from '@/shared/ui/auth';
 import { ConfirmModal, Modal, SkeletonPagina } from '@/shared/ui/components';
@@ -714,7 +713,7 @@ function App() {
 
   useEffect(() => {
     const path = location.pathname || '/';
-    if (path === '/' || path === '/home2') {
+    if (path === '/') {
       setModuloActivo('home');
       return;
     }
@@ -1429,11 +1428,6 @@ function App() {
                 <Route
                   path="/"
                   element={<HomePage />}
-                />
-                {/* Vista de diseño accesible escribiendo /home2 en el navegador; no se añade a la navegación. */}
-                <Route
-                  path="/home2"
-                  element={<HomeDashboardPreview />}
                 />
                 <Route
                   path="/dashboard"
