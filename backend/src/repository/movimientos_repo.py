@@ -1,7 +1,7 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import desc
+from sqlalchemy import desc, or_, func
 from typing import List, Optional
 from src.models import (
     Movimiento,
@@ -81,12 +81,25 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
         skip: int = 0,
         limit: int | None = None,
         tipo: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> List[Movimiento]:
 
         statement = select(Movimiento).options(*self._get_selectinload_options())
 
+        if tipo or search:
+            statement = statement.join(TipoMovimiento)
         if tipo:
             statement = statement.where(TipoMovimiento.tipo == tipo)
+        if search and search.strip():
+            patron = f"%{search.strip()}%"
+            statement = statement.join(Productos, Movimiento.id_producto == Productos.id_producto).join(
+                Dependencia, Movimiento.id_dependencia == Dependencia.id_dependencia
+            ).where(or_(
+                Movimiento.codigo.ilike(patron),
+                Productos.codigo.ilike(patron),
+                Productos.nombre.ilike(patron),
+                Dependencia.nombre.ilike(patron),
+            ))
 
         statement = statement.order_by(desc(Movimiento.fecha))
 
