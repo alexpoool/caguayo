@@ -99,7 +99,7 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
 
         # Agregar filtro de búsqueda si se proporciona
         if search:
-            search_term = f"%{search.replace("%", "\\%").replace("_", "\\_")}%"
+            search_term = f"%{search}%"
             statement = statement.where(
                 (self.model.codigo.ilike(search_term))
                 | (self.model.nombre.ilike(search_term))
