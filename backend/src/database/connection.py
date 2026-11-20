@@ -45,7 +45,7 @@ AUTH_DATABASE = os.environ["AUTH_DATABASE"]
 # Default engine for auth database
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,
+    echo=os.getenv("SQL_ECHO", "false").lower() == "true",
     future=True,
     connect_args={"server_settings": {"client_encoding": "utf8"}},
 )
