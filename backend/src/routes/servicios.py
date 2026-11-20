@@ -29,6 +29,7 @@ from src.dto.servicio_dto import (
     TareaEtapaUpdate,
     PersonaEtapaCreate,
     PersonaEtapaRead,
+    PersonaEtapaUpdate,
     FacturaServicioCreate,
     FacturaServicioRead,
     FacturaServicioUpdate,
@@ -286,6 +287,17 @@ async def create_persona_etapa(
     data: PersonaEtapaCreate, db: AsyncSession = Depends(get_session)
 ):
     return await PersonaEtapaService.create(db, data)
+
+
+@persona_etapa_router.put("/{etapa_id}/{persona_id}", response_model=PersonaEtapaRead)
+async def update_persona_etapa(
+    etapa_id: int, persona_id: int, data: PersonaEtapaUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    result = await PersonaEtapaService.update(db, etapa_id, persona_id, data)
+    if not result:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    return result
 
 
 @persona_etapa_router.delete("/{etapa_id}/{persona_id}", status_code=204)
