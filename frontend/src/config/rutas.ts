@@ -101,6 +101,7 @@ const RUTAS_BASE: RutaConfig[] = [
   { path: '/terceros/registro-proveedores', modulo: 'terceros', funcionalidades: ['reporte_proveedores'] },
   { path: '/terceros/registro-realizadores', modulo: 'terceros', funcionalidades: ['reporte_creadores'] },
   { path: '/terceros/proveedores', modulo: 'terceros', funcionalidades: ['proveedores'] },
+  { path: '/terceros/contratos', modulo: 'terceros', funcionalidades: ['contratos'] },
   { path: '/terceros/cuentas', modulo: 'terceros', funcionalidades: ['proveedores', 'liquidaciones'] },
   { path: '/terceros/convenios', modulo: 'terceros', funcionalidades: ['convenios'] },
   { path: '/terceros/liquidaciones', modulo: 'terceros', funcionalidades: ['liquidaciones'] },
