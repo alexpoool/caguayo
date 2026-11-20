@@ -863,7 +863,7 @@ function App() {
               {slimSidebar ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
             </button>
           </div>
-          {location.pathname !== '/' && location.pathname !== '/home2' && (
+          {location.pathname !== '/' && (
             <nav className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-4 ${slimSidebar ? 'px-1' : ''}`}>
               {!slimSidebar && TITULOS_MODULO[moduloActivo] && (
                 <div className="mb-4 flex items-center gap-2.5 px-4">
@@ -1262,7 +1262,7 @@ function App() {
           </nav>
         )}
 
-        {(location.pathname === '/' || location.pathname === '/home2') && (
+        {location.pathname === '/' && (
           <div className={`min-h-0 flex-1 overflow-y-auto ${slimSidebar ? 'px-2 py-3 flex justify-center' : 'px-5 py-5 space-y-5'}`}>
             {!slimSidebar && (
               <div className="space-y-2.5">
