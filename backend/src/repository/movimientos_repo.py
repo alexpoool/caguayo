@@ -109,6 +109,30 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
         results = await db.exec(statement)
         return list(results.all())
 
+    async def count_multi(
+        self, db: AsyncSession, *, tipo: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> int:
+        statement = select(func.count()).select_from(Movimiento)
+        if tipo or search:
+            statement = statement.join(TipoMovimiento)
+        if tipo:
+            statement = statement.where(TipoMovimiento.tipo == tipo)
+        if search and search.strip():
+            patron = f"%{search.strip()}%"
+            statement = statement.join(
+                Productos, Movimiento.id_producto == Productos.id_producto
+            ).join(
+                Dependencia, Movimiento.id_dependencia == Dependencia.id_dependencia
+            ).where(or_(
+                Movimiento.codigo.ilike(patron),
+                Productos.codigo.ilike(patron),
+                Productos.nombre.ilike(patron),
+                Dependencia.nombre.ilike(patron),
+            ))
+        result = await db.exec(statement)
+        return int(result.one() or 0)
+
     async def get_by_tipo(
         self, db: AsyncSession, id_tipo_movimiento: int
     ) -> List[Movimiento]:
