@@ -808,6 +808,14 @@ export const personaEtapaService = {
   async createPersonaEtapa(data: PersonaEtapaCreate): Promise<PersonaEtapa> {
     return apiClient.post<PersonaEtapa>('/persona-etapa', data);
   },
+  async updatePersonaEtapa(
+    etapaId: number,
+    personaId: number,
+    monedaId: number,
+    data: { cobro: number; por_cobrar: number; liquidada: boolean },
+  ): Promise<PersonaEtapa> {
+    return apiClient.put<PersonaEtapa>(`/persona-etapa/${etapaId}/${personaId}/${monedaId}`, data);
+  },
   async deletePersonaEtapa(etapaId: number, personaId: number): Promise<void> {
     return apiClient.delete<void>(`/persona-etapa/${etapaId}/${personaId}`);
   }
