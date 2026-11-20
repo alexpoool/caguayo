@@ -22,6 +22,7 @@ class Cliente(SQLModel, table=True):
         Index("idx_clientes_codigo", "codigo"),
         Index("idx_clientes_nit", "nit"),
         Index("idx_convenio_cliente", "id_cliente"),
+        Index("idx_clientes_relacion_persona", "tipo_relacion", "tipo_persona"),
     )
 
     id_cliente: Optional[int] = Field(
