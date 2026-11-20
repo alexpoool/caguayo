@@ -214,74 +214,59 @@ class DashboardService:
 
     @staticmethod
     async def get_trends(db: AsyncSession, dias: int = 7) -> VentasTrends:
-        """Obtener tendencia de ventas para gráficos."""
+        """Obtener tendencia de ventas con una sola consulta agregada."""
         hoy = datetime.now().date()
-        fechas = []
-        montos = []
-        cantidades = []
-
-        for i in range(dias - 1, -1, -1):
-            fecha = hoy - timedelta(days=i)
-            inicio = datetime.combine(fecha, datetime.min.time())
-            fin = datetime.combine(fecha, datetime.max.time())
-
-            # Obtener ventas del día
-            ventas_dia = await ventas_repo.get_by_fecha_range(db, inicio, fin)
-
-            fechas.append(fecha.isoformat())
-            montos.append(Decimal(str(sum(v.total for v in ventas_dia))))
-            cantidades.append(len(ventas_dia))
-
-        return VentasTrends(
-            fechas=fechas, montos=montos, cantidades=cantidades, periodo="semana"
+        desde = hoy - timedelta(days=max(dias - 1, 0))
+        inicio = datetime.combine(desde, datetime.min.time())
+        fin = datetime.combine(hoy, datetime.max.time())
+        statement = select(
+            func.date(Ventas.fecha).label("fecha"),
+            func.coalesce(func.sum(Ventas.total), 0).label("monto"),
+            func.count(Ventas.id_venta).label("cantidad"),
+        ).where(Ventas.fecha >= inicio, Ventas.fecha <= fin).group_by(
+            func.date(Ventas.fecha)
         )
+        result = await db.exec(statement)
+        por_fecha = {row.fecha.isoformat(): row for row in result.all()}
+        fechas, montos, cantidades = [], [], []
+        for i in range(max(dias, 0) - 1, -1, -1):
+            fecha = hoy - timedelta(days=i)
+            row = por_fecha.get(fecha.isoformat())
+            fechas.append(fecha.isoformat())
+            montos.append(Decimal(str(row.monto or 0)) if row else Decimal("0"))
+            cantidades.append(int(row.cantidad or 0) if row else 0)
+        return VentasTrends(fechas=fechas, montos=montos, cantidades=cantidades, periodo="semana")
 
     @staticmethod
     async def get_movimientos_trends(
         db: AsyncSession, dias: int = 7
     ) -> MovimientosTrends:
-        """Obtener tendencia de movimientos para gráficos."""
+        """Obtener tendencia de movimientos con una sola consulta agregada."""
         hoy = datetime.now().date()
-        fechas = []
-        recepciones = []
-        mermas = []
-        donaciones = []
-        devoluciones = []
-
-        for i in range(dias - 1, -1, -1):
-            fecha = hoy - timedelta(days=i)
-            inicio = datetime.combine(fecha, datetime.min.time())
-            fin = datetime.combine(fecha, datetime.max.time())
-
-            # Obtener movimientos del día con su tipo
-            statement = (
-                select(
-                    TipoMovimiento.tipo,
-                    func.count(Movimiento.id_movimiento).label("cantidad"),
-                )
-                .join(
-                    Movimiento,
-                    Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
-                )
-                .where(Movimiento.fecha >= inicio)
-                .where(Movimiento.fecha <= fin)
-                .group_by(TipoMovimiento.tipo)
-            )
-
-            results = await db.exec(statement)
-            movimientos_dia = {row.tipo: row.cantidad for row in results.all()}
-
-            fechas.append(fecha.isoformat())
-            recepciones.append(movimientos_dia.get("RECEPCION", 0))
-            mermas.append(movimientos_dia.get("MERMA", 0))
-            donaciones.append(movimientos_dia.get("DONACION", 0))
-            devoluciones.append(movimientos_dia.get("DEVOLUCION", 0))
-
+        desde = hoy - timedelta(days=max(dias - 1, 0))
+        inicio = datetime.combine(desde, datetime.min.time())
+        fin = datetime.combine(hoy, datetime.max.time())
+        statement = select(
+            func.date(Movimiento.fecha).label("fecha"),
+            TipoMovimiento.tipo,
+            func.count(Movimiento.id_movimiento).label("cantidad"),
+        ).join(
+            TipoMovimiento,
+            Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
+        ).where(
+            Movimiento.fecha >= inicio, Movimiento.fecha <= fin
+        ).group_by(func.date(Movimiento.fecha), TipoMovimiento.tipo)
+        result = await db.exec(statement)
+        por_fecha_tipo = {
+            (row.fecha.isoformat(), row.tipo): int(row.cantidad or 0)
+            for row in result.all()
+        }
+        fechas = [(hoy - timedelta(days=i)).isoformat() for i in range(max(dias, 0) - 1, -1, -1)]
         return MovimientosTrends(
             fechas=fechas,
-            recepciones=recepciones,
-            mermas=mermas,
-            donaciones=donaciones,
-            devoluciones=devoluciones,
+            recepciones=[por_fecha_tipo.get((f, "RECEPCION"), 0) for f in fechas],
+            mermas=[por_fecha_tipo.get((f, "MERMA"), 0) for f in fechas],
+            donaciones=[por_fecha_tipo.get((f, "DONACION"), 0) for f in fechas],
+            devoluciones=[por_fecha_tipo.get((f, "DEVOLUCION"), 0) for f in fechas],
             periodo="semana",
         )
