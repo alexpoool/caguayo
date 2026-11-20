@@ -107,7 +107,7 @@ class DashboardService:
         productos_stock_bajo_dto = []
         for row in stock_result.all():
             cantidad = int(row.cantidad or 0)
-            if cantidad <= 0:
+            if cantidad == 0:
                 productos_agotados += 1
             valor_inventario_compra += Decimal(str(row.precio_compra or 0)) * cantidad
             valor_inventario_venta += Decimal(str(row.precio_venta or 0)) * cantidad
