@@ -129,10 +129,10 @@ export function RealizadoresPage() {
         : null,
   );
   useEffect(() => {
-    if (monedaContrato) {
+    if (monedaContrato && !editingRecord) {
       setFormData((prev) => ({ ...prev, id_moneda: monedaContrato }));
     }
-  }, [monedaContrato]);
+  }, [monedaContrato, editingRecord]);
 
   const [filtroEtapa, setFiltroEtapa] = useState<number | null>(
     etapaParam ? Number(etapaParam) : null,
@@ -301,13 +301,13 @@ export function RealizadoresPage() {
           Number(formData.id_etapa) || (etapaParam ? Number(etapaParam) : 0),
         id_persona: Number(formData.id_persona) || 0,
         cobro: formData.cobro ? Number(formData.cobro) : 0,
-        id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
+        id_moneda: editingRecord?.id_moneda ?? monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
       };
       if (editingRecord) {
-        const pagado = totalesPagado.get(`${editingRecord.id_etapa}-${editingRecord.id_persona}`) || 0;
+        const pagado = totalesPagado.get(`${editingRecord.id_etapa}-${editingRecord.id_persona}-${editingRecord.id_moneda}`) || 0;
         const porCobrar = Math.max(0, Number(data.cobro) - Number(pagado));
-        await personaEtapaService.updatePersonaEtapa(editingRecord.id_etapa, editingRecord.id_persona, {
-          cobro: data.cobro, id_moneda: data.id_moneda, por_cobrar: porCobrar, liquidada: porCobrar <= 0,
+        await personaEtapaService.updatePersonaEtapa(editingRecord.id_etapa, editingRecord.id_persona, Number(editingRecord.id_moneda), {
+          cobro: data.cobro, por_cobrar: porCobrar, liquidada: porCobrar <= 0,
         });
         toast.success("Realizador actualizado");
       } else {
@@ -478,7 +478,7 @@ export function RealizadoresPage() {
     const map = new Map<string, number>();
     liquidaciones.forEach((l) => {
       if (l.confirmado && l.id_persona != null && l.id_etapa != null) {
-        const key = `${l.id_etapa}-${l.id_persona}`;
+        const key = `${l.id_etapa}-${l.id_persona}-${l.id_moneda}`;
         map.set(key, (map.get(key) || 0) + (Number(l.importe) || 0));
       }
     });
