@@ -15,7 +15,7 @@ router = APIRouter(prefix="/clientes", tags=["clientes"], redirect_slashes=False
 @router.get("", response_model=List[ClienteRead])
 async def listar_clientes(
     skip: int = Query(0, ge=0),
-    limit: int = Query(10000, ge=1, le=100000),
+    limit: int = Query(100, ge=1, le=1000),
     tipo_relacion: Optional[str] = Query(
         None, description="Filtrar por tipo_relacion (CLIENTE, PROVEEDOR, AMBAS)"
     ),
