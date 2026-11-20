@@ -190,7 +190,8 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
-      staleTime: 60_000, // 1 min de datos frescos; las mutaciones invalidan y refetchean igual
+      staleTime: 5 * 60_000, // 5 min; las mutaciones invalidan las claves afectadas
+      gcTime: 15 * 60_000, // conservar catálogos/listados al cambiar de módulo
     },
   },
 });
