@@ -139,14 +139,17 @@ const ReporteMovimientosDependencia: React.FC<{ casosUso: CasosUsoReportes }> = 
             columns={[
               { key: "codigo", label: "Código" },
               { key: "nombre", label: "Nombre" },
-              { key: "saldo_inicial", label: "Saldo Inicial", className: "text-right", render: (v: any) => Number(v ?? 0).toFixed(2) },
+              { key: "saldo_inicial_unidades", label: "Exist. inicial (ud.)", className: "text-right", render: (v: any) => Number(v ?? 0).toFixed(3) },
+              { key: "saldo_inicial", label: "Valor inicial", className: "text-right", render: (v: any) => Number(v ?? 0).toFixed(2) },
               { key: "recepcion", label: "Recepción", className: "text-right" },
               { key: "compra", label: "Compra", className: "text-right" },
               { key: "venta", label: "Venta", className: "text-right" },
               { key: "merma", label: "Merma", className: "text-right" },
               { key: "donacion", label: "Donación", className: "text-right" },
               { key: "devolucion", label: "Devolución", className: "text-right" },
-              { key: "saldo_final", label: "Saldo Final", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toFixed(2) },
+              { key: "ajustes", label: "Ajustes", className: "text-right" },
+              { key: "saldo_final_unidades", label: "Exist. final (ud.)", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toFixed(3) },
+              { key: "saldo_final", label: "Valor final", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toFixed(2) },
             ]}
             data={previewData}
             totalItems={previewData.length}
