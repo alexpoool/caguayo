@@ -504,6 +504,8 @@ class PersonaLiquidacionUpdate(SQLModel):
     neto_pagar: Optional[Decimal] = None
     id_tipo_concepto: Optional[int] = None
     doc_pago_liquidacion: Optional[str] = None
+    referencia_bancaria: Optional[str] = None
+    factura: Optional[str] = None
     gasto_empresa: Optional[Decimal] = None
     observacion: Optional[str] = None
 
