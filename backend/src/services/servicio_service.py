@@ -1391,23 +1391,21 @@ class PersonaLiquidacionService:
         mensaje = None
         puede_liquidar = True
 
-        if not validacion_factura.id_factura_servicio:
+        # La liquidación puede realizarse aunque la etapa no tenga factura
+        # ni pagos asociados. Solo se bloquea si el realizador ya no tiene
+        # importe pendiente por cobrar.
+        from src.models import PersonaEtapa
+        stmt = select(PersonaEtapa).where(
+            PersonaEtapa.id_etapa == id_etapa,
+            PersonaEtapa.id_persona == id_persona
+        )
+        if id_moneda is not None:
+            stmt = stmt.where(PersonaEtapa.id_moneda == id_moneda)
+        result = await db.exec(stmt)
+        pe = result.first()
+        if pe and pe.por_cobrar is not None and pe.por_cobrar <= 0:
             puede_liquidar = False
-            mensaje = "No existe factura para esta etapa"
-        else:
-            # Verificar si el realizador ya tiene todo liquidado
-            from src.models import PersonaEtapa
-            stmt = select(PersonaEtapa).where(
-                PersonaEtapa.id_etapa == id_etapa,
-                PersonaEtapa.id_persona == id_persona
-            )
-            if id_moneda is not None:
-                stmt = stmt.where(PersonaEtapa.id_moneda == id_moneda)
-            result = await db.exec(stmt)
-            pe = result.first()
-            if pe and pe.por_cobrar is not None and pe.por_cobrar <= 0:
-                puede_liquidar = False
-                mensaje = "Este realizador ya tiene todo liquidado (por cobrar = 0)"
+            mensaje = "Este realizador ya tiene todo liquidado (por cobrar = 0)"
 
         return PersonaLiquidacionValidacion(
             puede_liquidar=puede_liquidar,
