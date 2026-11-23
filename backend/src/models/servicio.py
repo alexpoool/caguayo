@@ -277,6 +277,8 @@ class PersonaLiquidacion(SQLModel, table=True):
     neto_pagar: Decimal = Field(default=Decimal("0.00"))
     id_tipo_concepto: Optional[int] = None
     doc_pago_liquidacion: Optional[str] = Field(default=None, max_length=100)
+    referencia_bancaria: Optional[str] = Field(default=None, max_length=150)
+    factura: Optional[str] = Field(default=None, max_length=100)
     gasto_empresa: Decimal = Field(default=Decimal("0.00"))
     observacion: Optional[str] = None
     confirmado: bool = Field(default=False)
