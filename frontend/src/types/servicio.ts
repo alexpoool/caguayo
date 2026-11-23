@@ -324,6 +324,7 @@ export interface PagoFacturaServicio {
   id_moneda?: number;
   fecha?: string;
   doc_traza?: string;
+  codigo_factura?: string;
 }
 
 export interface PagoFacturaServicioCreate {
@@ -356,6 +357,8 @@ export interface PersonaLiquidacion {
   neto_pagar: number;
   id_tipo_concepto?: number;
   doc_pago_liquidacion?: string;
+  referencia_bancaria?: string;
+  factura?: string;
   gasto_empresa: number;
   observacion?: string;
   confirmado: boolean;
@@ -427,6 +430,8 @@ export type PersonaLiquidacionInput = {
   gasto_empresa?: number;
   comision_bancaria?: number;
   doc_pago_liquidacion?: string;
+  referencia_bancaria?: string;
+  factura?: string;
   observacion?: string;
 };
 
@@ -446,6 +451,8 @@ export type PersonaLiquidacionInputUpdate = {
   gasto_empresa?: number;
   comision_bancaria?: number;
   doc_pago_liquidacion?: string;
+  referencia_bancaria?: string;
+  factura?: string;
   observacion?: string;
 };
 
