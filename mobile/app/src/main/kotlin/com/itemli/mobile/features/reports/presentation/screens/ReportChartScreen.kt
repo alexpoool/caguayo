@@ -157,7 +157,7 @@ fun ReportChartScreen(
         var total = Int.MAX_VALUE
         var totals = emptyMap<String, Any?>()
         while (offset < total && offset < 100_000) {
-            when (val page = previewUseCase(reportDefinition, activeFilters, 10, offset)) {
+            when (val page = previewUseCase(reportDefinition, activeFilters, 50, offset)) {
                 is AppResult.Success -> {
                     allRows += page.value.rows
                     totals = page.value.totals
@@ -167,7 +167,7 @@ fun ReportChartScreen(
                         ?: (offset + page.value.rows.size)
                     if (page.value.rows.isEmpty()) break
                     offset += page.value.rows.size
-                    if (page.value.rows.size < 10 && offset >= total) break
+                    if (page.value.rows.size < 50 && offset >= total) break
                     if (page.value.rows.size < 10 && total == offset) break
                 }
                 is AppResult.Failure -> {
