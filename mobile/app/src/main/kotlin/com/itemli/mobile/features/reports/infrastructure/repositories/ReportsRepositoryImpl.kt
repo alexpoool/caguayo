@@ -11,6 +11,7 @@ import com.itemli.mobile.features.reports.infrastructure.mappers.ReportCatalog
 import com.itemli.mobile.features.reports.infrastructure.mappers.toRows
 import com.itemli.mobile.shared.domain.AppResult
 import com.itemli.mobile.shared.infrastructure.ApiClient
+import com.itemli.mobile.shared.infrastructure.SessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -23,7 +24,11 @@ import java.io.IOException
 class ReportsRepositoryImpl(
     private val apiClient: ApiClient,
     private val previewDao: ReportPreviewDao,
+    private val sessionManager: SessionManager? = null,
+    private val now: () -> Long = System::currentTimeMillis,
 ) : ReportsRepository {
+
+    init { sessionManager?.addOnLogoutListener { previewDao.clear() } }
 
     override suspend fun catalog(): AppResult<List<ReportDefinition>> =
         AppResult.Success(ReportCatalog.all)
@@ -34,19 +39,20 @@ class ReportsRepositoryImpl(
         limit: Int,
         offset: Int,
     ): AppResult<ReportPreview> {
-        val cacheKey = previewCacheKey(definition, filters) + "#" + limit + ":" + offset
-        val result = runCatching { fetchPreview(definition, filters, limit, offset) }
+        val cacheKey = scopedPreviewCacheKey(sessionScope(), definition, filters, limit, offset)
+        val cachedEntity = runCatching { previewDao.get(cacheKey) }.getOrNull()
+        val cached = cachedEntity?.let(::fromEntity)
+        val isFresh = cachedEntity != null && now() - cachedEntity.createdAt in 0..PREVIEW_CACHE_TTL_MS
+        if (cached != null && isFresh) return AppResult.Success(cached.copy(fromCache = true))
 
+        val result = runCatching { fetchPreview(definition, filters, limit, offset) }
         if (result.isSuccess) {
             val preview = result.getOrThrow()
             runCatching { saveToCache(cacheKey, definition.id, preview) }
             return AppResult.Success(preview.copy(fromCache = false))
         }
-
         val error = result.exceptionOrNull() ?: IOException("preview")
-        val cached = runCatching { previewDao.get(cacheKey) }.getOrNull()
-            ?.let(::fromEntity) ?: return AppResult.Failure(error)
-        return AppResult.Success(cached.copy(fromCache = true))
+        return cached?.let { AppResult.Success(it.copy(fromCache = true)) } ?: AppResult.Failure(error)
     }
 
     override suspend fun pdf(
@@ -241,6 +247,12 @@ class ReportsRepositoryImpl(
         else -> throw NotImplementedError("Reporte ${definition.id} sin endpoint conectado")
     }
 
+    private suspend fun sessionScope(): String {
+        val alias = sessionManager?.currentAlias()?.trim()?.lowercase().orEmpty()
+        val dependencyId = sessionManager?.currentDependencyId()?.toString().orEmpty()
+        return "${alias.ifBlank { "anonymous" }}#$dependencyId"
+    }
+
     private suspend fun saveToCache(cacheKey: String, reportId: String, preview: ReportPreview) {
         previewDao.upsert(
             ReportPreviewEntity(
@@ -260,6 +272,17 @@ class ReportsRepositoryImpl(
 
     private suspend fun api(): ReportsApi = apiClient.createService(ReportsApi::class.java)
 }
+
+/** TTL de la caché local de previews: cinco minutos. */
+internal const val PREVIEW_CACHE_TTL_MS = 5 * 60 * 1000L
+
+internal fun scopedPreviewCacheKey(
+    sessionScope: String,
+    definition: ReportDefinition,
+    filters: Map<String, String>,
+    limit: Int,
+    offset: Int,
+): String = sessionScope + "|" + previewCacheKey(definition, filters) + "#" + limit + ":" + offset
 
 /** Clave de caché: id del reporte + filtros ordenados. */
 internal fun previewCacheKey(definition: ReportDefinition, filters: Map<String, String>): String =
