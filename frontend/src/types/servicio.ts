@@ -385,6 +385,8 @@ export interface PersonaLiquidacionCreate {
   neto_pagar?: number;
   id_tipo_concepto?: number;
   doc_pago_liquidacion?: string;
+  referencia_bancaria?: string;
+  factura?: string;
   gasto_empresa?: number;
   observacion?: string;
 }
@@ -410,6 +412,8 @@ export interface PersonaLiquidacionUpdate {
   neto_pagar?: number;
   id_tipo_concepto?: number;
   doc_pago_liquidacion?: string;
+  referencia_bancaria?: string;
+  factura?: string;
   gasto_empresa?: number;
   observacion?: string;
 }
@@ -462,6 +466,7 @@ export interface PagoDetalle {
   monto_disponible: number;
   fecha?: string;
   doc_traza?: string;
+  codigo_factura?: string;
 }
 
 export interface FacturaPagoValidacion {
