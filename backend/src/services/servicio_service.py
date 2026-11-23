@@ -914,6 +914,7 @@ class FacturaServicioService:
                 id_moneda=p.id_moneda,
                 fecha=p.fecha,
                 doc_traza=p.doc_traza,
+                codigo_factura=p.factura.codigo_factura if p.factura else None,
             )
             for p in factura.pagos
         ]
@@ -1017,6 +1018,22 @@ class PagoFacturaServicioService:
 
 class PersonaLiquidacionService:
     @staticmethod
+    async def _resolver_factura_pago(
+        db: AsyncSession, id_pago: Optional[int], factura_manual: Optional[str]
+    ) -> Optional[str]:
+        if not id_pago:
+            return factura_manual
+        result = await db.exec(
+            select(FacturaServicio.codigo_factura)
+            .join(
+                PagoFacturaServicio,
+                PagoFacturaServicio.id_factura_servicio == FacturaServicio.id_factura_servicio,
+            )
+            .where(PagoFacturaServicio.id_pago_factura_servicio == id_pago)
+        )
+        codigo = result.first()
+        return codigo or factura_manual
+    @staticmethod
     async def create(
         db: AsyncSession, data: PersonaLiquidacionCreateInput, denominacion: Optional[str] = None
     ) -> PersonaLiquidacionRead:
@@ -1085,6 +1102,10 @@ class PersonaLiquidacionService:
             gasto_empresa=Decimal(str(data.gasto_empresa or 0)),
             neto_pagar=neto_pagar,
             doc_pago_liquidacion=data.doc_pago_liquidacion,
+            referencia_bancaria=data.referencia_bancaria,
+            factura=await PersonaLiquidacionService._resolver_factura_pago(
+                db, data.id_pago, data.factura
+            ),
             observacion=data.observacion,
         )
 
@@ -1170,6 +1191,10 @@ class PersonaLiquidacionService:
         )
         neto_pagar = subtotal - gasto_empresa - comision
 
+        factura_valor = await PersonaLiquidacionService._resolver_factura_pago(
+            db, data.id_pago, data.factura
+        )
+
         update_data = PersonaLiquidacionUpdate(
             numero=data.numero,
             id_etapa=data.id_etapa,
@@ -1189,6 +1214,9 @@ class PersonaLiquidacionService:
             gasto_empresa=data.gasto_empresa,
             neto_pagar=neto_pagar,
             doc_pago_liquidacion=data.doc_pago_liquidacion,
+            referencia_bancaria=data.referencia_bancaria,
+            factura=factura_valor,
+            id_pago=data.id_pago,
             observacion=data.observacion,
         )
 
