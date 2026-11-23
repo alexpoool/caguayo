@@ -618,7 +618,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     const baseData: any = {
       id_etapa: selectedEtapa,
       id_persona: selectedPersona,
-      id_pago: selectedPago || undefined,
+      id_pago: selectedPago,
       importe: Number(formData.importe) || undefined,
       fecha_emision: formData.fecha_emision || toISODateLocal(),
       fecha_liquidacion: formData.fecha_liquidacion || undefined,
@@ -1284,6 +1284,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                 <Label>Pago de Factura</Label>
                 {pagosDisponibles.length > 0 ? (
                 <div className="mt-1 space-y-2">
+                  <button type="button" onClick={() => { setSelectedPago(null); setFormData(prev => ({ ...prev, factura: '' })); }} className={`w-full text-left p-3 rounded-xl border-2 transition-all ${selectedPago === null ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-brand-300'}`}>Sin asociar pago (factura manual)</button>
                   {pagosDisponibles.map((pago) => (
                     <label key={pago.id_pago_factura_servicio} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
                       selectedPago === pago.id_pago_factura_servicio
