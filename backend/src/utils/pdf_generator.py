@@ -160,11 +160,17 @@ def generar_pdf_movimientos_dependencia(
         }
     )
 
-    headers = ["CÓDIGO", "NOMBRE", "S. INICIAL", "RECEP.", "COMPRA", "VENTA", "MERMA", "DONAC.", "DEVOL.", "S. FINAL"]
+    headers = [
+        "CÓDIGO", "NOMBRE", "EXIST. INICIAL",
+        "S. INICIAL ($)", "RECEP.", "COMPRA", "VENTA",
+        "MERMA", "DONAC.", "DEVOL.", "AJUSTES",
+        "EXIST. FINAL", "S. FINAL ($)",
+    ]
     data = [
         [
             str(m.get("codigo", "")),
             str(m.get("nombre", "")),
+            format_quantity(m.get("saldo_inicial_unidades", 0)),
             format_quantity(m.get("saldo_inicial", 0)),
             format_quantity(m.get("recepcion", 0)),
             format_quantity(m.get("compra", 0)),
@@ -172,6 +178,8 @@ def generar_pdf_movimientos_dependencia(
             format_quantity(m.get("merma", 0)),
             format_quantity(m.get("donacion", 0)),
             format_quantity(m.get("devolucion", 0)),
+            format_quantity(m.get("ajustes", 0)),
+            format_quantity(m.get("saldo_final_unidades", 0)),
             format_quantity(m.get("saldo_final", 0)),
         ]
         for m in movimientos
@@ -179,8 +187,9 @@ def generar_pdf_movimientos_dependencia(
 
     template.add_table(
         headers,
-        data,        code_columns=[0],
-        numeric_columns=[2, 3, 4, 5, 6, 7, 8, 9],
+        data,
+        code_columns=[0],
+        numeric_columns=list(range(2, 13)),
     )
 
     if notas:
