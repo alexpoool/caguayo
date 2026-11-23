@@ -1101,7 +1101,6 @@ CREATE TABLE persona_liquidacion (
 	tributario NUMERIC NOT NULL, 
 	tributario_monto NUMERIC NOT NULL, 
 	comision_bancaria NUMERIC NOT NULL, 
-	comision_admin_obra NUMERIC NOT NULL, 
 	neto_pagar NUMERIC NOT NULL, 
 	id_tipo_concepto INTEGER, 
 	doc_pago_liquidacion VARCHAR(100), 
