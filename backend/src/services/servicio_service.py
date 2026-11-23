@@ -1033,6 +1033,7 @@ class PersonaLiquidacionService:
         )
         codigo = result.first()
         return codigo or factura_manual
+
     @staticmethod
     async def create(
         db: AsyncSession, data: PersonaLiquidacionCreateInput, denominacion: Optional[str] = None
@@ -1196,8 +1197,16 @@ class PersonaLiquidacionService:
             if "id_pago" in data.model_fields_set
             else liq.id_pago
         )
+        factura_input = (
+            data.factura if "factura" in data.model_fields_set else liq.factura
+        )
         factura_valor = await PersonaLiquidacionService._resolver_factura_pago(
-            db, id_pago_actualizado, data.factura
+            db, id_pago_actualizado, factura_input
+        )
+        referencia_bancaria_valor = (
+            data.referencia_bancaria
+            if "referencia_bancaria" in data.model_fields_set
+            else liq.referencia_bancaria
         )
 
         update_data = PersonaLiquidacionUpdate(
@@ -1219,7 +1228,7 @@ class PersonaLiquidacionService:
             gasto_empresa=data.gasto_empresa,
             neto_pagar=neto_pagar,
             doc_pago_liquidacion=data.doc_pago_liquidacion,
-            referencia_bancaria=data.referencia_bancaria,
+            referencia_bancaria=referencia_bancaria_valor,
             factura=factura_valor,
             id_pago=id_pago_actualizado,
             observacion=data.observacion,
