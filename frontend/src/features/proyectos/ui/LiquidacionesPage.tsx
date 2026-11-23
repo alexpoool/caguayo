@@ -139,7 +139,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     porcentaje_agencia: 10,
     tributario: 5,
     comision_bancaria: 0,
-    comision_admin_obra: 0,
     gasto_empresa: 0,
     doc_pago_liquidacion: '',
     observacion: ''
@@ -366,7 +365,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
         porcentaje_agencia: porcentajeAgenciaLocal,
         tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
-        comision_admin_obra: item.comision_admin_obra || 0,
         gasto_empresa: item.gasto_empresa || 0,
         doc_pago_liquidacion: confirmData.doc_pago_liquidacion || undefined
       } as any
@@ -384,7 +382,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
       porcentaje_agencia: 10,
       tributario: 5,
       comision_bancaria: 0,
-      comision_admin_obra: 0,
       gasto_empresa: 0,
       doc_pago_liquidacion: '',
       observacion: ''
@@ -445,8 +442,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     const subtotal = calculateSubtotal();
     const gasto_empresa = Number(formData.gasto_empresa) || 0;
     const comision = Number(formData.comision_bancaria) || 0;
-    const comision_admin = Number(formData.comision_admin_obra) || 0;
-    return subtotal - gasto_empresa - comision - comision_admin;
+    return subtotal - gasto_empresa - comision;
   };
 
   const loadPersonaEtapaCobro = async (idEtapa: number, idPersona: number) => {
@@ -627,7 +623,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
       porcentaje_agencia: Number(formData.porcentaje_agencia) || 10,
       tributario: Number(formData.tributario) || 5,
       comision_bancaria: Number(formData.comision_bancaria) || 0,
-      comision_admin_obra: Number(formData.comision_admin_obra) || 0,
       gasto_empresa: Number(formData.gasto_empresa) || 0,
       observacion: formData.observacion || undefined
     };
@@ -687,7 +682,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     const tributario = Number(liquidacion.tributario || 5);
     const tributarioMonto = formatCifra(liquidacion.tributario_monto || (Number(devengado) * tributario / 100));
     const comisionBancaria = formatCifra(liquidacion.comision_bancaria);
-    const comisionAdminObra = formatCifra(liquidacion.comision_admin_obra);
     const gastoEmpresa = formatCifra(liquidacion.gasto_empresa);
     const netoPagar = formatCifra(liquidacion.neto_pagar);
     
@@ -1404,16 +1398,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                     />
                   </div>
                   <div>
-                    <Label>Administración de obra</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.comision_admin_obra || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, comision_admin_obra: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                      className="mt-1"
-                      placeholder="0.00"
-                    />
-                  </div>
                   <div>
                     <Label>Gasto Empresa</Label>
                     <Input
@@ -1482,10 +1466,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                     <div className="flex justify-between text-red-600">
                       <span>Comisión:</span>
                       <span>- {formatCifra(formData.comision_bancaria)}</span>
-                    </div>
-                    <div className="flex justify-between text-red-600">
-                      <span>Comisión (Admin. Obra):</span>
-                      <span>- {formatCifra(formData.comision_admin_obra)}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-800">Neto a Pagar:</span>
@@ -1584,10 +1564,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                   <div className="bg-gray-50 p-3 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Comisión</p>
                     <p className="font-bold text-gray-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.comision_bancaria)}</p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-xl">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Comisión (Admin. Obra)</p>
-                    <p className="font-bold text-gray-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.comision_admin_obra)}</p>
                   </div>
                   <div className="bg-brand-50 p-3 rounded-xl border border-brand-100">
                     <p className="text-xs text-brand-600 uppercase tracking-wider mb-1">Gasto Empresa</p>
