@@ -168,6 +168,8 @@ data class ProveedoresRowDto(
 data class MovimientosDependenciaPreviewDto(
     val items: List<MovimientoDependenciaRowDto> = emptyList(),
     val total_items: Int? = null,
+    val total_existencia_inicial: Double? = null,
+    val total_existencia_final: Double? = null,
     val total_saldo_inicial: Double? = null,
     val total_saldo_final: Double? = null,
     val total_entradas: Double? = null,
@@ -178,6 +180,7 @@ data class MovimientosDependenciaPreviewDto(
 data class MovimientoDependenciaRowDto(
     val codigo: String? = null,
     val nombre: String? = null,
+    val saldo_inicial_unidades: Double? = null,
     val saldo_inicial: Double? = null,
     val recepcion: Double? = null,
     val compra: Double? = null,
@@ -186,6 +189,7 @@ data class MovimientoDependenciaRowDto(
     val donacion: Double? = null,
     val devolucion: Double? = null,
     val ajustes: Double? = null,
+    val saldo_final_unidades: Double? = null,
     val saldo_final: Double? = null,
 )
 
