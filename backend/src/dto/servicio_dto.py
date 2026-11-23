@@ -191,6 +191,7 @@ class PersonaEtapaRead(PersonaEtapaBase):
 
 
 class PersonaEtapaUpdate(SQLModel):
+    id_persona: Optional[int] = None
     cobro: Optional[Decimal] = None
     id_moneda: Optional[int] = None
     liquidada: Optional[bool] = None
