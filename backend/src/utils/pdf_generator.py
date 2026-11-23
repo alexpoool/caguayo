@@ -162,9 +162,9 @@ def generar_pdf_movimientos_dependencia(
 
     headers = [
         "CÓDIGO", "NOMBRE", "EXIST. INICIAL",
-        "S. INICIAL ($)", "RECEP.", "COMPRA", "VENTA",
+        "VALOR INICIAL", "RECEP.", "COMPRA", "VENTA",
         "MERMA", "DONAC.", "DEVOL.", "AJUSTES",
-        "EXIST. FINAL", "S. FINAL ($)",
+        "EXIST. FINAL", "VALOR FINAL",
     ]
     data = [
         [
