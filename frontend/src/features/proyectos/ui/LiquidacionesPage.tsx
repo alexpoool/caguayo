@@ -559,7 +559,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
         porcentaje_agencia: item.porcentaje_agencia || 10,
         tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
-        comision_admin_obra: item.comision_admin_obra || 0,
         gasto_empresa: item.gasto_empresa || 0,
         doc_pago_liquidacion: item.doc_pago_liquidacion || '',
         observacion: item.observacion || ''
@@ -772,7 +771,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
             <div class="header-box-row" style="font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px;"><strong>SUBTOTAL:</strong> ${subtotal}</div>
             <div class="header-box-row"><span style="color: #666;">Gasto Empresa:</span> -${gastoEmpresa}</div>
             <div class="header-box-row"><span style="color: #666;">Comisión:</span> -${comisionBancaria}</div>
-            <div class="header-box-row"><span style="color: #666;">Administración de Obra:</span> -${comisionAdminObra}</div>
             <div class="header-box-row total-final"><strong>NETO A PAGAR:</strong> ${netoPagar}</div>
         </div>
     </div>
