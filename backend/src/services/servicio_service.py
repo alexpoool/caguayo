@@ -1061,8 +1061,7 @@ class PersonaLiquidacionService:
 
         gasto_empresa = Decimal(str(data.gasto_empresa or 0))
         comision = Decimal(str(data.comision_bancaria or 0))
-        comision_admin = Decimal(str(data.comision_admin_obra or 0))
-        neto_pagar = subtotal - gasto_empresa - comision - comision_admin
+        neto_pagar = subtotal - gasto_empresa - comision
 
         fecha_emision = data.fecha_emision or date.today()
 
@@ -1083,7 +1082,6 @@ class PersonaLiquidacionService:
             tributario=tributario,
             tributario_monto=tributario_monto,
             comision_bancaria=Decimal(str(data.comision_bancaria or 0)),
-            comision_admin_obra=Decimal(str(data.comision_admin_obra or 0)),
             gasto_empresa=Decimal(str(data.gasto_empresa or 0)),
             neto_pagar=neto_pagar,
             doc_pago_liquidacion=data.doc_pago_liquidacion,
@@ -1170,12 +1168,7 @@ class PersonaLiquidacionService:
             if data.comision_bancaria is not None
             else (liq.comision_bancaria or Decimal("0"))
         )
-        comision_admin = (
-            Decimal(str(data.comision_admin_obra))
-            if data.comision_admin_obra is not None
-            else (liq.comision_admin_obra or Decimal("0"))
-        )
-        neto_pagar = subtotal - gasto_empresa - comision - comision_admin
+        neto_pagar = subtotal - gasto_empresa - comision
 
         update_data = PersonaLiquidacionUpdate(
             numero=data.numero,
@@ -1193,7 +1186,6 @@ class PersonaLiquidacionService:
             tributario=tributario,
             tributario_monto=tributario_monto,
             comision_bancaria=data.comision_bancaria,
-            comision_admin_obra=data.comision_admin_obra,
             gasto_empresa=data.gasto_empresa,
             neto_pagar=neto_pagar,
             doc_pago_liquidacion=data.doc_pago_liquidacion,
@@ -1303,8 +1295,6 @@ class PersonaLiquidacionService:
             liquidacion_obj.gasto_empresa = Decimal(str(data.gasto_empresa))
         if data.comision_bancaria is not None:
             liquidacion_obj.comision_bancaria = Decimal(str(data.comision_bancaria))
-        if data.comision_admin_obra is not None:
-            liquidacion_obj.comision_admin_obra = Decimal(str(data.comision_admin_obra))
 
         porcentaje_agencia = liquidacion_obj.porcentaje_agencia or Decimal("10")
         liquidacion_obj.importe_agencia = importe * (porcentaje_agencia / 100)
@@ -1318,8 +1308,7 @@ class PersonaLiquidacionService:
 
         gasto_empresa = liquidacion_obj.gasto_empresa or Decimal("0")
         comision = liquidacion_obj.comision_bancaria or Decimal("0")
-        comision_admin = liquidacion_obj.comision_admin_obra or Decimal("0")
-        liquidacion_obj.neto_pagar = subtotal - gasto_empresa - comision - comision_admin
+        liquidacion_obj.neto_pagar = subtotal - gasto_empresa - comision
 
         liquidacion_obj.fecha_liquidacion = date.today()
         liquidacion_obj.confirmado = True
