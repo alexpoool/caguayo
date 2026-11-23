@@ -969,6 +969,7 @@ export const personaLiquidacionService = {
     id_moneda?: number;
     fecha: string;
     doc_traza?: string;
+    codigo_factura?: string;
   }[]> {
     return apiClient.get<any[]>(`/persona-liquidacion/pagos/etapa/${idEtapa}`);
   },
