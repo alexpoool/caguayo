@@ -45,6 +45,7 @@ fun MovimientosDependenciaPreviewDto.toRows(definition: ReportDefinition): List<
     items.map { item -> mapOf(
         "codigo" to (item.codigo ?: ""),
         "nombre" to (item.nombre ?: ""),
+        "saldo_inicial_unidades" to (item.saldo_inicial_unidades ?: 0),
         "saldo_inicial" to (item.saldo_inicial ?: 0),
         "recepcion" to (item.recepcion ?: 0),
         "compra" to (item.compra ?: 0),
@@ -53,6 +54,7 @@ fun MovimientosDependenciaPreviewDto.toRows(definition: ReportDefinition): List<
         "donacion" to (item.donacion ?: 0),
         "devolucion" to (item.devolucion ?: 0),
         "ajustes" to (item.ajustes ?: 0),
+        "saldo_final_unidades" to (item.saldo_final_unidades ?: 0),
         "saldo_final" to (item.saldo_final ?: 0),
     ) }
 
