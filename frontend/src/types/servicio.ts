@@ -170,6 +170,13 @@ export interface PersonaEtapa {
   motivo_asignacion?: string;
 }
 
+export interface PersonaEtapaUpdate {
+  id_persona?: number;
+  cobro?: number;
+  por_cobrar?: number;
+  liquidada?: boolean;
+}
+
 export interface PersonaEtapaCreate {
   id_etapa: number;
   id_persona: number;
