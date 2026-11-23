@@ -248,7 +248,7 @@ class ReportDetailViewModel(
     }
 
     private companion object {
-        const val PAGE_SIZE = 10
+        const val PAGE_SIZE = 50
     }
 
     /** Descarga el PDF con los filtros actuales y lo guarda en cacheDir/pdf. */
