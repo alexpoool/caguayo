@@ -396,6 +396,8 @@ class PersonaLiquidacionBase(SQLModel):
     neto_pagar: Decimal = Decimal("0.00")
     id_tipo_concepto: Optional[int] = None
     doc_pago_liquidacion: Optional[str] = None
+    referencia_bancaria: Optional[str] = None
+    factura: Optional[str] = None
     gasto_empresa: Decimal = Decimal("0.00")
     observacion: Optional[str] = None
     confirmado: bool = False
@@ -418,6 +420,8 @@ class PersonaLiquidacionCreateInput(SQLModel):
     gasto_empresa: float = 0.0
     comision_bancaria: float = 0.0
     doc_pago_liquidacion: Optional[str] = Field(default=None, max_length=100)
+    referencia_bancaria: Optional[str] = Field(default=None, max_length=150)
+    factura: Optional[str] = Field(default=None, max_length=100)
     observacion: Optional[str] = Field(default=None, max_length=500)
 
     @field_validator("tipo_pago")
@@ -469,6 +473,8 @@ class PersonaLiquidacionUpdateInput(SQLModel):
     gasto_empresa: Optional[float] = None
     comision_bancaria: Optional[float] = None
     doc_pago_liquidacion: Optional[str] = None
+    referencia_bancaria: Optional[str] = None
+    factura: Optional[str] = None
     observacion: Optional[str] = None
 
 
@@ -510,6 +516,8 @@ class PersonaLiquidacionConfirmar(SQLModel):
     gasto_empresa: Optional[float] = Field(default=None, ge=0)
     observaciones: Optional[str] = Field(default=None, max_length=500)
     doc_pago_liquidacion: Optional[str] = Field(default=None, max_length=100)
+    referencia_bancaria: Optional[str] = Field(default=None, max_length=150)
+    factura: Optional[str] = Field(default=None, max_length=100)
 
 
 # ==========================================
