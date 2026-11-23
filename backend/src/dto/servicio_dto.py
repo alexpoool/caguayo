@@ -532,6 +532,7 @@ class PagoDetalleRead(SQLModel):
     id_moneda: Optional[int] = None
     fecha: Optional[date] = None
     doc_traza: Optional[str] = None
+    codigo_factura: Optional[str] = None
 
 
 class FacturaPagoValidacion(SQLModel):
