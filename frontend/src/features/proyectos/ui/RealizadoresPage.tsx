@@ -46,6 +46,7 @@ import {
   DollarSign,
   Eye,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatCifra } from "@/utils/decimal";
@@ -107,6 +108,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
   const dropdownSolicitudRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [editingItem, setEditingItem] = useState<PersonaEtapaWithDetails | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const deferredSearchTerm = useDeferredValue(searchTerm);
@@ -293,18 +295,34 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const data: PersonaEtapaCreate = {
-        id_etapa:
-          Number(formData.id_etapa) || (etapaParam ? Number(etapaParam) : 0),
-        id_persona: Number(formData.id_persona) || 0,
-        cobro: formData.cobro ? Number(formData.cobro) : 0,
-        id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
-      };
-      await casosUso.createPersonaEtapa(data);
-      toast.success("Creado");
+      const etapaId = Number(formData.id_etapa) || (etapaParam ? Number(etapaParam) : 0);
+      const personaId = Number(formData.id_persona) || 0;
+      const cobro = formData.cobro ? Number(formData.cobro) : 0;
+      const monedaId = monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined);
+
+      if (editingItem) {
+        if (!monedaId) throw new Error("No se pudo determinar la moneda del realizador.");
+        const pagado = totalesPagado.get(`${editingItem.id_etapa}-${editingItem.id_persona}`) || 0;
+        await casosUso.updatePersonaEtapa(
+          editingItem.id_etapa,
+          editingItem.id_persona,
+          editingItem.id_moneda || monedaId,
+          { id_persona: personaId, cobro, por_cobrar: Math.max(0, cobro - pagado) },
+        );
+        toast.success("Realizador actualizado");
+      } else {
+        const data: PersonaEtapaCreate = {
+          id_etapa: etapaId,
+          id_persona: personaId,
+          cobro,
+          id_moneda: monedaId,
+        };
+        await casosUso.createPersonaEtapa(data);
+        toast.success("Creado");
+      }
       setView("list");
       resetForm();
-      loadPersonas();
+      await loadPersonas();
     } catch (error: any) {
       toast.error(error.message || "Error");
     } finally {
@@ -335,6 +353,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
   };
 
   const resetForm = () => {
+    setEditingItem(null);
     setFormData({});
     setPersonaSeleccionada(null);
     setBusquedaPersona("");
@@ -343,6 +362,20 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
     setEtapasSolicitud([]);
     setShowDropdownPersona(false);
     setShowDropdownSolicitud(false);
+  };
+
+  const openEditForm = (item: PersonaEtapaWithDetails) => {
+    const cliente = todosClientesPorId.get(item.id_persona) || null;
+    setEditingItem(item);
+    setPersonaSeleccionada(cliente);
+    setBusquedaPersona(getPersonaName(item.id_persona));
+    setFormData({
+      id_etapa: item.id_etapa,
+      id_persona: item.id_persona,
+      cobro: String(item.cobro ?? 0),
+      id_moneda: item.id_moneda || "",
+    });
+    setView("form");
   };
 
   const openForm = () => {
@@ -616,6 +649,11 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
                 actions={
                   <>
                     <IconButton
+                      label="Editar realizador"
+                      icon={<Pencil className="h-4 w-4" />}
+                      onClick={() => openEditForm(item)}
+                    />
+                    <IconButton
                       label="Ver liquidaciones"
                       icon={<DollarSign className="h-4 w-4" />}
                       onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${getSolicitudByEtapa(item.id_etapa) || ""}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
@@ -769,6 +807,16 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditForm(item)}
+                            className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                            title="Editar realizador"
+                            aria-label="Editar realizador"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1026,7 +1074,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
       <FormModal
         isOpen={view === "form"}
         onClose={() => { setView("list"); resetForm(); }}
-        title="Nuevo Realizador"
+        title={editingItem ? "Editar Realizador" : "Nuevo Realizador"}
         subtitle={currentEtapa
           ? `Etapa: ${currentEtapa.nombre_etapa || `#${currentEtapa.numero_etapa}`}`
           : "Asignar realizador a etapa"}
@@ -1049,7 +1097,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
               isLoading={isSaving}
               className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              Guardar
+              {editingItem ? "Guardar cambios" : "Guardar"}
             </Button>
           </>
         }
