@@ -141,6 +141,8 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     comision_bancaria: 0,
     gasto_empresa: 0,
     doc_pago_liquidacion: '',
+    referencia_bancaria: '',
+    factura: '',
     observacion: ''
   });
 
@@ -158,7 +160,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     }
   }, [monedaContrato]);
 
-  const [pagosDisponibles, setPagosDisponibles] = useState<{id_pago_factura_servicio: number; monto: number; monto_disponible: number; id_moneda?: number; fecha: string; doc_traza?: string}[]>([]);
+  const [pagosDisponibles, setPagosDisponibles] = useState<{id_pago_factura_servicio: number; monto: number; monto_disponible: number; id_moneda?: number; fecha: string; doc_traza?: string; codigo_factura?: string}[]>([]);
   const [disponibleLiquidar, setDisponibleLiquidar] = useState<number>(0);
   const [porCobrarPersona, setPorCobrarPersona] = useState<number>(0);
 
@@ -384,6 +386,8 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
       comision_bancaria: 0,
       gasto_empresa: 0,
       doc_pago_liquidacion: '',
+      referencia_bancaria: '',
+      factura: '',
       observacion: ''
     });
     setEditingId(null);
@@ -526,7 +530,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
         const pago = pagosData[0];
         setSelectedPago(pago.id_pago_factura_servicio);
         const montoDisponible = Number(pago.monto_disponible);
-        setFormData(prev => ({ ...prev, importe: Math.min(montoDisponible, disponibleData.disponible || montoDisponible) }));
+        setFormData(prev => ({ ...prev, importe: Math.min(montoDisponible, disponibleData.disponible || montoDisponible), factura: pago.codigo_factura || prev.factura }));
       }
     } catch (error) {
       console.error('Error cargando pagos disponibles:', error);
@@ -541,7 +545,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
       const pago = pagosDisponibles.find(p => p.id_pago_factura_servicio === pagoId);
       if (pago) {
         const montoDisponible = Number(pago.monto_disponible);
-        setFormData(prev => ({ ...prev, importe: Math.min(montoDisponible, porCobrarPersona || montoDisponible) }));
+        setFormData(prev => ({ ...prev, importe: Math.min(montoDisponible, porCobrarPersona || montoDisponible), factura: pago.codigo_factura || '' }));
       }
     }
   };
@@ -561,6 +565,8 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
         comision_bancaria: item.comision_bancaria || 0,
         gasto_empresa: item.gasto_empresa || 0,
         doc_pago_liquidacion: item.doc_pago_liquidacion || '',
+        referencia_bancaria: item.referencia_bancaria || '',
+        factura: item.factura || '',
         observacion: item.observacion || ''
       });
       if (item.id_etapa && item.id_persona) {
@@ -623,6 +629,8 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
       tributario: Number(formData.tributario) || 5,
       comision_bancaria: Number(formData.comision_bancaria) || 0,
       gasto_empresa: Number(formData.gasto_empresa) || 0,
+      referencia_bancaria: formData.referencia_bancaria || undefined,
+      factura: formData.factura || undefined,
       observacion: formData.observacion || undefined
     };
 
@@ -674,6 +682,8 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     const descripcionLiquidacion = liquidacion?.descripcion || '';
     const observacionLiquidacion = liquidacion?.observacion || '';
     const docPagoLiquidacion = liquidacion?.doc_pago_liquidacion || '';
+    const referenciaBancaria = liquidacion?.referencia_bancaria || '';
+    const facturaLiquidacion = liquidacion?.factura || '';
     
     const porcentajeAgenciaLocal = Number(liquidacion.porcentaje_agencia || 10);
     const importeAgenciaLocal = formatCifra(liquidacion.importe_agencia || (liquidacion.importe * porcentajeAgenciaLocal / 100));
@@ -780,6 +790,8 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
         <span class="bloque-fecha"><strong>Fecha Emisión:</strong> ${fechaEmision}</span>
         <span class="bloque-fecha"><strong>Fecha Liquidación:</strong> ${fechaLiquidacion}</span>
         ${docPagoLiquidacion ? `<span class="bloque-fecha"><strong>Doc. Pago:</strong> ${docPagoLiquidacion}</span>` : ''}
+        ${referenciaBancaria ? `<span class="bloque-fecha"><strong>Referencia bancaria:</strong> ${referenciaBancaria}</span>` : ''}
+        ${facturaLiquidacion ? `<span class="bloque-fecha"><strong>Factura:</strong> ${facturaLiquidacion}</span>` : ''}
     </div>
 
     <div class="info-proyecto">
@@ -1310,6 +1322,18 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
+                  <Label>Referencia bancaria</Label>
+                  <Input value={formData.referencia_bancaria} onChange={(e) => setFormData(prev => ({ ...prev, referencia_bancaria: e.target.value }))} className="mt-1" placeholder="Referencia de la transferencia" />
+                </div>
+                <div>
+                  <Label>Factura</Label>
+                  <Input value={formData.factura} onChange={(e) => setFormData(prev => ({ ...prev, factura: e.target.value }))} className="mt-1" placeholder="Código de factura" />
+                  {selectedPago && <p className="mt-1 text-xs text-gray-500">Se completa con la factura del pago seleccionado</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
                   <Label>Moneda</Label>
                   <select
                     value={formData.id_moneda}
@@ -1539,6 +1563,10 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Etapa</p>
                   <p className="font-bold text-gray-900">{detailModal.item.id_etapa ? `#${detailModal.item.id_etapa}` : 'N/A'}</p>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-xl"><p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Referencia bancaria</p><p className="font-bold text-gray-900">{detailModal.item.referencia_bancaria || '-'}</p></div>
+                <div className="bg-gray-50 p-4 rounded-xl"><p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Factura</p><p className="font-bold text-gray-900">{detailModal.item.factura || '-'}</p></div>
               </div>
               <div className="border-t pt-4">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
