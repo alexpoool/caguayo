@@ -54,6 +54,7 @@ export const proyectosApiRepositorio: ProyectosRepositorio = {
   getPersonasByEtapa: (etapaId) =>
     personaEtapaService.getPersonasByEtapa(etapaId),
   createPersonaEtapa: (data) => personaEtapaService.createPersonaEtapa(data),
+  updatePersonaEtapa: (etapaId, personaId, monedaId, data) => personaEtapaService.updatePersonaEtapa(etapaId, personaId, monedaId, data),
   deletePersonaEtapa: (etapaId, personaId) =>
     personaEtapaService.deletePersonaEtapa(etapaId, personaId),
 
