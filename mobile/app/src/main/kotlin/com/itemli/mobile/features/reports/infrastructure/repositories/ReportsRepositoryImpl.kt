@@ -296,7 +296,7 @@ class ReportsRepositoryImpl(
     ) {
         synchronized(refreshLock) {
             if (refreshJobs[cacheKey]?.isActive == true) return
-            val job = refreshScope.launch(kotlinx.coroutines.CoroutineStart.LAZY) {
+            val job = refreshScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
                 try {
                     val fresh = fetchPreview(definition, filters, limit, offset)
                     // No permitir que una petición iniciada por una sesión
