@@ -12,7 +12,12 @@ import com.itemli.mobile.features.reports.infrastructure.mappers.toRows
 import com.itemli.mobile.shared.domain.AppResult
 import com.itemli.mobile.shared.infrastructure.ApiClient
 import com.itemli.mobile.shared.infrastructure.SessionManager
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
 
@@ -26,9 +31,21 @@ class ReportsRepositoryImpl(
     private val previewDao: ReportPreviewDao,
     private val sessionManager: SessionManager? = null,
     private val now: () -> Long = System::currentTimeMillis,
+    private val refreshScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) : ReportsRepository {
 
-    init { sessionManager?.addOnLogoutListener { previewDao.clear() } }
+    private val refreshLock = Any()
+    private val refreshJobs = mutableMapOf<String, Job>()
+
+    init {
+        sessionManager?.addOnLogoutListener {
+            synchronized(refreshLock) {
+                refreshJobs.values.forEach(Job::cancel)
+                refreshJobs.clear()
+            }
+            previewDao.clear()
+        }
+    }
 
     override suspend fun catalog(): AppResult<List<ReportDefinition>> =
         AppResult.Success(ReportCatalog.all)
@@ -39,20 +56,36 @@ class ReportsRepositoryImpl(
         limit: Int,
         offset: Int,
     ): AppResult<ReportPreview> {
-        val cacheKey = scopedPreviewCacheKey(sessionScope(), definition, filters, limit, offset)
+        val sessionKey = sessionScope()
+        val cacheKey = scopedPreviewCacheKey(sessionKey, definition, filters, limit, offset)
         val cachedEntity = runCatching { previewDao.get(cacheKey) }.getOrNull()
         val cached = cachedEntity?.let(::fromEntity)
         val isFresh = cachedEntity != null && now() - cachedEntity.createdAt in 0..PREVIEW_CACHE_TTL_MS
-        if (cached != null && isFresh) return AppResult.Success(cached.copy(fromCache = true))
 
-        val result = runCatching { fetchPreview(definition, filters, limit, offset) }
-        if (result.isSuccess) {
-            val preview = result.getOrThrow()
-            runCatching { saveToCache(cacheKey, definition.id, preview) }
-            return AppResult.Success(preview.copy(fromCache = false))
+        // La caché fresca se sirve sin red. Si está caducada, se muestra
+        // inmediatamente y se actualiza en segundo plano (stale-while-revalidate).
+        if (cached != null) {
+            if (!isFresh) refreshPreviewInBackground(
+                cacheKey = cacheKey,
+                sessionKey = sessionKey,
+                definition = definition,
+                filters = filters,
+                limit = limit,
+                offset = offset,
+            )
+            return AppResult.Success(cached.copy(fromCache = true))
         }
-        val error = result.exceptionOrNull() ?: IOException("preview")
-        return cached?.let { AppResult.Success(it.copy(fromCache = true)) } ?: AppResult.Failure(error)
+
+        // Solo la primera carga necesita esperar al servidor. Si falla no hay
+        // una copia local que mostrar.
+        return runCatching { fetchPreview(definition, filters, limit, offset) }
+            .fold(
+                onSuccess = { preview ->
+                    runCatching { saveToCache(cacheKey, definition.id, preview) }
+                    AppResult.Success(preview.copy(fromCache = false))
+                },
+                onFailure = { AppResult.Failure(it) },
+            )
     }
 
     override suspend fun pdf(
@@ -253,6 +286,37 @@ class ReportsRepositoryImpl(
         return "${alias.ifBlank { "anonymous" }}#$dependencyId"
     }
 
+    private fun refreshPreviewInBackground(
+        cacheKey: String,
+        sessionKey: String,
+        definition: ReportDefinition,
+        filters: Map<String, String>,
+        limit: Int,
+        offset: Int,
+    ) {
+        synchronized(refreshLock) {
+            if (refreshJobs[cacheKey]?.isActive == true) return
+            val job = refreshScope.launch(kotlinx.coroutines.CoroutineStart.LAZY) {
+                try {
+                    val fresh = fetchPreview(definition, filters, limit, offset)
+                    // No permitir que una petición iniciada por una sesión
+                    // repueble Room después de cerrar sesión o cambiar de usuario.
+                    if (sessionScope() == sessionKey) {
+                        saveToCache(cacheKey, definition.id, fresh)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // La copia caducada sigue disponible si el servidor falla.
+                } finally {
+                    synchronized(refreshLock) { refreshJobs.remove(cacheKey) }
+                }
+            }
+            refreshJobs[cacheKey] = job
+            job.start()
+        }
+    }
+
     private suspend fun saveToCache(cacheKey: String, reportId: String, preview: ReportPreview) {
         previewDao.upsert(
             ReportPreviewEntity(
@@ -260,7 +324,7 @@ class ReportsRepositoryImpl(
                 reportId = reportId,
                 rowsJson = ReportPreviewJson.encodeRows(preview.rows),
                 totalsJson = ReportPreviewJson.encodeTotals(preview.totals),
-                createdAt = System.currentTimeMillis(),
+                createdAt = now(),
             ),
         )
     }
