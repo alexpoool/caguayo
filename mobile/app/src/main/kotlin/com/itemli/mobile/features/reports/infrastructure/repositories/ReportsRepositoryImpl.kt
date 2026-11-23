@@ -40,7 +40,7 @@ class ReportsRepositoryImpl(
     init {
         sessionManager?.addOnLogoutListener {
             synchronized(refreshLock) {
-                refreshJobs.values.forEach(Job::cancel)
+                refreshJobs.values.forEach { it.cancel() }
                 refreshJobs.clear()
             }
             previewDao.clear()
