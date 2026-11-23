@@ -66,6 +66,7 @@ val appModule: Module = module {
         ReportsRepositoryImpl(
             apiClient = get(),
             previewDao = get(),
+            sessionManager = get(),
         )
     }
 
