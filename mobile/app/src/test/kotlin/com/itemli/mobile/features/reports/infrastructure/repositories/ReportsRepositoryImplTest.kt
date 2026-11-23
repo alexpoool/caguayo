@@ -93,6 +93,45 @@ class ReportsRepositoryImplTest {
     }
 
     @Test
+    fun `la caché caducada se muestra sin esperar al refresco de red`() = runTest {
+        val dao = FakeDao()
+        val key = scopedPreviewCacheKey(
+            "anonymous#",
+            ReportCatalog.existencias,
+            mapOf("id_dependencia" to "1"),
+            50,
+            0,
+        )
+        dao.store[key] = ReportPreviewEntity(
+            cacheKey = key,
+            reportId = "existencias",
+            rowsJson = ReportPreviewJson.encodeRows(listOf(mapOf("codigo" to "ANTERIOR"))),
+            totalsJson = ReportPreviewJson.encodeTotals(mapOf("total_items" to 1)),
+            createdAt = 1L,
+        )
+        val repository = ReportsRepositoryImpl(
+            apiClient = ApiClient(configProvider = { throw IOException("sin red") }, tokenProvider = { null }),
+            previewDao = dao,
+            now = { PREVIEW_CACHE_TTL_MS + 2L },
+            refreshScope = backgroundScope,
+        )
+
+        val result = repository.preview(
+            ReportCatalog.existencias,
+            mapOf("id_dependencia" to "1"),
+            limit = 50,
+            offset = 0,
+        )
+
+        assertTrue(result is AppResult.Success)
+        val preview = (result as AppResult.Success).value
+        assertTrue(preview.fromCache)
+        assertEquals("ANTERIOR", preview.rows.single()["codigo"])
+        testScheduler.advanceUntilIdle()
+        assertEquals("ANTERIOR", ReportPreviewJson.decodeRows(dao.store.getValue(key).rowsJson).single()["codigo"])
+    }
+
+    @Test
     fun `si la caché de Room falla se propaga el error de red`() = runTest {
         val dao = FakeDao().apply { shouldFail = true }
         val repository = offlineRepository(dao)
