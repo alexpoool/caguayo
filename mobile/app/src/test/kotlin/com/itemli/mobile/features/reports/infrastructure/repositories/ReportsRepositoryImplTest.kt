@@ -71,16 +71,20 @@ class ReportsRepositoryImplTest {
     @Test
     fun `sin red devuelve la caché marcada con fromCache`() = runTest {
         val dao = FakeDao()
-        val key = previewCacheKey(ReportCatalog.existencias, mapOf("id_dependencia" to "1"))
+        val key = scopedPreviewCacheKey("test-user#1", ReportCatalog.existencias, mapOf("id_dependencia" to "1"), 50, 0)
         dao.store[key] = ReportPreviewEntity(
             cacheKey = key,
             reportId = "existencias",
             rowsJson = ReportPreviewJson.encodeRows(listOf(mapOf("codigo" to "P1", "cantidad" to 2))),
             totalsJson = ReportPreviewJson.encodeTotals(mapOf("total_items" to 1)),
-            createdAt = 0L,
+            createdAt = 1L,
         )
-        val repository = offlineRepository(dao)
-        val result = repository.preview(ReportCatalog.existencias, mapOf("id_dependencia" to "1"))
+        val repository = ReportsRepositoryImpl(
+            apiClient = ApiClient(configProvider = { throw IOException("sin red") }, tokenProvider = { null }),
+            previewDao = dao,
+            now = { 1L },
+        )
+        val result = repository.preview(ReportCatalog.existencias, mapOf("id_dependencia" to "1"), limit = 50, offset = 0)
         assertTrue(result is AppResult.Success)
         val preview = (result as AppResult.Success).value
         assertTrue(preview.fromCache)
