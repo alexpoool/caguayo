@@ -799,15 +799,15 @@ export function RealizadoresPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                          <button
+                            type="button"
                             onClick={() => openEditForm(item)}
-                            className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 transition-colors hover:bg-blue-100 hover:text-blue-900"
                             title="Editar realizador"
+                            aria-label="Editar realizador"
                           >
                             <Pencil className="h-4 w-4" />
-                          </Button>
+                          </button>
                           <Button
                             variant="ghost"
                             size="icon"
