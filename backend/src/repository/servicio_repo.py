@@ -341,6 +341,7 @@ class PagoFacturaServicioRepository(
                 == PagoFacturaServicio.id_factura_servicio,
             )
             .where(FacturaServicio.id_etapa == id_etapa)
+            .options(selectinload(PagoFacturaServicio.factura))
             .order_by(PagoFacturaServicio.fecha.desc())
         )
         results = await db.exec(statement)
