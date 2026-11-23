@@ -787,11 +787,15 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     </div>
 
     <div class="fila-fechas">
-        <span class="bloque-fecha"><strong>Fecha Emisión:</strong> ${fechaEmision}</span>
-        <span class="bloque-fecha"><strong>Fecha Liquidación:</strong> ${fechaLiquidacion}</span>
+        <span class="bloque-fecha">
+            <strong>Fecha Emisión:</strong> ${fechaEmision}
+            ${referenciaBancaria ? `<br><strong>Referencia bancaria:</strong> ${referenciaBancaria}` : ''}
+        </span>
+        <span class="bloque-fecha">
+            <strong>Fecha Liquidación:</strong> ${fechaLiquidacion}
+            ${facturaLiquidacion ? `<br><strong>Factura:</strong> ${facturaLiquidacion}` : ''}
+        </span>
         ${docPagoLiquidacion ? `<span class="bloque-fecha"><strong>Doc. Pago:</strong> ${docPagoLiquidacion}</span>` : ''}
-        ${referenciaBancaria ? `<span class="bloque-fecha"><strong>Referencia bancaria:</strong> ${referenciaBancaria}</span>` : ''}
-        ${facturaLiquidacion ? `<span class="bloque-fecha"><strong>Factura:</strong> ${facturaLiquidacion}</span>` : ''}
     </div>
 
     <div class="info-proyecto">
