@@ -468,6 +468,7 @@ class PersonaEtapaService:
                 select(PersonaLiquidacion).where(
                     PersonaLiquidacion.id_etapa == id_etapa,
                     PersonaLiquidacion.id_persona == id_persona,
+                    PersonaLiquidacion.id_moneda == id_moneda,
                 )
             )
             for liquidacion in liquidaciones_persona.all():
