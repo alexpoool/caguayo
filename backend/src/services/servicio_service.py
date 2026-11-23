@@ -1191,8 +1191,13 @@ class PersonaLiquidacionService:
         )
         neto_pagar = subtotal - gasto_empresa - comision
 
+        id_pago_actualizado = (
+            data.id_pago
+            if "id_pago" in data.model_fields_set
+            else liq.id_pago
+        )
         factura_valor = await PersonaLiquidacionService._resolver_factura_pago(
-            db, data.id_pago, data.factura
+            db, id_pago_actualizado, data.factura
         )
 
         update_data = PersonaLiquidacionUpdate(
@@ -1216,7 +1221,7 @@ class PersonaLiquidacionService:
             doc_pago_liquidacion=data.doc_pago_liquidacion,
             referencia_bancaria=data.referencia_bancaria,
             factura=factura_valor,
-            id_pago=data.id_pago,
+            id_pago=id_pago_actualizado,
             observacion=data.observacion,
         )
 
