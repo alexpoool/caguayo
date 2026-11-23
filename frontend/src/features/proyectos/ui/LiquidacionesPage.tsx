@@ -1396,7 +1396,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                     />
                   </div>
                   <div>
-                  <div>
                     <Label>Gasto Empresa</Label>
                     <Input
                       type="number"
