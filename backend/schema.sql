@@ -1104,6 +1104,8 @@ CREATE TABLE persona_liquidacion (
 	neto_pagar NUMERIC NOT NULL, 
 	id_tipo_concepto INTEGER, 
 	doc_pago_liquidacion VARCHAR(100), 
+	referencia_bancaria VARCHAR(150), 
+	factura VARCHAR(100), 
 	gasto_empresa NUMERIC NOT NULL, 
 	observacion VARCHAR, 
 	confirmado BOOLEAN NOT NULL, 
