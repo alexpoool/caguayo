@@ -710,6 +710,8 @@ async def preview_movimientos_dependencia(
             db, id_dependencia, fecha_inicio, fecha_fin
         )
 
+        total_existencia_inicial = sum(float(r.get("saldo_inicial_unidades", 0)) for r in movimientos)
+        total_existencia_final = sum(float(r.get("saldo_final_unidades", 0)) for r in movimientos)
         total_saldo_inicial = sum(float(r.get("saldo_inicial", 0)) for r in movimientos)
         total_saldo_final = sum(float(r.get("saldo_final", 0)) for r in movimientos)
         total_entradas = sum(
@@ -742,6 +744,8 @@ async def preview_movimientos_dependencia(
             "dependencia": dependencia_info,
             "items": _paginate_preview(movimientos, limit, offset),
             "total_items": len(movimientos),
+            "total_existencia_inicial": total_existencia_inicial,
+            "total_existencia_final": total_existencia_final,
             "total_saldo_inicial": total_saldo_inicial,
             "total_saldo_final": total_saldo_final,
             "total_entradas": total_entradas,
