@@ -119,6 +119,8 @@ async def test_saldo_inicial_entradas_salidas_y_ajustes(db, datos_base):
 
     p1 = next(m for m in movimientos if m["codigo"] == "P001")
     # Saldos = montos valorados a precio_compra (2)
+    assert p1["saldo_inicial_unidades"] == 10
+    assert p1["saldo_final_unidades"] == 13
     assert p1["saldo_inicial"] == 20
     assert p1["saldo_final"] == 26
     # Columnas de movimiento = cantidades
@@ -144,6 +146,8 @@ async def test_devolucion_es_salida_y_pendientes_no_cuentan(db, datos_base):
     p2 = next(m for m in movimientos if m["codigo"] == "P002")
     assert p2["devolucion"] == 4
     assert p2["venta"] == 0
+    assert p2["saldo_inicial_unidades"] == 0
+    assert p2["saldo_final_unidades"] == -4
     # Monto: 0 − 4×2 = −8
     assert p2["saldo_final"] == -8
 
@@ -162,6 +166,8 @@ async def test_incluye_todo_el_dia_de_fecha_fin(db, datos_base):
 
     p1 = next(m for m in movimientos if m["codigo"] == "P001")
     assert p1["compra"] == 7
+    assert p1["saldo_inicial_unidades"] == 0
+    assert p1["saldo_final_unidades"] == 7
     assert p1["saldo_final"] == 14  # 7 × 2
 
 
