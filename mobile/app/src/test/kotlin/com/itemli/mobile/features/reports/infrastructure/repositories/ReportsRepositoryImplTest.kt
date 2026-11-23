@@ -71,7 +71,7 @@ class ReportsRepositoryImplTest {
     @Test
     fun `sin red devuelve la caché marcada con fromCache`() = runTest {
         val dao = FakeDao()
-        val key = scopedPreviewCacheKey("test-user#1", ReportCatalog.existencias, mapOf("id_dependencia" to "1"), 50, 0)
+        val key = scopedPreviewCacheKey("anonymous#", ReportCatalog.existencias, mapOf("id_dependencia" to "1"), 50, 0)
         dao.store[key] = ReportPreviewEntity(
             cacheKey = key,
             reportId = "existencias",
