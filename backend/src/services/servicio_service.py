@@ -448,6 +448,32 @@ class PersonaEtapaService:
                 "El cobro no puede ser inferior al importe de las liquidaciones confirmadas."
             )
 
+        nuevo_id_persona = nuevos_datos.pop("id_persona", id_persona)
+        if nuevo_id_persona != id_persona:
+            existente = await db.exec(
+                select(PersonaEtapa).where(
+                    PersonaEtapa.id_etapa == id_etapa,
+                    PersonaEtapa.id_persona == nuevo_id_persona,
+                    PersonaEtapa.id_moneda == id_moneda,
+                )
+            )
+            if existente.first():
+                raise BusinessLogicError(
+                    "El realizador seleccionado ya está asignado a esta etapa con esa moneda."
+                )
+
+            # Conservar el historial: las liquidaciones permanecen intactas
+            # y pasan a quedar asociadas al nuevo realizador asignado.
+            liquidaciones_persona = await db.exec(
+                select(PersonaLiquidacion).where(
+                    PersonaLiquidacion.id_etapa == id_etapa,
+                    PersonaLiquidacion.id_persona == id_persona,
+                )
+            )
+            for liquidacion in liquidaciones_persona.all():
+                liquidacion.id_persona = nuevo_id_persona
+            obj.id_persona = nuevo_id_persona
+
         for field, value in nuevos_datos.items():
             setattr(obj, field, value)
         await db.commit()
