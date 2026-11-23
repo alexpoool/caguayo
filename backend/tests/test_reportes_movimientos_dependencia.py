@@ -186,6 +186,8 @@ async def test_ajuste_quitar_resta(db, datos_base):
 
     p1 = next(m for m in movimientos if m["codigo"] == "P001")
     assert p1["ajustes"] == -4
+    assert p1["saldo_inicial_unidades"] == 0
+    assert p1["saldo_final_unidades"] == 6
     assert p1["saldo_final"] == 12  # (10 − 4) × 2
 
 
@@ -217,6 +219,8 @@ async def test_saldo_inicial_sin_snapshot_calcula_desde_movimientos(db, datos_ba
 
     p1 = next(m for m in movimientos if m["codigo"] == "P001")
     # Previos: (10 − 4) = 6 uds × precio_compra 2 = 12
+    assert p1["saldo_inicial_unidades"] == 6
+    assert p1["saldo_final_unidades"] == 8
     assert p1["saldo_inicial"] == 12
     assert p1["compra"] == 2
     # sf = 12 + 2×2 = 16
@@ -246,4 +250,6 @@ async def test_saldo_inicial_snapshot_tiene_prioridad_sobre_fallback(db, datos_b
     movimientos, _ = await get_movimientos_dependencia(db, 1, fi, ff)
 
     p1 = next(m for m in movimientos if m["codigo"] == "P001")
+    assert p1["saldo_inicial_unidades"] == 3
+    assert p1["saldo_final_unidades"] == 2
     assert p1["saldo_inicial"] == 6  # 3 uds del snapshot × 2
