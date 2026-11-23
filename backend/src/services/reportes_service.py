@@ -452,7 +452,8 @@ async def get_movimientos_dependencia(
     for pid, info in sorted(productos_base_map.items(), key=lambda x: x[1]["codigo"] or ""):
         # Monto: unidades del snapshot valorizadas al precio de compra actual
         precio = float(info.get("precio_compra") or 0)
-        saldo_inicial = round(float(saldos.get(pid, 0.0)) * precio, 2)
+        saldo_inicial_unidades = float(saldos.get(pid, 0.0))
+        saldo_inicial = round(saldo_inicial_unidades * precio, 2)
         row = mov_by_pid.get(pid)
         mov_data = {
             tipo: float(getattr(row, tipo) or 0) if row is not None else 0.0
@@ -463,11 +464,22 @@ async def get_movimientos_dependencia(
         # DEVOLUCION es salida (factor -1 en tipo_movimiento)
         entradas = (mov_data["recepcion"] + mov_data["compra"]) * precio
         salidas = (mov_data["venta"] + mov_data["merma"] + mov_data["donacion"] + mov_data["devolucion"]) * precio
-        saldo_final = round(saldo_inicial + entradas - salidas + ajustes * precio, 2)
+        saldo_final_unidades = (
+            saldo_inicial_unidades
+            + mov_data["recepcion"]
+            + mov_data["compra"]
+            - mov_data["venta"]
+            - mov_data["merma"]
+            - mov_data["donacion"]
+            - mov_data["devolucion"]
+            + ajustes
+        )
+        saldo_final = round(saldo_final_unidades * precio, 2)
 
         movimientos.append({
             "codigo": info["codigo"],
             "nombre": info["nombre"],
+            "saldo_inicial_unidades": round(saldo_inicial_unidades, 3),
             "saldo_inicial": saldo_inicial,
             "recepcion": mov_data["recepcion"],
             "compra": mov_data["compra"],
@@ -476,6 +488,7 @@ async def get_movimientos_dependencia(
             "donacion": mov_data["donacion"],
             "devolucion": mov_data["devolucion"],
             "ajustes": ajustes,
+            "saldo_final_unidades": round(saldo_final_unidades, 3),
             "saldo_final": saldo_final,
         })
 
