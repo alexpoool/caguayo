@@ -18,6 +18,7 @@ import type {
   PagoFacturaServicioCreate,
   PersonaEtapa,
   PersonaEtapaCreate,
+  PersonaEtapaUpdate,
   PersonaLiquidacion,
   PersonaLiquidacionInput,
   PersonaLiquidacionInputUpdate,
@@ -81,6 +82,7 @@ export type {
   PagoFacturaServicioCreate,
   PersonaEtapa,
   PersonaEtapaCreate,
+  PersonaEtapaUpdate,
   PersonaLiquidacion,
   PersonaLiquidacionInput,
   PersonaLiquidacionInputUpdate,
@@ -163,6 +165,7 @@ export interface ProyectosRepositorio {
 
   getPersonasByEtapa(etapaId: number): Promise<PersonaEtapa[]>;
   createPersonaEtapa(data: PersonaEtapaCreate): Promise<PersonaEtapa>;
+  updatePersonaEtapa(etapaId: number, personaId: number, monedaId: number, data: PersonaEtapaUpdate): Promise<PersonaEtapa>;
   deletePersonaEtapa(etapaId: number, personaId: number): Promise<void>;
 
   getFacturasServicio(
