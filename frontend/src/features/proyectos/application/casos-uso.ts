@@ -11,6 +11,7 @@ import type {
   OfertaUpdate,
   PagoFacturaServicioCreate,
   PersonaEtapaCreate,
+  PersonaEtapaUpdate,
   PersonaLiquidacionInput,
   PersonaLiquidacionInputUpdate,
   ProyectosRepositorio,
@@ -71,6 +72,8 @@ export function crearCasosUsoProyectos(repositorio: ProyectosRepositorio) {
       repositorio.getPersonasByEtapa(etapaId),
     createPersonaEtapa: (data: PersonaEtapaCreate) =>
       repositorio.createPersonaEtapa(data),
+    updatePersonaEtapa: (etapaId: number, personaId: number, monedaId: number, data: PersonaEtapaUpdate) =>
+      repositorio.updatePersonaEtapa(etapaId, personaId, monedaId, data),
     deletePersonaEtapa: (etapaId: number, personaId: number) =>
       repositorio.deletePersonaEtapa(etapaId, personaId),
 
