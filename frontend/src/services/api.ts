@@ -812,7 +812,7 @@ export const personaEtapaService = {
     etapaId: number,
     personaId: number,
     monedaId: number,
-    data: { cobro: number; por_cobrar: number; liquidada: boolean },
+    data: { id_persona?: number; cobro?: number; por_cobrar?: number; liquidada?: boolean },
   ): Promise<PersonaEtapa> {
     return apiClient.put<PersonaEtapa>(`/persona-etapa/${etapaId}/${personaId}/${monedaId}`, data);
   },
