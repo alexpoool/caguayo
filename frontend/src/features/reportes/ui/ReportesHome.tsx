@@ -986,6 +986,52 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
           </div>
           <div className="border-t border-gray-100 pt-4">{activeReport?.showTable ? renderTable() : renderChart()}</div>
 
+          {activeReport?.id === "desempeno" && previewData && (
+            <div className="border-t border-gray-100 pt-4 mt-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-bold text-gray-800">Resumen financiero</h3>
+                <span className="text-xs text-gray-500">
+                  {previewData.total_items ?? 0} liquidaciones · {previewData.total_terceros ?? 0} terceros
+                </span>
+              </div>
+              {(previewData.totales_por_moneda || []).length === 0 ? (
+                <p className="text-sm text-gray-400">No hay totales para los filtros seleccionados.</p>
+              ) : (
+                <div className="space-y-3">
+                  {(previewData.totales_por_moneda || []).map((total: any) => (
+                    <div key={total.id_moneda ?? total.moneda} className="rounded-xl border border-gray-200 p-3">
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="text-sm font-bold text-gray-800">{total.moneda}</span>
+                        <span className="text-xs text-gray-500">{total.total_liquidaciones} liquidaciones</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[
+                          ["Importe", total.total_importe],
+                          ["Devengado", total.total_devengado],
+                          ["Agencia", total.total_importe_agencia],
+                          ["Tributario", total.total_tributario_monto],
+                          ["Comisión bancaria", total.total_comision_bancaria],
+                          ["Gasto empresa", total.total_gasto_empresa],
+                          ["Neto a pagar", total.total_neto_pagar],
+                        ].map(([label, value]) => (
+                          <div key={String(label)}>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">{label}</p>
+                            <p className="text-sm font-semibold text-gray-800 tabular-nums">
+                              {Number(value ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-[11px] text-gray-400">
+                La vista previa muestra los primeros 3 registros; el resumen y el PDF consideran todos los registros filtrados. Los importes se mantienen separados por moneda.
+              </p>
+            </div>
+          )}
+
           {/* Summary statistics */}
           <div className={`border-t border-gray-100 pt-4 mt-4 ${activeReport?.showStats === false ? "hidden" : ""}`}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
