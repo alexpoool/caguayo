@@ -1086,7 +1086,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-bold text-gray-800">Resumen financiero</h3>
                 <span className="text-xs text-gray-500">
-                  {previewData.total_liquidaciones ?? previewData.total_items ?? 0} liquidaciones{activeReport?.id !== "liquidaciones" ? ` · ${previewData.total_terceros ?? 0} terceros` : ""}
+                  {previewData.total_liquidaciones ?? previewData.total_items ?? 0} liquidaciones{activeReport?.id === "liquidaciones" ? ` · ${previewData.total_proveedores ?? 0} proveedores · ${previewData.total_realizadores ?? 0} realizadores` : activeReport?.id !== "liquidaciones" ? ` · ${previewData.total_terceros ?? 0} terceros` : ""}
                 </span>
               </div>
               {(previewData.totales_por_moneda || []).length === 0 ? (
