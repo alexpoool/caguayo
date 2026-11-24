@@ -871,6 +871,21 @@ SAMPLE_LIQUIDACIONES: list = [
 
 SAMPLE_META_LIQUIDACIONES: dict = {
     "total_items": 1,
+    "totales_por_moneda": [
+        {
+            "id_moneda": 1,
+            "moneda": "CUP (Peso Cubano)",
+            "total_liquidaciones": 1,
+            "total_devengado": 800.0,
+            "total_tributario": 15.0,
+            "total_comision_bancaria": 10.0,
+            "total_gasto_empresa": 20.0,
+            "total_importe": 1000.0,
+            "total_neto_pagar": 650.0,
+            "total_importe_agencia": 80.0,
+            "total_tributario_monto": 120.0,
+        }
+    ],
     "totales": {
         "total_devengado": 800.0,
         "total_tributario": 15.0,
@@ -1015,7 +1030,7 @@ class TestPreviewConTokenNuevos:
                 {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
                 "get_resumen_liquidaciones",
                 (SAMPLE_LIQUIDACIONES, SAMPLE_META_LIQUIDACIONES),
-                ["items", "total_items", "totales"],
+                ["items", "total_items", "totales", "totales_por_moneda"],
             ),
         ],
     )
