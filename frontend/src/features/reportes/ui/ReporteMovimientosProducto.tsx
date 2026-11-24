@@ -111,7 +111,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
 
   // Búsqueda dentro del catálogo disponible en la dependencia seleccionada.
   useEffect(() => {
-    if (!idDependencia || !busqueda.trim() || (productoSel && busqueda === productoSel.nombre)) return;
+    if (!idDependencia || (productoSel && busqueda === productoSel.nombre)) return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setBuscando(true);
