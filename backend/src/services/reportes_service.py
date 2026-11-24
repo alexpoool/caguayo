@@ -555,7 +555,7 @@ async def get_movimientos_producto(
     )
     historico = movimientos_result.all()
     if not historico:
-        raise ValueError("El producto no tiene movimientos confirmados en la dependencia")
+        raise ValueError("El producto no pertenece a la dependencia seleccionada: no tiene movimientos confirmados")
 
     unidades = Decimal("0")
     valor_inventario = Decimal("0")
