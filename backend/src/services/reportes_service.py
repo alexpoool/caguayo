@@ -534,9 +534,9 @@ async def get_movimientos_producto(
 
     producto_info = {"codigo": producto.codigo, "nombre": producto.nombre}
 
-    # saldos es una caché derivada, no la fuente de verdad. Se contrasta el
-    # snapshot con el histórico confirmado y se usa siempre el histórico para
-    # evitar que un snapshot antiguo/corrupto falsee el saldo inicial.
+    # saldos es una caché derivada, no la fuente de verdad. Se reconstruye el
+    # saldo inicial desde todos los movimientos confirmados anteriores al
+    # período; así un snapshot antiguo o corrupto nunca falsea el resultado.
     historico_result = await db.execute(
         select(
             func.coalesce(
