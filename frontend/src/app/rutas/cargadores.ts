@@ -98,6 +98,7 @@ const PRECARGA: EntradaPrecarga[] = [
   { prefijo: '/terceros/registro-clientes', cargar: cargarReportes },
   { prefijo: '/terceros/registro-proveedores', cargar: cargarReportes },
   { prefijo: '/terceros/registro-realizadores', cargar: cargarReportes },
+  { prefijo: '/terceros/informe-desempeno', cargar: cargarReportes },
   { prefijo: '/compra/reporte-proveedores', cargar: cargarReportes },
   { prefijo: '/compra/resumen-liquidaciones', cargar: cargarReportes },
   { prefijo: '/inventario/existencias', cargar: cargarReportes },
