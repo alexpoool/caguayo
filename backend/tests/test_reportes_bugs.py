@@ -529,3 +529,54 @@ def test_onat_agrupa_por_tercero_y_moneda_con_tasas_ponderadas():
     assert meta["total_liquidaciones"] == 4
     assert len(meta["totales_por_moneda"]) == 2
     assert {item["moneda"] for item in meta["totales_por_moneda"]} == {"CUP", "USD"}
+
+
+async def test_resumen_liquidaciones_incluye_realizadores_y_totales_por_moneda():
+    """El resumen incluye PersonaLiquidacion, no solo liquidaciones de proveedores."""
+    persona = SimpleNamespace(
+        id_liquidacion=91,
+        numero="RL-091",
+        id_persona=77,
+        id_moneda=1,
+        fecha_emision=date(2026, 11, 1),
+        fecha_liquidacion=date(2026, 11, 5),
+        importe=Decimal("1000.00"),
+        devengado=Decimal("800.00"),
+        tributario_monto=Decimal("80.00"),
+        comision_bancaria=Decimal("5.00"),
+        gasto_empresa=Decimal("10.00"),
+        neto_pagar=Decimal("705.00"),
+        tipo_pago="TRANSFERENCIA",
+        confirmado=True,
+        cliente_nombre="Nombre base",
+        cliente_nit="NIT-77",
+        moneda_nombre="Peso cubano",
+        moneda_simbolo="CUP",
+    )
+    db = SimpleNamespace(
+        execute=AsyncMock(side_effect=[
+            SimpleNamespace(all=lambda: []),  # Liquidacion (proveedores)
+            SimpleNamespace(all=lambda: [persona]),  # PersonaLiquidacion
+        ])
+    )
+
+    async def nombres_falsos(_db, ids):
+        assert ids == [77]
+        return {77: "Realizador Prueba"}
+
+    original = reportes_service.nombres_completos_por_cliente
+    reportes_service.nombres_completos_por_cliente = nombres_falsos
+    try:
+        data, meta = await reportes_service.get_resumen_liquidaciones(db)
+    finally:
+        reportes_service.nombres_completos_por_cliente = original
+
+    assert len(data) == 1
+    assert data[0]["tipo_tercero"] == "Realizador"
+    assert data[0]["cliente_nombre"] == "Realizador Prueba"
+    assert data[0]["liquidada"] is True
+    assert data[0]["importe_agencia"] == 200.0
+    assert meta["total_liquidaciones"] == 1
+    assert meta["total_proveedores"] == 0
+    assert meta["total_realizadores"] == 1
+    assert meta["totales_por_moneda"][0]["total_importe"] == 1000.0
