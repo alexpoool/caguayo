@@ -1153,6 +1153,8 @@ async def preview_liquidaciones(
             "items": _paginate_preview(items, limit, offset),
             "total_items": len(items),
             "total_liquidaciones": meta.get("total_liquidaciones", len(items)),
+            "total_proveedores": meta.get("total_proveedores", 0),
+            "total_realizadores": meta.get("total_realizadores", 0),
             "totales": meta.get("totales", {}),
             "totales_por_moneda": meta.get("totales_por_moneda", []),
         }
