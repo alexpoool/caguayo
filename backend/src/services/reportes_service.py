@@ -627,7 +627,7 @@ async def buscar_productos_item_anexo(
                 ItemAnexo.codigo.ilike(patron),
             )
         )
-    query = query.order_by(Productos.nombre).limit(limite)
+    query = query.order_by(Productos.nombre, Productos.id_producto).limit(limite)
     result = await db.execute(query)
     return [
         {"id_producto": row.id_producto, "nombre": row.nombre, "codigo": row.codigo}
