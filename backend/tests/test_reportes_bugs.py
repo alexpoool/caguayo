@@ -435,7 +435,6 @@ async def test_informe_desempeno_realizadores_no_selecciona_columnas_opcionales_
         pl_fecha_liquidacion=None,
         pl_importe=Decimal("100.00"),
         pl_devengado=Decimal("90.00"),
-        pl_importe_agencia=Decimal("10.00"),
         pl_tributario_monto=Decimal("5.00"),
         pl_comision_bancaria=Decimal("1.00"),
         pl_gasto_empresa=Decimal("2.00"),
@@ -471,9 +470,11 @@ async def test_informe_desempeno_realizadores_no_selecciona_columnas_opcionales_
 
     sql = str(db_mock.statement).lower()
     assert "referencia_bancaria" not in sql
+    assert "persona_liquidacion.importe_agencia" not in sql
     assert "persona_liquidacion.id_persona" in sql
     assert len(data) == 1
     assert data[0]["tipo_tercero"] == "Realizador"
     assert data[0]["neto_pagar"] == 82.0
+    assert data[0]["importe_agencia"] == 10.0
     assert meta["total_items"] == 1
 
