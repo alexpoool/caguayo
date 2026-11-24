@@ -789,10 +789,30 @@ SAMPLE_ONAT: list = [
 
 SAMPLE_META_ONAT: dict = {
     "total_items": 1,
+    "total_terceros": 1,
+    "total_liquidaciones": 1,
+    "totales_por_moneda": [
+        {
+            "id_moneda": 1,
+            "moneda": "CUP",
+            "total_terceros": 1,
+            "total_liquidaciones": 1,
+            "total_importe": 1000.0,
+            "total_devengado": 800.0,
+            "total_importe_agencia": 200.0,
+            "total_tributario_monto": 120.0,
+            "total_comision_bancaria": 10.0,
+            "total_gasto_empresa": 20.0,
+            "total_neto_pagar": 650.0,
+            "valor_total": 1000.0,
+            "porcentaje_agencia": 20.0,
+            "tributario": 15.0,
+        }
+    ],
     "totales": {
         "total_importe": 1000.0,
         "total_devengado": 800.0,
-        "total_importe_caguayo": 80.0,
+        "total_importe_agencia": 200.0,
         "total_tributario_monto": 120.0,
         "total_comision_bancaria": 10.0,
         "total_gasto_empresa": 20.0,
@@ -976,7 +996,7 @@ class TestPreviewConTokenNuevos:
                 {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
                 "get_reporte_onat",
                 (SAMPLE_ONAT, SAMPLE_META_ONAT),
-                ["items", "total_items", "totales"],
+                ["items", "total_items", "total_terceros", "total_liquidaciones", "totales_por_moneda", "totales"],
             ),
             (
                 "/api/v1/reportes/mincult/preview",
