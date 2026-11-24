@@ -153,6 +153,7 @@ async def obtener_reporte_proveedores_dependencia(
             aprobado_por_nombre,
             aprobado_por_cargo,
             notas=notas,
+            resumen_por_tipo=resumen,
         )
 
         return StreamingResponse(
@@ -761,7 +762,7 @@ async def preview_movimientos_dependencia(
 @router.get("/movimientos-producto/preview")
 async def preview_movimientos_producto(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
-    id_producto: Optional[int] = Query(None, description="ID del Producto (opcional)"),
+    id_producto: int = Query(..., description="ID del Producto (obligatorio)"),
     fecha_inicio: date = Query(..., description="Fecha Inicio"),
     fecha_fin: date = Query(..., description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
@@ -770,7 +771,7 @@ async def preview_movimientos_producto(
     offset: int = Query(0, ge=0),
 ):
     try:
-        movimientos, dependencia_info, producto_info = await get_movimientos_producto(
+        movimientos, dependencia_info, producto_info, resumen = await get_movimientos_producto(
             db, id_dependencia, id_producto, fecha_inicio, fecha_fin
         )
 
@@ -804,8 +805,7 @@ async def preview_movimientos_producto(
             "producto": producto_info,
             "items": _paginate_preview(items, limit, offset),
             "total_items": len(items),
-            "total_entradas": total_entradas,
-            "total_salidas": total_salidas,
+            "resumen_por_tipo": resumen,
         }
     except Exception as e:
         logger.error(f"Error en preview movimientos-producto: {e}")
