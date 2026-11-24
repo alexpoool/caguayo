@@ -88,8 +88,8 @@ export function CrearLiquidacionForm({ formId, casosUso, initialProveedorId, onE
   }, []);
 
   const validateNumericField = (field: string, value: any): string | null => {
-    if (field === 'porcentaje_agencia' || field === 'tributario') {
-      const err = esPorcentaje(value, field === 'porcentaje_agencia' ? '% Comisión' : 'Tributario');
+    if (field === 'comision_gestion_porcentaje' || field === 'tributario') {
+      const err = esPorcentaje(value, field === 'comision_gestion_porcentaje' ? '% Comisión' : 'Tributario');
       setErrors(prev => ({ ...prev, [field]: err || '' }));
       return err;
     }
@@ -115,7 +115,7 @@ export function CrearLiquidacionForm({ formId, casosUso, initialProveedorId, onE
     tributario: DEFAULTS.TRIBUTARIO,
     comision_bancaria: 0,
     gasto_empresa: 0,
-    porcentaje_agencia: DEFAULTS.PORCENTAJE_COMISION,
+    comision_gestion_porcentaje: DEFAULTS.PORCENTAJE_COMISION,
     tipo_pago: DEFAULTS.TIPO_PAGO,
     observaciones: '',
     producto_ids: []
@@ -214,15 +214,15 @@ export function CrearLiquidacionForm({ formId, casosUso, initialProveedorId, onE
 
   const calculateImporteGestion = (): number => {
     const importe = new Decimal(calculateImporte());
-    const porcentaje = Number(formData.porcentaje_agencia) || DEFAULTS.PORCENTAJE_COMISION;
+    const porcentaje = Number(formData.comision_gestion_porcentaje) || DEFAULTS.PORCENTAJE_COMISION;
     const result = mul(importe, percentToMultiplier(porcentaje));
     return toNumber(result);
   };
 
   const calculateDevengado = (): number => {
     const importe = new Decimal(calculateImporte());
-    const importe_agencia = new Decimal(calculateImporteGestion());
-    return toNumber(sub(importe, importe_agencia));
+    const comision_gestion_importe = new Decimal(calculateImporteGestion());
+    return toNumber(sub(importe, comision_gestion_importe));
   };
 
   const calculateTributarioMonto = (): number => {
@@ -285,7 +285,7 @@ if (!filtroCliente) {
       return;
     }
 
-    const agenciaErr = validateNumericField('porcentaje_agencia', formData.porcentaje_agencia);
+    const agenciaErr = validateNumericField('comision_gestion_porcentaje', formData.comision_gestion_porcentaje);
     const tributarioErr = validateNumericField('tributario', formData.tributario);
     const comisionErr = validateNumericField('comision_bancaria', formData.comision_bancaria);
     const gastoErr = validateNumericField('gasto_empresa', formData.gasto_empresa);
@@ -561,10 +561,10 @@ if (!filtroCliente) {
                 step="0.01"
                 min="0"
                 max="100"
-                value={formData.porcentaje_agencia}
-                onChange={(e: any) => { setFormData(prev => ({ ...prev, porcentaje_agencia: Number(e.target.value) })); validateNumericField('porcentaje_agencia', e.target.value); }}
+                value={formData.comision_gestion_porcentaje}
+                onChange={(e: any) => { setFormData(prev => ({ ...prev, comision_gestion_porcentaje: Number(e.target.value) })); validateNumericField('comision_gestion_porcentaje', e.target.value); }}
               />
-              {errors.porcentaje_agencia && <p className="text-red-500 text-sm mt-1">{errors.porcentaje_agencia}</p>}
+              {errors.comision_gestion_porcentaje && <p className="text-red-500 text-sm mt-1">{errors.comision_gestion_porcentaje}</p>}
             </div>
             <div>
               <Label className="text-sm font-medium">Tributario (%)</Label>
@@ -612,7 +612,7 @@ if (!filtroCliente) {
                   <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between pl-4">
-                    <span className="text-sm text-gray-500">Importe comisión ({Number(formData.porcentaje_agencia || DEFAULTS.PORCENTAJE_COMISION)}%):</span>
+                    <span className="text-sm text-gray-500">Importe comisión ({Number(formData.comision_gestion_porcentaje || DEFAULTS.PORCENTAJE_COMISION)}%):</span>
                   <span className="text-sm text-gray-500">- {calculateImporteGestion().toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between border-b border-gray-200 pb-1">
