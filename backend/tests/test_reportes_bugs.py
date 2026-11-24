@@ -155,7 +155,7 @@ async def test_movimientos_producto_incluye_todo_el_dia_de_fecha_fin(db, datos_b
     _crear_mov(db, tipo_ids, 1, "compra", 4, datetime(2026, 9, 9, 23, 59, 59))
     await db.commit()
 
-    movimientos, _, _ = await get_movimientos_producto(
+    movimientos, _, _, _ = await get_movimientos_producto(
         db, 1, 1, date(2026, 9, 9), fecha_fin
     )
 
@@ -171,7 +171,7 @@ async def test_movimientos_producto_excluye_dia_posterior(db, datos_base):
     _crear_mov(db, tipo_ids, 1, "compra", 4, datetime(2026, 9, 11, 0, 0, 1))
     await db.commit()
 
-    movimientos, _, _ = await get_movimientos_producto(
+    movimientos, _, _, _ = await get_movimientos_producto(
         db, 1, 1, date(2026, 9, 9), fecha_fin
     )
 
@@ -186,7 +186,7 @@ async def test_movimientos_producto_respeta_fecha_inicio(db, datos_base):
     _crear_mov(db, tipo_ids, 1, "compra", 4, datetime(2026, 9, 10, 12, 0, 0))
     await db.commit()
 
-    movimientos, _, _ = await get_movimientos_producto(
+    movimientos, _, _, _ = await get_movimientos_producto(
         db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
     )
 
