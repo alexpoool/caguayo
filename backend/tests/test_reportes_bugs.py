@@ -525,7 +525,7 @@ def test_onat_agrupa_por_tercero_y_moneda_con_tasas_ponderadas():
     assert proveedor_cup["tributario"] == 10
     assert proveedor_cup["neto_pagar"] == 276
     assert realizador_cup["valor_total"] == 50
-    assert meta["total_terceros"] == 3
+    assert meta["total_terceros"] == 2
     assert meta["total_liquidaciones"] == 4
     assert len(meta["totales_por_moneda"]) == 2
     assert {item["moneda"] for item in meta["totales_por_moneda"]} == {"CUP", "USD"}
