@@ -508,7 +508,9 @@ async def obtener_reporte_onat(
     fecha_inicio: Optional[date] = Query(None, description="Fecha Inicio"),
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
-    id_persona: Optional[int] = Query(None, description="Filtrar por creador"),
+    id_persona: Optional[int] = Query(None, description="Compatibilidad: filtrar por persona"),
+    tipo_tercero: str = Query("ambos", description="proveedores, realizadores o ambos"),
+    id_tercero: Optional[int] = Query(None, description="Filtrar por tercero"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
@@ -517,7 +519,7 @@ async def obtener_reporte_onat(
 ):
     try:
         data, meta = await get_reporte_onat(
-            db, fecha_inicio, fecha_fin, id_moneda, id_persona
+            db, fecha_inicio, fecha_fin, id_moneda, id_persona, tipo_tercero, id_tercero
         )
         usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
 
@@ -547,6 +549,8 @@ async def obtener_reporte_onat(
             media_type="application/pdf",
             headers={"Content-Disposition": "attachment; filename=reporte_onat.pdf"},
         )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"Error en reporte ONAT: {e}")
         raise HTTPException(
@@ -1010,7 +1014,9 @@ async def preview_onat(
     fecha_inicio: Optional[date] = Query(None, description="Fecha Inicio"),
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
-    id_persona: Optional[int] = Query(None, description="Filtrar por creador"),
+    id_persona: Optional[int] = Query(None, description="Compatibilidad: filtrar por persona"),
+    tipo_tercero: str = Query("ambos", description="proveedores, realizadores o ambos"),
+    id_tercero: Optional[int] = Query(None, description="Filtrar por tercero"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
     limit: Optional[int] = Query(None, ge=1, le=100),
@@ -1018,7 +1024,7 @@ async def preview_onat(
 ):
     try:
         data, meta = await get_reporte_onat(
-            db, fecha_inicio, fecha_fin, id_moneda, id_persona
+            db, fecha_inicio, fecha_fin, id_moneda, id_persona, tipo_tercero, id_tercero
         )
 
         items = [
@@ -1050,8 +1056,13 @@ async def preview_onat(
         return {
             "items": _paginate_preview(items, limit, offset),
             "total_items": len(items),
+            "total_terceros": meta.get("total_terceros", 0),
+            "total_liquidaciones": meta.get("total_liquidaciones", 0),
+            "totales_por_moneda": meta.get("totales_por_moneda", []),
             "totales": meta.get("totales", {}),
         }
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"Error en preview ONAT: {e}")
         raise HTTPException(
