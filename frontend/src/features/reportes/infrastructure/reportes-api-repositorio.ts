@@ -30,7 +30,10 @@ export const reportesApiRepositorio: ReportesRepositorio = {
       headers: cabeceras(),
       signal,
     });
-    if (!response.ok) throw new Error(`${response.status}`);
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      throw new Error(errorBody?.detail || `Error HTTP ${response.status}`);
+    }
     return response.json();
   },
 
