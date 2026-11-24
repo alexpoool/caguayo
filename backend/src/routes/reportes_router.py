@@ -153,7 +153,6 @@ async def obtener_reporte_proveedores_dependencia(
             aprobado_por_nombre,
             aprobado_por_cargo,
             notas=notas,
-            resumen_por_tipo=resumen,
         )
 
         return StreamingResponse(
@@ -312,6 +311,7 @@ async def obtener_reporte_movimientos_producto(
             aprobado_por_nombre,
             aprobado_por_cargo,
             notas=notas,
+            resumen_por_tipo=resumen,
         )
 
         return StreamingResponse(
