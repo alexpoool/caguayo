@@ -271,9 +271,9 @@ const REPORTS: ReportConfig[] = [
     moduleLabel: "Compra",
     previewEndpoint: "/reportes/liquidaciones/preview",
     buildPreviewParams: (f) => ({
-      fecha_inicio: f.fecha_inicio,
-      fecha_fin: f.fecha_fin,
-      id_moneda: f.id_moneda,
+      ...(f.fecha_inicio ? { fecha_inicio: f.fecha_inicio } : {}),
+      ...(f.fecha_fin ? { fecha_fin: f.fecha_fin } : {}),
+      ...(f.id_moneda ? { id_moneda: f.id_moneda } : {}),
     }),
     transformChartData: (data) => {
       // Barras apiladas por cliente: pendiente (neto_pagar de liquidaciones no
@@ -296,10 +296,34 @@ const REPORTS: ReportConfig[] = [
     ],
     pdfEndpoint: "/reportes/liquidaciones",
     pdfFilename: "resumen_liquidaciones.pdf",
-    buildPdfParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    buildPdfParams: (f) => ({
+      ...(f.fecha_inicio ? { fecha_inicio: f.fecha_inicio } : {}),
+      ...(f.fecha_fin ? { fecha_fin: f.fecha_fin } : {}),
+      ...(f.id_moneda ? { id_moneda: f.id_moneda } : {}),
+      aprobado_por_nombre: "",
+      aprobado_por_cargo: "",
+      notas: f.notas,
+    }),
     needsDependencia: false,
     needsFechas: true,
     needsMoneda: true,
+    showTable: true,
+    showStats: false,
+    tableColumns: [
+      { key: "codigo", label: "Código" },
+      { key: "fecha_emision", label: "Emisión", render: (v: any) => formatFecha(v) || "—" },
+      { key: "cliente_nombre", label: "Cliente" },
+      { key: "moneda", label: "Moneda" },
+      { key: "importe", label: "Importe", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "devengado", label: "Devengado", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "porcentaje_agencia", label: "% Agencia", className: "text-right", render: (v: any) => `${Number(v ?? 0).toFixed(2)}%` },
+      { key: "importe_agencia", label: "Agencia", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "tributario_monto", label: "Tributario", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "comision_bancaria", label: "Comisión", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "gasto_empresa", label: "Gasto empresa", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "neto_pagar", label: "Neto a pagar", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "liquidada", label: "Estado", render: (v: any) => v ? "Liquidada" : "Pendiente" },
+    ],
   },
   {
     id: "proyectos",
@@ -585,9 +609,13 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
   // Reset filters with smart defaults when report changes
   useEffect(() => {
     const defaults = getDefaultFilters(userDepId);
-    // El informe de terceros reúne varias monedas; por defecto las muestra
-    // todas y mantiene los totales separados por moneda.
-    if (activeReport?.id === "desempeno" || activeReport?.id === "onat") defaults.id_moneda = "";
+    // Los informes financieros muestran todas las monedas por defecto.
+    if (["desempeno", "onat", "liquidaciones"].includes(activeReport?.id || "")) defaults.id_moneda = "";
+    // Resumen de liquidaciones: historial completo hasta que el usuario filtre fechas.
+    if (activeReport?.id === "liquidaciones") {
+      defaults.fecha_inicio = "";
+      defaults.fecha_fin = "";
+    }
     setFilters(defaults);
     setDraftFilters(defaults);
   }, [activeReport?.id, userDepId]);
@@ -736,7 +764,8 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
   const tableData = useMemo(() => {
     if (!activeReport?.showTable || !previewData) return null;
     const items = previewData?.items || [];
-    return items.slice(0, 3).map((row: Record<string, any>) => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "id" && !key.startsWith("id_"))));
+    const visibleItems = activeReport.id === "liquidaciones" ? items : items.slice(0, 3);
+    return visibleItems.map((row: Record<string, any>) => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "id" && !key.startsWith("id_"))));
   }, [activeReport, previewData]);
 
   // Pantalla de selección cuando aún no hay reporte activo.
@@ -767,7 +796,12 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
   const renderTable = () => {
     if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-brand-500 animate-spin" /></div>;
     if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
-    if (!tableData || tableData.length === 0) return <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">No hay datos para mostrar</div>;
+    if (!tableData || tableData.length === 0) return (
+      <div className="h-[200px] flex flex-col items-center justify-center gap-2 text-gray-400 text-sm">
+        <span>{activeReport.id === "liquidaciones" ? "No se encontraron liquidaciones con los filtros seleccionados." : "No hay datos para mostrar"}</span>
+        {activeReport.id === "liquidaciones" && <span className="text-xs">Prueba quitar las fechas o seleccionar todas las monedas.</span>}
+      </div>
+    );
 
     const columns = activeReport.tableColumns || [];
 
@@ -1028,12 +1062,12 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
           </div>
           <div className="border-t border-gray-100 pt-4">{activeReport?.showTable ? renderTable() : renderChart()}</div>
 
-          {["desempeno", "onat"].includes(activeReport?.id || "") && previewData && (
+          {["desempeno", "onat", "liquidaciones"].includes(activeReport?.id || "") && previewData && (
             <div className="border-t border-gray-100 pt-4 mt-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-bold text-gray-800">Resumen financiero</h3>
                 <span className="text-xs text-gray-500">
-                  {previewData.total_liquidaciones ?? previewData.total_items ?? 0} liquidaciones · {previewData.total_terceros ?? 0} terceros
+                  {previewData.total_liquidaciones ?? previewData.total_items ?? 0} liquidaciones{activeReport?.id !== "liquidaciones" ? ` · ${previewData.total_terceros ?? 0} terceros` : ""}
                 </span>
               </div>
               {(previewData.totales_por_moneda || []).length === 0 ? (
@@ -1071,7 +1105,11 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                 </div>
               )}
               <p className="text-[11px] text-gray-400">
-                {activeReport?.id === "onat" ? "La tabla muestra una fila por tercero y moneda; el resumen y el PDF consideran todas las liquidaciones confirmadas. El valor total corresponde al importe bruto acumulado y los importes se mantienen separados por moneda." : "La vista previa muestra los primeros 3 registros; el resumen y el PDF consideran todos los registros filtrados. Los importes se mantienen separados por moneda."}
+                {activeReport?.id === "onat"
+                  ? "La tabla muestra una fila por tercero y moneda; el resumen y el PDF consideran todas las liquidaciones confirmadas. El valor total corresponde al importe bruto acumulado y los importes se mantienen separados por moneda."
+                  : activeReport?.id === "liquidaciones"
+                    ? "La tabla muestra todas las liquidaciones encontradas, con paginación. El resumen y el PDF presentan subtotales independientes por moneda."
+                    : "La vista previa muestra los primeros 3 registros; el resumen y el PDF consideran todos los registros filtrados. Los importes se mantienen separados por moneda."}
               </p>
             </div>
           )}
