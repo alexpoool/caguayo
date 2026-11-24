@@ -52,7 +52,9 @@ const ReporteMovimientosDependencia: React.FC<{ casosUso: CasosUsoReportes }> = 
         },
       );
       setPreviewData(json.items || []);
-    } catch { toast.error("Error al cargar vista previa"); } finally { setTableLoading(false); }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al cargar vista previa");
+    } finally { setTableLoading(false); }
   };
 
   const handlePreview = async () => {
