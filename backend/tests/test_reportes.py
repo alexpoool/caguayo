@@ -310,14 +310,13 @@ class TestPreviewConToken:
                     "fecha_fin": "2024-12-31",
                 },
                 "get_movimientos_producto",
-                (SAMPLE_MOVIMIENTOS, SAMPLE_DEPENDENCIA, SAMPLE_PRODUCTO),
+                (SAMPLE_MOVIMIENTOS, SAMPLE_DEPENDENCIA, SAMPLE_PRODUCTO, []),
                 [
                     "dependencia",
                     "producto",
                     "items",
                     "total_items",
-                    "total_entradas",
-                    "total_salidas",
+                    "resumen_por_tipo",
                 ],
             ),
             (
@@ -516,6 +515,7 @@ class TestPDFGeneration:
                     SAMPLE_MOVIMIENTOS,
                     SAMPLE_DEPENDENCIA,
                     SAMPLE_PRODUCTO,
+                    [],
                 )
             ),
         ):
