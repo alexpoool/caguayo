@@ -483,129 +483,75 @@ def generar_pdf_desempeno(
     aprobado_por_cargo: str = "",
     notas: str = "",
 ) -> BytesIO:
-    """Genera PDF con informe de desempeño, agrupado por creador."""
+    """Genera el informe de liquidaciones de proveedores y realizadores."""
     template = PDFTemplate(
-        title="INFORME DE DESEMPEÑO - PROYECTOS POR CREADOR",
+        title="INFORME DE DESEMPEÑO - LIQUIDACIONES DE TERCEROS",
         landscape_mode=True,
     )
     template.set_company_header(name=settings.EMPRESA_RAZON_SOCIAL)
 
     filters: Dict[str, str] = {}
     if meta.get("fecha_inicio"):
-        filters["Fecha inicio"] = str(meta["fecha_inicio"])
+        filters["Emisión desde"] = str(meta["fecha_inicio"])
     if meta.get("fecha_fin"):
-        filters["Fecha fin"] = str(meta["fecha_fin"])
+        filters["Emisión hasta"] = str(meta["fecha_fin"])
+    filters["Tipo de tercero"] = str(meta.get("tipo_tercero", "ambos")).capitalize()
     if filters:
         template.set_filters(filters)
 
     headers = [
-        "No.",
-        "CREADOR",
-        "PROYECTO",
-        "ETAPA",
-        "VALOR ETAPA",
-        "COBRO",
-        "POR COBRAR",
-        "FECHA PAGO",
-        "ESTADO",
+        "No.", "TIPO", "TERCERO", "DOCUMENTO", "EMISIÓN", "LIQUIDACIÓN",
+        "MONEDA", "IMPORTE", "DEVENGADO", "AGENCIA", "TRIBUTARIO",
+        "COM. BANC.", "GASTO EMP.", "NETO A PAGAR", "ESTADO",
     ]
-    all_data: List[List[str]] = []
+    rows: List[List[str]] = []
+    for idx, item in enumerate(items, start=1):
+        rows.append([
+            str(idx),
+            str(item.get("tipo_tercero", "")),
+            str(item.get("tercero_nombre", "")),
+            str(item.get("documento", "")),
+            str(item.get("fecha_emision", "") or ""),
+            str(item.get("fecha_liquidacion", "") or ""),
+            str(item.get("moneda", "") or ""),
+            format_quantity(item.get("importe", 0)),
+            format_quantity(item.get("devengado", 0)),
+            format_quantity(item.get("importe_agencia", 0)),
+            format_quantity(item.get("tributario_monto", 0)),
+            format_quantity(item.get("comision_bancaria", 0)),
+            format_quantity(item.get("gasto_empresa", 0)),
+            format_quantity(item.get("neto_pagar", 0)),
+            str(item.get("estado", "")),
+        ])
 
-    totales_persona = meta.get("totales_por_persona", {})
-    gran_cobro = meta.get("gran_total_cobro", 0)
-    gran_valor = meta.get("gran_total_valor", 0)
-
-    # Agrupar por persona
-    persona_groups: Dict[str, List[Dict]] = {}
-    for it in items:
-        key = it.get("persona_nombre", "Sin nombre")
-        if key not in persona_groups:
-            persona_groups[key] = []
-        persona_groups[key].append(it)
-
-    consecutivo = 1
-    for persona_nombre in sorted(persona_groups.keys()):
-        persona_items = persona_groups[persona_nombre]
-        for it in persona_items:
-            all_data.append(
-                [
-                    str(consecutivo),
-                    str(persona_nombre),
-                    str(it.get("codigo_proyecto", "")),
-                    str(
-                        it.get("nombre_etapa", "")
-                        or f"Etapa {it.get('numero_etapa', '')}"
-                    ),
-                    format_quantity(it.get("etapa_valor", 0)),
-                    format_quantity(it.get("cobro", 0)),
-                    format_quantity(it.get("por_cobrar", 0)),
-                    str(it.get("fecha_pago", "") or ""),
-                    "Pagada" if it.get("pagada") else "Pendiente",
-                ]
-            )
-            consecutivo += 1
-
-        # Subtotales por persona
-        tp = totales_persona.get(persona_nombre, {})
-        all_data.append(
-            [
-                "",
-                f"** SUBTOTAL {persona_nombre} **",
-                "",
-                "",
-                format_quantity(tp.get("total_valor", 0)),
-                format_quantity(tp.get("total_cobro", 0)),
-                "",
-                "",
-                "",
-            ]
-        )
-
-    # Gran total
-    all_data.append(
-        [
+    # No existe un gran total entre monedas distintas: se agrega una fila de
+    # subtotal por cada moneda que realmente aparece en el resultado.
+    for total in meta.get("totales_por_moneda", []):
+        rows.append([
+            "", "", f"TOTAL {total.get('moneda', '')}", "", "", "", "",
+            format_quantity(total.get("total_importe", 0)),
+            format_quantity(total.get("total_devengado", 0)),
+            format_quantity(total.get("total_importe_agencia", 0)),
+            format_quantity(total.get("total_tributario_monto", 0)),
+            format_quantity(total.get("total_comision_bancaria", 0)),
+            format_quantity(total.get("total_gasto_empresa", 0)),
+            format_quantity(total.get("total_neto_pagar", 0)),
             "",
-            "** GRAN TOTAL **",
-            "",
-            "",
-            format_quantity(gran_valor),
-            format_quantity(gran_cobro),
-            "",
-            "",
-            "",
-        ]
-    )
+        ])
 
     template.add_table(
         headers,
-        all_data,
-        numeric_columns=[4, 5, 6],
+        rows,
+        code_columns=[0, 3],
+        numeric_columns=[7, 8, 9, 10, 11, 12, 13],
     )
-
-    # La columna VALOR ETAPA se repite por cada realizador de la etapa, así que
-    # en los contratos con más de una persona el total vale más que el
-    # contrato. En los migrados del legacy eso es lo normal, porque todos sus
-    # artistas se pusieron en la primera etapa (el legacy no guardaba de qué era
-    # cada uno). Va como nota al pie porque este PDF es donde el número se va
-    # del sistema: si sólo se avisara en la pantalla, el documento saldría sin
-    # explicación.
-    notas = [notas] if notas else []
-    notas.append(
-        "La columna VALOR ETAPA y los subtotales por persona suman el valor de "
-        "la etapa una vez por cada realizador que tenga. En los contratos "
-        "migrados del legacy, donde los artistas se pusieron en la primera "
-        "etapa porque la base antigua no guardaba de qué etapa era cada uno, "
-        "ese total queda multiplicado por el número de realizadores. El COBRO "
-        "y el POR COBRAR sí son correctos."
-    )
-    template.add_notes_section("\n\n".join(str(n) for n in notas))
-
+    if notas:
+        template.add_notes_section(notas)
     template.add_signature_section(
         created_by=usuario_actual,
         approved_by=aprobado_por_nombre,
         approved_role=aprobado_por_cargo,
     )
-
     return template.build()
 
 
