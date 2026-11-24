@@ -1133,8 +1133,8 @@ export interface Liquidacion {
   gasto_empresa: number;
   importe: number;
   neto_pagar: number;
-  porcentaje_agencia: number;
-  importe_agencia: number;
+  comision_gestion_porcentaje: number;
+  comision_gestion_importe: number;
   tributario_monto: number;
   tipo_pago: string;
   cliente?: any;
@@ -1156,7 +1156,7 @@ export interface LiquidacionCreate {
   tipo_pago?: string;
   observaciones?: string;
   producto_ids: number[];
-  porcentaje_agencia?: number;
+  comision_gestion_porcentaje?: number;
 }
 
 export interface LiquidacionConfirmar {
@@ -1166,7 +1166,7 @@ export interface LiquidacionConfirmar {
   comision_bancaria?: number;
   gasto_empresa?: number;
   observaciones?: string;
-  porcentaje_agencia?: number;
+  comision_gestion_porcentaje?: number;
 }
 
 export const liquidacionService = {
