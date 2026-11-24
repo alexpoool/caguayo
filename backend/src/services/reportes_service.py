@@ -1056,6 +1056,9 @@ async def get_terceros_con_liquidaciones(
                 actual["tipo_tercero"] = "Proveedor / Realizador"
             else:
                 resultados[ident] = {"id_tercero": ident, "nombre": nombre or "", "tipo_tercero": "Realizador"}
+    nombres = await nombres_completos_por_cliente(db, list(resultados)) if resultados else {}
+    for ident, item in resultados.items():
+        item["nombre"] = nombres.get(ident) or item["nombre"]
     return sorted(resultados.values(), key=lambda item: (item["nombre"].casefold(), item["tipo_tercero"]))
 
 
