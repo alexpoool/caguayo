@@ -240,6 +240,18 @@ def test_get_resumen_liquidaciones_no_acepta_tipo_concepto():
     assert "tipo_concepto" not in firma.parameters
 
 
+def test_resumen_liquidaciones_no_carga_modelo_completo_de_proveedores():
+    """El resumen debe seleccionar columnas usadas, no todas las del ORM.
+
+    Algunas instalaciones tienen diferencias de esquema en columnas opcionales;
+    cargar la entidad completa puede hacer fallar el informe aunque los campos
+    que necesita el reporte sí existan.
+    """
+    source = inspect.getsource(reportes_service.get_resumen_liquidaciones)
+    assert "select(\n            Liquidacion.id_liquidacion.label" in source
+    assert "select(\n            Liquidacion," not in source
+
+
 async def test_movimientos_producto_calcula_saldos_progresivos_y_resumen_por_tipo(db, datos_base):
     tipo_ids = datos_base
     _crear_mov(db, tipo_ids, 1, "RECEPCION", 10, datetime(2026, 9, 8, 9, 0, 0))
