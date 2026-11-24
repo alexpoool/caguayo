@@ -139,7 +139,6 @@ const ReporteProveedores = lazy(() => cargarReportes().then(m => ({ default: m.R
 const ReporteClientes = lazy(() => cargarReportes().then(m => ({ default: m.ReporteClientesContainer })));
 const ReporteProyectos = lazy(() => cargarReportes().then(m => ({ default: m.ReporteProyectosContainer })));
 const ReporteCreadores = lazy(() => cargarReportes().then(m => ({ default: m.ReporteCreadoresContainer })));
-const ReporteDesempeno = lazy(() => cargarReportes().then(m => ({ default: m.ReporteDesempenoContainer })));
 const ReporteOnat = lazy(() => cargarReportes().then(m => ({ default: m.ReporteOnatContainer })));
 const ReporteMincult = lazy(() => cargarReportes().then(m => ({ default: m.ReporteMincultContainer })));
 const ReporteLiquidaciones = lazy(() => cargarReportes().then(m => ({ default: m.ReporteLiquidacionesContainer })));
@@ -523,6 +522,7 @@ const REPORTES_TERCEROS: SidebarSeccionDef[] = [
       { to: '/terceros/registro-clientes?report=clientes', label: 'Registro de Clientes', icon: Users, func: 'reporte_clientes' },
       { to: '/terceros/registro-proveedores?report=proveedores', label: 'Registro de Proveedores', icon: UserCircle, func: 'reporte_proveedores' },
       { to: '/terceros/registro-realizadores?report=creadores', label: 'Registro de Realizadores', icon: Users, func: 'reporte_creadores' },
+      { to: '/terceros/informe-desempeno?report=desempeno', label: 'Informe de Desempeño', icon: BarChart3, func: 'reporte_desempeno' },
     ],
   },
 ];
@@ -558,7 +558,6 @@ const REPORTES_PROYECTO: SidebarSeccionDef[] = [
     items: [
       { to: '/proyectos/registro-proyectos?report=proyectos', label: 'Registro de Proyectos', icon: Layers, func: 'reporte_proyectos' },
       { to: '/proyectos/registro-realizadores?report=creadores', label: 'Registro de Realizadores', icon: Users, func: 'reporte_creadores' },
-      { to: '/proyectos/informe-desempeno?report=desempeno', label: 'Informe de Desempeño', icon: BarChart3, func: 'reporte_desempeno' },
     ],
   },
 ];
@@ -1771,14 +1770,6 @@ function App() {
                   }
                 />
                 <Route
-                  path="/proyectos/informe-desempeno"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos">
-                      <ReportesHome />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
                   path="/reportes/registro-proyectos"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
@@ -2175,6 +2166,14 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/terceros/informe-desempeno"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros">
+                      <ReportesHome />
+                    </ProtectedRoute>
+                  }
+                />
 
                 <Route
                   path="/reportes"
@@ -2237,14 +2236,6 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
                       <ReporteCreadores />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/reportes/informe-desempeno"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
-                      <ReporteDesempeno />
                     </ProtectedRoute>
                   }
                 />
