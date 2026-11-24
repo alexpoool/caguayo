@@ -199,8 +199,13 @@ data class MovimientoDependenciaRowDto(
 data class MovimientosProductoPreviewDto(
     val items: List<MovimientoProductoRowDto> = emptyList(),
     val total_items: Int? = null,
-    val total_entradas: Double? = null,
-    val total_salidas: Double? = null,
+    val resumen_por_tipo: List<MovimientoProductoResumenDto> = emptyList(),
+)
+
+@Serializable
+data class MovimientoProductoResumenDto(
+    val tipo: String? = null,
+    val cantidad_total: Double? = null,
 )
 
 @Serializable
@@ -208,9 +213,11 @@ data class MovimientoProductoRowDto(
     val codigo_producto: String? = null,
     val producto: String? = null,
     val fecha: String? = null,
+    val saldo_inicial: Double? = null,
     val operacion: String? = null,
-    val tipo: String? = null,
+    val tipo_movimiento: String? = null,
     val cantidad: Double? = null,
+    val saldo_final: Double? = null,
 )
 
 // ── Registro de clientes ─────────────────────────────────────────────────────
