@@ -1337,7 +1337,9 @@ async def get_reporte_onat(
     nombres = await nombres_completos_por_cliente(db, nombres_ids) if nombres_ids else {}
     for registro in registros:
         registro["persona_nombre"] = nombres.get(registro["id_tercero"]) or registro["persona_nombre"]
-    return _agrupar_liquidaciones_onat(registros, fecha_inicio, fecha_fin)
+    data, meta = _agrupar_liquidaciones_onat(registros, fecha_inicio, fecha_fin)
+    meta["tipo_tercero"] = tipo
+    return data, meta
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
