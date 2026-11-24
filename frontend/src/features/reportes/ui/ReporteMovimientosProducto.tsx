@@ -91,6 +91,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
     setBusqueda("");
     setPreviewData(null);
     setResumenPorTipo([]);
+    setMonedaSimbolo("");
     if (!idDependencia) {
       setSugerencias([]);
       return;
@@ -194,6 +195,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
     setSugAbiertas(false);
     setPreviewData(null);
     setResumenPorTipo([]);
+    setMonedaSimbolo("");
   };
 
   const handleChangeBusqueda = (valor: string) => {
@@ -202,6 +204,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
     setProductoSel(null);
     setPreviewData(null);
     setResumenPorTipo([]);
+    setMonedaSimbolo("");
     setSugAbiertas(true);
   };
 
@@ -292,7 +295,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
           </div>
           <div>
             <h1 className="text-lg font-bold text-gray-900 leading-tight">Movimientos por Producto</h1>
-            <p className="text-xs text-gray-500">Trazabilidad de un producto en un rango de fechas</p>
+            <p className="text-xs text-gray-500">Trazabilidad con saldos monetarios a coste histórico</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
