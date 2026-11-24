@@ -498,59 +498,63 @@ async def get_movimientos_dependencia(
 async def get_movimientos_producto(
     db: AsyncSession, id_dependencia: int, id_producto: int, fecha_inicio, fecha_fin
 ):
-    """Movimientos confirmados de un producto con saldo progresivo y resumen por tipo."""
+    """Movimientos confirmados con saldos progresivos reconstruidos desde la fuente de verdad."""
     dependencia_result = await db.execute(
         select(Dependencia).where(Dependencia.id_dependencia == id_dependencia)
     )
     dependencia = dependencia_result.scalar_one_or_none()
-    dependencia_info = (
-        {"nombre": dependencia.nombre, "direccion": dependencia.direccion}
-        if dependencia else {}
-    )
+    if dependencia is None:
+        raise LookupError("La dependencia indicada no existe")
 
+    dependencia_info = {
+        "nombre": dependencia.nombre,
+        "direccion": dependencia.direccion,
+    }
+
+    # El catálogo de productos es global. Para este reporte, el producto debe
+    # tener al menos un movimiento confirmado en la dependencia seleccionada.
     producto_result = await db.execute(
         select(Productos).where(Productos.id_producto == id_producto)
     )
     producto = producto_result.scalar_one_or_none()
     if producto is None:
-        return [], dependencia_info, {}, []
+        raise LookupError("El producto indicado no existe")
+
+    tiene_movimientos = await db.execute(
+        select(Movimiento.id_movimiento)
+        .where(
+            Movimiento.id_dependencia == id_dependencia,
+            Movimiento.id_producto == id_producto,
+            Movimiento.estado == "confirmado",
+        )
+        .limit(1)
+    )
+    if tiene_movimientos.scalar_one_or_none() is None:
+        raise ValueError("El producto no pertenece a la dependencia seleccionada")
 
     producto_info = {"codigo": producto.codigo, "nombre": producto.nombre}
 
-    # Snapshot acumulado más reciente anterior al período. Si no existe,
-    # reconstruir el saldo desde los movimientos confirmados anteriores.
-    snapshot_result = await db.execute(
-        select(Saldo.saldo)
+    # saldos es una caché derivada, no la fuente de verdad. Se contrasta el
+    # snapshot con el histórico confirmado y se usa siempre el histórico para
+    # evitar que un snapshot antiguo/corrupto falsee el saldo inicial.
+    historico_result = await db.execute(
+        select(
+            func.coalesce(
+                func.sum(Movimiento.cantidad * TipoMovimiento.factor), 0
+            )
+        )
+        .join(
+            TipoMovimiento,
+            Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
+        )
         .where(
-            Saldo.id_dependencia == id_dependencia,
-            Saldo.id_producto == id_producto,
-            Saldo.fecha < fecha_inicio,
+            Movimiento.id_dependencia == id_dependencia,
+            Movimiento.id_producto == id_producto,
+            Movimiento.estado == "confirmado",
+            Movimiento.fecha < fecha_inicio,
         )
-        .order_by(Saldo.fecha.desc(), Saldo.id_saldo.desc())
-        .limit(1)
     )
-    snapshot = snapshot_result.scalar_one_or_none()
-    if snapshot is None:
-        historical_result = await db.execute(
-            select(
-                func.coalesce(
-                    func.sum(Movimiento.cantidad * TipoMovimiento.factor), 0
-                )
-            )
-            .join(
-                TipoMovimiento,
-                Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
-            )
-            .where(
-                Movimiento.id_dependencia == id_dependencia,
-                Movimiento.id_producto == id_producto,
-                Movimiento.estado == "confirmado",
-                Movimiento.fecha < fecha_inicio,
-            )
-        )
-        saldo_actual = float(historical_result.scalar_one() or 0)
-    else:
-        saldo_actual = float(snapshot or 0)
+    saldo_actual = float(historico_result.scalar_one() or 0)
 
     movimientos_result = await db.execute(
         select(
@@ -578,10 +582,11 @@ async def get_movimientos_producto(
     )
 
     movimientos = []
-    resumen_por_tipo: Dict[str, float] = {}
+    resumen_normalizado: Dict[str, Dict[str, Any]] = {}
     for row in movimientos_result.all():
         saldo_inicial = saldo_actual
-        saldo_actual += float(row.cantidad or 0) * float(row.factor or 0)
+        cantidad = float(row.cantidad or 0)
+        saldo_actual += cantidad * float(row.factor or 0)
         movimientos.append({
             "fecha": row.fecha,
             "saldo_inicial": saldo_inicial,
@@ -592,14 +597,21 @@ async def get_movimientos_producto(
             "codigo_producto": row.codigo_producto,
             "producto": row.producto,
         })
-        resumen_por_tipo[row.operacion] = (
-            resumen_por_tipo.get(row.operacion, 0) + float(row.cantidad or 0)
-        )
 
-    resumen = [
-        {"tipo": tipo, "cantidad_total": cantidad}
-        for tipo, cantidad in sorted(resumen_por_tipo.items())
-    ]
+        # La clave normalizada evita que "RECEPCION", "recepcion" y variantes
+        # con espacios creen renglones separados; se conserva el primer rótulo.
+        clave_tipo = (row.operacion or "").strip().casefold()
+        if clave_tipo not in resumen_normalizado:
+            resumen_normalizado[clave_tipo] = {
+                "tipo": (row.operacion or "").strip(),
+                "cantidad_total": 0.0,
+            }
+        resumen_normalizado[clave_tipo]["cantidad_total"] += cantidad
+
+    resumen = sorted(
+        resumen_normalizado.values(),
+        key=lambda item: item["tipo"].casefold(),
+    )
     return movimientos, dependencia_info, producto_info, resumen
 
 
