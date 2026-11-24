@@ -1088,111 +1088,256 @@ async def get_terceros_con_liquidaciones(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def _decimal_onat(value: Any) -> Decimal:
+    return Decimal(str(value if value is not None else 0))
+
+
+def _agrupar_liquidaciones_onat(
+    registros: List[Dict[str, Any]],
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Agrupa liquidaciones confirmadas por tercero, tipo y moneda.
+
+    Los importes se suman una sola vez. Los porcentajes se recalculan como
+    tasas ponderadas sobre sus bases (agencia/importe y tributario/devengado).
+    El valor económico principal es el importe bruto acumulado, no la suma
+    de sus componentes derivados.
+    """
+    campos = (
+        "importe", "devengado", "importe_agencia", "tributario_monto",
+        "comision_bancaria", "gasto_empresa", "neto_pagar",
+    )
+    grupos: Dict[tuple, Dict[str, Any]] = {}
+    for registro in registros:
+        key = (
+            registro["tipo_tercero"],
+            registro["id_tercero"],
+            registro.get("id_moneda"),
+        )
+        grupo = grupos.get(key)
+        if grupo is None:
+            grupo = {
+                "id_tercero": registro["id_tercero"],
+                "tipo_tercero": registro["tipo_tercero"],
+                "persona_nombre": registro.get("persona_nombre") or "",
+                "carnet_identidad": registro.get("carnet_identidad") or "",
+                "numero_registro": registro.get("numero_registro") or "",
+                "nit": registro.get("nit") or "",
+                "direccion": registro.get("direccion") or "",
+                "id_moneda": registro.get("id_moneda"),
+                "moneda": registro.get("moneda") or "Sin moneda",
+                "total_liquidaciones": 0,
+                **{campo: Decimal("0") for campo in campos},
+            }
+            grupos[key] = grupo
+        grupo["total_liquidaciones"] += 1
+        for campo in campos:
+            grupo[campo] += _decimal_onat(registro.get(campo))
+
+    data: List[Dict[str, Any]] = []
+    for grupo in grupos.values():
+        importe = grupo["importe"]
+        devengado = grupo["devengado"]
+        grupo["valor_total"] = importe
+        grupo["porcentaje_agencia"] = (
+            grupo["importe_agencia"] * Decimal("100") / importe
+            if importe else Decimal("0")
+        )
+        grupo["tributario"] = (
+            grupo["tributario_monto"] * Decimal("100") / devengado
+            if devengado else Decimal("0")
+        )
+        fila = dict(grupo)
+        for campo in (*campos, "valor_total", "porcentaje_agencia", "tributario"):
+            fila[campo] = round(float(fila[campo]), 2)
+        data.append(fila)
+
+    data.sort(key=lambda item: (
+        item["tipo_tercero"], item["persona_nombre"].casefold(),
+        item["moneda"], item["id_tercero"],
+    ))
+
+    totales_por_moneda: Dict[Any, Dict[str, Any]] = {}
+    terceros: set[tuple[str, int]] = set()
+    total_liquidaciones = 0
+    for fila in data:
+        terceros.add((fila["tipo_tercero"], fila["id_tercero"]))
+        total_liquidaciones += fila["total_liquidaciones"]
+        key = fila.get("id_moneda") if fila.get("id_moneda") is not None else "sin_moneda"
+        total = totales_por_moneda.setdefault(key, {
+            "id_moneda": fila.get("id_moneda"),
+            "moneda": fila["moneda"],
+            "total_terceros": 0,
+            "total_liquidaciones": 0,
+            **{f"total_{campo}": Decimal("0") for campo in campos},
+        })
+        total["total_liquidaciones"] += fila["total_liquidaciones"]
+        for campo in campos:
+            total[f"total_{campo}"] += _decimal_onat(fila[campo])
+
+    for total in totales_por_moneda.values():
+        total["total_terceros"] = sum(
+            1 for fila in data if fila.get("id_moneda") == total["id_moneda"]
+        )
+        for campo in campos:
+            total[f"total_{campo}"] = round(float(total[f"total_{campo}"]), 2)
+        total["valor_total"] = total["total_importe"]
+
+    meta = {
+        "total_items": len(data),
+        "total_terceros": len(terceros),
+        "total_liquidaciones": total_liquidaciones,
+        "totales_por_moneda": list(totales_por_moneda.values()),
+        "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
+        "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
+    }
+    # Compatibilidad con consumidores antiguos: solo se expone un total simple
+    # cuando el resultado contiene una única moneda.
+    meta["totales"] = (
+        {f"total_{campo}": total[f"total_{campo}"] for campo in campos}
+        for total in meta["totales_por_moneda"]
+    )
+    meta["totales"] = next(meta["totales"], {}) if len(meta["totales_por_moneda"]) == 1 else {}
+    return data, meta
+
+
 async def get_reporte_onat(
     db: AsyncSession,
     fecha_inicio: Optional[date] = None,
     fecha_fin: Optional[date] = None,
     id_moneda: Optional[int] = None,
     id_persona: Optional[int] = None,
+    tipo_tercero: str = "ambos",
+    id_tercero: Optional[int] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Obtiene ingresos y retenciones de artistas para reporte ONAT."""
-    query = (
-        select(
-            PersonaLiquidacion,
-            Cliente.nombre.label("persona_nombre"),
-            Cliente.nit.label("persona_nit"),
-            Cliente.direccion.label("persona_direccion"),
-            ClienteNatural.carnet_identidad,
-            ClienteNatural.numero_registro,
-            Moneda.nombre.label("moneda_nombre"),
-            Moneda.simbolo.label("moneda_simbolo"),
+    """Valoración consolidada ONAT de proveedores y realizadores confirmados."""
+    tipo = (tipo_tercero or "ambos").strip().lower()
+    if tipo not in {"proveedores", "realizadores", "ambos"}:
+        raise ValueError("tipo_tercero debe ser proveedores, realizadores o ambos")
+    tercero_id = id_tercero if id_tercero is not None else id_persona
+    registros: List[Dict[str, Any]] = []
+
+    if tipo in {"proveedores", "ambos"}:
+        query_proveedores = (
+            select(
+                Liquidacion.id_cliente.label("id_tercero"),
+                Liquidacion.id_moneda.label("id_moneda"),
+                Liquidacion.fecha_emision.label("fecha_emision"),
+                Liquidacion.importe.label("importe"),
+                Liquidacion.devengado.label("devengado"),
+                Liquidacion.importe_agencia.label("importe_agencia"),
+                Liquidacion.tributario_monto.label("tributario_monto"),
+                Liquidacion.comision_bancaria.label("comision_bancaria"),
+                Liquidacion.gasto_empresa.label("gasto_empresa"),
+                Liquidacion.neto_pagar.label("neto_pagar"),
+                Cliente.nombre.label("persona_nombre"),
+                Cliente.nit.label("nit"),
+                Cliente.direccion.label("direccion"),
+                ClienteNatural.carnet_identidad.label("carnet_identidad"),
+                ClienteNatural.numero_registro.label("numero_registro"),
+                Moneda.nombre.label("moneda_nombre"),
+                Moneda.simbolo.label("moneda_simbolo"),
+            )
+            .select_from(Liquidacion)
+            .join(Cliente, Liquidacion.id_cliente == Cliente.id_cliente)
+            .join(ClienteNatural, Cliente.id_cliente == ClienteNatural.id_cliente, isouter=True)
+            .join(Moneda, Liquidacion.id_moneda == Moneda.id_moneda, isouter=True)
+            .where(Liquidacion.liquidada.is_(True))
         )
-        .join(
-            Cliente,
-            PersonaLiquidacion.id_persona == Cliente.id_cliente,
-            isouter=True,
+        if fecha_inicio:
+            query_proveedores = query_proveedores.where(Liquidacion.fecha_emision >= fecha_inicio)
+        if fecha_fin:
+            query_proveedores = query_proveedores.where(Liquidacion.fecha_emision <= fecha_fin)
+        if id_moneda is not None:
+            query_proveedores = query_proveedores.where(Liquidacion.id_moneda == id_moneda)
+        if tercero_id is not None:
+            query_proveedores = query_proveedores.where(Liquidacion.id_cliente == tercero_id)
+
+        for row in (await db.execute(query_proveedores)).all():
+            registros.append({
+                "id_tercero": row.id_tercero,
+                "tipo_tercero": "Proveedor",
+                "persona_nombre": row.persona_nombre or "",
+                "carnet_identidad": row.carnet_identidad or "",
+                "numero_registro": row.numero_registro or "",
+                "nit": row.nit or "",
+                "direccion": row.direccion or "",
+                "id_moneda": row.id_moneda,
+                "moneda": f"{row.moneda_simbolo} ({row.moneda_nombre})" if row.moneda_nombre else (row.moneda_simbolo or ""),
+                "importe": row.importe,
+                "devengado": row.devengado,
+                "importe_agencia": row.importe_agencia,
+                "tributario_monto": row.tributario_monto,
+                "comision_bancaria": row.comision_bancaria,
+                "gasto_empresa": row.gasto_empresa,
+                "neto_pagar": row.neto_pagar,
+            })
+
+    if tipo in {"realizadores", "ambos"}:
+        # Selección explícita: evita columnas del modelo que aún no existen en
+        # algunas bases desplegadas (referencia_bancaria, factura, importe_agencia).
+        query_realizadores = (
+            select(
+                PersonaLiquidacion.id_persona.label("id_tercero"),
+                PersonaLiquidacion.id_moneda.label("id_moneda"),
+                PersonaLiquidacion.fecha_emision.label("fecha_emision"),
+                PersonaLiquidacion.importe.label("importe"),
+                PersonaLiquidacion.devengado.label("devengado"),
+                PersonaLiquidacion.tributario_monto.label("tributario_monto"),
+                PersonaLiquidacion.comision_bancaria.label("comision_bancaria"),
+                PersonaLiquidacion.gasto_empresa.label("gasto_empresa"),
+                PersonaLiquidacion.neto_pagar.label("neto_pagar"),
+                Cliente.nombre.label("persona_nombre"),
+                Cliente.nit.label("nit"),
+                Cliente.direccion.label("direccion"),
+                ClienteNatural.carnet_identidad.label("carnet_identidad"),
+                ClienteNatural.numero_registro.label("numero_registro"),
+                Moneda.nombre.label("moneda_nombre"),
+                Moneda.simbolo.label("moneda_simbolo"),
+            )
+            .select_from(PersonaLiquidacion)
+            .join(Cliente, PersonaLiquidacion.id_persona == Cliente.id_cliente)
+            .join(ClienteNatural, Cliente.id_cliente == ClienteNatural.id_cliente, isouter=True)
+            .join(Moneda, PersonaLiquidacion.id_moneda == Moneda.id_moneda, isouter=True)
+            .where(PersonaLiquidacion.confirmado.is_(True))
         )
-        .join(
-            ClienteNatural,
-            Cliente.id_cliente == ClienteNatural.id_cliente,
-            isouter=True,
-        )
-        .join(
-            Moneda,
-            PersonaLiquidacion.id_moneda == Moneda.id_moneda,
-            isouter=True,
-        )
-    )
+        if fecha_inicio:
+            query_realizadores = query_realizadores.where(PersonaLiquidacion.fecha_emision >= fecha_inicio)
+        if fecha_fin:
+            query_realizadores = query_realizadores.where(PersonaLiquidacion.fecha_emision <= fecha_fin)
+        if id_moneda is not None:
+            query_realizadores = query_realizadores.where(PersonaLiquidacion.id_moneda == id_moneda)
+        if tercero_id is not None:
+            query_realizadores = query_realizadores.where(PersonaLiquidacion.id_persona == tercero_id)
 
-    if fecha_inicio:
-        query = query.filter(PersonaLiquidacion.fecha_emision >= fecha_inicio)
-    if fecha_fin:
-        query = query.filter(PersonaLiquidacion.fecha_emision <= fecha_fin)
-    if id_moneda is not None:
-        query = query.filter(PersonaLiquidacion.id_moneda == id_moneda)
-    if id_persona is not None:
-        query = query.filter(PersonaLiquidacion.id_persona == id_persona)
+        for row in (await db.execute(query_realizadores)).all():
+            importe = _decimal_onat(row.importe)
+            devengado = _decimal_onat(row.devengado)
+            registros.append({
+                "id_tercero": row.id_tercero,
+                "tipo_tercero": "Realizador",
+                "persona_nombre": row.persona_nombre or "",
+                "carnet_identidad": row.carnet_identidad or "",
+                "numero_registro": row.numero_registro or "",
+                "nit": row.nit or "",
+                "direccion": row.direccion or "",
+                "id_moneda": row.id_moneda,
+                "moneda": f"{row.moneda_simbolo} ({row.moneda_nombre})" if row.moneda_nombre else (row.moneda_simbolo or ""),
+                "importe": importe,
+                "devengado": devengado,
+                "importe_agencia": importe - devengado,
+                "tributario_monto": row.tributario_monto,
+                "comision_bancaria": row.comision_bancaria,
+                "gasto_empresa": row.gasto_empresa,
+                "neto_pagar": row.neto_pagar,
+            })
 
-    query = query.order_by(PersonaLiquidacion.fecha_emision.desc())
-    result = await db.execute(query)
-    rows = result.all()
-
-    nombres = await nombres_completos_por_cliente(
-        db, [r[0].id_persona for r in rows]
-    )
-
-    data = []
-    for r in rows:
-        pl: PersonaLiquidacion = r[0]
-        data.append(
-            {
-                "id_liquidacion": pl.id_liquidacion,
-                "numero": pl.numero or "",
-                "fecha_emision": pl.fecha_emision,
-                "fecha_liquidacion": pl.fecha_liquidacion,
-                "persona_nombre": nombres.get(pl.id_persona)
-                or r.persona_nombre
-                or "",
-                "carnet_identidad": r.carnet_identidad or "",
-                "numero_registro": r.numero_registro or "",
-                "nit": r.persona_nit or "",
-                "direccion": r.persona_direccion or "",
-                "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})"
-                if r.moneda_nombre
-                else "",
-                "importe": float(pl.importe),
-                "devengado": float(pl.devengado),
-                "porcentaje_agencia": float(pl.porcentaje_agencia),
-                "importe_agencia": float(pl.importe_agencia),
-                "porciento_gestion": float(pl.porciento_gestion),
-                "porciento_empresa": float(pl.porciento_empresa),
-                "tributario": float(pl.tributario),
-                "tributario_monto": float(pl.tributario_monto),
-                "comision_bancaria": float(pl.comision_bancaria),
-                "gasto_empresa": float(pl.gasto_empresa),
-                "neto_pagar": float(pl.neto_pagar),
-                "tipo_pago": pl.tipo_pago,
-                "confirmado": pl.confirmado,
-            }
-        )
-
-    totales = {
-        "total_importe": sum(d["importe"] for d in data),
-        "total_devengado": sum(d["devengado"] for d in data),
-        "total_importe_agencia": sum(d["importe_agencia"] for d in data),
-        "total_tributario_monto": sum(d["tributario_monto"] for d in data),
-        "total_comision_bancaria": sum(d["comision_bancaria"] for d in data),
-        "total_gasto_empresa": sum(d["gasto_empresa"] for d in data),
-        "total_neto_pagar": sum(d["neto_pagar"] for d in data),
-    }
-
-    meta = {
-        "total_items": len(data),
-        "totales": totales,
-        "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
-        "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
-    }
-    return data, meta
+    nombres_ids = list({r["id_tercero"] for r in registros if r.get("id_tercero") is not None})
+    nombres = await nombres_completos_por_cliente(db, nombres_ids) if nombres_ids else {}
+    for registro in registros:
+        registro["persona_nombre"] = nombres.get(registro["id_tercero"]) or registro["persona_nombre"]
+    return _agrupar_liquidaciones_onat(registros, fecha_inicio, fecha_fin)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
