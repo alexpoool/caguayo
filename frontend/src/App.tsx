@@ -2174,6 +2174,14 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/proyectos/informe-desempeno"
+                  element={<Navigate to="/terceros/informe-desempeno?report=desempeno" replace />}
+                />
+                <Route
+                  path="/reportes/informe-desempeno"
+                  element={<Navigate to="/terceros/informe-desempeno?report=desempeno" replace />}
+                />
 
                 <Route
                   path="/reportes"
