@@ -500,9 +500,9 @@ def generar_pdf_desempeno(
         template.set_filters(filters)
 
     headers = [
-        "No.", "TIPO", "TERCERO", "DOCUMENTO", "EMISIÓN", "LIQUIDACIÓN",
-        "MONEDA", "IMPORTE", "DEVENGADO", "AGENCIA", "TRIBUTARIO",
-        "COM. BANC.", "GASTO EMP.", "NETO A PAGAR", "ESTADO",
+        "No.", "TIPO", "TERCERO", "EMISIÓN", "LIQUIDACIÓN", "MONEDA",
+        "IMPORTE", "DEVENGADO", "TRIBUTARIO", "COM. BANC.", "GASTO EMP.",
+        "NETO A PAGAR",
     ]
     rows: List[List[str]] = []
     for idx, item in enumerate(items, start=1):
@@ -510,40 +510,35 @@ def generar_pdf_desempeno(
             str(idx),
             str(item.get("tipo_tercero", "")),
             str(item.get("tercero_nombre", "")),
-            str(item.get("documento", "")),
             str(item.get("fecha_emision", "") or ""),
             str(item.get("fecha_liquidacion", "") or ""),
             str(item.get("moneda", "") or ""),
             format_quantity(item.get("importe", 0)),
             format_quantity(item.get("devengado", 0)),
-            format_quantity(item.get("importe_agencia", 0)),
             format_quantity(item.get("tributario_monto", 0)),
             format_quantity(item.get("comision_bancaria", 0)),
             format_quantity(item.get("gasto_empresa", 0)),
             format_quantity(item.get("neto_pagar", 0)),
-            str(item.get("estado", "")),
         ])
 
     # No existe un gran total entre monedas distintas: se agrega una fila de
     # subtotal por cada moneda que realmente aparece en el resultado.
     for total in meta.get("totales_por_moneda", []):
         rows.append([
-            "", "", f"TOTAL {total.get('moneda', '')}", "", "", "", "",
+            "", "", f"TOTAL {total.get('moneda', '')}", "", "", "",
             format_quantity(total.get("total_importe", 0)),
             format_quantity(total.get("total_devengado", 0)),
-            format_quantity(total.get("total_importe_agencia", 0)),
             format_quantity(total.get("total_tributario_monto", 0)),
             format_quantity(total.get("total_comision_bancaria", 0)),
             format_quantity(total.get("total_gasto_empresa", 0)),
             format_quantity(total.get("total_neto_pagar", 0)),
-            "",
         ])
 
     template.add_table(
         headers,
         rows,
-        code_columns=[0, 3],
-        numeric_columns=[7, 8, 9, 10, 11, 12, 13],
+        code_columns=[0],
+        numeric_columns=[6, 7, 8, 9, 10, 11],
     )
     if notas:
         template.add_notes_section(notas)
