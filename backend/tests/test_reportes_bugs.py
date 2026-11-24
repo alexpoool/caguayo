@@ -19,6 +19,7 @@ from src.models.categoria import Categorias, Subcategorias
 from src.models.dependencia import Dependencia
 from src.models.movimiento import Movimiento, TipoMovimiento
 from src.models.producto import Productos
+from src.models.saldo import Saldo
 from src.services import reportes_service
 from src.services.reportes_service import (
     get_existencias,
@@ -40,6 +41,7 @@ async def db():
                     TipoMovimiento.__table__,
                     Movimiento.__table__,
                     Productos.__table__,
+                    Saldo.__table__,
                 ],
             )
         )
@@ -130,7 +132,7 @@ async def test_movimientos_producto_excluye_no_confirmados(db, datos_base):
     _crear_mov(db, tipo_ids, 1, "compra", 999, base, estado="cancelado")
     await db.commit()
 
-    movimientos, _, _ = await get_movimientos_producto(
+    movimientos, _, _, _ = await get_movimientos_producto(
         db, 1, 1, (base - timedelta(days=1)).date(), (base + timedelta(days=1)).date()
     )
 
@@ -229,3 +231,42 @@ def test_get_resumen_liquidaciones_no_acepta_tipo_concepto():
     """tipo_concepto se recibía pero nunca se usaba: se elimina de la firma."""
     firma = inspect.signature(reportes_service.get_resumen_liquidaciones)
     assert "tipo_concepto" not in firma.parameters
+
+
+async def test_movimientos_producto_calcula_saldos_progresivos_y_resumen_por_tipo(db, datos_base):
+    tipo_ids = datos_base
+    _crear_mov(db, tipo_ids, 1, "RECEPCION", 10, datetime(2026, 9, 8, 9, 0, 0))
+    _crear_mov(db, tipo_ids, 1, "compra", 4, datetime(2026, 9, 10, 9, 0, 0))
+    _crear_mov(db, tipo_ids, 1, "venta", 3, datetime(2026, 9, 10, 10, 0, 0))
+    _crear_mov(db, tipo_ids, 1, "MERMA", 1, datetime(2026, 9, 10, 11, 0, 0))
+    await db.commit()
+
+    movimientos, _, _, resumen = await get_movimientos_producto(
+        db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
+    )
+
+    assert [m["saldo_inicial"] for m in movimientos] == [10.0, 14.0, 11.0]
+    assert [m["saldo_final"] for m in movimientos] == [14.0, 11.0, 10.0]
+    assert [m["tipo_movimiento"] for m in movimientos] == ["compra", "venta", "MERMA"]
+    assert {item["tipo"]: item["cantidad_total"] for item in resumen} == {
+        "compra": 4.0, "venta": 3.0, "MERMA": 1.0
+    }
+
+
+async def test_movimientos_producto_saldo_inicial_prioriza_snapshot(db, datos_base):
+    from src.models.saldo import Saldo
+
+    tipo_ids = datos_base
+    _crear_mov(db, tipo_ids, 1, "RECEPCION", 99, datetime(2026, 9, 8, 9, 0, 0))
+    _crear_mov(db, tipo_ids, 1, "compra", 2, datetime(2026, 9, 10, 9, 0, 0))
+    db.add(Saldo(
+        id_producto=1, id_dependencia=1,
+        fecha=datetime(2026, 9, 9, 23, 0, 0), saldo=12,
+    ))
+    await db.commit()
+
+    movimientos, _, _, _ = await get_movimientos_producto(
+        db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
+    )
+    assert movimientos[0]["saldo_inicial"] == 12.0
+    assert movimientos[0]["saldo_final"] == 14.0
