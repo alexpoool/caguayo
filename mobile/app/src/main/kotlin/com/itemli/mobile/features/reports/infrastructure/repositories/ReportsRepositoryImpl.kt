@@ -161,7 +161,7 @@ class ReportsRepositoryImpl(
         ReportCatalog.movimientosProducto.id -> {
             val dto = api().movimientosProductoPreview(
                 dependenciaId = filters.requiredFilter("id_dependencia"),
-                productoId = filters.optionalFilter("id_producto"),
+                productoId = filters.requiredFilter("id_producto"),
                 fechaInicio = filters.requiredFilter("fecha_inicio"),
                 fechaFin = filters.requiredFilter("fecha_fin"),
                 limit = limit,
