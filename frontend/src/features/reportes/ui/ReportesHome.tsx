@@ -795,7 +795,16 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
 
   const renderTable = () => {
     if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-brand-500 animate-spin" /></div>;
-    if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
+    if (chartError) return (
+      <div className="min-h-[200px] flex flex-col items-center justify-center text-center text-gray-500 gap-2 px-4">
+        <AlertCircle className="w-8 h-8 text-red-400" />
+        <p className="text-sm font-semibold">No se pudieron cargar los datos</p>
+        <p className="text-xs max-w-xl break-words">{chartError}</p>
+        {activeReport.id === "liquidaciones" && (
+          <p className="text-xs text-gray-400">Comprueba que el backend esté actualizado y que el usuario tenga acceso al reporte.</p>
+        )}
+      </div>
+    );
     if (!tableData || tableData.length === 0) return (
       <div className="h-[200px] flex flex-col items-center justify-center gap-2 text-gray-400 text-sm">
         <span>{activeReport.id === "liquidaciones" ? "No se encontraron liquidaciones con los filtros seleccionados." : "No hay datos para mostrar"}</span>
@@ -879,7 +888,16 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
 
   const renderChart = () => {
     if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-brand-500 animate-spin" /></div>;
-    if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
+    if (chartError) return (
+      <div className="min-h-[200px] flex flex-col items-center justify-center text-center text-gray-500 gap-2 px-4">
+        <AlertCircle className="w-8 h-8 text-red-400" />
+        <p className="text-sm font-semibold">No se pudieron cargar los datos</p>
+        <p className="text-xs max-w-xl break-words">{chartError}</p>
+        {activeReport.id === "liquidaciones" && (
+          <p className="text-xs text-gray-400">Comprueba que el backend esté actualizado y que el usuario tenga acceso al reporte.</p>
+        )}
+      </div>
+    );
     if (!displayData || displayData.length === 0) return <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">No hay datos para mostrar</div>;
 
     return (
