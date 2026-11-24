@@ -38,6 +38,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
   const [notas, setNotas] = useState("");
   const [previewData, setPreviewData] = useState<any[] | null>(null);
   const [resumenPorTipo, setResumenPorTipo] = useState<any[]>([]);
+  const [monedaSimbolo, setMonedaSimbolo] = useState("");
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const focusControllerRef = useRef<AbortController | null>(null);
@@ -168,6 +169,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
         if (controller.signal.aborted) return;
         setPreviewData(Array.isArray(json?.items) ? json.items : []);
         setResumenPorTipo(Array.isArray(json?.resumen_por_tipo) ? json.resumen_por_tipo : []);
+        setMonedaSimbolo(json?.producto?.moneda_simbolo || json?.producto?.moneda || "");
       } catch (err: any) {
         if (err?.name === "AbortError" || controller.signal.aborted) return;
         setPreviewData(null);
@@ -254,10 +256,10 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
         <ReportPreviewTable
           columns={[
             { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
-            { key: "saldo_inicial", label: "Saldo inicial", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-ES", { maximumFractionDigits: 3 }) },
+            { key: "saldo_inicial", label: `Saldo inicial${monedaSimbolo ? ` (${monedaSimbolo})` : ""}`, className: "text-right", render: (v: any) => `${monedaSimbolo} ${Number(v ?? 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim() },
             { key: "tipo_movimiento", label: "Tipo de movimiento" },
             { key: "cantidad", label: "Cantidad", className: "text-right" },
-            { key: "saldo_final", label: "Saldo final", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toLocaleString("es-ES", { maximumFractionDigits: 3 }) },
+            { key: "saldo_final", label: `Saldo final${monedaSimbolo ? ` (${monedaSimbolo})` : ""}`, className: "text-right font-semibold", render: (v: any) => `${monedaSimbolo} ${Number(v ?? 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim() },
           ]}
           data={previewData}
           totalItems={previewData.length}
