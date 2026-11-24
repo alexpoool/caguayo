@@ -1453,10 +1453,10 @@ async def get_resumen_liquidaciones(
     id_cliente: Optional[int] = None,
     id_moneda: Optional[int] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Obtiene resumen de liquidaciones con cliente, moneda, productos.
+    """Obtiene el detalle de liquidaciones y totales independientes por moneda.
 
-    Los productos de todas las liquidaciones se traen en una sola consulta y se
-    agrupan en memoria: antes se hacía una consulta por liquidación (N+1).
+    Los filtros de fecha y moneda son opcionales: si no se indican, se consulta
+    todo el historial y todas las monedas. Los totales nunca mezclan divisas.
     """
     query = (
         select(
@@ -1480,7 +1480,7 @@ async def get_resumen_liquidaciones(
     if id_moneda is not None:
         query = query.filter(Liquidacion.id_moneda == id_moneda)
 
-    query = query.order_by(Liquidacion.fecha_emision.desc())
+    query = query.order_by(Liquidacion.fecha_emision.desc(), Liquidacion.id_liquidacion.desc())
     result = await db.execute(query)
     rows = result.all()
 
@@ -1488,7 +1488,6 @@ async def get_resumen_liquidaciones(
         db, [r[0].id_cliente for r in rows]
     )
 
-    # ── Productos de TODAS las liquidaciones en una sola consulta ────────────
     liquidacion_ids = [r[0].id_liquidacion for r in rows]
     productos_por_liquidacion: Dict[int, List[Dict[str, Any]]] = {}
     if liquidacion_ids:
@@ -1517,67 +1516,75 @@ async def get_resumen_liquidaciones(
                 }
             )
 
-    data = []
-    totales_acum = {
-        "total_devengado": 0.0,
-        "total_tributario": 0.0,
-        "total_comision_bancaria": 0.0,
-        "total_gasto_empresa": 0.0,
-        "total_importe": 0.0,
-        "total_neto_pagar": 0.0,
-        "total_importe_agencia": 0.0,
-        "total_tributario_monto": 0.0,
-    }
+    campos_totales = (
+        "devengado", "tributario", "comision_bancaria", "gasto_empresa",
+        "importe", "neto_pagar", "importe_agencia", "tributario_monto",
+    )
+    acumulados: Dict[int, Dict[str, Any]] = {}
+    data: List[Dict[str, Any]] = []
 
     for r in rows:
         liq: Liquidacion = r[0]
         productos = productos_por_liquidacion.get(liq.id_liquidacion, [])
-
+        moneda = (
+            f"{r.moneda_simbolo} ({r.moneda_nombre})"
+            if r.moneda_nombre else (r.moneda_simbolo or r.moneda_nombre or "")
+        )
         item = {
             "id_liquidacion": liq.id_liquidacion,
             "codigo": liq.codigo,
             "fecha_emision": liq.fecha_emision,
             "fecha_liquidacion": liq.fecha_liquidacion,
-            "cliente_nombre": nombres.get(liq.id_cliente)
-            or r.cliente_nombre
-            or "",
+            "cliente_nombre": nombres.get(liq.id_cliente) or r.cliente_nombre or "",
             "cliente_nit": r.cliente_nit or "",
-            "cliente_codigo": r.cliente_codigo,
-            "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})"
-            if r.moneda_nombre
-            else "",
-            "devengado": float(liq.devengado),
-            "tributario": float(liq.tributario),
-            "comision_bancaria": float(liq.comision_bancaria),
-            "gasto_empresa": float(liq.gasto_empresa),
-            "importe": float(liq.importe),
-            "neto_pagar": float(liq.neto_pagar),
-            "porcentaje_agencia": float(liq.porcentaje_agencia),
-            "importe_agencia": float(liq.importe_agencia),
-            "tributario_monto": float(liq.tributario_monto),
+            "cliente_codigo": r.cliente_codigo or "",
+            "id_moneda": liq.id_moneda,
+            "moneda": moneda,
+            "devengado": float(liq.devengado or 0),
+            "tributario": float(liq.tributario or 0),
+            "comision_bancaria": float(liq.comision_bancaria or 0),
+            "gasto_empresa": float(liq.gasto_empresa or 0),
+            "importe": float(liq.importe or 0),
+            "neto_pagar": float(liq.neto_pagar or 0),
+            "porcentaje_agencia": float(liq.porcentaje_agencia or 0),
+            "importe_agencia": float(liq.importe_agencia or 0),
+            "tributario_monto": float(liq.tributario_monto or 0),
             "tipo_pago": liq.tipo_pago,
-            "liquidada": liq.liquidada,
+            "liquidada": bool(liq.liquidada),
             "productos": productos,
         }
         data.append(item)
 
-        totales_acum["total_devengado"] += item["devengado"]
-        totales_acum["total_tributario"] += item["tributario"]
-        totales_acum["total_comision_bancaria"] += item["comision_bancaria"]
-        totales_acum["total_gasto_empresa"] += item["gasto_empresa"]
-        totales_acum["total_importe"] += item["importe"]
-        totales_acum["total_neto_pagar"] += item["neto_pagar"]
-        totales_acum["total_importe_agencia"] += item["importe_agencia"]
-        totales_acum["total_tributario_monto"] += item["tributario_monto"]
+        total = acumulados.setdefault(
+            liq.id_moneda,
+            {
+                "id_moneda": liq.id_moneda,
+                "moneda": moneda,
+                "total_liquidaciones": 0,
+                **{f"total_{campo}": 0.0 for campo in campos_totales},
+            },
+        )
+        total["total_liquidaciones"] += 1
+        for campo in campos_totales:
+            total[f"total_{campo}"] += item[campo]
 
+    totales_por_moneda = sorted(
+        acumulados.values(), key=lambda total: (total["moneda"], total["id_moneda"])
+    )
     meta = {
         "total_items": len(data),
-        "totales": totales_acum,
+        "totales_por_moneda": totales_por_moneda,
         "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
         "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
     }
+    # Compatibilidad: solo exponer totales simples si no hay mezcla de monedas.
+    meta["totales"] = {}
+    if len(totales_por_moneda) == 1:
+        meta["totales"] = {
+            key: value for key, value in totales_por_moneda[0].items()
+            if key.startswith("total_") and key != "total_liquidaciones"
+        }
     return data, meta
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  LISTADO DE PERSONAS (para dropdowns en el frontend)
