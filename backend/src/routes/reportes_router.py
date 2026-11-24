@@ -1027,18 +1027,7 @@ async def preview_onat(
             db, fecha_inicio, fecha_fin, id_moneda, id_persona, tipo_tercero, id_tercero
         )
 
-        items = [
-            {
-                **item,
-                "fecha_emision": item["fecha_emision"].isoformat()
-                if hasattr(item["fecha_emision"], "isoformat")
-                else str(item["fecha_emision"]),
-                "fecha_liquidacion": item["fecha_liquidacion"].isoformat()
-                if hasattr(item.get("fecha_liquidacion"), "isoformat")
-                else str(item.get("fecha_liquidacion") or ""),
-            }
-            for item in data
-        ]
+        items = data
 
         usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
         await AppLogger.log_action(
