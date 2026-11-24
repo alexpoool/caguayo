@@ -221,44 +221,46 @@ def generar_pdf_movimientos_producto(
     aprobado_por_nombre: str = "",
     aprobado_por_cargo: str = "",
     notas: str = "",
+    resumen_por_tipo: List[Dict[str, Any]] = None,
 ) -> BytesIO:
-    """Genera PDF con movimientos de un producto específico."""
+    """Genera PDF con saldo progresivo y resumen de movimientos por tipo."""
     template = PDFTemplate(title="MOVIMIENTOS DE PRODUCTO", landscape_mode=True)
     template.set_company_header(name=settings.EMPRESA_RAZON_SOCIAL)
-    template.set_filters(
-        {
-            "Dependencia": dependencia_info.get("nombre", ""),
-            "Producto": f"{producto_info.get('nombre', '')} ({producto_info.get('codigo', '')})",
-            "Periodo": f"{fecha_inicio} al {fecha_fin}",
-        }
-    )
+    template.set_filters({
+        "Dependencia": dependencia_info.get("nombre", ""),
+        "Producto": f"{producto_info.get('nombre', '')} ({producto_info.get('codigo', '')})",
+        "Periodo": f"{fecha_inicio} al {fecha_fin}",
+    })
 
-    headers = ["FECHA", "OPERACIÓN", "TIPO", "CANTIDAD"]
+    headers = ["FECHA", "SALDO INICIAL", "TIPO DE MOVIMIENTO", "CANTIDAD", "SALDO FINAL"]
     data = [
         [
             str(m.get("fecha", "")),
-            str(m.get("operacion", "")),
-            str(m.get("tipo", "")),
+            format_quantity(m.get("saldo_inicial", 0)),
+            str(m.get("tipo_movimiento", m.get("operacion", ""))),
             format_quantity(m.get("cantidad", 0)),
+            format_quantity(m.get("saldo_final", 0)),
         ]
         for m in movimientos
     ]
+    template.add_table(headers, data, numeric_columns=[1, 3, 4])
 
-    template.add_table(
-        headers,
-        data,
-        numeric_columns=[3],
-    )
+    if resumen_por_tipo:
+        template.add_section_title("RESUMEN POR TIPO DE MOVIMIENTO")
+        template.add_table(
+            ["TIPO DE MOVIMIENTO", "CANTIDAD TOTAL"],
+            [[str(item.get("tipo", "")), format_quantity(item.get("cantidad_total", 0))]
+             for item in resumen_por_tipo],
+            numeric_columns=[1],
+        )
 
     if notas:
         template.add_notes_section(notas)
-
     template.add_signature_section(
         created_by=usuario_actual,
         approved_by=aprobado_por_nombre,
         approved_role=aprobado_por_cargo,
     )
-
     return template.build()
 
 
