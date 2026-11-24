@@ -97,13 +97,14 @@ async def listar_personas(
 
 @router.get("/productos-item-anexo")
 async def buscar_productos_item_anexo_endpoint(
+    id_dependencia: int = Query(..., description="ID de la dependencia"),
     q: str = Query("", description="Texto a buscar (nombre o código)"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     """Sugiere productos únicos registrados en item_anexo."""
     try:
-        productos = await buscar_productos_item_anexo(db, q)
+        productos = await buscar_productos_item_anexo(db, id_dependencia, q)
         return productos
     except Exception as e:
         logger.error(f"Error en buscador de productos (item_anexo): {e}")
@@ -271,7 +272,7 @@ async def obtener_reporte_movimientos_dependencia(
 @router.get("/movimientos-producto")
 async def obtener_reporte_movimientos_producto(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
-    id_producto: Optional[int] = Query(None, description="ID del Producto (opcional)"),
+    id_producto: int = Query(..., description="ID del Producto (obligatorio)"),
     fecha_inicio: date = Query(..., description="Fecha Inicio"),
     fecha_fin: date = Query(..., description="Fecha Fin"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
@@ -281,7 +282,7 @@ async def obtener_reporte_movimientos_producto(
     current_user: UsuarioInfo = Depends(get_current_user_required),
 ):
     try:
-        movimientos, dependencia_info, producto_info = await get_movimientos_producto(
+        movimientos, dependencia_info, producto_info, resumen = await get_movimientos_producto(
             db, id_dependencia, id_producto, fecha_inicio, fecha_fin
         )
 
@@ -748,8 +749,7 @@ async def preview_movimientos_dependencia(
             "total_existencia_final": total_existencia_final,
             "total_saldo_inicial": total_saldo_inicial,
             "total_saldo_final": total_saldo_final,
-            "total_entradas": total_entradas,
-            "total_salidas": total_salidas,
+            "resumen_por_tipo": resumen,
         }
     except Exception as e:
         logger.exception("Error en preview movimientos-dependencia")
@@ -784,12 +784,6 @@ async def preview_movimientos_producto(
             for r in movimientos
         ]
 
-        total_entradas = sum(
-            float(r["cantidad"]) for r in movimientos if r["tipo"] == "Entrada"
-        )
-        total_salidas = sum(
-            float(r["cantidad"]) for r in movimientos if r["tipo"] == "Salida"
-        )
 
         usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
         await AppLogger.log_action(
