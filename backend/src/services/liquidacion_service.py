@@ -170,10 +170,14 @@ class LiquidacionService:
         tributario = data.tributario or Decimal("0.00")
         comision_bancaria = data.comision_bancaria or Decimal("0.00")
         gasto_empresa = data.gasto_empresa or Decimal("0.00")
-        porcentaje_agencia = data.porcentaje_agencia or Decimal("10.00")
+        comision_gestion_porcentaje = (
+            data.comision_gestion_porcentaje
+            if data.comision_gestion_porcentaje is not None
+            else Decimal("10.00")
+        )
 
-        importe_agencia = importe * (porcentaje_agencia / 100)
-        devengado_calculado = importe - importe_agencia
+        comision_gestion_importe = importe * (comision_gestion_porcentaje / 100)
+        devengado_calculado = importe - comision_gestion_importe
         tributario_monto = devengado_calculado * (tributario / 100)
         subtotal = devengado_calculado - tributario_monto
         neto_pagar = subtotal - gasto_empresa - comision_bancaria
@@ -205,7 +209,8 @@ class LiquidacionService:
             comision_bancaria=comision_bancaria,
             gasto_empresa=gasto_empresa,
             importe=importe,
-            importe_agencia=importe_agencia,
+            comision_gestion_porcentaje=comision_gestion_porcentaje,
+            comision_gestion_importe=comision_gestion_importe,
             tributario_monto=tributario_monto,
             neto_pagar=neto_pagar,
             tipo_pago=data.tipo_pago,
@@ -277,9 +282,9 @@ class LiquidacionService:
                 comision_bancaria=db_liquidacion.comision_bancaria,
                 gasto_empresa=db_liquidacion.gasto_empresa,
                 importe=db_liquidacion.importe,
-                importe_agencia=db_liquidacion.importe_agencia,
+                comision_gestion_importe=db_liquidacion.comision_gestion_importe,
                 tributario_monto=db_liquidacion.tributario_monto,
-                porcentaje_agencia=db_liquidacion.porcentaje_agencia,
+                comision_gestion_porcentaje=db_liquidacion.comision_gestion_porcentaje,
                 neto_pagar=db_liquidacion.neto_pagar,
                 tipo_pago=db_liquidacion.tipo_pago,
                 moneda=MonedaRead.model_validate(db_liquidacion.moneda) if db_liquidacion.moneda else None,
