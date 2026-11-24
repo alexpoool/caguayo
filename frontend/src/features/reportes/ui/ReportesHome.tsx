@@ -406,6 +406,7 @@ const REPORTS: ReportConfig[] = [
       { key: "moneda", label: "Moneda" },
       { key: "importe", label: "Importe", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "devengado", label: "Devengado", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "tributario", label: "% Tributario", className: "text-right", render: (v: any) => `${Number(v ?? 0).toFixed(2)}%` },
       { key: "tributario_monto", label: "Tributario", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "comision_bancaria", label: "Comisión", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "gasto_empresa", label: "Gasto empresa", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
@@ -462,6 +463,7 @@ const REPORTS: ReportConfig[] = [
       { key: "total_liquidaciones", label: "Liquidaciones", className: "text-right" },
       { key: "valor_total", label: "Valor total", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "devengado", label: "Devengado", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "porcentaje_agencia", label: "% Agencia", className: "text-right", render: (v: any) => `${Number(v ?? 0).toFixed(2)}%` },
       { key: "importe_agencia", label: "Agencia", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "tributario_monto", label: "Tributario", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "comision_bancaria", label: "Comisión", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
@@ -951,15 +953,17 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                           ))}
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Estado</label>
-                        <select value={draftFilters.estado} onChange={(e) => updateFilter("estado", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none">
-                          <option value="">Todos los estados</option>
-                          <option value="pagada">Liquidada / Confirmada</option>
-                          <option value="pendiente">Pendiente</option>
-                        </select>
-                      </div>
+                      {activeReport.id === "desempeno" && (
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Estado</label>
+                          <select value={draftFilters.estado} onChange={(e) => updateFilter("estado", e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none">
+                            <option value="">Todos los estados</option>
+                            <option value="pagada">Liquidada / Confirmada</option>
+                            <option value="pendiente">Pendiente</option>
+                          </select>
+                        </div>
+                      )}
                     </>
                   )}
                   {activeReport.needsFechas && (
@@ -1044,10 +1048,12 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {[
-                          ["Importe", total.total_importe],
+                          ["Valor total", total.valor_total ?? total.total_importe],
                           ["Devengado", total.total_devengado],
                           ["Agencia", total.total_importe_agencia],
+                          ["Tasa agencia", `${Number(total.porcentaje_agencia ?? 0).toFixed(2)}%`],
                           ["Tributario", total.total_tributario_monto],
+                          ["Tasa tributaria", `${Number(total.tributario ?? 0).toFixed(2)}%`],
                           ["Comisión bancaria", total.total_comision_bancaria],
                           ["Gasto empresa", total.total_gasto_empresa],
                           ["Neto a pagar", total.total_neto_pagar],
