@@ -772,19 +772,48 @@ def generar_pdf_liquidaciones(
             ]
         )
 
+    totales_por_moneda = meta.get("totales_por_moneda") or []
     totales = meta.get("totales", {})
-    totals_row = [
-        "",
-        "TOTALES",
-        "",
-        "",
-        "",
-        format_quantity(totales.get("total_devengado", 0)),
-        format_quantity(totales.get("total_tributario_monto", 0)),
-        format_quantity(totales.get("total_comision_bancaria", 0)),
-        format_quantity(totales.get("total_gasto_empresa", 0)),
-        format_quantity(totales.get("total_neto_pagar", 0)),
-    ]
+    totals_row = None
+
+    if len(totales_por_moneda) == 1:
+        total = totales_por_moneda[0]
+        totals_row = [
+            "",
+            "TOTALES",
+            "",
+            "",
+            str(total.get("moneda", "")),
+            format_quantity(total.get("total_devengado", 0)),
+            format_quantity(total.get("total_tributario_monto", 0)),
+            format_quantity(total.get("total_comision_bancaria", 0)),
+            format_quantity(total.get("total_gasto_empresa", 0)),
+            format_quantity(total.get("total_neto_pagar", 0)),
+        ]
+    elif len(totales_por_moneda) > 1:
+        # Nunca sumar monedas distintas en una única fila de totales.
+        for total in totales_por_moneda:
+            data.append([
+                "",
+                f"TOTALES {total.get('moneda', '')}",
+                "",
+                "",
+                str(total.get("moneda", "")),
+                format_quantity(total.get("total_devengado", 0)),
+                format_quantity(total.get("total_tributario_monto", 0)),
+                format_quantity(total.get("total_comision_bancaria", 0)),
+                format_quantity(total.get("total_gasto_empresa", 0)),
+                format_quantity(total.get("total_neto_pagar", 0)),
+            ])
+    elif totales:
+        totals_row = [
+            "", "TOTALES", "", "", "",
+            format_quantity(totales.get("total_devengado", 0)),
+            format_quantity(totales.get("total_tributario_monto", 0)),
+            format_quantity(totales.get("total_comision_bancaria", 0)),
+            format_quantity(totales.get("total_gasto_empresa", 0)),
+            format_quantity(totales.get("total_neto_pagar", 0)),
+        ]
 
     template.add_table(
         headers,
