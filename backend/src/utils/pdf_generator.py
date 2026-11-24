@@ -223,23 +223,36 @@ def generar_pdf_movimientos_producto(
     notas: str = "",
     resumen_por_tipo: List[Dict[str, Any]] = None,
 ) -> BytesIO:
-    """Genera PDF con saldo progresivo y resumen de movimientos por tipo."""
+    """Genera PDF con saldos monetarios históricos y resumen de cantidades."""
     template = PDFTemplate(title="MOVIMIENTOS DE PRODUCTO", landscape_mode=True)
     template.set_company_header(name=settings.EMPRESA_RAZON_SOCIAL)
+    simbolo = producto_info.get("moneda_simbolo") or producto_info.get("moneda") or ""
+    moneda_label = f" ({simbolo})" if simbolo else ""
     template.set_filters({
         "Dependencia": dependencia_info.get("nombre", ""),
         "Producto": f"{producto_info.get('nombre', '')} ({producto_info.get('codigo', '')})",
+        "Moneda de valoración": producto_info.get("moneda", simbolo),
         "Periodo": f"{fecha_inicio} al {fecha_fin}",
     })
 
-    headers = ["FECHA", "SALDO INICIAL", "TIPO DE MOVIMIENTO", "CANTIDAD", "SALDO FINAL"]
+    def formato_monetario(valor):
+        importe = format_quantity(valor)
+        return f"{simbolo} {importe}".strip()
+
+    headers = [
+        "FECHA",
+        f"SALDO INICIAL{moneda_label}",
+        "TIPO DE MOVIMIENTO",
+        "CANTIDAD",
+        f"SALDO FINAL{moneda_label}",
+    ]
     data = [
         [
             str(m.get("fecha", "")),
-            format_quantity(m.get("saldo_inicial", 0)),
+            formato_monetario(m.get("saldo_inicial", 0)),
             str(m.get("tipo_movimiento", m.get("operacion", ""))),
             format_quantity(m.get("cantidad", 0)),
-            format_quantity(m.get("saldo_final", 0)),
+            formato_monetario(m.get("saldo_final", 0)),
         ]
         for m in movimientos
     ]
@@ -247,7 +260,7 @@ def generar_pdf_movimientos_producto(
 
     if resumen_por_tipo:
         template.elements.append(
-            Paragraph("RESUMEN POR TIPO DE MOVIMIENTO", template.styles["NoteHeader"])
+            Paragraph("RESUMEN POR TIPO DE MOVIMIENTO (CANTIDADES)", template.styles["NoteHeader"])
         )
         template.add_table(
             ["TIPO DE MOVIMIENTO", "CANTIDAD TOTAL"],
@@ -264,7 +277,6 @@ def generar_pdf_movimientos_producto(
         approved_role=aprobado_por_cargo,
     )
     return template.build()
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  REPORTE 1: REGISTRO DE CLIENTES
