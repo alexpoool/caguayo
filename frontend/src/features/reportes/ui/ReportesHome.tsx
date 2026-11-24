@@ -1061,7 +1061,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                           <div key={String(label)}>
                             <p className="text-[10px] text-gray-400 uppercase tracking-wide">{label}</p>
                             <p className="text-sm font-semibold text-gray-800 tabular-nums">
-                              {Number(value ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {typeof value === "string" && value.endsWith("%") ? value : Number(value ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                           </div>
                         ))}
