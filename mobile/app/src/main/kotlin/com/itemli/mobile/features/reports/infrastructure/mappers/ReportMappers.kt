@@ -65,6 +65,12 @@ fun MovimientosProductoPreviewDto.toRows(definition: ReportDefinition): List<Map
         "tipo_movimiento" to (item.tipo_movimiento ?: item.operacion ?: ""),
         "cantidad" to (item.cantidad ?: 0),
         "saldo_final" to (item.saldo_final ?: 0),
+    ) } + resumen_por_tipo.map { item -> mapOf(
+        "fecha" to "RESUMEN",
+        "saldo_inicial" to "",
+        "tipo_movimiento" to (item.tipo ?: ""),
+        "cantidad" to (item.cantidad_total ?: 0),
+        "saldo_final" to "",
     ) }
 
 fun ClientesPreviewDto.toRows(definition: ReportDefinition): List<Map<String, Any?>> =
