@@ -1153,6 +1153,7 @@ async def preview_liquidaciones(
             "items": _paginate_preview(items, limit, offset),
             "total_items": len(items),
             "totales": meta.get("totales", {}),
+            "totales_por_moneda": meta.get("totales_por_moneda", []),
         }
     except Exception as e:
         logger.error(f"Error en preview liquidaciones: {e}")
