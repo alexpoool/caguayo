@@ -662,7 +662,7 @@ async def obtener_reporte_liquidaciones(
             },
         )
     except Exception as e:
-        logger.error(f"Error en reporte liquidaciones: {e}")
+        logger.exception("Error en reporte liquidaciones")
         raise HTTPException(
             status_code=500, detail="Error interno al generar el reporte"
         )
@@ -1159,7 +1159,7 @@ async def preview_liquidaciones(
             "totales_por_moneda": meta.get("totales_por_moneda", []),
         }
     except Exception as e:
-        logger.error(f"Error en preview liquidaciones: {e}")
+        logger.exception("Error en preview liquidaciones")
         raise HTTPException(
             status_code=500, detail="Error interno al generar el reporte"
         )
