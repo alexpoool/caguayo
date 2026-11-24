@@ -169,11 +169,7 @@ class ReportsRepositoryImpl(
             )
             ReportPreview(
                 rows = dto.toRows(definition),
-                totals = mapOf(
-                    "total_items" to (dto.total_items ?: 0),
-                    "total_entradas" to (dto.total_entradas ?: 0.0),
-                    "total_salidas" to (dto.total_salidas ?: 0.0),
-                ),
+                totals = mapOf("total_items" to (dto.total_items ?: 0)),
             )
         }
         ReportCatalog.clientes.id -> {
