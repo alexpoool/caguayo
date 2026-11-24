@@ -12,6 +12,7 @@ Valida el comportamiento aritmético del reporte de movimientos por dependencia:
 """
 
 import pytest
+from types import SimpleNamespace
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -253,3 +254,54 @@ async def test_saldo_inicial_snapshot_tiene_prioridad_sobre_fallback(db, datos_b
     assert p1["saldo_inicial_unidades"] == 3
     assert p1["saldo_final_unidades"] == 2
     assert p1["saldo_inicial"] == 6  # 3 uds del snapshot × 2
+
+
+
+async def test_preview_endpoint_no_falla_al_construir_respuesta(monkeypatch):
+    """La vista previa debe responder sin depender de un resumen no definido."""
+    from src.routes import reportes_router
+
+    async def fake_get_movimientos_dependencia(db, id_dependencia, fecha_inicio, fecha_fin):
+        return ([{
+            "codigo": "P001",
+            "nombre": "Producto Uno",
+            "saldo_inicial_unidades": 2,
+            "saldo_inicial": 4,
+            "recepcion": 1,
+            "compra": 0,
+            "venta": 0,
+            "merma": 0,
+            "donacion": 0,
+            "devolucion": 0,
+            "ajustes": 0,
+            "saldo_final_unidades": 3,
+            "saldo_final": 6,
+        }], {"nombre": "Dep Test", "direccion": "Calle 1"})
+
+    async def fake_log_action(**kwargs):
+        return None
+
+    monkeypatch.setattr(
+        reportes_router, "get_movimientos_dependencia",
+        fake_get_movimientos_dependencia,
+    )
+    monkeypatch.setattr(reportes_router.AppLogger, "log_action", fake_log_action)
+
+    response = await reportes_router.preview_movimientos_dependencia(
+        id_dependencia=1,
+        fecha_inicio=datetime(2026, 9, 1).date(),
+        fecha_fin=datetime(2026, 9, 30).date(),
+        db=None,
+        current_user=SimpleNamespace(
+            nombre="Usuario", primer_apellido="Test", id_usuario=1
+        ),
+        limit=None,
+        offset=0,
+    )
+
+    assert response["total_items"] == 1
+    assert response["items"][0]["codigo"] == "P001"
+    assert response["total_existencia_inicial"] == 2
+    assert response["total_existencia_final"] == 3
+    assert response["total_saldo_inicial"] == 4
+    assert response["total_saldo_final"] == 6
