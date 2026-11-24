@@ -1183,6 +1183,14 @@ def _agrupar_liquidaciones_onat(
         for campo in campos:
             total[f"total_{campo}"] = round(float(total[f"total_{campo}"]), 2)
         total["valor_total"] = total["total_importe"]
+        total["porcentaje_agencia"] = (
+            round(total["total_importe_agencia"] * 100 / total["total_importe"], 2)
+            if total["total_importe"] else 0.0
+        )
+        total["tributario"] = (
+            round(total["total_tributario_monto"] * 100 / total["total_devengado"], 2)
+            if total["total_devengado"] else 0.0
+        )
 
     meta = {
         "total_items": len(data),
