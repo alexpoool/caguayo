@@ -1467,8 +1467,10 @@ async def get_resumen_liquidaciones(
             Moneda.nombre.label("moneda_nombre"),
             Moneda.simbolo.label("moneda_simbolo"),
         )
-        .join(Cliente, Liquidacion.id_cliente == Cliente.id_cliente)
-        .join(Moneda, Liquidacion.id_moneda == Moneda.id_moneda)
+        # LEFT JOIN para no ocultar una liquidación válida si una instalación
+        # tiene referencias históricas incompletas en clientes o monedas.
+        .join(Cliente, Liquidacion.id_cliente == Cliente.id_cliente, isouter=True)
+        .join(Moneda, Liquidacion.id_moneda == Moneda.id_moneda, isouter=True)
     )
 
     if fecha_inicio:
@@ -1528,14 +1530,14 @@ async def get_resumen_liquidaciones(
         productos = productos_por_liquidacion.get(liq.id_liquidacion, [])
         moneda = (
             f"{r.moneda_simbolo} ({r.moneda_nombre})"
-            if r.moneda_nombre else (r.moneda_simbolo or r.moneda_nombre or "")
+            if r.moneda_nombre else (r.moneda_simbolo or (f"Moneda #{liq.id_moneda}" if liq.id_moneda is not None else "Sin moneda"))
         )
         item = {
             "id_liquidacion": liq.id_liquidacion,
             "codigo": liq.codigo,
             "fecha_emision": liq.fecha_emision,
             "fecha_liquidacion": liq.fecha_liquidacion,
-            "cliente_nombre": nombres.get(liq.id_cliente) or r.cliente_nombre or "",
+            "cliente_nombre": nombres.get(liq.id_cliente) or r.cliente_nombre or f"Cliente #{liq.id_cliente}",
             "cliente_nit": r.cliente_nit or "",
             "cliente_codigo": r.cliente_codigo or "",
             "id_moneda": liq.id_moneda,
