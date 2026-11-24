@@ -1202,11 +1202,13 @@ def _agrupar_liquidaciones_onat(
     }
     # Compatibilidad con consumidores antiguos: solo se expone un total simple
     # cuando el resultado contiene una única moneda.
-    meta["totales"] = (
-        {f"total_{campo}": total[f"total_{campo}"] for campo in campos}
-        for total in meta["totales_por_moneda"]
-    )
-    meta["totales"] = next(meta["totales"], {}) if len(meta["totales_por_moneda"]) == 1 else {}
+    meta["totales"] = {}
+    if len(meta["totales_por_moneda"]) == 1:
+        unico_total = meta["totales_por_moneda"][0]
+        meta["totales"] = {
+            f"total_{campo}": unico_total[f"total_{campo}"]
+            for campo in campos
+        }
     return data, meta
 
 
