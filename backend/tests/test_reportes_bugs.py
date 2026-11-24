@@ -253,7 +253,7 @@ async def test_movimientos_producto_calcula_saldos_progresivos_y_resumen_por_tip
     }
 
 
-async def test_movimientos_producto_saldo_inicial_prioriza_snapshot(db, datos_base):
+async def test_movimientos_producto_ignora_snapshot_inconsistente_y_reconstruye_historico(db, datos_base):
     from src.models.saldo import Saldo
 
     tipo_ids = datos_base
@@ -268,5 +268,85 @@ async def test_movimientos_producto_saldo_inicial_prioriza_snapshot(db, datos_ba
     movimientos, _, _, _ = await get_movimientos_producto(
         db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
     )
-    assert movimientos[0]["saldo_inicial"] == 12.0
-    assert movimientos[0]["saldo_final"] == 14.0
+    assert movimientos[0]["saldo_inicial"] == 99.0
+    assert movimientos[0]["saldo_final"] == 101.0
+
+async def test_movimientos_producto_rechaza_producto_de_otra_dependencia(db, datos_base):
+    from src.services.reportes_service import get_movimientos_producto
+
+    db.add(Dependencia(
+        id_dependencia=2, nombre="Otra Dep", denominacion="OTRA",
+        direccion="Calle 2", telefono="555", email="o@d.co", web="w.co",
+        id_tipo_dependencia=1,
+    ))
+    _crear_mov(db, datos_base, 1, "compra", 5, datetime(2026, 9, 10, 9, 0, 0))
+    await db.commit()
+
+    with pytest.raises(ValueError, match="no pertenece"):
+        await get_movimientos_producto(
+            db, 2, 1, date(2026, 9, 10), date(2026, 9, 10)
+        )
+
+
+async def test_movimientos_producto_normaliza_resumen_sin_perder_rotulo(db, datos_base):
+    tipo_ids = datos_base
+    db.add(TipoMovimiento(id_tipo_movimiento=5, tipo="recepcion", factor=1))
+    _crear_mov(db, tipo_ids, 1, "RECEPCION", 3, datetime(2026, 9, 10, 9, 0, 0))
+    db.add(Movimiento(
+        id_tipo_movimiento=5, id_dependencia=1, id_producto=1,
+        cantidad=4, fecha=datetime(2026, 9, 10, 10, 0, 0), estado="confirmado",
+    ))
+    await db.commit()
+
+    movimientos, _, _, resumen = await get_movimientos_producto(
+        db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
+    )
+
+    assert [m["saldo_final"] for m in movimientos] == [3.0, 7.0]
+    assert resumen == [{"tipo": "RECEPCION", "cantidad_total": 7.0}]
+
+
+async def test_movimientos_producto_saldo_progresivo_incluye_ajustes_y_devoluciones(db, datos_base):
+    tipo_ids = datos_base
+    db.add_all([
+        TipoMovimiento(id_tipo_movimiento=5, tipo="devolucion", factor=-1),
+        TipoMovimiento(id_tipo_movimiento=6, tipo="ajuste_agregar", factor=1),
+        TipoMovimiento(id_tipo_movimiento=7, tipo="ajuste_quitar", factor=-1),
+    ])
+    _crear_mov(db, tipo_ids, 1, "RECEPCION", 10, datetime(2026, 9, 9, 9, 0, 0))
+    db.add_all([
+        Movimiento(id_tipo_movimiento=5, id_dependencia=1, id_producto=1,
+                   cantidad=2, fecha=datetime(2026, 9, 10, 9, 0, 0), estado="confirmado"),
+        Movimiento(id_tipo_movimiento=6, id_dependencia=1, id_producto=1,
+                   cantidad=5, fecha=datetime(2026, 9, 10, 10, 0, 0), estado="confirmado"),
+        Movimiento(id_tipo_movimiento=7, id_dependencia=1, id_producto=1,
+                   cantidad=3, fecha=datetime(2026, 9, 10, 11, 0, 0), estado="confirmado"),
+    ])
+    await db.commit()
+
+    movimientos, _, _, resumen = await get_movimientos_producto(
+        db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
+    )
+
+    assert [m["saldo_inicial"] for m in movimientos] == [10.0, 8.0, 13.0]
+    assert [m["saldo_final"] for m in movimientos] == [8.0, 13.0, 10.0]
+    assert {item["tipo"]: item["cantidad_total"] for item in resumen} == {
+        "devolucion": 2.0, "ajuste_agregar": 5.0, "ajuste_quitar": 3.0
+    }
+
+
+async def test_movimientos_producto_orden_estable_para_misma_fecha(db, datos_base):
+    tipo_ids = datos_base
+    fecha = datetime(2026, 9, 10, 9, 0, 0)
+    _crear_mov(db, tipo_ids, 1, "RECEPCION", 10, datetime(2026, 9, 9, 9, 0, 0))
+    _crear_mov(db, tipo_ids, 1, "compra", 2, fecha)
+    _crear_mov(db, tipo_ids, 1, "venta", 1, fecha)
+    await db.commit()
+
+    movimientos, _, _, _ = await get_movimientos_producto(
+        db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
+    )
+
+    assert [m["saldo_inicial"] for m in movimientos] == [10.0, 12.0]
+    assert [m["saldo_final"] for m in movimientos] == [12.0, 11.0]
+
