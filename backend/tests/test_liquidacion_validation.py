@@ -185,9 +185,9 @@ def _make_liquidacion_mock(**overrides):
         "comision_bancaria": Decimal("0.00"),
         "gasto_empresa": Decimal("0.00"),
         "importe": Decimal("50.00"),
-        "importe_caguayo": Decimal("5.00"),
+        "comision_gestion_importe": Decimal("5.00"),
         "tributario_monto": Decimal("0.00"),
-        "porcentaje_caguayo": Decimal("10.00"),
+        "comision_gestion_porcentaje": Decimal("10.00"),
         "neto_pagar": Decimal("45.00"),
         "tipo_pago": "TRANSFERENCIA",
         "moneda": None,
@@ -259,6 +259,7 @@ class TestCreateLiquidacionTipoCompraValidation:
             id_cliente=1,
             id_moneda=1,
             producto_ids=[1],
+            comision_gestion_porcentaje=Decimal("17.50"),
         )
 
         with patch(
@@ -294,6 +295,13 @@ class TestCreateLiquidacionTipoCompraValidation:
         assert result is not None
         assert result.id_liquidacion == 1
         assert result.codigo == "C.2026.1"
+        from src.models.liquidacion import Liquidacion
+        creada = next(
+            call.args[0] for call in mock_db.add.call_args_list
+            if isinstance(call.args[0], Liquidacion)
+        )
+        assert creada.comision_gestion_porcentaje == Decimal("17.50")
+        assert creada.comision_gestion_importe == Decimal("8.7500")
 
     @pytest.mark.asyncio
     async def test_rechaza_venta_efectivo(self):
