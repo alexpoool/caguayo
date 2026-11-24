@@ -377,7 +377,8 @@ const REPORTS: ReportConfig[] = [
       ...(f.id_moneda ? { id_moneda: f.id_moneda } : {}),
       ...(f.estado ? { estado: f.estado } : {}),
     }),
-    transformChartData: () => [],    computeStats: () => ({ total: 0, promedio: 0, max: 0, min: 0, count: 0 }),
+    transformChartData: () => [],
+    computeStats: () => ({ total: 0, promedio: 0, max: 0, min: 0, count: 0 }),
     pdfEndpoint: "/reportes/desempeno",
     pdfFilename: "informe_desempeno_terceros.pdf",
     buildPdfParams: (f) => ({
@@ -756,7 +757,8 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
             </div>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-4 md:p-6 text-center shadow-sm">
-            <p className="text-sm text-gray-600">Utiliza la barra lateral para elegir el reporte que deseas visualizar.</p>          </div>
+            <p className="text-sm text-gray-600">Utiliza la barra lateral para elegir el reporte que deseas visualizar.</p>
+          </div>
         </div>
       </div>
     );
