@@ -563,97 +563,80 @@ def generar_pdf_onat(
     aprobado_por_cargo: str = "",
     notas: str = "",
 ) -> BytesIO:
-    """Genera PDF con ingresos y retenciones de artistas (ONAT)."""
+    """Genera ONAT consolidado por proveedor/realizador y moneda."""
     template = PDFTemplate(
-        title="INGRESOS Y RETENCIONES DE ARTISTAS (ONAT)",
+        title="ONAT — VALORACIÓN ECONÓMICA DE TERCEROS",
         landscape_mode=True,
     )
     template.set_company_header(name=settings.EMPRESA_RAZON_SOCIAL)
 
-    filters: Dict[str, str] = {}
+    filters: Dict[str, str] = {"Tipo de tercero": str(meta.get("tipo_tercero", "ambos")).capitalize()}
     if meta.get("fecha_inicio"):
-        filters["Fecha inicio"] = str(meta["fecha_inicio"])
+        filters["Emisión desde"] = str(meta["fecha_inicio"])
     if meta.get("fecha_fin"):
-        filters["Fecha fin"] = str(meta["fecha_fin"])
-    if filters:
-        template.set_filters(filters)
+        filters["Emisión hasta"] = str(meta["fecha_fin"])
+    template.set_filters(filters)
 
     headers = [
-        "No.",
-        "CREADOR",
-        "CI / NIT",
-        "REGISTRO",
-        "FECHA",
-        "MONEDA",
-        "IMPORTE",
-        "DEVENGADO",
-        f"% {settings.EMPRESA_NOMBRE.upper()}",
-        settings.EMPRESA_NOMBRE.upper(),
-        "TRIBUTARIO",
-        "TRIB. MT",
-        "COM. BANC.",
-        "GTO EMP.",
-        "NETO",
+        "No.", "TIPO", "PROVEEDOR / REALIZADOR", "CI / NIT", "REGISTRO",
+        "MONEDA", "LIQUIDACIONES", "VALOR TOTAL", "DEVENGADO",
+        "% AGENCIA", "AGENCIA", "% TRIBUTARIO", "TRIBUTARIO",
+        "COM. BANC.", "GASTO EMP.", "NETO A PAGAR",
     ]
-    data: List[List[str]] = []
-    for idx, it in enumerate(items, start=1):
-        data.append(
-            [
-                str(idx),
-                str(it.get("persona_nombre", "")),
-                str(it.get("carnet_identidad", "") or it.get("nit", "")),
-                str(it.get("numero_registro", "")),
-                str(it.get("fecha_emision", "")),
-                str(it.get("moneda", "")),
-                format_quantity(it.get("importe", 0)),
-                format_quantity(it.get("devengado", 0)),
-                f"{it.get('porcentaje_agencia', 0):.0f}%",
-                format_quantity(it.get("importe_agencia", 0)),
-                f"{it.get('tributario', 0):.0f}%",
-                format_quantity(it.get("tributario_monto", 0)),
-                format_quantity(it.get("comision_bancaria", 0)),
-                format_quantity(it.get("gasto_empresa", 0)),
-                format_quantity(it.get("neto_pagar", 0)),
-            ]
-        )
+    rows: List[List[str]] = []
+    for idx, item in enumerate(items, start=1):
+        rows.append([
+            str(idx),
+            str(item.get("tipo_tercero", "")),
+            str(item.get("persona_nombre", "")),
+            str(item.get("carnet_identidad", "") or item.get("nit", "")),
+            str(item.get("numero_registro", "")),
+            str(item.get("moneda", "")),
+            str(item.get("total_liquidaciones", 0)),
+            format_quantity(item.get("valor_total", item.get("importe", 0))),
+            format_quantity(item.get("devengado", 0)),
+            f"{float(item.get('porcentaje_agencia', 0) or 0):.2f}%",
+            format_quantity(item.get("importe_agencia", 0)),
+            f"{float(item.get('tributario', 0) or 0):.2f}%",
+            format_quantity(item.get("tributario_monto", 0)),
+            format_quantity(item.get("comision_bancaria", 0)),
+            format_quantity(item.get("gasto_empresa", 0)),
+            format_quantity(item.get("neto_pagar", 0)),
+        ])
 
-    # Fila de totales
-    totales = meta.get("totales", {})
-    totals_row = [
-        "",
-        "TOTALES",
-        "",
-        "",
-        "",
-        "",
-        format_quantity(totales.get("total_importe", 0)),
-        format_quantity(totales.get("total_devengado", 0)),
-        "",
-        format_quantity(totales.get("total_importe_agencia", 0)),
-        "",
-        format_quantity(totales.get("total_tributario_monto", 0)),
-        format_quantity(totales.get("total_comision_bancaria", 0)),
-        format_quantity(totales.get("total_gasto_empresa", 0)),
-        format_quantity(totales.get("total_neto_pagar", 0)),
-    ]
+    for total in meta.get("totales_por_moneda", []):
+        importe = float(total.get("total_importe", 0) or 0)
+        devengado = float(total.get("total_devengado", 0) or 0)
+        agencia = float(total.get("total_importe_agencia", 0) or 0)
+        tributario_monto = float(total.get("total_tributario_monto", 0) or 0)
+        rows.append([
+            "", "", f"TOTAL {total.get('moneda', '')}", "", "",
+            str(total.get("moneda", "")),
+            str(total.get("total_liquidaciones", 0)),
+            format_quantity(total.get("valor_total", importe)),
+            format_quantity(devengado),
+            f"{(agencia * 100 / importe) if importe else 0:.2f}%",
+            format_quantity(agencia),
+            f"{(tributario_monto * 100 / devengado) if devengado else 0:.2f}%",
+            format_quantity(tributario_monto),
+            format_quantity(total.get("total_comision_bancaria", 0)),
+            format_quantity(total.get("total_gasto_empresa", 0)),
+            format_quantity(total.get("total_neto_pagar", 0)),
+        ])
 
     template.add_table(
         headers,
-        data,
-        code_columns=[0, 2, 3],
-        numeric_columns=[6, 7, 9, 11, 12, 13, 14],
-        totals_row=totals_row,
+        rows,
+        code_columns=[0, 3, 4],
+        numeric_columns=[6, 7, 8, 10, 12, 13, 14, 15],
     )
-
     if notas:
         template.add_notes_section(notas)
-
     template.add_signature_section(
         created_by=usuario_actual,
         approved_by=aprobado_por_nombre,
         approved_role=aprobado_por_cargo,
     )
-
     return template.build()
 
 
