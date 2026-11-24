@@ -246,7 +246,6 @@ def generar_pdf_movimientos_producto(
     template.add_table(headers, data, numeric_columns=[1, 3, 4])
 
     if resumen_por_tipo:
-        template.add_section_title("RESUMEN POR TIPO DE MOVIMIENTO")
         template.add_table(
             ["TIPO DE MOVIMIENTO", "CANTIDAD TOTAL"],
             [[str(item.get("tipo", "")), format_quantity(item.get("cantidad_total", 0))]
