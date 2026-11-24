@@ -321,6 +321,10 @@ async def obtener_reporte_movimientos_producto(
                 "Content-Disposition": f"attachment; filename=movimientos_producto_{id_producto}.pdf"
             },
         )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error en reporte movimientos-producto: {e}")
         raise HTTPException(
@@ -807,6 +811,10 @@ async def preview_movimientos_producto(
             "total_items": len(items),
             "resumen_por_tipo": resumen,
         }
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error en preview movimientos-producto: {e}")
         raise HTTPException(
