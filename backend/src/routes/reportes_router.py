@@ -754,7 +754,6 @@ async def preview_movimientos_dependencia(
             "total_existencia_final": total_existencia_final,
             "total_saldo_inicial": total_saldo_inicial,
             "total_saldo_final": total_saldo_final,
-            "resumen_por_tipo": resumen,
         }
     except Exception as e:
         logger.exception("Error en preview movimientos-dependencia")
