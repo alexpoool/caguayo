@@ -86,11 +86,11 @@ async def datos_base(db):
     return tipo_ids
 
 
-def _crear_mov(db, tipo_ids, pid, tipo, cantidad, fecha, estado="confirmado"):
+def _crear_mov(db, tipo_ids, pid, tipo, cantidad, fecha, estado="confirmado", precio_compra=Decimal("2"), moneda_compra=1):
     db.add(Movimiento(
         id_tipo_movimiento=tipo_ids[tipo], id_dependencia=1,
         id_producto=pid, cantidad=cantidad, fecha=fecha, estado=estado,
-        precio_compra=Decimal("2"), moneda_compra=1,
+        precio_compra=precio_compra, moneda_compra=moneda_compra,
     ))
 
 
@@ -356,3 +356,67 @@ async def test_movimientos_producto_orden_estable_para_misma_fecha(db, datos_bas
     assert [m["saldo_inicial"] for m in movimientos] == [20.0, 24.0]
     assert [m["saldo_final"] for m in movimientos] == [24.0, 22.0]
 
+
+
+async def test_movimientos_producto_aplica_coste_promedio_ponderado(db, datos_base):
+    tipo_ids = datos_base
+    _crear_mov(
+        db, tipo_ids, 1, "RECEPCION", 10, datetime(2026, 9, 8, 9, 0, 0),
+        precio_compra=Decimal("2"),
+    )
+    _crear_mov(
+        db, tipo_ids, 1, "compra", 10, datetime(2026, 9, 9, 9, 0, 0),
+        precio_compra=Decimal("4"),
+    )
+    _crear_mov(db, tipo_ids, 1, "venta", 10, datetime(2026, 9, 10, 9, 0, 0))
+    await db.commit()
+
+    movimientos, _, producto_info, _ = await get_movimientos_producto(
+        db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
+    )
+
+    # Coste medio tras las dos entradas: (10×2 + 10×4) / 20 = 3.
+    assert movimientos[0]["saldo_inicial"] == 60.0
+    assert movimientos[0]["saldo_final"] == 30.0
+    assert producto_info["moneda_simbolo"] == "USD"
+
+
+async def test_movimientos_producto_rechaza_mezclar_monedas(db, datos_base):
+    tipo_ids = datos_base
+    db.add(Moneda(
+        id_moneda=2, nombre="EUR", denominacion="Euro", simbolo="EUR"
+    ))
+    _crear_mov(
+        db, tipo_ids, 1, "RECEPCION", 5, datetime(2026, 9, 8, 9, 0, 0),
+        moneda_compra=1,
+    )
+    _crear_mov(
+        db, tipo_ids, 1, "compra", 5, datetime(2026, 9, 9, 9, 0, 0),
+        moneda_compra=2,
+    )
+    await db.commit()
+
+    with pytest.raises(ValueError, match="varias monedas"):
+        await get_movimientos_producto(
+            db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
+        )
+
+
+async def test_movimientos_producto_rechaza_entrada_sin_coste_historico(db, datos_base):
+    tipo_ids = datos_base
+    db.add(Movimiento(
+        id_tipo_movimiento=tipo_ids["RECEPCION"],
+        id_dependencia=1,
+        id_producto=1,
+        cantidad=5,
+        fecha=datetime(2026, 9, 9, 9, 0, 0),
+        estado="confirmado",
+        precio_compra=None,
+        moneda_compra=None,
+    ))
+    await db.commit()
+
+    with pytest.raises(ValueError, match="no tiene precio de compra"):
+        await get_movimientos_producto(
+            db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
+        )
