@@ -1460,9 +1460,28 @@ async def get_resumen_liquidaciones(
     divisas diferentes. Las liquidaciones pendientes también se muestran.
     """
     # ── Liquidaciones de proveedores ────────────────────────────────────────
+    # Seleccionar solo las columnas utilizadas evita que una columna opcional
+    # añadida al modelo ORM pero aún no desplegada en alguna instalación rompa
+    # el informe completo.
     query = (
         select(
-            Liquidacion,
+            Liquidacion.id_liquidacion.label("id_liquidacion"),
+            Liquidacion.codigo.label("codigo"),
+            Liquidacion.fecha_emision.label("fecha_emision"),
+            Liquidacion.fecha_liquidacion.label("fecha_liquidacion"),
+            Liquidacion.id_cliente.label("id_cliente"),
+            Liquidacion.id_moneda.label("id_moneda"),
+            Liquidacion.devengado.label("devengado"),
+            Liquidacion.tributario.label("tributario"),
+            Liquidacion.comision_bancaria.label("comision_bancaria"),
+            Liquidacion.gasto_empresa.label("gasto_empresa"),
+            Liquidacion.importe.label("importe"),
+            Liquidacion.neto_pagar.label("neto_pagar"),
+            Liquidacion.porcentaje_agencia.label("porcentaje_agencia"),
+            Liquidacion.importe_agencia.label("importe_agencia"),
+            Liquidacion.tributario_monto.label("tributario_monto"),
+            Liquidacion.tipo_pago.label("tipo_pago"),
+            Liquidacion.liquidada.label("liquidada"),
             Cliente.nombre.label("cliente_nombre"),
             Cliente.nit.label("cliente_nit"),
             Cliente.codigo.label("cliente_codigo"),
@@ -1538,7 +1557,7 @@ async def get_resumen_liquidaciones(
     persona_rows = (await db.execute(query_personas)).all()
 
     # ── Productos de las liquidaciones de proveedores ──────────────────────
-    liquidacion_ids = [row[0].id_liquidacion for row in rows]
+    liquidacion_ids = [row.id_liquidacion for row in rows]
     productos_por_liquidacion: Dict[int, List[Dict[str, Any]]] = {}
     if liquidacion_ids:
         prod_result = await db.execute(
@@ -1566,7 +1585,7 @@ async def get_resumen_liquidaciones(
                 }
             )
 
-    ids_clientes = [row[0].id_cliente for row in rows]
+    ids_clientes = [row.id_cliente for row in rows if row.id_cliente is not None]
     ids_personas = [row.id_persona for row in persona_rows if row.id_persona is not None]
     nombres = await nombres_completos_por_cliente(
         db, list(set(ids_clientes + ids_personas))
@@ -1574,38 +1593,37 @@ async def get_resumen_liquidaciones(
 
     data: List[Dict[str, Any]] = []
     for row in rows:
-        liq: Liquidacion = row[0]
         moneda = (
             f"{row.moneda_simbolo} ({row.moneda_nombre})"
             if row.moneda_nombre
             else row.moneda_simbolo or (
-                f"Moneda #{liq.id_moneda}" if liq.id_moneda is not None else "Sin moneda"
+                f"Moneda #{row.id_moneda}" if row.id_moneda is not None else "Sin moneda"
             )
         )
         data.append({
-            "id_liquidacion": liq.id_liquidacion,
+            "id_liquidacion": row.id_liquidacion,
             "tipo_tercero": "Proveedor",
-            "codigo": liq.codigo or "",
-            "fecha_emision": liq.fecha_emision,
-            "fecha_liquidacion": liq.fecha_liquidacion,
-            "id_cliente": liq.id_cliente,
-            "cliente_nombre": nombres.get(liq.id_cliente) or row.cliente_nombre or f"Cliente #{liq.id_cliente}",
+            "codigo": row.codigo or "",
+            "fecha_emision": row.fecha_emision,
+            "fecha_liquidacion": row.fecha_liquidacion,
+            "id_cliente": row.id_cliente,
+            "cliente_nombre": nombres.get(row.id_cliente) or row.cliente_nombre or f"Cliente #{row.id_cliente}",
             "cliente_nit": row.cliente_nit or "",
             "cliente_codigo": row.cliente_codigo or "",
-            "id_moneda": liq.id_moneda,
+            "id_moneda": row.id_moneda,
             "moneda": moneda,
-            "devengado": float(liq.devengado or 0),
-            "tributario": float(liq.tributario or 0),
-            "comision_bancaria": float(liq.comision_bancaria or 0),
-            "gasto_empresa": float(liq.gasto_empresa or 0),
-            "importe": float(liq.importe or 0),
-            "neto_pagar": float(liq.neto_pagar or 0),
-            "porcentaje_agencia": float(liq.porcentaje_agencia or 0),
-            "importe_agencia": float(liq.importe_agencia or 0),
-            "tributario_monto": float(liq.tributario_monto or 0),
-            "tipo_pago": liq.tipo_pago or "",
-            "liquidada": bool(liq.liquidada),
-            "productos": productos_por_liquidacion.get(liq.id_liquidacion, []),
+            "devengado": float(row.devengado or 0),
+            "tributario": float(row.tributario or 0),
+            "comision_bancaria": float(row.comision_bancaria or 0),
+            "gasto_empresa": float(row.gasto_empresa or 0),
+            "importe": float(row.importe or 0),
+            "neto_pagar": float(row.neto_pagar or 0),
+            "porcentaje_agencia": float(row.porcentaje_agencia or 0),
+            "importe_agencia": float(row.importe_agencia or 0),
+            "tributario_monto": float(row.tributario_monto or 0),
+            "tipo_pago": row.tipo_pago or "",
+            "liquidada": bool(row.liquidada),
+            "productos": productos_por_liquidacion.get(row.id_liquidacion, []),
         })
 
     for row in persona_rows:
