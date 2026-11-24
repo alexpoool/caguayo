@@ -13,6 +13,7 @@ from src.services.reportes_service import (
     buscar_productos_item_anexo,
     get_existencias,
     get_informe_desempeno,
+    get_terceros_con_liquidaciones,
     get_movimientos_dependencia,
     get_movimientos_producto,
     get_personas_list,
@@ -111,6 +112,21 @@ async def buscar_productos_item_anexo_endpoint(
         raise HTTPException(
             status_code=500, detail="Error interno al buscar productos"
         )
+
+
+@router.get("/desempeno/terceros")
+async def listar_terceros_informe_desempeno(
+    tipo_tercero: str = Query("ambos", description="proveedores, realizadores o ambos"),
+    db: AsyncSession = Depends(get_session),
+    current_user: UsuarioInfo = Depends(get_current_user_required),
+):
+    try:
+        return await get_terceros_con_liquidaciones(db, tipo_tercero)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error al listar terceros del informe de desempeño: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al listar terceros")
 
 
 # ---------------------------------------------------------------------------
@@ -441,10 +457,12 @@ async def obtener_reporte_proyectos(
 
 @router.get("/desempeno")
 async def obtener_reporte_desempeno(
-    fecha_inicio: Optional[date] = Query(None, description="Fecha Inicio"),
-    fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
-    id_persona: Optional[int] = Query(None, description="Filtrar por creador"),
-    estado: Optional[str] = Query(None, description="Estado (pagada/pendiente)"),
+    fecha_inicio: Optional[date] = Query(None, description="Fecha de emisión desde"),
+    fecha_fin: Optional[date] = Query(None, description="Fecha de emisión hasta"),
+    tipo_tercero: str = Query("ambos", description="proveedores, realizadores o ambos"),
+    id_tercero: Optional[int] = Query(None, description="Tercero específico"),
+    id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
+    estado: Optional[str] = Query(None, description="pagada o pendiente"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
@@ -453,43 +471,31 @@ async def obtener_reporte_desempeno(
 ):
     try:
         data, meta = await get_informe_desempeno(
-            db, fecha_inicio, fecha_fin, id_persona, estado
+            db, fecha_inicio, fecha_fin, tipo_tercero, id_tercero, id_moneda, estado
         )
         usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
-
         await AppLogger.log_action(
-            modulo="reportes",
-            accion="export_desempeno",
-            detalle={
-                "total": len(data),
-                "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
-                "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
-            },
+            modulo="terceros",
+            accion="export_informe_desempeno",
+            detalle={"total": len(data), "tipo_tercero": tipo_tercero,
+                     "id_tercero": id_tercero, "id_moneda": id_moneda,
+                     "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
+                     "fecha_fin": fecha_fin.isoformat() if fecha_fin else None},
             usuario_id=current_user.id_usuario,
             usuario_nombre=usuario_actual,
         )
-
         pdf_buffer = generar_pdf_desempeno(
-            data,
-            meta,
-            usuario_actual,
-            aprobado_por_nombre,
-            aprobado_por_cargo,
-            notas=notas,
+            data, meta, usuario_actual, aprobado_por_nombre, aprobado_por_cargo, notas=notas
         )
-
         return StreamingResponse(
-            pdf_buffer,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": "attachment; filename=informe_desempeno.pdf"
-            },
+            pdf_buffer, media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=informe_desempeno_terceros.pdf"},
         )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        logger.error(f"Error en reporte desempeño: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al generar el reporte"
-        )
+        logger.error(f"Error en informe de desempeño de terceros: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -952,58 +958,46 @@ async def preview_proyectos(
 
 @router.get("/desempeno/preview")
 async def preview_desempeno(
-    fecha_inicio: Optional[date] = Query(None, description="Fecha Inicio"),
-    fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
-    id_persona: Optional[int] = Query(None, description="Filtrar por creador"),
-    estado: Optional[str] = Query(None, description="Estado (pagada/pendiente)"),
+    fecha_inicio: Optional[date] = Query(None, description="Fecha de emisión desde"),
+    fecha_fin: Optional[date] = Query(None, description="Fecha de emisión hasta"),
+    tipo_tercero: str = Query("ambos", description="proveedores, realizadores o ambos"),
+    id_tercero: Optional[int] = Query(None, description="Tercero específico"),
+    id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
+    estado: Optional[str] = Query(None, description="pagada o pendiente"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: Optional[int] = Query(None, ge=1, le=100),
+    limit: Optional[int] = Query(3, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
         data, meta = await get_informe_desempeno(
-            db, fecha_inicio, fecha_fin, id_persona, estado
+            db, fecha_inicio, fecha_fin, tipo_tercero, id_tercero, id_moneda, estado
         )
-
         items = [
-            {
-                **item,
-                "fecha_pago": item["fecha_pago"].isoformat()
-                if hasattr(item.get("fecha_pago"), "isoformat")
-                else str(item.get("fecha_pago") or ""),
-                "fecha_solicitud": item["fecha_solicitud"].isoformat()
-                if hasattr(item.get("fecha_solicitud"), "isoformat")
-                else str(item.get("fecha_solicitud") or ""),
-            }
+            {**item,
+             "fecha_emision": item["fecha_emision"].isoformat() if item.get("fecha_emision") else "",
+             "fecha_liquidacion": item["fecha_liquidacion"].isoformat() if item.get("fecha_liquidacion") else ""}
             for item in data
         ]
-
         usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
         await AppLogger.log_action(
-            modulo="reportes",
-            accion="preview_desempeno",
-            detalle={
-                "total_items": len(data),
-                "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
-                "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
-            },
-            usuario_id=current_user.id_usuario,
-            usuario_nombre=usuario_actual,
+            modulo="terceros", accion="preview_informe_desempeno",
+            detalle={"total_items": len(data), "tipo_tercero": tipo_tercero,
+                     "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
+                     "fecha_fin": fecha_fin.isoformat() if fecha_fin else None},
+            usuario_id=current_user.id_usuario, usuario_nombre=usuario_actual,
         )
-
         return {
             "items": _paginate_preview(items, limit, offset),
             "total_items": len(items),
-            "totales_por_persona": meta.get("totales_por_persona", {}),
-            "gran_total_cobro": meta.get("gran_total_cobro", 0),
-            "gran_total_valor": meta.get("gran_total_valor", 0),
+            "total_terceros": meta.get("total_terceros", 0),
+            "totales_por_moneda": meta.get("totales_por_moneda", []),
         }
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        logger.error(f"Error en preview desempeño: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al generar el reporte"
-        )
+        logger.error(f"Error en preview de desempeño de terceros: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
