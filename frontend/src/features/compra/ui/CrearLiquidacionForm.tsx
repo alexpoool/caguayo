@@ -214,7 +214,7 @@ export function CrearLiquidacionForm({ formId, casosUso, initialProveedorId, onE
 
   const calculateImporteGestion = (): number => {
     const importe = new Decimal(calculateImporte());
-    const porcentaje = Number(formData.comision_gestion_porcentaje) || DEFAULTS.PORCENTAJE_COMISION;
+    const porcentaje = Number(formData.comision_gestion_porcentaje ?? DEFAULTS.PORCENTAJE_COMISION);
     const result = mul(importe, percentToMultiplier(porcentaje));
     return toNumber(result);
   };
@@ -612,7 +612,7 @@ if (!filtroCliente) {
                   <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between pl-4">
-                    <span className="text-sm text-gray-500">Importe comisión ({Number(formData.comision_gestion_porcentaje || DEFAULTS.PORCENTAJE_COMISION)}%):</span>
+                    <span className="text-sm text-gray-500">Importe comisión ({Number(formData.comision_gestion_porcentaje ?? DEFAULTS.PORCENTAJE_COMISION)}%):</span>
                   <span className="text-sm text-gray-500">- {calculateImporteGestion().toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between border-b border-gray-200 pb-1">
