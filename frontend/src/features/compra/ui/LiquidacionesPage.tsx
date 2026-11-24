@@ -236,7 +236,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
 
     // Financial calculations with Decimal precision
     const importeDec = new Decimal(liquidacion.importe || 0);
-    const porcentajeAgenciaDec = new Decimal(liquidacion.comision_gestion_porcentaje || DEFAULTS.PORCENTAJE_COMISION);
+    const porcentajeAgenciaDec = new Decimal(liquidacion.comision_gestion_porcentaje ?? DEFAULTS.PORCENTAJE_COMISION);
     const importeAgenciaDec = mul(importeDec, percentToMultiplier(porcentajeAgenciaDec.toNumber()));
     const devengadoDec = sub(importeDec, importeAgenciaDec);
     const tributarioDec = new Decimal(liquidacion.tributario || 0);
