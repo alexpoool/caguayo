@@ -71,6 +71,7 @@ interface ReportConfig {
   showTable?: boolean;
   showStats?: boolean;
   needsMoneda?: boolean;
+  needsTercero?: boolean;
   chartSeries?: { key: string; name: string; color: string }[];
   tableColumns?: {
     key: string;
@@ -86,6 +87,9 @@ interface FilterState {
   fecha_fin: string;
   notas: string;
   id_moneda: string;
+  tipo_tercero: string;
+  id_tercero: string;
+  estado: string;
 }
 
 interface ChartStats {
@@ -106,6 +110,9 @@ function getDefaultFilters(userDepId?: number): FilterState {
     fecha_fin: toISODateLocal(now),
     notas: "",
     id_moneda: "1",
+    tipo_tercero: "ambos",
+    id_tercero: "",
+    estado: "",
   };
 }
 
@@ -355,24 +362,55 @@ const REPORTS: ReportConfig[] = [
   {
     id: "desempeno",
     title: "Informe de Desempeño",
-    description: "Análisis de rendimiento y productividad por proyecto.",
+    description: "Liquidaciones de proveedores y realizadores, con totales separados por moneda.",
     icon: <BarChart3 className="h-4 w-4" />,
     color: "bg-orange-50",
     colorHex: CHART_COLORS[2],
-    module: "proyectos",
-    moduleLabel: "Proyectos",
+    module: "terceros",
+    moduleLabel: "Terceros",
     previewEndpoint: "/reportes/desempeno/preview",
-    buildPreviewParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }),
-    transformChartData: (data) => {
-      const porPersona = data?.totales_por_persona || {};
-      return Object.entries(porPersona).slice(0, 7).map(([name, total]: [string, any]) => ({ name: name.substring(0, 12), monto: Number(total?.total_valor || total || 0), cantidad: Number(total?.total_cobro || 0) }));
-    },
-    computeStats: (data) => { const porPersona = data?.totales_por_persona || {}; return computeBasicStats(Object.values(porPersona).map((t: any) => Number(t?.total_valor || t || 0))); },
+    buildPreviewParams: (f) => ({
+      fecha_inicio: f.fecha_inicio,
+      fecha_fin: f.fecha_fin,
+      tipo_tercero: f.tipo_tercero,
+      id_tercero: f.id_tercero,
+      id_moneda: f.id_moneda,
+      estado: f.estado,
+    }),
+    transformChartData: () => [],
+    computeStats: () => ({ total: 0, promedio: 0, max: 0, min: 0, count: 0 }),
     pdfEndpoint: "/reportes/desempeno",
-    pdfFilename: "informe_desempeno.pdf",
-    buildPdfParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    pdfFilename: "informe_desempeno_terceros.pdf",
+    buildPdfParams: (f) => ({
+      fecha_inicio: f.fecha_inicio,
+      fecha_fin: f.fecha_fin,
+      tipo_tercero: f.tipo_tercero,
+      id_tercero: f.id_tercero,
+      id_moneda: f.id_moneda,
+      estado: f.estado,
+      aprobado_por_nombre: "",
+      aprobado_por_cargo: "",
+      notas: f.notas,
+    }),
     needsDependencia: false,
     needsFechas: true,
+    needsMoneda: true,
+    needsTercero: true,
+    showTable: true,
+    showStats: false,
+    tableColumns: [
+      { key: "tipo_tercero", label: "Tipo" },
+      { key: "tercero_nombre", label: "Tercero" },
+      { key: "documento", label: "Documento" },
+      { key: "fecha_emision", label: "Emisión", render: (v: any) => formatFecha(v) || "—" },
+      { key: "fecha_liquidacion", label: "Liquidación", render: (v: any) => formatFecha(v) || "—" },
+      { key: "moneda", label: "Moneda" },
+      { key: "importe", label: "Importe", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "devengado", label: "Devengado", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "importe_agencia", label: "Agencia", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "neto_pagar", label: "Neto", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "estado", label: "Estado" },
+    ],
   },
   {
     id: "onat",
@@ -473,6 +511,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
   const [draftFilters, setDraftFilters] = useState<FilterState>(() => getDefaultFilters(userDepId));
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
+  const [tercerosInforme, setTercerosInforme] = useState<{ id_tercero: number; nombre: string; tipo_tercero: string }[]>([]);
 
   // Load dependencias
   useEffect(() => {
@@ -491,6 +530,20 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
     casosUso.listarMonedas().then((data: any) => setMonedas(Array.isArray(data) ? data : [])).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReport?.needsMoneda]);
+
+  // Terceros disponibles según el origen de liquidación seleccionado.
+  useEffect(() => {
+    if (activeReport?.id !== "desempeno") return;
+    let vigente = true;
+    casosUso.consultarReporte("/reportes/desempeno/terceros", {
+      tipo_tercero: draftFilters.tipo_tercero,
+    }).then((data: any) => {
+      if (vigente) setTercerosInforme(Array.isArray(data) ? data : []);
+    }).catch(() => {
+      if (vigente) setTercerosInforme([]);
+    });
+    return () => { vigente = false; };
+  }, [activeReport?.id, draftFilters.tipo_tercero, casosUso]);
 
   // Reset filters with smart defaults when report changes
   useEffect(() => {
@@ -836,6 +889,40 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                         {monedas.map((m) => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
                       </select>
                     </div>
+                  )}
+                  {activeReport.needsTercero && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Tipo de tercero</label>
+                        <select value={draftFilters.tipo_tercero} onChange={(e) => { updateFilter("tipo_tercero", e.target.value); updateFilter("id_tercero", ""); }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none">
+                          <option value="ambos">Proveedores y realizadores</option>
+                          <option value="proveedores">Solo proveedores</option>
+                          <option value="realizadores">Solo realizadores</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Tercero</label>
+                        <select value={draftFilters.id_tercero} onChange={(e) => updateFilter("id_tercero", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none">
+                          <option value="">Todos los terceros</option>
+                          {tercerosInforme.map((tercero) => (
+                            <option key={tercero.id_tercero} value={tercero.id_tercero}>
+                              {tercero.nombre} · {tercero.tipo_tercero}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Estado</label>
+                        <select value={draftFilters.estado} onChange={(e) => updateFilter("estado", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none">
+                          <option value="">Todos los estados</option>
+                          <option value="pagada">Liquidada / Confirmada</option>
+                          <option value="pendiente">Pendiente</option>
+                        </select>
+                      </div>
+                    </>
                   )}
                   {activeReport.needsFechas && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
