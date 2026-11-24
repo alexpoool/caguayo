@@ -46,7 +46,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
     ? `${user.nombre} ${user.primer_apellido}${user.segundo_apellido ? " " + user.segundo_apellido : ""}`.trim()
     : "";
   const userCargo = user?.cargo || "";
-  const isFormValid = Boolean(idDependencia && idProducto && fechaInicio && fechaFin);
+  const isFormValid = Boolean(idDependencia && idProducto && fechaInicio && fechaFin && fechaInicio <= fechaFin);
 
   useEffect(() => {
     casosUso.listarDependencias()
@@ -55,7 +55,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const cargarProductos = async (texto = "", dependencia = idDependencia) => {
+  const cargarProductos = async (texto = "", dependencia = idDependencia, signal?: AbortSignal) => {
     if (!dependencia) {
       setSugerencias([]);
       return [];
@@ -65,16 +65,19 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
       const data: any = await casosUso.consultarReporte(
         "/reportes/productos-item-anexo",
         { id_dependencia: String(dependencia), q: texto },
+        signal,
       );
       const productos = Array.isArray(data) ? data : [];
-      setSugerencias(productos);
+      if (!signal?.aborted) setSugerencias(productos);
       return productos as Productos[];
-    } catch {
-      setSugerencias([]);
-      toast.error("Error cargando productos de la dependencia");
+    } catch (error: any) {
+      if (error?.name !== "AbortError" && !signal?.aborted) {
+        setSugerencias([]);
+        toast.error("Error cargando productos de la dependencia");
+      }
       return [];
     } finally {
-      setBuscando(false);
+      if (!signal?.aborted) setBuscando(false);
     }
   };
 
@@ -91,16 +94,18 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
       setSugerencias([]);
       return;
     }
+    const controller = new AbortController();
+    focusControllerRef.current = controller;
     let activo = true;
     (async () => {
-      const productos = await cargarProductos("", idDependencia);
-      if (!activo || productos.length === 0) return;
+      const productos = await cargarProductos("", idDependencia, controller.signal);
+      if (!activo || controller.signal.aborted || productos.length === 0) return;
       const primero = productos[0];
       setIdProducto(primero.id_producto);
       setProductoSel(primero);
       setBusqueda(primero.nombre);
     })();
-    return () => { activo = false; };
+    return () => { activo = false; controller.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idDependencia]);
 
