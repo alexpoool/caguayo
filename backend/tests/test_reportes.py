@@ -1210,3 +1210,23 @@ class TestPDFGenerationNuevos:
         assert response.status_code == 200
         assert response.headers.get("content-type", "").startswith("application/pdf")
         assert len(response.content) > 0
+
+
+def test_listado_terceros_disponibles_desempeno(client, auth_success):
+    """El filtro del informe lista terceros con liquidaciones de ambos orígenes."""
+    terceros = [
+        {"id_tercero": 7, "nombre": "Proveedor y artista", "tipo_tercero": "Proveedor / Realizador"},
+        {"id_tercero": 8, "nombre": "Proveedor", "tipo_tercero": "Proveedor"},
+    ]
+    with patch.object(
+        reportes_router,
+        "get_terceros_con_liquidaciones",
+        new=AsyncMock(return_value=terceros),
+    ):
+        response = client.get(
+            "/api/v1/reportes/desempeno/terceros",
+            params={"tipo_tercero": "ambos"},
+        )
+
+    assert response.status_code == 200, response.text
+    assert response.json() == terceros
