@@ -60,12 +60,11 @@ fun MovimientosDependenciaPreviewDto.toRows(definition: ReportDefinition): List<
 
 fun MovimientosProductoPreviewDto.toRows(definition: ReportDefinition): List<Map<String, Any?>> =
     items.map { item -> mapOf(
-        "codigo_producto" to (item.codigo_producto ?: ""),
-        "producto" to (item.producto ?: ""),
         "fecha" to (item.fecha ?: ""),
-        "operacion" to (item.operacion ?: ""),
-        "tipo" to (item.tipo ?: ""),
+        "saldo_inicial" to (item.saldo_inicial ?: 0),
+        "tipo_movimiento" to (item.tipo_movimiento ?: item.operacion ?: ""),
         "cantidad" to (item.cantidad ?: 0),
+        "saldo_final" to (item.saldo_final ?: 0),
     ) }
 
 fun ClientesPreviewDto.toRows(definition: ReportDefinition): List<Map<String, Any?>> =
@@ -236,17 +235,16 @@ object ReportCatalog {
         module = ReportModule.Inventory,
         filters = listOf(
             ReportFilter(id = "id_dependencia", label = "Dependencia", type = ReportFilterType.NUMBER),
-            ReportFilter(id = "id_producto", label = "Producto", type = ReportFilterType.NUMBER, required = false),
+            ReportFilter(id = "id_producto", label = "Producto", type = ReportFilterType.NUMBER),
             ReportFilter(id = "fecha_inicio", label = "Fecha inicio", type = ReportFilterType.DATE),
             ReportFilter(id = "fecha_fin", label = "Fecha fin", type = ReportFilterType.DATE),
         ),
         columns = listOf(
-            ReportColumn("codigo_producto", "Código producto"),
-            ReportColumn("producto", "Producto"),
             ReportColumn("fecha", "Fecha"),
-            ReportColumn("operacion", "Operación"),
-            ReportColumn("tipo", "Tipo"),
+            ReportColumn("saldo_inicial", "Saldo inicial", align = ReportColumnAlign.Right),
+            ReportColumn("tipo_movimiento", "Tipo de movimiento"),
             ReportColumn("cantidad", "Cantidad", align = ReportColumnAlign.Right),
+            ReportColumn("saldo_final", "Saldo final", align = ReportColumnAlign.Right),
         ),
         previewPath = "reportes/movimientos-producto/preview",
         pdfPath = "reportes/movimientos-producto",
