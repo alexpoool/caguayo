@@ -175,7 +175,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
         setPreviewData(null);
         setResumenPorTipo([]);
         setPreviewError(true);
-        toast.error("Error al cargar la tabla");
+        toast.error(err?.response?.data?.detail || err?.message || "Error al cargar la tabla");
       } finally {
         if (!controller.signal.aborted) setTableLoading(false);
       }
@@ -221,7 +221,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
     try {
       const blob = await casosUso.generarReporte("/reportes/movimientos-producto", buildParams());
       abrirBlob(blob);
-    } catch { toast.error("Error al generar vista previa"); }
+    } catch (error: any) { toast.error(error?.response?.data?.detail || error?.message || "Error al generar vista previa"); }
     finally { setPreviewLoading(false); }
   };
 
@@ -232,7 +232,7 @@ const ReporteMovimientosProducto: React.FC<{ casosUso: CasosUsoReportes }> = ({ 
       const blob = await casosUso.generarReporte("/reportes/movimientos-producto", buildParams());
       descargarBlob(blob, `movimientos_producto_${idProducto}.pdf`);
       toast.success("Reporte generado");
-    } catch { toast.error("Error al generar reporte"); }
+    } catch (error: any) { toast.error(error?.response?.data?.detail || error?.message || "Error al generar reporte"); }
     finally { setPdfLoading(false); }
   };
 
