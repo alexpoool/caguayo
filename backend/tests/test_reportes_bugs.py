@@ -478,3 +478,54 @@ async def test_informe_desempeno_realizadores_no_selecciona_columnas_opcionales_
     assert data[0]["importe_agencia"] == 10.0
     assert meta["total_items"] == 1
 
+
+def test_onat_agrupa_por_tercero_y_moneda_con_tasas_ponderadas():
+    registros = [
+        {
+            "id_tercero": 7, "tipo_tercero": "Proveedor", "persona_nombre": "Proveedor A",
+            "id_moneda": 1, "moneda": "CUP", "importe": 100, "devengado": 80,
+            "importe_agencia": 20, "tributario_monto": 8, "comision_bancaria": 1,
+            "gasto_empresa": 2, "neto_pagar": 69,
+        },
+        {
+            "id_tercero": 7, "tipo_tercero": "Proveedor", "persona_nombre": "Proveedor A",
+            "id_moneda": 1, "moneda": "CUP", "importe": 300, "devengado": 240,
+            "importe_agencia": 60, "tributario_monto": 24, "comision_bancaria": 3,
+            "gasto_empresa": 6, "neto_pagar": 207,
+        },
+        {
+            "id_tercero": 7, "tipo_tercero": "Realizador", "persona_nombre": "Realizador A",
+            "id_moneda": 1, "moneda": "CUP", "importe": 50, "devengado": 45,
+            "importe_agencia": 5, "tributario_monto": 4.5, "comision_bancaria": 0,
+            "gasto_empresa": 0, "neto_pagar": 40.5,
+        },
+        {
+            "id_tercero": 7, "tipo_tercero": "Proveedor", "persona_nombre": "Proveedor A",
+            "id_moneda": 2, "moneda": "USD", "importe": 10, "devengado": 8,
+            "importe_agencia": 2, "tributario_monto": 0.8, "comision_bancaria": 0,
+            "gasto_empresa": 0, "neto_pagar": 7.2,
+        },
+    ]
+
+    data, meta = reportes_service._agrupar_liquidaciones_onat(registros)
+
+    proveedor_cup = next(
+        item for item in data
+        if item["tipo_tercero"] == "Proveedor" and item["id_moneda"] == 1
+    )
+    realizador_cup = next(
+        item for item in data
+        if item["tipo_tercero"] == "Realizador" and item["id_moneda"] == 1
+    )
+    assert proveedor_cup["total_liquidaciones"] == 2
+    assert proveedor_cup["valor_total"] == 400
+    assert proveedor_cup["devengado"] == 320
+    assert proveedor_cup["importe_agencia"] == 80
+    assert proveedor_cup["porcentaje_agencia"] == 20
+    assert proveedor_cup["tributario"] == 10
+    assert proveedor_cup["neto_pagar"] == 276
+    assert realizador_cup["valor_total"] == 50
+    assert meta["total_terceros"] == 3
+    assert meta["total_liquidaciones"] == 4
+    assert len(meta["totales_por_moneda"]) == 2
+    assert {item["moneda"] for item in meta["totales_por_moneda"]} == {"CUP", "USD"}
