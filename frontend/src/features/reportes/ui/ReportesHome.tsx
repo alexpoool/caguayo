@@ -930,11 +930,11 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                   {activeReport.needsFechas && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Desde</label>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{activeReport.id === "desempeno" ? "Emisión desde" : "Desde"}</label>
                         <DateInput className="border-gray-200 focus:ring-2 focus:ring-brand-500" value={draftFilters.fecha_inicio} onChange={(fecha) => updateFilter("fecha_inicio", fecha)} />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{activeReport.id === "desempeno" ? "Emisión hasta" : "Hasta"}</label>
                         <DateInput className="border-gray-200 focus:ring-2 focus:ring-brand-500" value={draftFilters.fecha_fin} onChange={(fecha) => updateFilter("fecha_fin", fecha)} />
                       </div>
                     </div>
