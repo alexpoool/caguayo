@@ -929,13 +929,31 @@ async def get_informe_desempeno(
             })
 
     if tipo in {"realizadores", "ambos"}:
+        # No seleccionar la entidad ORM completa: el esquema de algunas
+        # instalaciones aún no contiene columnas opcionales recientes del
+        # modelo (p. ej. referencia_bancaria), y este informe no las necesita.
         query_realizadores = (
             select(
-                PersonaLiquidacion,
+                PersonaLiquidacion.id_liquidacion.label("pl_id_liquidacion"),
+                PersonaLiquidacion.id_persona.label("pl_id_persona"),
+                PersonaLiquidacion.id_moneda.label("pl_id_moneda"),
+                PersonaLiquidacion.numero.label("pl_numero"),
+                PersonaLiquidacion.fecha_emision.label("pl_fecha_emision"),
+                PersonaLiquidacion.fecha_liquidacion.label("pl_fecha_liquidacion"),
+                PersonaLiquidacion.importe.label("pl_importe"),
+                PersonaLiquidacion.devengado.label("pl_devengado"),
+                PersonaLiquidacion.importe_agencia.label("pl_importe_agencia"),
+                PersonaLiquidacion.tributario_monto.label("pl_tributario_monto"),
+                PersonaLiquidacion.comision_bancaria.label("pl_comision_bancaria"),
+                PersonaLiquidacion.gasto_empresa.label("pl_gasto_empresa"),
+                PersonaLiquidacion.neto_pagar.label("pl_neto_pagar"),
+                PersonaLiquidacion.tipo_pago.label("pl_tipo_pago"),
+                PersonaLiquidacion.confirmado.label("pl_confirmado"),
                 Cliente.nombre.label("tercero_nombre"),
                 Moneda.nombre.label("moneda_nombre"),
                 Moneda.simbolo.label("moneda_simbolo"),
             )
+            .select_from(PersonaLiquidacion)
             .join(Cliente, PersonaLiquidacion.id_persona == Cliente.id_cliente, isouter=True)
             .join(Moneda, PersonaLiquidacion.id_moneda == Moneda.id_moneda, isouter=True)
         )
@@ -951,30 +969,34 @@ async def get_informe_desempeno(
             query_realizadores = query_realizadores.where(PersonaLiquidacion.confirmado.is_(True))
         elif estado == "pendiente":
             query_realizadores = query_realizadores.where(PersonaLiquidacion.confirmado.is_(False))
-        query_realizadores = query_realizadores.order_by(PersonaLiquidacion.fecha_emision.desc(), PersonaLiquidacion.id_liquidacion.desc())
+        query_realizadores = query_realizadores.order_by(
+            PersonaLiquidacion.fecha_emision.desc(),
+            PersonaLiquidacion.id_liquidacion.desc(),
+        )
 
-        for liquidacion, nombre, moneda_nombre, moneda_simbolo in (await db.execute(query_realizadores)).all():
-            if liquidacion.id_persona is not None:
-                ids_personas.add(liquidacion.id_persona)
+        for liquidacion in (await db.execute(query_realizadores)).all():
+            id_persona = liquidacion.pl_id_persona
+            if id_persona is not None:
+                ids_personas.add(id_persona)
             registros.append({
-                "_id_tercero": liquidacion.id_persona,
-                "_id_moneda": liquidacion.id_moneda,
+                "_id_tercero": id_persona,
+                "_id_moneda": liquidacion.pl_id_moneda,
                 "tipo_tercero": "Realizador",
-                "tercero_nombre": nombre or "",
-                "documento": liquidacion.numero or "",
-                "fecha_emision": liquidacion.fecha_emision,
-                "fecha_liquidacion": liquidacion.fecha_liquidacion,
-                "moneda_nombre": moneda_nombre or "",
-                "moneda_simbolo": moneda_simbolo or "",
-                "importe": Decimal(liquidacion.importe or 0),
-                "devengado": Decimal(liquidacion.devengado or 0),
-                "importe_agencia": Decimal(liquidacion.importe_agencia or 0),
-                "tributario_monto": Decimal(liquidacion.tributario_monto or 0),
-                "comision_bancaria": Decimal(liquidacion.comision_bancaria or 0),
-                "gasto_empresa": Decimal(liquidacion.gasto_empresa or 0),
-                "neto_pagar": Decimal(liquidacion.neto_pagar or 0),
-                "tipo_pago": liquidacion.tipo_pago or "",
-                "estado": "Confirmada" if liquidacion.confirmado else "Pendiente",
+                "tercero_nombre": liquidacion.tercero_nombre or "",
+                "documento": liquidacion.pl_numero or "",
+                "fecha_emision": liquidacion.pl_fecha_emision,
+                "fecha_liquidacion": liquidacion.pl_fecha_liquidacion,
+                "moneda_nombre": liquidacion.moneda_nombre or "",
+                "moneda_simbolo": liquidacion.moneda_simbolo or "",
+                "importe": Decimal(liquidacion.pl_importe or 0),
+                "devengado": Decimal(liquidacion.pl_devengado or 0),
+                "importe_agencia": Decimal(liquidacion.pl_importe_agencia or 0),
+                "tributario_monto": Decimal(liquidacion.pl_tributario_monto or 0),
+                "comision_bancaria": Decimal(liquidacion.pl_comision_bancaria or 0),
+                "gasto_empresa": Decimal(liquidacion.pl_gasto_empresa or 0),
+                "neto_pagar": Decimal(liquidacion.pl_neto_pagar or 0),
+                "tipo_pago": liquidacion.pl_tipo_pago or "",
+                "estado": "Confirmada" if liquidacion.pl_confirmado else "Pendiente",
             })
 
     nombres = await nombres_completos_por_cliente(db, list(ids_personas)) if ids_personas else {}
