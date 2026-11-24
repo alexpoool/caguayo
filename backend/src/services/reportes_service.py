@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import case, func, or_, select
@@ -498,7 +499,16 @@ async def get_movimientos_dependencia(
 async def get_movimientos_producto(
     db: AsyncSession, id_dependencia: int, id_producto: int, fecha_inicio, fecha_fin
 ):
-    """Movimientos confirmados con saldos progresivos reconstruidos desde la fuente de verdad."""
+    """Movimientos confirmados con saldos monetarios históricos por coste promedio ponderado.
+
+    Las entradas de compra/recepción incorporan el coste y moneda guardados en
+    el propio movimiento. Las salidas se valoran al coste promedio vigente
+    inmediatamente antes de salir. Los ajustes positivos heredan ese coste
+    promedio; si no existe coste previo no se inventa una valoración.
+
+    No se mezclan monedas ni se usa el precio actual del catálogo como sustituto
+    de un coste histórico ausente: en esos casos se informa el dato que falta.
+    """
     dependencia_result = await db.execute(
         select(Dependencia).where(Dependencia.id_dependencia == id_dependencia)
     )
@@ -511,50 +521,12 @@ async def get_movimientos_producto(
         "direccion": dependencia.direccion,
     }
 
-    # El catálogo de productos es global. Para este reporte, el producto debe
-    # tener al menos un movimiento confirmado en la dependencia seleccionada.
     producto_result = await db.execute(
         select(Productos).where(Productos.id_producto == id_producto)
     )
     producto = producto_result.scalar_one_or_none()
     if producto is None:
         raise LookupError("El producto indicado no existe")
-
-    tiene_movimientos = await db.execute(
-        select(Movimiento.id_movimiento)
-        .where(
-            Movimiento.id_dependencia == id_dependencia,
-            Movimiento.id_producto == id_producto,
-            Movimiento.estado == "confirmado",
-        )
-        .limit(1)
-    )
-    if tiene_movimientos.scalar_one_or_none() is None:
-        raise ValueError("El producto no pertenece a la dependencia seleccionada")
-
-    producto_info = {"codigo": producto.codigo, "nombre": producto.nombre}
-
-    # saldos es una caché derivada, no la fuente de verdad. Se reconstruye el
-    # saldo inicial desde todos los movimientos confirmados anteriores al
-    # período; así un snapshot antiguo o corrupto nunca falsea el resultado.
-    historico_result = await db.execute(
-        select(
-            func.coalesce(
-                func.sum(Movimiento.cantidad * TipoMovimiento.factor), 0
-            )
-        )
-        .join(
-            TipoMovimiento,
-            Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
-        )
-        .where(
-            Movimiento.id_dependencia == id_dependencia,
-            Movimiento.id_producto == id_producto,
-            Movimiento.estado == "confirmado",
-            Movimiento.fecha < fecha_inicio,
-        )
-    )
-    saldo_actual = float(historico_result.scalar_one() or 0)
 
     movimientos_result = await db.execute(
         select(
@@ -563,6 +535,8 @@ async def get_movimientos_producto(
             TipoMovimiento.tipo.label("operacion"),
             TipoMovimiento.factor.label("factor"),
             Movimiento.cantidad,
+            Movimiento.precio_compra,
+            Movimiento.moneda_compra,
             Productos.codigo.label("codigo_producto"),
             Productos.nombre.label("producto"),
         )
@@ -575,45 +549,119 @@ async def get_movimientos_producto(
             Movimiento.id_dependencia == id_dependencia,
             Movimiento.id_producto == id_producto,
             Movimiento.estado == "confirmado",
-            Movimiento.fecha >= fecha_inicio,
             Movimiento.fecha < fecha_fin + timedelta(days=1),
         )
         .order_by(Movimiento.fecha.asc(), Movimiento.id_movimiento.asc())
     )
+    historico = movimientos_result.all()
+    if not historico:
+        raise ValueError("El producto no tiene movimientos confirmados en la dependencia")
 
+    unidades = Decimal("0")
+    valor_inventario = Decimal("0")
+    moneda_id = None
     movimientos = []
     resumen_normalizado: Dict[str, Dict[str, Any]] = {}
-    for row in movimientos_result.all():
-        saldo_inicial = saldo_actual
-        cantidad = float(row.cantidad or 0)
-        saldo_actual += cantidad * float(row.factor or 0)
+
+    for row in historico:
+        cantidad = Decimal(str(row.cantidad or 0))
+        factor = Decimal(str(row.factor or 0))
+        variacion = cantidad * factor
+        saldo_inicial_unidades = unidades
+        saldo_inicial_valor = valor_inventario
+
+        tipo = (row.operacion or "").strip()
+        tipo_normalizado = tipo.casefold()
+
+        if variacion > 0:
+            if tipo_normalizado in ("compra", "recepcion"):
+                if row.precio_compra is None or row.moneda_compra is None:
+                    raise ValueError(
+                        f"No se puede valorar históricamente el movimiento #{row.id_movimiento}: "
+                        "la entrada no tiene precio de compra o moneda registrados. "
+                        "Completa esos datos para generar el reporte."
+                    )
+                if moneda_id is None:
+                    moneda_id = row.moneda_compra
+                elif moneda_id != row.moneda_compra:
+                    raise ValueError(
+                        "El historial del producto contiene varias monedas de compra. "
+                        "No es correcto sumar esos importes sin una tasa de conversión histórica."
+                    )
+                coste_unitario = Decimal(str(row.precio_compra))
+            else:
+                if unidades <= 0:
+                    raise ValueError(
+                        f"No se puede valorar el ajuste positivo del movimiento "
+                        f"#{row.id_movimiento}: no existe un coste promedio anterior."
+                    )
+                coste_unitario = valor_inventario / unidades
+
+            valor_inventario += variacion * coste_unitario
+            unidades += variacion
+
+        elif variacion < 0:
+            if unidades <= 0 or unidades + variacion < 0:
+                raise ValueError(
+                    f"El movimiento #{row.id_movimiento} deja el inventario en negativo; "
+                    "no se puede calcular un coste promedio fiable."
+                )
+            coste_promedio = valor_inventario / unidades
+            valor_inventario += variacion * coste_promedio
+            unidades += variacion
+            if unidades == 0:
+                valor_inventario = Decimal("0")
+
+        # Los movimientos anteriores al rango construyen el saldo inicial,
+        # pero no aparecen como filas del período.
+        if row.fecha.date() < fecha_inicio:
+            continue
+
         movimientos.append({
             "fecha": row.fecha,
-            "saldo_inicial": saldo_inicial,
-            "operacion": row.operacion,
-            "tipo_movimiento": row.operacion,
+            "saldo_inicial": round(float(saldo_inicial_valor), 2),
+            "operacion": tipo,
+            "tipo_movimiento": tipo,
             "cantidad": row.cantidad,
-            "saldo_final": saldo_actual,
+            "saldo_final": round(float(valor_inventario), 2),
+            "saldo_inicial_unidades": round(float(saldo_inicial_unidades), 3),
+            "saldo_final_unidades": round(float(unidades), 3),
             "codigo_producto": row.codigo_producto,
             "producto": row.producto,
         })
 
-        # La clave normalizada evita que "RECEPCION", "recepcion" y variantes
-        # con espacios creen renglones separados; se conserva el primer rótulo.
-        clave_tipo = (row.operacion or "").strip().casefold()
+        clave_tipo = tipo.casefold()
         if clave_tipo not in resumen_normalizado:
             resumen_normalizado[clave_tipo] = {
-                "tipo": (row.operacion or "").strip(),
+                "tipo": tipo,
                 "cantidad_total": 0.0,
             }
-        resumen_normalizado[clave_tipo]["cantidad_total"] += cantidad
+        resumen_normalizado[clave_tipo]["cantidad_total"] += float(cantidad)
 
+    if moneda_id is None:
+        raise ValueError(
+            "No existe una moneda histórica de compra para valorar las existencias "
+            "de este producto."
+        )
+
+    moneda_result = await db.execute(
+        select(Moneda).where(Moneda.id_moneda == moneda_id)
+    )
+    moneda = moneda_result.scalar_one_or_none()
+    if moneda is None:
+        raise ValueError("No se encontró la moneda histórica de compra del producto.")
+
+    producto_info = {
+        "codigo": producto.codigo,
+        "nombre": producto.nombre,
+        "moneda": moneda.nombre,
+        "moneda_simbolo": moneda.simbolo,
+    }
     resumen = sorted(
         resumen_normalizado.values(),
         key=lambda item: item["tipo"].casefold(),
     )
     return movimientos, dependencia_info, producto_info, resumen
-
 
 async def buscar_productos_item_anexo(
     db: AsyncSession, id_dependencia: int, q: Optional[str] = None, limite: int = 100
