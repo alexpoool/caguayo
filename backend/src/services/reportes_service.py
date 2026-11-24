@@ -1505,6 +1505,7 @@ async def get_resumen_liquidaciones(
             PersonaLiquidacion.comision_bancaria.label("comision_bancaria"),
             PersonaLiquidacion.gasto_empresa.label("gasto_empresa"),
             PersonaLiquidacion.neto_pagar.label("neto_pagar"),
+            PersonaLiquidacion.tipo_pago.label("tipo_pago"),
             PersonaLiquidacion.confirmado.label("confirmado"),
             Cliente.nombre.label("cliente_nombre"),
             Cliente.nit.label("cliente_nit"),
@@ -1645,7 +1646,7 @@ async def get_resumen_liquidaciones(
             ),
             "importe_agencia": float(importe - devengado),
             "tributario_monto": float(row.tributario_monto or 0),
-            "tipo_pago": "",
+            "tipo_pago": row.tipo_pago or "",
             "liquidada": bool(row.confirmado),
             "productos": [],
         })
