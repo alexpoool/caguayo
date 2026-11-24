@@ -1611,8 +1611,8 @@ async def get_resumen_liquidaciones(
         })
 
     for row in persona_rows:
-        importe = Decimal(row.importe or 0)
-        devengado = Decimal(row.devengado or 0)
+        importe = Decimal(str(row.importe or 0))
+        devengado = Decimal(str(row.devengado or 0))
         moneda = (
             f"{row.moneda_simbolo} ({row.moneda_nombre})"
             if row.moneda_nombre
@@ -1686,6 +1686,8 @@ async def get_resumen_liquidaciones(
     meta = {
         "total_items": len(data),
         "total_liquidaciones": len(data),
+        "total_proveedores": sum(1 for item in data if item["tipo_tercero"] == "Proveedor"),
+        "total_realizadores": sum(1 for item in data if item["tipo_tercero"] == "Realizador"),
         "totales_por_moneda": totales_por_moneda,
         "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
         "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
