@@ -323,7 +323,7 @@ const REPORTS: ReportConfig[] = [
       { key: "comision_bancaria", label: "Comisión", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "gasto_empresa", label: "Gasto empresa", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "neto_pagar", label: "Neto a pagar", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
-      { key: "liquidada", label: "Estado", render: (v: any) => v ? "Liquidada" : "Pendiente" },
+      { key: "liquidada", label: "Estado", render: (v: any, row: any) => row.tipo_tercero === "Realizador" ? (v ? "Confirmada" : "Pendiente") : (v ? "Liquidada" : "Pendiente") },
     ],
   },
   {
