@@ -496,37 +496,68 @@ async def get_movimientos_dependencia(
 
 
 async def get_movimientos_producto(
-    db: AsyncSession, id_dependencia: int, id_producto: Optional[int], fecha_inicio, fecha_fin
+    db: AsyncSession, id_dependencia: int, id_producto: int, fecha_inicio, fecha_fin
 ):
-    result = await db.execute(
-        select(Dependencia).filter(Dependencia.id_dependencia == id_dependencia)
+    """Movimientos confirmados de un producto con saldo progresivo y resumen por tipo."""
+    dependencia_result = await db.execute(
+        select(Dependencia).where(Dependencia.id_dependencia == id_dependencia)
     )
-    dependencia = result.scalar_one_or_none()
+    dependencia = dependencia_result.scalar_one_or_none()
     dependencia_info = (
         {"nombre": dependencia.nombre, "direccion": dependencia.direccion}
-        if dependencia
-        else {}
+        if dependencia else {}
     )
 
-    producto_info = {"nombre": "Todos los productos"}
-    if id_producto is not None:
-        result = await db.execute(
-            select(Productos).filter(Productos.id_producto == id_producto)
-        )
-        producto = result.scalar_one_or_none()
-        producto_info = (
-            {"codigo": producto.codigo, "nombre": producto.nombre} if producto else {}
-        )
+    producto_result = await db.execute(
+        select(Productos).where(Productos.id_producto == id_producto)
+    )
+    producto = producto_result.scalar_one_or_none()
+    if producto is None:
+        return [], dependencia_info, {}, []
 
-    query = (
+    producto_info = {"codigo": producto.codigo, "nombre": producto.nombre}
+
+    # Snapshot acumulado más reciente anterior al período. Si no existe,
+    # reconstruir el saldo desde los movimientos confirmados anteriores.
+    snapshot_result = await db.execute(
+        select(Saldo.saldo)
+        .where(
+            Saldo.id_dependencia == id_dependencia,
+            Saldo.id_producto == id_producto,
+            Saldo.fecha < fecha_inicio,
+        )
+        .order_by(Saldo.fecha.desc(), Saldo.id_saldo.desc())
+        .limit(1)
+    )
+    snapshot = snapshot_result.scalar_one_or_none()
+    if snapshot is None:
+        historical_result = await db.execute(
+            select(
+                func.coalesce(
+                    func.sum(Movimiento.cantidad * TipoMovimiento.factor), 0
+                )
+            )
+            .join(
+                TipoMovimiento,
+                Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
+            )
+            .where(
+                Movimiento.id_dependencia == id_dependencia,
+                Movimiento.id_producto == id_producto,
+                Movimiento.estado == "confirmado",
+                Movimiento.fecha < fecha_inicio,
+            )
+        )
+        saldo_actual = float(historical_result.scalar_one() or 0)
+    else:
+        saldo_actual = float(snapshot or 0)
+
+    movimientos_result = await db.execute(
         select(
+            Movimiento.id_movimiento,
             Movimiento.fecha,
             TipoMovimiento.tipo.label("operacion"),
-            case(
-                (TipoMovimiento.factor > 0, "Entrada"),
-                (TipoMovimiento.factor < 0, "Salida"),
-                else_="Neutro",
-            ).label("tipo"),
+            TipoMovimiento.factor.label("factor"),
             Movimiento.cantidad,
             Productos.codigo.label("codigo_producto"),
             Productos.nombre.label("producto"),
@@ -536,36 +567,40 @@ async def get_movimientos_producto(
             Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
         )
         .join(Productos, Movimiento.id_producto == Productos.id_producto)
-        .filter(
+        .where(
             Movimiento.id_dependencia == id_dependencia,
-            # Solo los movimientos confirmados son movimientos reales.
+            Movimiento.id_producto == id_producto,
             Movimiento.estado == "confirmado",
             Movimiento.fecha >= fecha_inicio,
-            # fecha_fin es date: incluir todo el último día
             Movimiento.fecha < fecha_fin + timedelta(days=1),
         )
-        .order_by(Movimiento.fecha.desc())
+        .order_by(Movimiento.fecha.asc(), Movimiento.id_movimiento.asc())
     )
 
-    if id_producto is not None:
-        query = query.filter(Movimiento.id_producto == id_producto)
+    movimientos = []
+    resumen_por_tipo: Dict[str, float] = {}
+    for row in movimientos_result.all():
+        saldo_inicial = saldo_actual
+        saldo_actual += float(row.cantidad or 0) * float(row.factor or 0)
+        movimientos.append({
+            "fecha": row.fecha,
+            "saldo_inicial": saldo_inicial,
+            "operacion": row.operacion,
+            "tipo_movimiento": row.operacion,
+            "cantidad": row.cantidad,
+            "saldo_final": saldo_actual,
+            "codigo_producto": row.codigo_producto,
+            "producto": row.producto,
+        })
+        resumen_por_tipo[row.operacion] = (
+            resumen_por_tipo.get(row.operacion, 0) + float(row.cantidad or 0)
+        )
 
-    result = await db.execute(query)
-    results = result.all()
-
-    movimientos = [
-        {
-            "fecha": r.fecha,
-            "operacion": r.operacion,
-            "tipo": r.tipo,
-            "cantidad": r.cantidad,
-            "codigo_producto": r.codigo_producto,
-            "producto": r.producto,
-        }
-        for r in results
+    resumen = [
+        {"tipo": tipo, "cantidad_total": cantidad}
+        for tipo, cantidad in sorted(resumen_por_tipo.items())
     ]
-
-    return movimientos, dependencia_info, producto_info
+    return movimientos, dependencia_info, producto_info, resumen
 
 
 async def buscar_productos_item_anexo(
