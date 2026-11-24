@@ -16,7 +16,7 @@ export type Modulo =
  */
 export const FUNCIONALIDADES_POR_MODULO: Record<Modulo, string[]> = {
   inventario: ['movimientos', 'pendientes', 'productos'],
-  terceros: ['clientes', 'contratos', 'proveedores', 'convenios'],
+  terceros: ['clientes', 'contratos', 'proveedores', 'convenios', 'reporte_desempeno'],
   compra: ['proveedores', 'anexos', 'liquidaciones', 'productos_liquidacion'],
   venta: ['clientes', 'facturas', 'venta_efectivo', 'ofertas_tienda'],
   proyecto: [
@@ -36,7 +36,6 @@ export const FUNCIONALIDADES_POR_MODULO: Record<Modulo, string[]> = {
     'reporte_clientes',
     'reporte_proyectos',
     'reporte_creadores',
-    'reporte_desempeno',
     'reporte_liquidaciones',
     'reporte_onat',
     'reporte_mincult',
@@ -100,6 +99,7 @@ const RUTAS_BASE: RutaConfig[] = [
   { path: '/terceros/registro-clientes', modulo: 'terceros', funcionalidades: ['reporte_clientes'] },
   { path: '/terceros/registro-proveedores', modulo: 'terceros', funcionalidades: ['reporte_proveedores'] },
   { path: '/terceros/registro-realizadores', modulo: 'terceros', funcionalidades: ['reporte_creadores'] },
+  { path: '/terceros/informe-desempeno', modulo: 'terceros', funcionalidades: ['reporte_desempeno'] },
   { path: '/terceros/proveedores', modulo: 'terceros', funcionalidades: ['proveedores'] },
   { path: '/terceros/contratos', modulo: 'terceros', funcionalidades: ['contratos'] },
   { path: '/terceros/cuentas', modulo: 'terceros', funcionalidades: ['proveedores', 'liquidaciones'] },
@@ -148,7 +148,6 @@ const RUTAS_BASE: RutaConfig[] = [
   { path: '/proyectos/liquidaciones', modulo: 'proyecto', funcionalidades: ['liquidaciones_servicio'] },
   { path: '/proyectos/registro-proyectos', modulo: 'proyecto', funcionalidades: ['reporte_proyectos'] },
   { path: '/proyectos/registro-realizadores', modulo: 'proyecto', funcionalidades: ['reporte_creadores'] },
-  { path: '/proyectos/informe-desempeno', modulo: 'proyecto', funcionalidades: ['reporte_desempeno'] },
   { path: '/proyectos/certificaciones', modulo: 'proyecto', funcionalidades: ['proyectos'] },
 
   // Reportes
@@ -160,7 +159,6 @@ const RUTAS_BASE: RutaConfig[] = [
   { path: '/reportes/registro-clientes', modulo: 'reportes', funcionalidades: ['reporte_clientes'] },
   { path: '/reportes/registro-proyectos', modulo: 'reportes', funcionalidades: ['reporte_proyectos'] },
   { path: '/reportes/registro-creadores', modulo: 'reportes', funcionalidades: ['reporte_creadores'] },
-  { path: '/reportes/informe-desempeno', modulo: 'reportes', funcionalidades: ['reporte_desempeno'] },
   { path: '/reportes/resumen-liquidaciones', modulo: 'reportes', funcionalidades: ['reporte_liquidaciones'] },
   { path: '/reportes/ingresos-retenciones', modulo: 'reportes', funcionalidades: ['reporte_liquidaciones'] },
   { path: '/reportes/mincult', modulo: 'reportes', funcionalidades: ['reporte_mincult'] },
