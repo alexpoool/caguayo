@@ -548,6 +548,9 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
   // Reset filters with smart defaults when report changes
   useEffect(() => {
     const defaults = getDefaultFilters(userDepId);
+    // El informe de terceros reúne varias monedas; por defecto las muestra
+    // todas y mantiene los totales separados por moneda.
+    if (activeReport?.id === "desempeno") defaults.id_moneda = "";
     setFilters(defaults);
     setDraftFilters(defaults);
   }, [activeReport?.id, userDepId]);
