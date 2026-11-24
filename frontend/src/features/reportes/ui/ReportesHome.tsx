@@ -263,7 +263,7 @@ const REPORTS: ReportConfig[] = [
   {
     id: "liquidaciones",
     title: "Resumen de Liquidaciones",
-    description: "Pagado y pendiente por pagar por cliente.",
+    description: "Liquidaciones de proveedores y realizadores, con totales separados por moneda.",
     icon: <Calculator className="h-4 w-4" />,
     color: "bg-pink-50",
     colorHex: CHART_COLORS[5],
@@ -281,7 +281,7 @@ const REPORTS: ReportConfig[] = [
       const items = data?.items || [];
       const porCliente: Record<string, { pendiente: number; pagado: number }> = {};
       items.forEach((it: any) => {
-        const name = (it.cliente_nombre || "Sin cliente").substring(0, 14);
+        const name = `${it.tipo_tercero || "Tercero"} · ${(it.cliente_nombre || "Sin cliente")}`.substring(0, 24);
         const monto = Number(it.neto_pagar || 0);
         if (!porCliente[name]) porCliente[name] = { pendiente: 0, pagado: 0 };
         if (it.liquidada) porCliente[name].pagado += monto;
@@ -310,9 +310,10 @@ const REPORTS: ReportConfig[] = [
     showTable: true,
     showStats: false,
     tableColumns: [
+      { key: "tipo_tercero", label: "Tipo" },
       { key: "codigo", label: "Código" },
       { key: "fecha_emision", label: "Emisión", render: (v: any) => formatFecha(v) || "—" },
-      { key: "cliente_nombre", label: "Cliente" },
+      { key: "cliente_nombre", label: "Tercero" },
       { key: "moneda", label: "Moneda" },
       { key: "importe", label: "Importe", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "devengado", label: "Devengado", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
@@ -1126,7 +1127,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                 {activeReport?.id === "onat"
                   ? "La tabla muestra una fila por tercero y moneda; el resumen y el PDF consideran todas las liquidaciones confirmadas. El valor total corresponde al importe bruto acumulado y los importes se mantienen separados por moneda."
                   : activeReport?.id === "liquidaciones"
-                    ? "La tabla muestra todas las liquidaciones encontradas, con paginación. El resumen y el PDF presentan subtotales independientes por moneda."
+                    ? "La tabla incluye liquidaciones de proveedores y realizadores, con paginación. El resumen y el PDF presentan subtotales independientes por moneda."
                     : "La vista previa muestra los primeros 3 registros; el resumen y el PDF consideran todos los registros filtrados. Los importes se mantienen separados por moneda."}
               </p>
             </div>
