@@ -1249,7 +1249,7 @@ function App() {
                     <p className="text-xs font-bold text-gray-500 uppercase tracking-widest px-2 pt-3 pb-1">Ministerios</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=onat" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_onat')}>
-                    <FileText className="w-4 h-4" /> ONAT Retenciones
+                    <FileText className="w-4 h-4" /> ONAT · Valoración de terceros
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=mincult" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_mincult')}>
                     <ClipboardList className="w-4 h-4" /> MINCULT Ingresos
