@@ -406,7 +406,6 @@ const REPORTS: ReportConfig[] = [
       { key: "moneda", label: "Moneda" },
       { key: "importe", label: "Importe", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "devengado", label: "Devengado", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
-      { key: "tributario", label: "% Tributario", className: "text-right", render: (v: any) => `${Number(v ?? 0).toFixed(2)}%` },
       { key: "tributario_monto", label: "Tributario", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "comision_bancaria", label: "Comisión", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "gasto_empresa", label: "Gasto empresa", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
@@ -465,6 +464,7 @@ const REPORTS: ReportConfig[] = [
       { key: "devengado", label: "Devengado", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "porcentaje_agencia", label: "% Agencia", className: "text-right", render: (v: any) => `${Number(v ?? 0).toFixed(2)}%` },
       { key: "importe_agencia", label: "Agencia", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "tributario", label: "% Tributario", className: "text-right", render: (v: any) => `${Number(v ?? 0).toFixed(2)}%` },
       { key: "tributario_monto", label: "Tributario", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "comision_bancaria", label: "Comisión", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: "gasto_empresa", label: "Gasto empresa", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
@@ -1051,9 +1051,9 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                           ["Valor total", total.valor_total ?? total.total_importe],
                           ["Devengado", total.total_devengado],
                           ["Agencia", total.total_importe_agencia],
-                          ["Tasa agencia", `${Number(total.porcentaje_agencia ?? 0).toFixed(2)}%`],
+                          ...(activeReport?.id === "onat" ? [["Tasa agencia", `${Number(total.porcentaje_agencia ?? 0).toFixed(2)}%`]] : []),
                           ["Tributario", total.total_tributario_monto],
-                          ["Tasa tributaria", `${Number(total.tributario ?? 0).toFixed(2)}%`],
+                          ...(activeReport?.id === "onat" ? [["Tasa tributaria", `${Number(total.tributario ?? 0).toFixed(2)}%`]] : []),
                           ["Comisión bancaria", total.total_comision_bancaria],
                           ["Gasto empresa", total.total_gasto_empresa],
                           ["Neto a pagar", total.total_neto_pagar],
@@ -1071,7 +1071,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                 </div>
               )}
               <p className="text-[11px] text-gray-400">
-                La tabla muestra una fila por tercero y moneda; el resumen y el PDF consideran todas las liquidaciones confirmadas. El valor total corresponde al importe bruto acumulado y los importes se mantienen separados por moneda.
+                {activeReport?.id === "onat" ? "La tabla muestra una fila por tercero y moneda; el resumen y el PDF consideran todas las liquidaciones confirmadas. El valor total corresponde al importe bruto acumulado y los importes se mantienen separados por moneda." : "La vista previa muestra los primeros 3 registros; el resumen y el PDF consideran todos los registros filtrados. Los importes se mantienen separados por moneda."}
               </p>
             </div>
           )}
