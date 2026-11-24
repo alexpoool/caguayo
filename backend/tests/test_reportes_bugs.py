@@ -9,6 +9,7 @@ Cada test falla antes del fix correspondiente y pasa después:
 """
 
 import inspect
+from decimal import Decimal
 
 import pytest
 from datetime import date, datetime, timedelta
@@ -19,6 +20,7 @@ from src.models.categoria import Categorias, Subcategorias
 from src.models.dependencia import Dependencia
 from src.models.movimiento import Movimiento, TipoMovimiento
 from src.models.producto import Productos
+from src.models.moneda import Moneda
 from src.models.saldo import Saldo
 from src.services import reportes_service
 from src.services.reportes_service import (
@@ -38,9 +40,10 @@ async def db():
                     Categorias.__table__,
                     Subcategorias.__table__,
                     Dependencia.__table__,
+                    Moneda.__table__,
                     TipoMovimiento.__table__,
-                    Movimiento.__table__,
                     Productos.__table__,
+                    Movimiento.__table__,
                     Saldo.__table__,
                 ],
             )
@@ -65,6 +68,7 @@ async def datos_base(db):
         direccion="Calle 1", telefono="555", email="d@d.co", web="w.co",
         id_tipo_dependencia=1,
     ))
+    db.add(Moneda(id_moneda=1, nombre="USD", denominacion="Dólar estadounidense", simbolo="USD"))
     cat = Categorias(id_categoria=1, nombre="Cat")
     db.add(cat)
     await db.flush()
@@ -86,6 +90,7 @@ def _crear_mov(db, tipo_ids, pid, tipo, cantidad, fecha, estado="confirmado"):
     db.add(Movimiento(
         id_tipo_movimiento=tipo_ids[tipo], id_dependencia=1,
         id_producto=pid, cantidad=cantidad, fecha=fecha, estado=estado,
+        precio_compra=Decimal("2"), moneda_compra=1,
     ))
 
 
@@ -245,8 +250,8 @@ async def test_movimientos_producto_calcula_saldos_progresivos_y_resumen_por_tip
         db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
     )
 
-    assert [m["saldo_inicial"] for m in movimientos] == [10.0, 14.0, 11.0]
-    assert [m["saldo_final"] for m in movimientos] == [14.0, 11.0, 10.0]
+    assert [m["saldo_inicial"] for m in movimientos] == [20.0, 28.0, 22.0]
+    assert [m["saldo_final"] for m in movimientos] == [28.0, 22.0, 20.0]
     assert [m["tipo_movimiento"] for m in movimientos] == ["compra", "venta", "MERMA"]
     assert {item["tipo"]: item["cantidad_total"] for item in resumen} == {
         "compra": 4.0, "venta": 3.0, "MERMA": 1.0
@@ -268,8 +273,8 @@ async def test_movimientos_producto_ignora_snapshot_inconsistente_y_reconstruye_
     movimientos, _, _, _ = await get_movimientos_producto(
         db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
     )
-    assert movimientos[0]["saldo_inicial"] == 99.0
-    assert movimientos[0]["saldo_final"] == 101.0
+    assert movimientos[0]["saldo_inicial"] == 198.0
+    assert movimientos[0]["saldo_final"] == 202.0
 
 async def test_movimientos_producto_rechaza_producto_de_otra_dependencia(db, datos_base):
     from src.services.reportes_service import get_movimientos_producto
@@ -295,6 +300,7 @@ async def test_movimientos_producto_normaliza_resumen_sin_perder_rotulo(db, dato
     db.add(Movimiento(
         id_tipo_movimiento=5, id_dependencia=1, id_producto=1,
         cantidad=4, fecha=datetime(2026, 9, 10, 10, 0, 0), estado="confirmado",
+        precio_compra=Decimal("2"), moneda_compra=1,
     ))
     await db.commit()
 
@@ -302,7 +308,7 @@ async def test_movimientos_producto_normaliza_resumen_sin_perder_rotulo(db, dato
         db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
     )
 
-    assert [m["saldo_final"] for m in movimientos] == [3.0, 7.0]
+    assert [m["saldo_final"] for m in movimientos] == [6.0, 14.0]
     assert resumen == [{"tipo": "RECEPCION", "cantidad_total": 7.0}]
 
 
@@ -328,8 +334,8 @@ async def test_movimientos_producto_saldo_progresivo_incluye_ajustes_y_devolucio
         db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
     )
 
-    assert [m["saldo_inicial"] for m in movimientos] == [10.0, 8.0, 13.0]
-    assert [m["saldo_final"] for m in movimientos] == [8.0, 13.0, 10.0]
+    assert [m["saldo_inicial"] for m in movimientos] == [20.0, 16.0, 26.0]
+    assert [m["saldo_final"] for m in movimientos] == [16.0, 26.0, 20.0]
     assert {item["tipo"]: item["cantidad_total"] for item in resumen} == {
         "devolucion": 2.0, "ajuste_agregar": 5.0, "ajuste_quitar": 3.0
     }
@@ -347,6 +353,6 @@ async def test_movimientos_producto_orden_estable_para_misma_fecha(db, datos_bas
         db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
     )
 
-    assert [m["saldo_inicial"] for m in movimientos] == [10.0, 12.0]
-    assert [m["saldo_final"] for m in movimientos] == [12.0, 11.0]
+    assert [m["saldo_inicial"] for m in movimientos] == [20.0, 24.0]
+    assert [m["saldo_final"] for m in movimientos] == [24.0, 22.0]
 
