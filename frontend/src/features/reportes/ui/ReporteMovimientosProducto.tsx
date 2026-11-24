@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import type { CasosUsoReportes } from "../application/casos-uso";
 import { useAuth } from "@/shared/ui/auth";
 import { toast } from "react-hot-toast";
-import { Dependencia, Productos } from "../domain/reportes";
+import type { Dependencia, Productos } from "../domain/reportes";
 import { Package, Download, Eye, Loader2, Search, AlertCircle, Filter, X } from "lucide-react";
 import ReportNotes from "@/shared/ui/components/ReportNotes";
 import { ReportPreviewTable } from "@/shared/ui/components/ReportPreviewTable";
