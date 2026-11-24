@@ -40,7 +40,7 @@ interface ReportsApi {
     @GET("reportes/movimientos-producto/preview")
     suspend fun movimientosProductoPreview(
         @Query("id_dependencia") dependenciaId: String,
-        @Query("id_producto") productoId: String?,
+        @Query("id_producto") productoId: String,
         @Query("fecha_inicio") fechaInicio: String,
         @Query("fecha_fin") fechaFin: String,
     
