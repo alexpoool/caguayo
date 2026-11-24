@@ -139,7 +139,6 @@ const ReporteProveedores = lazy(() => cargarReportes().then(m => ({ default: m.R
 const ReporteClientes = lazy(() => cargarReportes().then(m => ({ default: m.ReporteClientesContainer })));
 const ReporteProyectos = lazy(() => cargarReportes().then(m => ({ default: m.ReporteProyectosContainer })));
 const ReporteCreadores = lazy(() => cargarReportes().then(m => ({ default: m.ReporteCreadoresContainer })));
-const ReporteOnat = lazy(() => cargarReportes().then(m => ({ default: m.ReporteOnatContainer })));
 const ReporteMincult = lazy(() => cargarReportes().then(m => ({ default: m.ReporteMincultContainer })));
 const ReporteLiquidaciones = lazy(() => cargarReportes().then(m => ({ default: m.ReporteLiquidacionesContainer })));
 const CompraConveniosPage = lazy(() => cargarCompra().then(m => ({ default: m.ConveniosPageContainer })));
@@ -2235,7 +2234,7 @@ function App() {
                   path="/reportes/onat"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
-                      <ReporteOnat />
+                      <Navigate to="/reportes?report=onat" replace />
                     </ProtectedRoute>
                   }
                 />
