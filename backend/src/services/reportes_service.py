@@ -1677,8 +1677,8 @@ async def get_resumen_liquidaciones(
     )
 
     campos_totales = (
-        "devengado", "tributario", "comision_bancaria", "gasto_empresa",
-        "importe", "neto_pagar", "importe_agencia", "tributario_monto",
+        "devengado", "comision_bancaria", "gasto_empresa", "importe",
+        "neto_pagar", "importe_agencia", "tributario_monto",
     )
     acumulados: Dict[Any, Dict[str, Any]] = {}
     for item in data:
@@ -1695,6 +1695,13 @@ async def get_resumen_liquidaciones(
         total["total_liquidaciones"] += 1
         for campo in campos_totales:
             total[f"total_{campo}"] += item[campo]
+
+    for total in acumulados.values():
+        # El porcentaje tributario es una tasa, no un importe sumable.
+        total["total_tributario"] = (
+            total["total_tributario_monto"] * 100 / total["total_devengado"]
+            if total["total_devengado"] else 0.0
+        )
 
     totales_por_moneda = sorted(
         acumulados.values(), key=lambda total: (total["moneda"], str(total["id_moneda"]))
