@@ -301,7 +301,7 @@ class TestCreateLiquidacionTipoCompraValidation:
             if isinstance(call.args[0], Liquidacion)
         )
         assert creada.comision_gestion_porcentaje == Decimal("17.50")
-        assert creada.comision_gestion_importe == Decimal("8.7500")
+        assert creada.comision_gestion_importe == Decimal("8.75")
 
     @pytest.mark.asyncio
     async def test_rechaza_venta_efectivo(self):
