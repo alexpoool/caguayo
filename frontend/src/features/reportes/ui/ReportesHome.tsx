@@ -414,25 +414,60 @@ const REPORTS: ReportConfig[] = [
   },
   {
     id: "onat",
-    title: "ONAT — Ingresos y Retenciones",
-    description: "Reporte de ingresos y retenciones para ONAT.",
+    title: "ONAT — Valoración económica de terceros",
+    description: "Consolida el valor de las liquidaciones confirmadas de cada proveedor y realizador, separado por moneda.",
     icon: <FileText className="h-4 w-4" />,
     color: "bg-red-50",
     colorHex: CHART_COLORS[3],
     module: "ministerios",
     moduleLabel: "Ministerios",
     previewEndpoint: "/reportes/onat/preview",
-    buildPreviewParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }),
-    transformChartData: (data) => {
-      const items = data?.items || [];
-      return items.slice(0, 7).map((item: any) => ({ name: (item.creador_nombre || item.concepto || "ONAT").substring(0, 12), monto: Number(item.retenido || item.monto || 0), cantidad: Number(item.retencion || 0) }));
-    },
-    computeStats: (data) => { const items = data?.items || []; return computeBasicStats(items.map((i: any) => Number(i.retenido || i.monto || 0))); },
+    buildPreviewParams: (f) => ({
+      fecha_inicio: f.fecha_inicio,
+      fecha_fin: f.fecha_fin,
+      tipo_tercero: f.tipo_tercero,
+      id_tercero: f.id_tercero,
+      id_moneda: f.id_moneda,
+    }),
+    transformChartData: (data) => (data?.items || []).map((item: any) => ({
+      name: (item.persona_nombre || "Tercero").substring(0, 18),
+      monto: Number(item.valor_total || 0),
+      cantidad: Number(item.total_liquidaciones || 0),
+    })),
+    computeStats: (data) => computeBasicStats((data?.items || []).map((item: any) => Number(item.valor_total || 0))),
     pdfEndpoint: "/reportes/onat",
-    pdfFilename: "reporte_onat.pdf",
-    buildPdfParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    pdfFilename: "valoracion_onat.pdf",
+    buildPdfParams: (f) => ({
+      fecha_inicio: f.fecha_inicio,
+      fecha_fin: f.fecha_fin,
+      tipo_tercero: f.tipo_tercero,
+      id_tercero: f.id_tercero,
+      id_moneda: f.id_moneda,
+      aprobado_por_nombre: "",
+      aprobado_por_cargo: "",
+      notas: f.notas,
+    }),
     needsDependencia: false,
     needsFechas: true,
+    needsMoneda: true,
+    needsTercero: true,
+    showTable: true,
+    showStats: false,
+    tableColumns: [
+      { key: "tipo_tercero", label: "Tipo" },
+      { key: "persona_nombre", label: "Proveedor / Realizador" },
+      { key: "carnet_identidad", label: "CI" },
+      { key: "nit", label: "NIT" },
+      { key: "moneda", label: "Moneda" },
+      { key: "total_liquidaciones", label: "Liquidaciones", className: "text-right" },
+      { key: "valor_total", label: "Valor total", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "devengado", label: "Devengado", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "importe_agencia", label: "Agencia", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "tributario_monto", label: "Tributario", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "comision_bancaria", label: "Comisión", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "gasto_empresa", label: "Gasto empresa", className: "text-right", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+      { key: "neto_pagar", label: "Neto a pagar", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+    ],
   },
   {
     id: "mincult",
@@ -533,7 +568,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
 
   // Terceros disponibles según el origen de liquidación seleccionado.
   useEffect(() => {
-    if (activeReport?.id !== "desempeno") return;
+    if (!["desempeno", "onat"].includes(activeReport?.id || "")) return;
     let vigente = true;
     casosUso.consultarReporte("/reportes/desempeno/terceros", {
       tipo_tercero: draftFilters.tipo_tercero,
@@ -550,7 +585,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
     const defaults = getDefaultFilters(userDepId);
     // El informe de terceros reúne varias monedas; por defecto las muestra
     // todas y mantiene los totales separados por moneda.
-    if (activeReport?.id === "desempeno") defaults.id_moneda = "";
+    if (activeReport?.id === "desempeno" || activeReport?.id === "onat") defaults.id_moneda = "";
     setFilters(defaults);
     setDraftFilters(defaults);
   }, [activeReport?.id, userDepId]);
@@ -989,12 +1024,12 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
           </div>
           <div className="border-t border-gray-100 pt-4">{activeReport?.showTable ? renderTable() : renderChart()}</div>
 
-          {activeReport?.id === "desempeno" && previewData && (
+          {["desempeno", "onat"].includes(activeReport?.id || "") && previewData && (
             <div className="border-t border-gray-100 pt-4 mt-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-bold text-gray-800">Resumen financiero</h3>
                 <span className="text-xs text-gray-500">
-                  {previewData.total_items ?? 0} liquidaciones · {previewData.total_terceros ?? 0} terceros
+                  {previewData.total_liquidaciones ?? previewData.total_items ?? 0} liquidaciones · {previewData.total_terceros ?? 0} terceros
                 </span>
               </div>
               {(previewData.totales_por_moneda || []).length === 0 ? (
@@ -1030,7 +1065,7 @@ export function ReportesHome({ casosUso }: { casosUso: CasosUsoReportes }) {
                 </div>
               )}
               <p className="text-[11px] text-gray-400">
-                La vista previa muestra los primeros 3 registros; el resumen y el PDF consideran todos los registros filtrados. Los importes se mantienen separados por moneda.
+                La tabla muestra una fila por tercero y moneda; el resumen y el PDF consideran todas las liquidaciones confirmadas. El valor total corresponde al importe bruto acumulado y los importes se mantienen separados por moneda.
               </p>
             </div>
           )}
