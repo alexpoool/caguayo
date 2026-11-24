@@ -1019,7 +1019,7 @@ async def preview_onat(
     id_tercero: Optional[int] = Query(None, description="Filtrar por tercero"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_current_user_required),
-    limit: Optional[int] = Query(None, ge=1, le=100),
+    limit: Optional[int] = Query(3, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
     try:
