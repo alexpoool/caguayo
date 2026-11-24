@@ -9,6 +9,8 @@ Cada test falla antes del fix correspondiente y pasa después:
 """
 
 import inspect
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from decimal import Decimal
 
 import pytest
@@ -420,3 +422,58 @@ async def test_movimientos_producto_rechaza_entrada_sin_coste_historico(db, dato
         await get_movimientos_producto(
             db, 1, 1, date(2026, 9, 10), date(2026, 9, 10)
         )
+
+async def test_informe_desempeno_realizadores_no_selecciona_columnas_opcionales_del_modelo(monkeypatch):
+    """El informe no debe pedir columnas del modelo que no necesita, como referencia_bancaria."""
+    fecha = date(2026, 11, 1)
+    fila = SimpleNamespace(
+        pl_id_liquidacion=10,
+        pl_id_persona=7,
+        pl_id_moneda=1,
+        pl_numero="RL-10",
+        pl_fecha_emision=fecha,
+        pl_fecha_liquidacion=None,
+        pl_importe=Decimal("100.00"),
+        pl_devengado=Decimal("90.00"),
+        pl_importe_agencia=Decimal("10.00"),
+        pl_tributario_monto=Decimal("5.00"),
+        pl_comision_bancaria=Decimal("1.00"),
+        pl_gasto_empresa=Decimal("2.00"),
+        pl_neto_pagar=Decimal("82.00"),
+        pl_tipo_pago="TRANSFERENCIA",
+        pl_confirmado=True,
+        tercero_nombre="Realizador Test",
+        moneda_nombre="USD",
+        moneda_simbolo="USD",
+    )
+
+    class Resultado:
+        def all(self):
+            return [fila]
+
+    class DB:
+        statement = None
+
+        async def execute(self, statement):
+            self.statement = statement
+            return Resultado()
+
+    db_mock = DB()
+    monkeypatch.setattr(
+        reportes_service,
+        "nombres_completos_por_cliente",
+        AsyncMock(return_value={7: "Realizador Test"}),
+    )
+
+    data, meta = await reportes_service.get_informe_desempeno(
+        db_mock, tipo_tercero="realizadores"
+    )
+
+    sql = str(db_mock.statement).lower()
+    assert "referencia_bancaria" not in sql
+    assert "persona_liquidacion.id_persona" in sql
+    assert len(data) == 1
+    assert data[0]["tipo_tercero"] == "Realizador"
+    assert data[0]["neto_pagar"] == 82.0
+    assert meta["total_items"] == 1
+
