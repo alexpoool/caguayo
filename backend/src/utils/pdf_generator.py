@@ -745,8 +745,9 @@ def generar_pdf_liquidaciones(
     # ── Primera tabla: Cabecera de liquidaciones ──────────────────────────
     headers = [
         "No.",
+        "TIPO",
         "CÓDIGO",
-        "CLIENTE",
+        "TERCERO",
         "FECHA",
         "MONEDA",
         "DEVENGADO",
@@ -760,6 +761,7 @@ def generar_pdf_liquidaciones(
         data.append(
             [
                 str(idx),
+                str(it.get("tipo_tercero", "Proveedor")),
                 str(it.get("codigo", "")),
                 str(it.get("cliente_nombre", "")),
                 str(it.get("fecha_emision", "")),
@@ -780,6 +782,7 @@ def generar_pdf_liquidaciones(
         total = totales_por_moneda[0]
         totals_row = [
             "",
+            "",
             "TOTALES",
             "",
             "",
@@ -795,6 +798,7 @@ def generar_pdf_liquidaciones(
         for total in totales_por_moneda:
             data.append([
                 "",
+                "",
                 f"TOTALES {total.get('moneda', '')}",
                 "",
                 "",
@@ -807,7 +811,7 @@ def generar_pdf_liquidaciones(
             ])
     elif totales:
         totals_row = [
-            "", "TOTALES", "", "", "",
+            "", "", "TOTALES", "", "", "",
             format_quantity(totales.get("total_devengado", 0)),
             format_quantity(totales.get("total_tributario_monto", 0)),
             format_quantity(totales.get("total_comision_bancaria", 0)),
@@ -818,8 +822,8 @@ def generar_pdf_liquidaciones(
     template.add_table(
         headers,
         data,
-        code_columns=[0, 1],
-        numeric_columns=[5, 6, 7, 8, 9],
+        code_columns=[0, 2],
+        numeric_columns=[6, 7, 8, 9, 10],
         totals_row=totals_row,
     )
 
