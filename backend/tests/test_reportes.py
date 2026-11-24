@@ -938,9 +938,8 @@ class TestPreviewConTokenNuevos:
                 [
                     "items",
                     "total_items",
-                    "totales_por_persona",
-                    "gran_total_cobro",
-                    "gran_total_valor",
+                    "total_terceros",
+                    "totales_por_moneda",
                 ],
             ),
             (
