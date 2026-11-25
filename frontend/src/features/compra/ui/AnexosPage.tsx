@@ -5,7 +5,6 @@ import { useInfiniteList } from "@/shared/ui/hooks/useInfiniteList";
 import { useDebounce } from "@/shared/ui/hooks/useDebounce";
 import { useAuth } from "@/shared/ui/auth";
 import { FichaCostoModal } from "./components/FichaCostoModal";
-import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
 import type { CasosUsoCompra } from "../application/casos-uso";
 import type {
   Anexo,
