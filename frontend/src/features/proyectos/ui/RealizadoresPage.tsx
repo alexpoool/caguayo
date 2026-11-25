@@ -257,14 +257,33 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
         );
         allPersonas = data.map((p) => ({ ...p }));
       } else {
-        // Obtener etapas directamente evita descargar 1.000 solicitudes y
-        // hacer después una petición adicional por cada solicitud.
-        const allEtapas = await casosUso.getAllEtapas();
+        // Mantener el listado completo, pero traer solicitudes en lotes de 100.
+        const todasSolicitudes: SolicitudServicio[] = [];
+        let totalSolicitudes: number | null = null;
+        let skipSolicitudes = 0;
+        while (totalSolicitudes === null || skipSolicitudes < totalSolicitudes) {
+          const pagina = await casosUso.getSolicitudes(
+            skipSolicitudes,
+            100,
+            (total) => { totalSolicitudes = total; },
+          );
+          if (!pagina.length) break;
+          todasSolicitudes.push(...pagina);
+          skipSolicitudes += pagina.length;
+          if (totalSolicitudes === null && pagina.length < 100) break;
+        }
+        const etapasPorSolicitud = await mapConcurrent(
+          todasSolicitudes,
+          8,
+          (solicitud) =>
+            casosUso.getEtapasBySolicitud(solicitud.id_solicitud_servicio).catch(() => []),
+        );
+        const allEtapas = etapasPorSolicitud.flat();
         setEtapas(allEtapas);
         const results = await mapConcurrent(allEtapas, 12, (etapa) =>
           casosUso.getPersonasByEtapa(etapa.id_etapa).catch(() => []),
         );
-        allPersonas = results.flat().map((p) => ({ ...p }));
+        allPersonas = results.flat().map((persona) => ({ ...persona }));
       }
       setPersonasEtapa(allPersonas);
 
