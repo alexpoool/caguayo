@@ -671,9 +671,12 @@ export function FacturasPage({
     console.log("[DEBUG] handleViewDocument - clienteFinal:", clienteCompleto);
     console.log("[DEBUG] handleViewDocument - cuentasFinal:", clienteCuentas);
 
+    const contratosDocumento = contrato
+      ? [contrato, ...contratos.filter((item) => item.id_contrato !== contrato!.id_contrato)]
+      : contratos;
     const html = getFacturaDocument(
       factura,
-      contratos,
+      contratosDocumento,
       dependencias,
       user,
       clienteCompleto,
@@ -726,9 +729,12 @@ export function FacturasPage({
     const depId = user?.dependencia?.id_dependencia;
     const depCuentas = depId ? await casosUso.listarCuentasDependencia(depId) : [];
 
+    const contratosDocumento = contrato
+      ? [contrato, ...contratos.filter((item) => item.id_contrato !== contrato!.id_contrato)]
+      : contratos;
     const html = getFacturaDocument(
       factura,
-      contratos,
+      contratosDocumento,
       dependencias,
       user,
       clienteCompleto,
