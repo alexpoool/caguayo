@@ -31,6 +31,7 @@ export function FacturasListView({
   facturas,
   isLoading = false,
   contratos,
+  monedas = [],
   selectedContratoId,
   onSelectedContratoChange,
   onContratoSearch,
