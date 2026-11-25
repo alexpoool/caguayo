@@ -227,6 +227,7 @@ export function FacturaForm({
                           setSelectedClienteId(c.id_cliente);
                           onClienteSelect?.(c.id_cliente);
                           setContratoSearch('');
+                          onContratoSearch?.('');
                           setShowContratoDropdown(false);
                         }}
                       >
