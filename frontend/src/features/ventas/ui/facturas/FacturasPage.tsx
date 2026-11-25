@@ -831,10 +831,9 @@ export function FacturasPage({
       onRemoveProduct={(id: number) =>
         productSelectionHook.removeProduct(id)
       }
-      onSelectedContratoChange={(id: number | null) => {
-        setContratoSearchRemoto("");
-        facturasHook.setSelectedContratoId(id);
-      }}
+      onSelectedContratoChange={(id: number | null) =>
+        facturasHook.setSelectedContratoId(id)
+      }
       onSave={handleSaveFactura}
       tipo={tipo}
     />
