@@ -309,6 +309,7 @@ export function FacturasPage({
   const debouncedClienteSearch = useDebounce(clienteSearchRemoto, 300);
   const [contratoSearchRemoto, setContratoSearchRemoto] = useState("");
   const debouncedContratoSearch = useDebounce(contratoSearchRemoto, 300);
+  const [contratoClienteId, setContratoClienteId] = useState<number | null>(null);
 
 
 
@@ -347,9 +348,9 @@ export function FacturasPage({
       casosUso.listarClientes(0, 50, "CLIENTE,AMBAS", debouncedClienteSearch || undefined),
   });
   const { data: contratosBusqueda = [] } = useQuery({
-    queryKey: ["facturas", "contratos", debouncedContratoSearch],
+    queryKey: ["facturas", "contratos", contratoClienteId, debouncedContratoSearch],
     queryFn: () =>
-      casosUso.listarContratos(0, 50, undefined, debouncedContratoSearch || undefined),
+      casosUso.listarContratos(0, 50, contratoClienteId || undefined, debouncedContratoSearch || undefined),
   });
   const { data: contratoSeleccionado } = useQuery({
     queryKey: ["contrato", facturasHook.selectedContratoId],
@@ -801,6 +802,7 @@ export function FacturasPage({
       clientes={clientesParaFormulario}
       onClienteSearch={setClienteSearchRemoto}
       onContratoSearch={setContratoSearchRemoto}
+      onClienteSelect={setContratoClienteId}
       onFormDataChange={(data: Record<string, any>) =>
         facturasHook.setFormData(data)
       }
