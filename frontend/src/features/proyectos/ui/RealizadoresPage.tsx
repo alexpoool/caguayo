@@ -1223,6 +1223,9 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
                       queryClient.invalidateQueries({
                         queryKey: ["clientes-all"],
                       });
+                      queryClient.invalidateQueries({
+                        queryKey: ["realizadores", "clientes"],
+                      });
                       queryClient.invalidateQueries({ queryKey: ["clientes"] });
                     } catch (error: any) {
                       toast.error(error.message || "Error al crear cliente");
