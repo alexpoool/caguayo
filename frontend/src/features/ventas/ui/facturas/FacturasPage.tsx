@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CasosUsoVentas } from '../../application/casos-uso';
 import type {
   Cliente,
-  ContratoWithDetails,
   Dependencia,
   Pago,
   Productos,
