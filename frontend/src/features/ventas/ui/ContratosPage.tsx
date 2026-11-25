@@ -8,7 +8,6 @@ import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
 import { useDebounce } from '@/shared/ui/hooks/useDebounce';
 import type { CasosUsoVentas } from '../application/casos-uso';
 import type {
-  Cliente,
   ContratoCreate,
   ContratoWithDetails,
   Moneda,
@@ -31,7 +30,6 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
   const solicitudParam = searchParams.get('solicitud');
   const [view, setView] = useState<View>(searchParams.get('solicitud') ? 'form' : 'list');
   
-  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [tiposContrato, setTiposContrato] = useState<{id_tipo_contrato: number, nombre: string}[]>([]);
   const [estados, setEstados] = useState<{id_estado_contrato: number, nombre: string}[]>([]);
