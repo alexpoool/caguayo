@@ -24,6 +24,7 @@ interface FacturaFormProps {
   contratos: ContratoWithDetails[];
   clientes: Cliente[];
   onClienteSearch?: (term: string) => void;
+  onContratoSearch?: (term: string) => void;
   onFormDataChange: (data: Record<string, any>) => void;
   onProductSearchChange: (search: string) => void;
   onAddProduct: (id: number) => void;
@@ -50,6 +51,7 @@ export function FacturaForm({
   contratos,
   clientes,
   onClienteSearch,
+  onContratoSearch,
   onFormDataChange,
   onProductSearchChange,
   onAddProduct,
@@ -196,6 +198,7 @@ export function FacturaForm({
                   }
                   onChange={(e) => {
                     setContratoSearch(e.target.value);
+                    onContratoSearch?.(e.target.value);
                     onSelectedContratoChange(null);
                     setShowContratoDropdown(true);
                   }}
