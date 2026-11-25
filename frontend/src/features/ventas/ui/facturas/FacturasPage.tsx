@@ -309,6 +309,8 @@ export function FacturasPage({
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clienteSearchRemoto, setClienteSearchRemoto] = useState("");
   const debouncedClienteSearch = useDebounce(clienteSearchRemoto, 300);
+  const [contratoSearchRemoto, setContratoSearchRemoto] = useState("");
+  const debouncedContratoSearch = useDebounce(contratoSearchRemoto, 300);
 
   useEffect(() => {
     let activo = true;
@@ -355,6 +357,32 @@ export function FacturasPage({
   const pagosHook = usePagos(casosUso);
   const productSelectionHook = useProductSelection();
 
+  // Búsqueda remota de contratos en páginas de 50, manteniendo el contrato
+  // elegido aunque no pertenezca a la página de resultados actual.
+  useEffect(() => {
+    let activo = true;
+    const cargarContratos = async () => {
+      try {
+        const [resultados, seleccionado] = await Promise.all([
+          casosUso.listarContratos(0, 50, undefined, debouncedContratoSearch || undefined),
+          facturasHook.selectedContratoId
+            ? casosUso.obtenerContrato(facturasHook.selectedContratoId).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+        if (!activo) return;
+        setContratos(
+          seleccionado && !resultados.some((item) => item.id_contrato === seleccionado.id_contrato)
+            ? [seleccionado, ...resultados]
+            : resultados,
+        );
+      } catch (error) {
+        if (activo) console.error("Error buscando contratos:", error);
+      }
+    };
+    void cargarContratos();
+    return () => { activo = false; };
+  }, [casosUso, debouncedContratoSearch, facturasHook.selectedContratoId]);
+
   const currentDependenciaId = user?.dependencia?.id_dependencia ?? null;
   const { data: stockData = [] } = useStockVentas(casosUso, {
     idDependencia: currentDependenciaId,
@@ -393,14 +421,13 @@ export function FacturasPage({
    */
   const loadInitialData = async () => {
     try {
-      const [contratosRes, monedasRes, depsRes, itemsRes] =
-        await Promise.all([
-          casosUso.listarContratos(0, 1000),
-          casosUso.listarMonedas(),
-          casosUso.listarDependencias(undefined, 0, 1000),
-          casosUso.listarProductosConStockItemAnexo(),
-        ]);
-      setContratos(contratosRes);
+      const [monedasRes, depsRes, itemsRes] = await Promise.all([
+        casosUso.listarMonedas(),
+        // La dependencia principal ya viene en la sesión; el listado solo
+        // sirve de respaldo documental y se limita a 50 registros.
+        casosUso.listarDependencias(undefined, 0, 50),
+        casosUso.listarProductosConStockItemAnexo(),
+      ]);
       setMonedas(monedasRes);
       setDependencias(depsRes);
       setItemsAnexo(itemsRes);
@@ -790,6 +817,7 @@ export function FacturasPage({
       contratos={contratos}
       clientes={clientesParaFormulario}
       onClienteSearch={setClienteSearchRemoto}
+      onContratoSearch={setContratoSearchRemoto}
       onFormDataChange={(data: Record<string, any>) =>
         facturasHook.setFormData(data)
       }
@@ -819,9 +847,10 @@ export function FacturasPage({
       onRemoveProduct={(id: number) =>
         productSelectionHook.removeProduct(id)
       }
-      onSelectedContratoChange={(id: number | null) =>
-        facturasHook.setSelectedContratoId(id)
-      }
+      onSelectedContratoChange={(id: number | null) => {
+        setContratoSearchRemoto("");
+        facturasHook.setSelectedContratoId(id);
+      }}
       onSave={handleSaveFactura}
       tipo={tipo}
     />
