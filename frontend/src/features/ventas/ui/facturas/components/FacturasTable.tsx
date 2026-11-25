@@ -20,6 +20,7 @@ interface FacturasTableProps {
 export function FacturasTable({
   facturas,
   contratos,
+  monedas = [],
   onEdit,
   onDelete,
   onViewDetails,
