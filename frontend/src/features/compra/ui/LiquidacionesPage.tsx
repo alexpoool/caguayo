@@ -113,13 +113,10 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
   }, [loadMore, hasMore, isFetchingMore]);
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes-proveedores'],
-    queryFn: async () => {
-      const allClientes = await casosUso.listarClientes();
-      return allClientes.filter((c: Cliente) => 
-        c.tipo_relacion === 'PROVEEDOR' || c.tipo_relacion === 'AMBAS'
-      );
-    }
+    queryKey: ['clientes-proveedores', 100],
+    // El endpoint filtra por relación y limita la respuesta; no descargar
+    // todos los terceros para luego descartar clientes en el navegador.
+    queryFn: () => casosUso.listarClientes(0, 100, 'PROVEEDOR,AMBAS'),
   });
 
   const { data: anexos = [] } = useQuery({
