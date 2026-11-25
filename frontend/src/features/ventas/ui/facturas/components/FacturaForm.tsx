@@ -84,28 +84,11 @@ export function FacturaForm({
     return clientes.find(c => c.id_cliente === selectedClienteId) || null;
   }, [selectedClienteId, clientes]);
 
-  const filteredClientes = useMemo(() => {
-    if (!clienteSearch) return clientes;
-    const q = clienteSearch.toLowerCase();
-    return clientes.filter(c =>
-      nombreMostrado(c).toLowerCase().includes(q) ||
-      c.codigo?.toLowerCase().includes(q)
-    );
-  }, [clientes, clienteSearch]);
-
-  const filteredContratos = useMemo(() => {
-    let list = contratos;
-    if (selectedClienteId) {
-      list = list.filter(c => c.id_cliente === selectedClienteId);
-    }
-    if (!contratoSearch) return list;
-    const q = contratoSearch.toLowerCase();
-    return list.filter(c =>
-      c.nombre?.toLowerCase().includes(q) ||
-      c.codigo?.toLowerCase().includes(q) ||
-      nombreMostrado(c.cliente).toLowerCase().includes(q)
-    );
-  }, [contratos, selectedClienteId, contratoSearch]);
+  // Los resultados llegan filtrados desde el servidor.
+  const filteredClientes = clientes;
+  const filteredContratos = selectedClienteId
+    ? contratos.filter((contrato) => contrato.id_cliente === selectedClienteId)
+    : contratos;
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
