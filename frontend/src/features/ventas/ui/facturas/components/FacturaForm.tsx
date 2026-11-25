@@ -25,6 +25,7 @@ interface FacturaFormProps {
   clientes: Cliente[];
   onClienteSearch?: (term: string) => void;
   onContratoSearch?: (term: string) => void;
+  onClienteSelect?: (id: number | null) => void;
   onFormDataChange: (data: Record<string, any>) => void;
   onProductSearchChange: (search: string) => void;
   onAddProduct: (id: number) => void;
@@ -52,6 +53,7 @@ export function FacturaForm({
   clientes,
   onClienteSearch,
   onContratoSearch,
+  onClienteSelect,
   onFormDataChange,
   onProductSearchChange,
   onAddProduct,
@@ -138,6 +140,7 @@ export function FacturaForm({
                     onClienteSearch?.(e.target.value);
                     if (selectedCliente) {
                       setSelectedClienteId(null);
+                      onClienteSelect?.(null);
                       onSelectedContratoChange(null);
                     }
                     setShowClienteDropdown(true);
@@ -155,6 +158,7 @@ export function FacturaForm({
                       className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors font-medium border-b border-gray-200"
                       onClick={() => {
                         setSelectedClienteId(null);
+                        onClienteSelect?.(null);
                         onSelectedContratoChange(null);
                         setShowClienteDropdown(false);
                       }}
@@ -172,6 +176,7 @@ export function FacturaForm({
                         className={`w-full px-3 py-2 text-left text-sm hover:bg-brand-50 transition-colors ${selectedClienteId === c.id_cliente ? 'bg-brand-100 font-medium' : ''}`}
                         onClick={() => {
                           setSelectedClienteId(c.id_cliente);
+                          onClienteSelect?.(c.id_cliente);
                           onSelectedContratoChange(null);
                           setClienteSearch('');
                           setShowClienteDropdown(false);
@@ -220,6 +225,7 @@ export function FacturaForm({
                         onClick={() => {
                           onSelectedContratoChange(c.id_contrato);
                           setSelectedClienteId(c.id_cliente);
+                          onClienteSelect?.(c.id_cliente);
                           setContratoSearch('');
                           setShowContratoDropdown(false);
                         }}
