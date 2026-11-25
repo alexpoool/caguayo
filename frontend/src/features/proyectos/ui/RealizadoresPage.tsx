@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useDebounce } from "@/shared/ui/hooks/useDebounce";
 import type { CasosUsoProyectos } from '../application/casos-uso';
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Input,
@@ -82,13 +82,12 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
   );
   // Datos completos solo de realizadores ya vinculados; el selector usa búsqueda remota.
   const [todosClientes, setTodosClientes] = useState<Cliente[]>([]);
-  const [clientesBusqueda, setClientesBusqueda] = useState<Cliente[]>([]);
   const [tiposEntidad, setTiposEntidad] = useState<TipoEntidad[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [liquidaciones, setLiquidaciones] = useState<PersonaLiquidacion[]>([]);
   const [currentEtapa, setCurrentEtapa] = useState<Etapa | null>(null);
-  const [solicitudes, setSolicitudes] = useState<SolicitudServicio[]>([]);
+
   const [etapasSolicitud, setEtapasSolicitud] = useState<Etapa[]>([]);
   const [busquedaPersona, setBusquedaPersona] = useState("");
   const [personaSeleccionada, setPersonaSeleccionada] = useState<
@@ -148,23 +147,16 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    let activo = true;
-    casosUso.getClientes(0, 50, undefined, busquedaPersonaDebounced)
-      .then((resultados) => { if (activo) setClientesBusqueda(resultados); })
-      .catch(() => { if (activo) setClientesBusqueda([]); });
-    return () => { activo = false; };
-  }, [casosUso, busquedaPersonaDebounced]);
-
-  useEffect(() => {
-    let activo = true;
-    casosUso.getSolicitudes(0, 50, undefined, {
+  const { data: clientesBusqueda = [] } = useQuery({
+    queryKey: ["realizadores", "clientes", busquedaPersonaDebounced],
+    queryFn: () => casosUso.getClientes(0, 50, undefined, busquedaPersonaDebounced || undefined),
+  });
+  const { data: solicitudes = [] } = useQuery({
+    queryKey: ["realizadores", "solicitudes", busquedaSolicitudDebounced],
+    queryFn: () => casosUso.getSolicitudes(0, 50, undefined, {
       search: busquedaSolicitudDebounced || undefined,
-    })
-      .then((resultados) => { if (activo) setSolicitudes(resultados); })
-      .catch(() => { if (activo) setSolicitudes([]); });
-    return () => { activo = false; };
-  }, [casosUso, busquedaSolicitudDebounced]);
+    }),
+  });
 
   const personasPorId = useMemo(
     () => new Map(todosClientes.map((cliente) => [cliente.id_cliente, cliente])),
