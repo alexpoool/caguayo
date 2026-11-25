@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef, useDeferredValue } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useDebounce } from "@/shared/ui/hooks/useDebounce";
 import type { CasosUsoProyectos } from '../application/casos-uso';
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -79,14 +80,9 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
   const [personasEtapa, setPersonasEtapa] = useState<PersonaEtapaWithDetails[]>(
     [],
   );
+  // Datos completos solo de realizadores ya vinculados; el selector usa búsqueda remota.
   const [todosClientes, setTodosClientes] = useState<Cliente[]>([]);
-  const [personasNaturales, setPersonasNaturales] = useState<ClienteNatural[]>(
-    [],
-  );
-  const [personasTCP, setPersonasTCP] = useState<ClienteTCP[]>([]);
-  const [personasJuridicas, setPersonasJuridicas] = useState<ClienteJuridica[]>(
-    [],
-  );
+  const [clientesBusqueda, setClientesBusqueda] = useState<Cliente[]>([]);
   const [tiposEntidad, setTiposEntidad] = useState<TipoEntidad[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
@@ -99,6 +95,8 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
     Cliente | ClienteConDetalles | null
   >(null);
   const [busquedaSolicitud, setBusquedaSolicitud] = useState("");
+  const busquedaPersonaDebounced = useDebounce(busquedaPersona, 300);
+  const busquedaSolicitudDebounced = useDebounce(busquedaSolicitud, 300);
   const [solicitudSeleccionada, setSolicitudSeleccionada] =
     useState<SolicitudServicio | null>(null);
   const [showDropdownPersona, setShowDropdownPersona] = useState(false);
@@ -111,7 +109,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
   const [editingItem, setEditingItem] = useState<PersonaEtapaWithDetails | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const deferredSearchTerm = useDebounce(searchTerm, 300);
 
   // Moneda del contrato de la etapa: fija, no se puede cambiar
   const { data: monedaContrato } = useMonedaContratoDeEtapa(casosUso, 
@@ -150,17 +148,27 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const personasNaturalesPorId = useMemo(
-    () => new Map(personasNaturales.map((p) => [p.id_cliente, p])),
-    [personasNaturales],
-  );
-  const personasTCPPorId = useMemo(
-    () => new Map(personasTCP.map((p) => [p.id_cliente, p])),
-    [personasTCP],
-  );
-  const personasJuridicasPorId = useMemo(
-    () => new Map(personasJuridicas.map((p) => [p.id_cliente, p])),
-    [personasJuridicas],
+  useEffect(() => {
+    let activo = true;
+    casosUso.getClientes(0, 50, undefined, busquedaPersonaDebounced)
+      .then((resultados) => { if (activo) setClientesBusqueda(resultados); })
+      .catch(() => { if (activo) setClientesBusqueda([]); });
+    return () => { activo = false; };
+  }, [casosUso, busquedaPersonaDebounced]);
+
+  useEffect(() => {
+    let activo = true;
+    casosUso.getSolicitudes(0, 50, undefined, {
+      search: busquedaSolicitudDebounced || undefined,
+    })
+      .then((resultados) => { if (activo) setSolicitudes(resultados); })
+      .catch(() => { if (activo) setSolicitudes([]); });
+    return () => { activo = false; };
+  }, [casosUso, busquedaSolicitudDebounced]);
+
+  const personasPorId = useMemo(
+    () => new Map(todosClientes.map((cliente) => [cliente.id_cliente, cliente])),
+    [todosClientes],
   );
   const todosClientesPorId = useMemo(
     () => new Map(todosClientes.map((p) => [p.id_cliente, p])),
@@ -180,18 +188,16 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
   );
 
   const getTipoPersona = (idPersona: number): string => {
-    if (personasNaturalesPorId.has(idPersona)) return "natural";
-    if (personasTCPPorId.has(idPersona)) return "tcp";
-    if (personasJuridicasPorId.has(idPersona)) return "juridica";
+    const tipo = personasPorId.get(idPersona)?.tipo_persona;
+    if (tipo === "TCP") return "tcp";
+    if (tipo === "JURIDICA") return "juridica";
     return "natural";
   };
 
   const getLabelTipo = (idPersona: number): string => {
     const tipo = getTipoPersona(idPersona);
     if (tipo === "juridica") {
-      const juridica = personasJuridicasPorId.get(
-        idPersona,
-      ) as unknown as Cliente | undefined;
+      const juridica = personasPorId.get(idPersona);
       const idTipoEntidad = juridica?.cliente_juridica?.id_tipo_entidad;
       const tipoEntidad = idTipoEntidad
         ? tiposEntidadPorId.get(idTipoEntidad)
@@ -209,48 +215,34 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
   const getClienteById = (
     idPersona: number,
   ): ClienteNatural | ClienteTCP | ClienteJuridica | undefined => {
-    return (
-      personasNaturalesPorId.get(idPersona) ||
-      personasTCPPorId.get(idPersona) ||
-      personasJuridicasPorId.get(idPersona)
-    );
+    const cliente = personasPorId.get(idPersona);
+    return cliente?.cliente_natural || cliente?.cliente_tcp || cliente?.cliente_juridica;
   };
 
   const loadInitialData = async () => {
     try {
-      const [
-        todosClientesRes,
-        personasRes,
-        monedasRes,
-        solicitudesRes,
-        tcpRes,
-        juridicasRes,
-        liquidacionesRes,
-        tiposEntidadRes,
-      ] = await Promise.all([
-        casosUso.getClientes(0, 10000),
-        casosUso.getPersonasNaturales(),
+      const [monedasRes, tiposEntidadRes, etapaData] = await Promise.all([
         casosUso.getMonedas(0, 100),
-        casosUso.getSolicitudes(0, 1000),
-        casosUso.getClientes(0, 10000, "TCP"),
-        casosUso.getClientes(0, 10000, "JURIDICA"),
-        casosUso.getLiquidaciones(0, 10000),
         casosUso.getTiposEntidad(),
+        etapaParam ? casosUso.getEtapa(Number(etapaParam)) : Promise.resolve(null),
       ]);
-      setTodosClientes(todosClientesRes);
-      setPersonasNaturales(personasRes);
-      setPersonasTCP(tcpRes as unknown as ClienteTCP[]);
-      setPersonasJuridicas(juridicasRes as unknown as ClienteJuridica[]);
       setMonedas(monedasRes);
-      setSolicitudes(solicitudesRes);
-      setLiquidaciones(liquidacionesRes);
       setTiposEntidad(tiposEntidadRes);
-      if (etapaParam) {
-        const etapaData = await casosUso.getEtapa(
-          Number(etapaParam),
-        );
-        setCurrentEtapa(etapaData);
+      if (etapaData) setCurrentEtapa(etapaData);
+
+      // Los importes pagados requieren todas las liquidaciones, pero cada
+      // petición se limita a 100 registros para evitar respuestas masivas.
+      const acumuladas: PersonaLiquidacion[] = [];
+      let total: number | null = null;
+      let skip = 0;
+      while (total === null || skip < total) {
+        const pagina = await casosUso.getLiquidaciones(skip, 100, (n) => { total = n; });
+        if (!pagina.length) break;
+        acumuladas.push(...pagina);
+        skip += pagina.length;
+        if (total === null && pagina.length < 100) break;
       }
+      setLiquidaciones(acumuladas);
     } catch (error) {
       console.error("Error:", error);
     }
@@ -265,23 +257,23 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
         );
         allPersonas = data.map((p) => ({ ...p }));
       } else {
-        const solicitudes = await casosUso.getSolicitudes(0, 1000);
-        const etapasPorSolicitud = await mapConcurrent(
-          solicitudes,
-          8,
-          (sol) =>
-            casosUso
-              .getEtapasBySolicitud(sol.id_solicitud_servicio)
-              .catch(() => []),
-        );
-        const allEtapas = etapasPorSolicitud.flat();
+        // Obtener etapas directamente evita descargar 1.000 solicitudes y
+        // hacer después una petición adicional por cada solicitud.
+        const allEtapas = await casosUso.getAllEtapas();
         setEtapas(allEtapas);
-        const results = await mapConcurrent(allEtapas, 20, (e) =>
-          casosUso.getPersonasByEtapa(e.id_etapa).catch(() => []),
+        const results = await mapConcurrent(allEtapas, 12, (etapa) =>
+          casosUso.getPersonasByEtapa(etapa.id_etapa).catch(() => []),
         );
         allPersonas = results.flat().map((p) => ({ ...p }));
       }
       setPersonasEtapa(allPersonas);
+
+      // Hidratar únicamente los clientes que ya están vinculados a realizadores.
+      const ids = [...new Set(allPersonas.map((persona) => persona.id_persona))];
+      const detalles = await mapConcurrent(ids, 8, (id) =>
+        casosUso.getCliente(id).catch(() => null),
+      );
+      setTodosClientes(detalles.filter((cliente): cliente is Cliente => !!cliente));
     } catch (error) {
       console.error("Error:", error);
     }
@@ -397,54 +389,23 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
       .join(" ");
 
   const getPersonaName = (id: number): string => {
-    const p = personasNaturalesPorId.get(id);
-    if (p) {
-      const nombre = componerNombre(
-        p.nombre,
-        p.primer_apellido,
-        p.segundo_apellido,
-      );
-      if (nombre) return nombre;
-    }
-
-    // getClientes(..., "TCP"|"JURIDICA") devuelve objetos Cliente con los
-    // datos anidados en cliente_tcp / cliente_juridica (no tipos planos),
-    // por eso no existen primer_apellido/segundo_apellido en el nivel raíz.
-    const tcp = personasTCPPorId.get(id) as unknown as Cliente | undefined;
-    if (tcp) {
-      const anidado = tcp.cliente_tcp
-        ? componerNombre(
-            tcp.cliente_tcp.nombre,
-            tcp.cliente_tcp.primer_apellido,
-            tcp.cliente_tcp.segundo_apellido,
-          )
-        : "";
-      return anidado || tcp.nombre || `Persona #${id}`;
-    }
-
-    const jur = personasJuridicasPorId.get(id) as unknown as
-      | Cliente
-      | undefined;
-    if (jur) {
-      return (
-        jur.nombre ||
-        (jur.cliente_juridica?.codigo_reup
-          ? `Entidad ${jur.cliente_juridica.codigo_reup}`
-          : `Persona #${id}`)
-      );
-    }
-
-    const cli = todosClientesPorId.get(id);
-    if (cli) return cli.nombre || `Persona #${id}`;
-    return `Persona #${id}`;
+    const cliente = personasPorId.get(id);
+    if (!cliente) return `Persona #${id}`;
+    const detalle = cliente.cliente_natural || cliente.cliente_tcp;
+    const nombre = detalle
+      ? componerNombre(detalle.nombre, detalle.primer_apellido, detalle.segundo_apellido)
+      : "";
+    if (nombre) return nombre;
+    return cliente.nombre ||
+      (cliente.cliente_juridica?.codigo_reup
+        ? `Entidad ${cliente.cliente_juridica.codigo_reup}`
+        : `Persona #${id}`);
   };
 
   const getPersonaCI = (id: number) => {
-    const p = personasNaturalesPorId.get(id);
-    if (p?.carnet_identidad) return p.carnet_identidad;
-    const t = personasTCPPorId.get(id) as any;
-    if (t?.carnet_identidad) return t.carnet_identidad;
-    return "N/A";
+    const cliente = personasPorId.get(id);
+    return cliente?.cliente_natural?.carnet_identidad ||
+      cliente?.cliente_tcp?.carnet_identidad || "N/A";
   };
 
   const getMonedaSymbol = (id?: number) => {
@@ -484,7 +445,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
           .includes(deferredSearchTerm.toLowerCase()),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personasEtapa, deferredSearchTerm, personasNaturales]);
+  }, [personasEtapa, deferredSearchTerm, todosClientes]);
 
   const totalesPagado = useMemo(() => {
     const map = new Map<string, number>();
@@ -497,29 +458,8 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
     return map;
   }, [liquidaciones]);
 
-  const personasFiltradas = useMemo(() => {
-    if (!busquedaPersona) return todosClientes;
-    const term = busquedaPersona.toLowerCase();
-    return todosClientes.filter(
-      (c) =>
-        (c.nombre || "").toLowerCase().includes(term) ||
-        (c.nit || "").toLowerCase().includes(term),
-    );
-  }, [todosClientes, busquedaPersona]);
-
-  const solicitudesFiltradas = useMemo(() => {
-    if (!busquedaSolicitud) return solicitudes;
-    const term = busquedaSolicitud.toLowerCase();
-    return solicitudes.filter(
-      (s) =>
-        (s.numero || "").toLowerCase().includes(term) ||
-        (s.codigo_solicitud || "").toLowerCase().includes(term) ||
-        (s.nombres_rep || "").toLowerCase().includes(term) ||
-        (s.apellido1_rep || "").toLowerCase().includes(term) ||
-        (s.ci_rep || "").toLowerCase().includes(term) ||
-        (s.descripcion || "").toLowerCase().includes(term),
-    );
-  }, [solicitudes, busquedaSolicitud]);
+  const personasFiltradas = clientesBusqueda;
+  const solicitudesFiltradas = solicitudes;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -541,6 +481,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
   }, []);
 
   const handleSeleccionarPersona = (c: Cliente | ClienteConDetalles) => {
+    setTodosClientes((prev) => [c as Cliente, ...prev.filter((item) => item.id_cliente !== c.id_cliente)]);
     setPersonaSeleccionada(c);
     const nat = c.cliente_natural;
     const tcp = (c as any).cliente_tcp;
