@@ -62,11 +62,8 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
     });
   };
 
-  const filteredClientes = useMemo(() => {
-    if (!clienteSearch) return clientes;
-    const term = clienteSearch.toLowerCase();
-    return clientes.filter(c => nombreMostrado(c).toLowerCase().includes(term));
-  }, [clientes, clienteSearch]);
+  // El servidor ya aplica la búsqueda sobre los campos indexados del cliente.
+  const filteredClientes = clientes;
 
   const nombresClientes = useMemo(
     () => new Map(clientes.map((c) => [c.id_cliente, nombreMostrado(c)])),
