@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -47,8 +48,15 @@ function crearCasos(
 }
 
 function wrapper(casos: CasosUsoSesion) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return function Wrapper({ children }: { children: ReactNode }) {
-    return <AuthProvider casosUso={casos}>{children}</AuthProvider>;
+    return (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider casosUso={casos}>{children}</AuthProvider>
+      </QueryClientProvider>
+    );
   };
 }
 
