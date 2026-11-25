@@ -10,6 +10,7 @@ interface FacturasListViewProps {
   facturas: FacturaWithDetails[];
   isLoading?: boolean;
   contratos: ContratoWithDetails[];
+  monedas?: { id_moneda: number; simbolo?: string }[];
   selectedContratoId: number | null;
   onSelectedContratoChange: (id: number | null) => void;
   onContratoSearch?: (term: string) => void;
