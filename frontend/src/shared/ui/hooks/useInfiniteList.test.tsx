@@ -53,6 +53,26 @@ describe('useInfiniteList', () => {
     expect(queryFn).toHaveBeenLastCalledWith(2, 2, undefined, expect.any(Function));
   });
 
+  it('continúa si una página parcial informa que todavía hay registros', async () => {
+    const queryFn = vi.fn(async (skip, _limit, _search, onTotal) => {
+      onTotal?.(3);
+      return skip === 0 ? [1] : [2, 3];
+    });
+
+    const { result } = renderHook(
+      () => useInfiniteList<number>({ queryKeyBase: 'test-parcial', queryFn, limit: 2 }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.items).toEqual([1]));
+    expect(result.current.hasMore).toBe(true);
+    act(() => result.current.loadMore());
+
+    await waitFor(() => expect(result.current.items).toEqual([1, 2, 3]));
+    expect(queryFn).toHaveBeenLastCalledWith(1, 2, undefined, expect.any(Function));
+    expect(result.current.hasMore).toBe(false);
+  });
+
   it('envía la búsqueda al backend y reinicia la paginación', async () => {
     const queryFn = vi.fn(async (_skip, _limit, search) =>
       search ? [10] : [1, 2],

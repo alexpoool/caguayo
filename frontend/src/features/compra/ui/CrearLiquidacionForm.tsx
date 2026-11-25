@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Input, Label } from '@/shared/ui/components';
 import type { CasosUsoCompra } from '../application/casos-uso';
@@ -26,7 +26,7 @@ interface CrearLiquidacionFormProps {
 }
 
 export function CrearLiquidacionForm({ formId, casosUso, initialProveedorId, onExit, onPendingChange }: CrearLiquidacionFormProps) {
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [proveedorSearch, setProveedorSearch] = useState("");
   const [showProveedorDropdown, setShowProveedorDropdown] = useState(false);
@@ -39,43 +39,33 @@ export function CrearLiquidacionForm({ formId, casosUso, initialProveedorId, onE
 
   const debouncedProveedorSearch = useDebounce(proveedorSearch, 300);
 
-  useEffect(() => {
-    let activo = true;
-    casosUso
-      .listarClientes(0, 50, undefined, debouncedProveedorSearch)
-      .then((res) => {
-        if (activo) setClientes(res);
-      })
-      .catch(() => {
-        if (activo) setClientes([]);
-      });
-    return () => {
-      activo = false;
-    };
-  }, [debouncedProveedorSearch, casosUso]);
+  const { data: proveedoresBusqueda = [] } = useQuery({
+    queryKey: ['clientes', 'proveedores-liquidacion', debouncedProveedorSearch],
+    queryFn: () =>
+      casosUso.listarClientes(
+        0,
+        50,
+        'PROVEEDOR,AMBAS',
+        debouncedProveedorSearch || undefined,
+      ),
+  });
 
-  // Mantener disponible el proveedor ya elegido aunque no esté en la búsqueda.
-  useEffect(() => {
-    if (!filtroCliente) return;
-    if (clientes.some((c) => c.id_cliente === filtroCliente)) return;
+  // Recuperar por ID el proveedor ya elegido si queda fuera de la página de búsqueda.
+  const { data: proveedorSeleccionado } = useQuery({
+    queryKey: ['cliente', filtroCliente],
+    queryFn: () => casosUso.obtenerCliente(filtroCliente as number),
+    enabled: !!filtroCliente,
+  });
 
-    let activo = true;
-    casosUso
-      .obtenerCliente(filtroCliente)
-      .then((cliente) => {
-        if (!activo) return;
-        setClientes((prev) =>
-          prev.some((c) => c.id_cliente === cliente.id_cliente)
-            ? prev
-            : [cliente, ...prev],
-        );
-      })
-      .catch(() => undefined);
-
-    return () => {
-      activo = false;
-    };
-  }, [filtroCliente, clientes, casosUso]);
+  const clientes = useMemo(() => {
+    if (!proveedorSeleccionado) return proveedoresBusqueda;
+    return [
+      proveedorSeleccionado,
+      ...proveedoresBusqueda.filter(
+        (cliente) => cliente.id_cliente !== proveedorSeleccionado.id_cliente,
+      ),
+    ];
+  }, [proveedoresBusqueda, proveedorSeleccionado]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -379,13 +369,7 @@ if (!filtroCliente) {
                       className="pl-10"
                     />
                     {showProveedorDropdown && (() => {
-                      const filtrados = proveedorSearch
-                        ? clientes.filter((c: Cliente) =>
-                            nombreMostrado(c).toLowerCase().includes(proveedorSearch.toLowerCase()) ||
-                            c.codigo?.toLowerCase().includes(proveedorSearch.toLowerCase()) ||
-                            c.nit?.toLowerCase().includes(proveedorSearch.toLowerCase())
-                          )
-                        : clientes;
+                      const filtrados = clientes;
                       return filtrados.length > 0 ? (
                         <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                           {filtrados.slice(0, 20).map((cliente: Cliente) => (

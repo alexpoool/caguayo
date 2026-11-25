@@ -1,11 +1,10 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 /* eslint-disable react-refresh/only-export-components */
 import { useSearchParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CasosUsoVentas } from '../../application/casos-uso';
 import type {
   Cliente,
-  ContratoWithDetails,
   Dependencia,
   Pago,
   Productos,
@@ -302,29 +301,16 @@ export function FacturasPage({
   const [isSavingFactura, setIsSavingFactura] = useState(false);
 
   // Datos maestros
-  const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [itemsAnexo, setItemsAnexo] = useState<any[]>([]);
   const [monedas, setMonedas] = useState<any[]>([]);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clienteSearchRemoto, setClienteSearchRemoto] = useState("");
   const debouncedClienteSearch = useDebounce(clienteSearchRemoto, 300);
+  const [contratoSearchRemoto, setContratoSearchRemoto] = useState("");
+  const debouncedContratoSearch = useDebounce(contratoSearchRemoto, 300);
+  const [contratoClienteId, setContratoClienteId] = useState<number | null>(null);
 
-  useEffect(() => {
-    let activo = true;
-    casosUso
-      .listarClientes(0, 50, "CLIENTE,AMBAS", debouncedClienteSearch)
-      .then((res) => {
-        if (activo) setClientes(res);
-      })
-      .catch(() => {
-        if (activo) setClientes([]);
-      });
-    return () => {
-      activo = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedClienteSearch]);
+
 
   // Modales
   const [detailModal, setDetailModal] = useState<{
@@ -354,6 +340,37 @@ export function FacturasPage({
   const facturasHook = useFacturas(casosUso, tipo, initialContratoId);
   const pagosHook = usePagos(casosUso);
   const productSelectionHook = useProductSelection();
+
+  const { data: clientes = [] } = useQuery({
+    queryKey: ["facturas", "clientes", debouncedClienteSearch],
+    queryFn: () =>
+      casosUso.listarClientes(0, 50, "CLIENTE,AMBAS", debouncedClienteSearch || undefined),
+  });
+  const { data: contratosBusqueda = [] } = useQuery({
+    queryKey: ["facturas", "contratos", contratoClienteId, debouncedContratoSearch],
+    queryFn: () =>
+      casosUso.listarContratos(0, 50, contratoClienteId || undefined, debouncedContratoSearch || undefined),
+  });
+  const { data: contratoSeleccionado } = useQuery({
+    queryKey: ["contrato", facturasHook.selectedContratoId],
+    queryFn: () => casosUso.obtenerContrato(facturasHook.selectedContratoId as number),
+    enabled: !!facturasHook.selectedContratoId,
+  });
+  const contratoDetalleId = detailModal.item?.id_contrato ?? null;
+  const { data: contratoDetalle } = useQuery({
+    queryKey: ["contrato", contratoDetalleId],
+    queryFn: () => casosUso.obtenerContrato(contratoDetalleId as number),
+    enabled: !!contratoDetalleId && detailModal.isOpen,
+  });
+  const contratos = useMemo(() => {
+    if (!contratoSeleccionado) return contratosBusqueda;
+    return [
+      contratoSeleccionado,
+      ...contratosBusqueda.filter(
+        (contrato) => contrato.id_contrato !== contratoSeleccionado.id_contrato,
+      ),
+    ];
+  }, [contratosBusqueda, contratoSeleccionado]);
 
   const currentDependenciaId = user?.dependencia?.id_dependencia ?? null;
   const { data: stockData = [] } = useStockVentas(casosUso, {
@@ -393,14 +410,13 @@ export function FacturasPage({
    */
   const loadInitialData = async () => {
     try {
-      const [contratosRes, monedasRes, depsRes, itemsRes] =
-        await Promise.all([
-          casosUso.listarContratos(0, 1000),
-          casosUso.listarMonedas(),
-          casosUso.listarDependencias(undefined, 0, 1000),
-          casosUso.listarProductosConStockItemAnexo(),
-        ]);
-      setContratos(contratosRes);
+      const [monedasRes, depsRes, itemsRes] = await Promise.all([
+        casosUso.listarMonedas(),
+        // La dependencia principal ya viene en la sesión; el listado solo
+        // sirve de respaldo documental y se limita a 50 registros.
+        casosUso.listarDependencias(undefined, 0, 50),
+        casosUso.listarProductosConStockItemAnexo(),
+      ]);
       setMonedas(monedasRes);
       setDependencias(depsRes);
       setItemsAnexo(itemsRes);
@@ -661,9 +677,12 @@ export function FacturasPage({
     console.log("[DEBUG] handleViewDocument - clienteFinal:", clienteCompleto);
     console.log("[DEBUG] handleViewDocument - cuentasFinal:", clienteCuentas);
 
+    const contratosDocumento = contrato
+      ? [contrato, ...contratos.filter((item) => item.id_contrato !== contrato!.id_contrato)]
+      : contratos;
     const html = getFacturaDocument(
       factura,
-      contratos,
+      contratosDocumento,
       dependencias,
       user,
       clienteCompleto,
@@ -716,9 +735,12 @@ export function FacturasPage({
     const depId = user?.dependencia?.id_dependencia;
     const depCuentas = depId ? await casosUso.listarCuentasDependencia(depId) : [];
 
+    const contratosDocumento = contrato
+      ? [contrato, ...contratos.filter((item) => item.id_contrato !== contrato!.id_contrato)]
+      : contratos;
     const html = getFacturaDocument(
       factura,
-      contratos,
+      contratosDocumento,
       dependencias,
       user,
       clienteCompleto,
@@ -737,6 +759,8 @@ export function FacturasPage({
    * Abrir formulario de edición
    */
   const handleOpenForm = (factura?: any) => {
+    setContratoClienteId(null);
+    setContratoSearchRemoto("");
     if (factura) {
       facturasHook.openForm(factura);
       productSelectionHook.loadSelectedProducts(factura.items || []);
@@ -755,6 +779,8 @@ export function FacturasPage({
    * Cerrar formulario
    */
   const handleCancelForm = () => {
+    setContratoClienteId(null);
+    setContratoSearchRemoto("");
     setView("list");
     facturasHook.resetForm();
     facturasHook.setSelectedContratoId(initialContratoId ? Number(initialContratoId) : null);
@@ -790,6 +816,8 @@ export function FacturasPage({
       contratos={contratos}
       clientes={clientesParaFormulario}
       onClienteSearch={setClienteSearchRemoto}
+      onContratoSearch={setContratoSearchRemoto}
+      onClienteSelect={setContratoClienteId}
       onFormDataChange={(data: Record<string, any>) =>
         facturasHook.setFormData(data)
       }
@@ -833,10 +861,13 @@ export function FacturasPage({
           facturas={facturasHook.facturas}
           isLoading={facturasHook.isLoading}
           contratos={contratos}
+          monedas={monedas}
           selectedContratoId={facturasHook.selectedContratoId}
-          onSelectedContratoChange={(id: number | null) =>
-            facturasHook.setSelectedContratoId(id)
-          }
+          onSelectedContratoChange={(id: number | null) => {
+            setContratoClienteId(null);
+            facturasHook.setSelectedContratoId(id);
+          }}
+          onContratoSearch={setContratoSearchRemoto}
           onAddNew={() => handleOpenForm()}
           onEdit={(factura: any) => handleOpenForm(factura)}
           onDelete={(id: number, codigo: string) =>
@@ -857,9 +888,9 @@ export function FacturasPage({
           isOpen={detailModal.isOpen}
           factura={detailModal.item}
           contrato={
-            contratos.find(
-              (c) => c.id_contrato === detailModal.item?.id_contrato,
-            ) || null
+            contratoDetalle ||
+            contratos.find((c) => c.id_contrato === detailModal.item?.id_contrato) ||
+            null
           }
           onViewDocument={handleViewDocument}
           onPrintDocument={handlePrintDocument}

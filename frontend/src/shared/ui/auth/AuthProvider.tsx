@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { CasosUsoSesion } from '@/shared/application/auth';
 import type {
   DatosRegistro,
@@ -16,6 +17,7 @@ export function AuthProvider({
   casosUso: CasosUsoSesion;
   children: ReactNode;
 }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<UsuarioSesion | null>(null);
   const [funcionalidades, setFuncionalidades] = useState<FuncionalidadSesion[]>(
     [],
@@ -26,8 +28,21 @@ export function AuthProvider({
   // respuestas tardías del sync en background no revivan sesiones cerradas
   // ni mezclen usuarios (ver AuthProvider.test.tsx).
   const generacion = useRef(0);
+  // Las query keys existentes no incluyen de forma uniforme usuario/base de
+  // datos. Limpiar al cambiar de ámbito evita reutilizar datos de otra sesión.
+  const ambitoSesion = useRef<string | null>(null);
 
   const aplicarSesion = (sesion: Sesion | null) => {
+    const nuevoAmbito = sesion
+      ? `${sesion.baseDatos}:${sesion.usuario.id_usuario}`
+      : null;
+
+    if (ambitoSesion.current !== nuevoAmbito) {
+      // clear cancela consultas activas y elimina datos, errores y caché previa.
+      queryClient.clear();
+      ambitoSesion.current = nuevoAmbito;
+    }
+
     setUser(sesion?.usuario ?? null);
     setFuncionalidades(sesion?.funcionalidades ?? []);
     setBaseDatos(sesion?.baseDatos ?? null);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Receipt, Loader2, Search } from 'lucide-react';
 import { CreateButton,
 } from '@/shared/ui/components';
@@ -10,8 +10,10 @@ interface FacturasListViewProps {
   facturas: FacturaWithDetails[];
   isLoading?: boolean;
   contratos: ContratoWithDetails[];
+  monedas?: { id_moneda: number; simbolo?: string }[];
   selectedContratoId: number | null;
   onSelectedContratoChange: (id: number | null) => void;
+  onContratoSearch?: (term: string) => void;
   onAddNew: () => void;
   onEdit: (factura: FacturaWithDetails) => void;
   onDelete: (id: number, codigo: string) => void;
@@ -29,8 +31,10 @@ export function FacturasListView({
   facturas,
   isLoading = false,
   contratos,
+  monedas = [],
   selectedContratoId,
   onSelectedContratoChange,
+  onContratoSearch,
   onAddNew,
   onEdit,
   onDelete,
@@ -60,11 +64,8 @@ export function FacturasListView({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredContratos = useMemo(() => {
-    if (!contratoSearch) return contratos;
-    const term = contratoSearch.toLowerCase();
-    return contratos.filter((c) => c.nombre?.toLowerCase().includes(term));
-  }, [contratos, contratoSearch]);
+  // El listado ya contiene la página filtrada remotamente.
+  const filteredContratos = contratos;
 
   console.log('[FacturasListView] Render:', {
     facturasCount: facturas.length,
@@ -105,6 +106,7 @@ export function FacturasListView({
             }
             onChange={(e) => {
               setContratoSearch(e.target.value);
+              onContratoSearch?.(e.target.value);
               onSelectedContratoChange(null);
               setShowContratoDropdown(true);
             }}
@@ -126,6 +128,7 @@ export function FacturasListView({
                   onClick={() => {
                     onSelectedContratoChange(c.id_contrato);
                     setContratoSearch('');
+                    onContratoSearch?.('');
                     setShowContratoDropdown(false);
                   }}
                 >
@@ -147,6 +150,7 @@ export function FacturasListView({
         <FacturasTable
           facturas={facturas}
           contratos={contratos}
+          monedas={monedas}
           tipo={tipo}
           onEdit={onEdit}
           onDelete={onDelete}

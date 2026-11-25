@@ -70,7 +70,7 @@ export function useInfiniteList<T>({
   const debouncedSearch = useDebounce(searchTerm, SEARCH_DEBOUNCE_MS);
 
   const query = useInfiniteQuery({
-    queryKey: [queryKeyBase, debouncedSearch, ...extraQueryKeyParams],
+    queryKey: [queryKeyBase, limit, debouncedSearch, ...extraQueryKeyParams],
     queryFn: async ({ pageParam }) => {
       // `onTotal` solo captura el header de la respuesta; no toca estado React.
       let total: number | null = null;
@@ -81,8 +81,17 @@ export function useInfiniteList<T>({
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
+      // El offset avanza por los elementos realmente recibidos. Si el backend
+      // informa el total, permite continuar aunque una página venga incompleta.
+      const cargados = allPages.reduce(
+        (total, page) => total + page.items.length,
+        0,
+      );
+      if (lastPage.total !== null) {
+        return cargados < lastPage.total ? cargados : undefined;
+      }
       if (lastPage.items.length < limit) return undefined;
-      return allPages.length * limit;
+      return cargados;
     },
     staleTime,
     gcTime,
@@ -105,7 +114,7 @@ export function useInfiniteList<T>({
     if (!query.isFetching && query.hasNextPage) {
       void query.fetchNextPage();
     }
-  }, [query]);
+  }, [query.isFetching, query.hasNextPage, query.fetchNextPage]);
 
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: [queryKeyBase] });

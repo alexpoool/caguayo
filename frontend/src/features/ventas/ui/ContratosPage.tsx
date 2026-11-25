@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal,
   CreateButton, IconButton, MobileRecordCard, ModalOverlay,
 } from '@/shared/ui/components';
 import { ClienteFormContainer as ClienteForm } from '@/app/container/terceros-cliente-form';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
+import { useDebounce } from '@/shared/ui/hooks/useDebounce';
 import type { CasosUsoVentas } from '../application/casos-uso';
 import type {
-  Cliente,
   ContratoCreate,
   ContratoWithDetails,
   Moneda,
@@ -29,7 +30,6 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
   const solicitudParam = searchParams.get('solicitud');
   const [view, setView] = useState<View>(searchParams.get('solicitud') ? 'form' : 'list');
   
-  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [tiposContrato, setTiposContrato] = useState<{id_tipo_contrato: number, nombre: string}[]>([]);
   const [estados, setEstados] = useState<{id_estado_contrato: number, nombre: string}[]>([]);
@@ -39,6 +39,8 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
   const [isSaving, setIsSaving] = useState(false);
   const [filtroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
   const [clienteSearch, setClienteSearch] = useState('');
+  const clienteSearchDebounced = useDebounce(clienteSearch, 300);
+  const clienteSeleccionadoId = Number(formData.id_cliente || initialClienteId) || null;
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
   const clienteRef = useRef<HTMLDivElement | null>(null);
@@ -59,20 +61,6 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
     });
   };
 
-  const filteredClientes = useMemo(() => {
-    if (!clienteSearch) return clientes;
-    const term = clienteSearch.toLowerCase();
-    return clientes.filter(c => nombreMostrado(c).toLowerCase().includes(term));
-  }, [clientes, clienteSearch]);
-
-  const nombresClientes = useMemo(
-    () => new Map(clientes.map((c) => [c.id_cliente, nombreMostrado(c)])),
-    [clientes],
-  );
-  const nombreClienteContrato = (contrato: ContratoWithDetails) =>
-    nombresClientes.get(contrato.id_cliente) ||
-    nombreMostrado(contrato.cliente) ||
-    'N/A';
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -133,6 +121,44 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
     type: 'danger'
   });
 
+  // Búsqueda cacheada en páginas de 50 y consulta puntual del cliente
+  // seleccionado para no perderlo al editar o entrar con ?cliente=id.
+  const { data: clientesBusqueda = [] } = useQuery({
+    queryKey: ['contratos', 'clientes', clienteSearchDebounced],
+    queryFn: () =>
+      casosUso.listarClientes(
+        0,
+        50,
+        'CLIENTE,AMBAS',
+        clienteSearchDebounced || undefined,
+      ),
+  });
+  const { data: clienteSeleccionado } = useQuery({
+    queryKey: ['cliente', clienteSeleccionadoId],
+    queryFn: () => casosUso.obtenerCliente(clienteSeleccionadoId as number),
+    enabled: !!clienteSeleccionadoId,
+  });
+  const clientes = useMemo(() => {
+    if (!clienteSeleccionado) return clientesBusqueda;
+    return [
+      clienteSeleccionado,
+      ...clientesBusqueda.filter(
+        (cliente) => cliente.id_cliente !== clienteSeleccionado.id_cliente,
+      ),
+    ];
+  }, [clientesBusqueda, clienteSeleccionado]);
+
+  // El servidor ya aplica la búsqueda sobre los campos indexados del cliente.
+  const filteredClientes = clientes;
+  const nombresClientes = useMemo(
+    () => new Map(clientes.map((c) => [c.id_cliente, nombreMostrado(c)])),
+    [clientes],
+  );
+  const nombreClienteContrato = (contrato: ContratoWithDetails) =>
+    nombresClientes.get(contrato.id_cliente) ||
+    nombreMostrado(contrato.cliente) ||
+    'N/A';
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadInitialData(); }, []);
 
@@ -148,13 +174,11 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
 
   const loadInitialData = async () => {
     try {
-      const [clientesRes, monedasRes, estadosRes, tiposRes] = await Promise.all([
-        casosUso.listarClientes(0, 1000, "CLIENTE,AMBAS"),
+      const [monedasRes, estadosRes, tiposRes] = await Promise.all([
         casosUso.listarMonedas(),
         casosUso.obtenerEstadosContrato(),
         casosUso.obtenerTiposContrato()
       ]);
-      setClientes(clientesRes);
       setMonedas(monedasRes);
       setEstados(estadosRes);
       setTiposContrato(tiposRes);
@@ -727,7 +751,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
                 onSubmit={async (data: any) => {
                   try {
                     const nuevoCliente = await casosUso.crearCliente(data);
-                    setClientes(prev => [nuevoCliente, ...prev]);
+                    // El cambio de id activa la consulta puntual del cliente recién creado.
                     setFormData(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
                     setClienteSearch('');
                     setShowNuevoClienteModal(false);

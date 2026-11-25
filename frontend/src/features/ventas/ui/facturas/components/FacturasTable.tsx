@@ -6,6 +6,7 @@ import { formatFecha } from '@/utils/fecha';
 interface FacturasTableProps {
   facturas: FacturaWithDetails[];
   contratos: ContratoWithDetails[];
+  monedas?: { id_moneda: number; simbolo?: string }[];
   onEdit: (factura: FacturaWithDetails) => void;
   onDelete: (id: number, codigo: string) => void;
   onViewDetails: (factura: FacturaWithDetails) => void;
@@ -19,6 +20,7 @@ interface FacturasTableProps {
 export function FacturasTable({
   facturas,
   contratos,
+  monedas = [],
   onEdit,
   onDelete,
   onViewDetails,
@@ -33,7 +35,10 @@ export function FacturasTable({
   // La factura no guarda moneda propia: se toma la del contrato.
   const getMonedaSimbolo = (idContrato: number) => {
     const contrato = contratos.find((c) => c.id_contrato === idContrato);
-    return contrato?.moneda?.simbolo || '';
+    const factura = facturas.find((item) => item.id_contrato === idContrato);
+    const idMoneda = contrato?.id_moneda || factura?.id_moneda;
+    const moneda = monedas.find((item) => item.id_moneda === idMoneda);
+    return contrato?.moneda?.simbolo || moneda?.simbolo || '';
   };
   console.log('[FacturasTable] Render:', {
     facturasCount: facturas.length,

@@ -24,6 +24,8 @@ interface FacturaFormProps {
   contratos: ContratoWithDetails[];
   clientes: Cliente[];
   onClienteSearch?: (term: string) => void;
+  onContratoSearch?: (term: string) => void;
+  onClienteSelect?: (id: number | null) => void;
   onFormDataChange: (data: Record<string, any>) => void;
   onProductSearchChange: (search: string) => void;
   onAddProduct: (id: number) => void;
@@ -50,6 +52,8 @@ export function FacturaForm({
   contratos,
   clientes,
   onClienteSearch,
+  onContratoSearch,
+  onClienteSelect,
   onFormDataChange,
   onProductSearchChange,
   onAddProduct,
@@ -80,28 +84,11 @@ export function FacturaForm({
     return clientes.find(c => c.id_cliente === selectedClienteId) || null;
   }, [selectedClienteId, clientes]);
 
-  const filteredClientes = useMemo(() => {
-    if (!clienteSearch) return clientes;
-    const q = clienteSearch.toLowerCase();
-    return clientes.filter(c =>
-      nombreMostrado(c).toLowerCase().includes(q) ||
-      c.codigo?.toLowerCase().includes(q)
-    );
-  }, [clientes, clienteSearch]);
-
-  const filteredContratos = useMemo(() => {
-    let list = contratos;
-    if (selectedClienteId) {
-      list = list.filter(c => c.id_cliente === selectedClienteId);
-    }
-    if (!contratoSearch) return list;
-    const q = contratoSearch.toLowerCase();
-    return list.filter(c =>
-      c.nombre?.toLowerCase().includes(q) ||
-      c.codigo?.toLowerCase().includes(q) ||
-      nombreMostrado(c.cliente).toLowerCase().includes(q)
-    );
-  }, [contratos, selectedClienteId, contratoSearch]);
+  // Los resultados llegan filtrados desde el servidor.
+  const filteredClientes = clientes;
+  const filteredContratos = selectedClienteId
+    ? contratos.filter((contrato) => contrato.id_cliente === selectedClienteId)
+    : contratos;
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -136,6 +123,8 @@ export function FacturaForm({
                     onClienteSearch?.(e.target.value);
                     if (selectedCliente) {
                       setSelectedClienteId(null);
+                      onClienteSelect?.(null);
+                      onContratoSearch?.('');
                       onSelectedContratoChange(null);
                     }
                     setShowClienteDropdown(true);
@@ -153,6 +142,8 @@ export function FacturaForm({
                       className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors font-medium border-b border-gray-200"
                       onClick={() => {
                         setSelectedClienteId(null);
+                        onClienteSelect?.(null);
+                        onContratoSearch?.('');
                         onSelectedContratoChange(null);
                         setShowClienteDropdown(false);
                       }}
@@ -170,6 +161,8 @@ export function FacturaForm({
                         className={`w-full px-3 py-2 text-left text-sm hover:bg-brand-50 transition-colors ${selectedClienteId === c.id_cliente ? 'bg-brand-100 font-medium' : ''}`}
                         onClick={() => {
                           setSelectedClienteId(c.id_cliente);
+                          onClienteSelect?.(c.id_cliente);
+                          onContratoSearch?.('');
                           onSelectedContratoChange(null);
                           setClienteSearch('');
                           setShowClienteDropdown(false);
@@ -196,6 +189,7 @@ export function FacturaForm({
                   }
                   onChange={(e) => {
                     setContratoSearch(e.target.value);
+                    onContratoSearch?.(e.target.value);
                     onSelectedContratoChange(null);
                     setShowContratoDropdown(true);
                   }}
@@ -217,7 +211,9 @@ export function FacturaForm({
                         onClick={() => {
                           onSelectedContratoChange(c.id_contrato);
                           setSelectedClienteId(c.id_cliente);
+                          onClienteSelect?.(c.id_cliente);
                           setContratoSearch('');
+                          onContratoSearch?.('');
                           setShowContratoDropdown(false);
                         }}
                       >
