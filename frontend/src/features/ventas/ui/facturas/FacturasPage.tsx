@@ -747,6 +747,8 @@ export function FacturasPage({
    * Abrir formulario de edición
    */
   const handleOpenForm = (factura?: any) => {
+    setContratoClienteId(null);
+    setContratoSearchRemoto("");
     if (factura) {
       facturasHook.openForm(factura);
       productSelectionHook.loadSelectedProducts(factura.items || []);
@@ -765,6 +767,8 @@ export function FacturasPage({
    * Cerrar formulario
    */
   const handleCancelForm = () => {
+    setContratoClienteId(null);
+    setContratoSearchRemoto("");
     setView("list");
     facturasHook.resetForm();
     facturasHook.setSelectedContratoId(initialContratoId ? Number(initialContratoId) : null);
