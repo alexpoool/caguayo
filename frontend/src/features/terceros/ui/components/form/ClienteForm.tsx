@@ -1,4 +1,5 @@
-import React, { useCallback, useState, useEffect, useRef } from "react";
+import React, { useCallback, useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { Button } from "@/shared/ui/components";
 import {
@@ -74,82 +75,27 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   monedas: monedasProp = [],
   casosUso,
 }) => {
-  const [localProvincias, setLocalProvincias] = useState<any[]>(
-    provincias || [],
-  );
-  const [localTiposEntidad, setLocalTiposEntidad] = useState<any[]>(
-    tiposEntidad || [],
-  );
-  const fetchedProvinciasRef = useRef(false);
-  const fetchedTiposEntidadRef = useRef(false);
+  // Catálogos compartidos en React Query: se reutilizan entre formularios y
+  // se limpian al cambiar de usuario/base de datos desde AuthProvider.
+  const { data: provinciasApi = [] } = useQuery({
+    queryKey: ["catalogos", "provincias"],
+    queryFn: () => casosUso.listarProvincias(),
+    enabled: !provincias?.length,
+  });
+  const { data: tiposEntidadApi = [] } = useQuery({
+    queryKey: ["catalogos", "tipos-entidad"],
+    queryFn: () => casosUso.listarTiposEntidad(),
+    enabled: !tiposEntidad?.length,
+  });
+  const { data: monedasApi = [] } = useQuery({
+    queryKey: ["catalogos", "monedas"],
+    queryFn: () => casosUso.listarMonedas(),
+    enabled: !monedasProp?.length,
+  });
 
-  useEffect(() => {
-    if (provincias && Array.isArray(provincias) && provincias.length > 0) {
-      setLocalProvincias(provincias);
-    }
-  }, [provincias]);
-
-  // Fetch provincias from API when not provided as prop
-  useEffect(() => {
-    if (fetchedProvinciasRef.current || localProvincias.length > 0) return;
-    fetchedProvinciasRef.current = true;
-    casosUso
-      .listarProvincias()
-      .then((data: any[]) => {
-        setLocalProvincias(Array.isArray(data) ? data : []);
-      })
-      .catch((error: any) => {
-        console.error("Error loading provincias:", error);
-      });
-  }, [casosUso, localProvincias.length]);
-
-  useEffect(() => {
-    if (
-      tiposEntidad &&
-      Array.isArray(tiposEntidad) &&
-      tiposEntidad.length > 0
-    ) {
-      setLocalTiposEntidad(tiposEntidad);
-    }
-  }, [tiposEntidad]);
-
-  // Fetch tiposEntidad from API when not provided as prop
-  useEffect(() => {
-    if (fetchedTiposEntidadRef.current || localTiposEntidad.length > 0) return;
-    fetchedTiposEntidadRef.current = true;
-    casosUso
-      .listarTiposEntidad()
-      .then((data: any[]) => {
-        setLocalTiposEntidad(Array.isArray(data) ? data : []);
-      })
-      .catch((error: any) => {
-        console.error("Error loading tiposEntidad:", error);
-      });
-  }, [casosUso, localTiposEntidad.length]);
-
-  const [localMonedas, setLocalMonedas] = useState<Moneda[]>(
-    monedasProp || [],
-  );
-  const fetchedMonedasRef = useRef(false);
-
-  useEffect(() => {
-    if (monedasProp && Array.isArray(monedasProp) && monedasProp.length > 0) {
-      setLocalMonedas(monedasProp);
-    }
-  }, [monedasProp]);
-
-  useEffect(() => {
-    if (fetchedMonedasRef.current || localMonedas.length > 0) return;
-    fetchedMonedasRef.current = true;
-    casosUso
-      .listarMonedas()
-      .then((data) => {
-        setLocalMonedas(Array.isArray(data) ? data : []);
-      })
-      .catch((error) => {
-        console.error("Error loading monedas:", error);
-      });
-  }, [casosUso, localMonedas.length]);
+  const localProvincias = provincias?.length ? provincias : provinciasApi;
+  const localTiposEntidad = tiposEntidad?.length ? tiposEntidad : tiposEntidadApi;
+  const localMonedas = monedasProp?.length ? monedasProp : monedasApi;
 
   const [tipoPersona, setTipoPersona] = useState<TipoPersona | null>(
     editingCliente?.tipo_persona || null,
