@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal,
   CreateButton, IconButton, MobileRecordCard, ModalOverlay,
 } from '@/shared/ui/components';
@@ -133,40 +134,32 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
     type: 'danger'
   });
 
-  // Los clientes del formulario se buscan en el servidor en páginas de 50.
-  // Se carga también el registro seleccionado para no perderlo al editar o
-  // entrar desde un enlace con ?cliente=id.
-  useEffect(() => {
-    let activo = true;
-    const cargarClientes = async () => {
-      try {
-        const [resultados, seleccionado] = await Promise.all([
-          casosUso.listarClientes(
-            0,
-            50,
-            'CLIENTE,AMBAS',
-            clienteSearchDebounced || undefined,
-          ),
-          clienteSeleccionadoId
-            ? casosUso.obtenerCliente(clienteSeleccionadoId).catch(() => null)
-            : Promise.resolve(null),
-        ]);
-        if (!activo) return;
-        setClientes(
-          seleccionado &&
-            !resultados.some((cliente) => cliente.id_cliente === seleccionado.id_cliente)
-            ? [seleccionado, ...resultados]
-            : resultados,
-        );
-      } catch (error) {
-        if (activo) console.error('Error cargando clientes:', error);
-      }
-    };
-    void cargarClientes();
-    return () => {
-      activo = false;
-    };
-  }, [casosUso, clienteSearchDebounced, clienteSeleccionadoId]);
+  // Búsqueda cacheada en páginas de 50 y consulta puntual del cliente
+  // seleccionado para no perderlo al editar o entrar con ?cliente=id.
+  const { data: clientesBusqueda = [] } = useQuery({
+    queryKey: ['contratos', 'clientes', clienteSearchDebounced],
+    queryFn: () =>
+      casosUso.listarClientes(
+        0,
+        50,
+        'CLIENTE,AMBAS',
+        clienteSearchDebounced || undefined,
+      ),
+  });
+  const { data: clienteSeleccionado } = useQuery({
+    queryKey: ['cliente', clienteSeleccionadoId],
+    queryFn: () => casosUso.obtenerCliente(clienteSeleccionadoId as number),
+    enabled: !!clienteSeleccionadoId,
+  });
+  const clientes = useMemo(() => {
+    if (!clienteSeleccionado) return clientesBusqueda;
+    return [
+      clienteSeleccionado,
+      ...clientesBusqueda.filter(
+        (cliente) => cliente.id_cliente !== clienteSeleccionado.id_cliente,
+      ),
+    ];
+  }, [clientesBusqueda, clienteSeleccionado]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadInitialData(); }, []);
@@ -760,7 +753,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
                 onSubmit={async (data: any) => {
                   try {
                     const nuevoCliente = await casosUso.crearCliente(data);
-                    setClientes(prev => [nuevoCliente, ...prev]);
+                    // El cambio de id activa la consulta puntual del cliente recién creado.
                     setFormData(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
                     setClienteSearch('');
                     setShowNuevoClienteModal(false);
