@@ -850,9 +850,11 @@ export function FacturasPage({
           isLoading={facturasHook.isLoading}
           contratos={contratos}
           selectedContratoId={facturasHook.selectedContratoId}
-          onSelectedContratoChange={(id: number | null) =>
-            facturasHook.setSelectedContratoId(id)
-          }
+          onSelectedContratoChange={(id: number | null) => {
+            setContratoClienteId(null);
+            facturasHook.setSelectedContratoId(id);
+          }}
+          onContratoSearch={setContratoSearchRemoto}
           onAddNew={() => handleOpenForm()}
           onEdit={(factura: any) => handleOpenForm(factura)}
           onDelete={(id: number, codigo: string) =>
