@@ -141,6 +141,7 @@ export function FacturaForm({
                     if (selectedCliente) {
                       setSelectedClienteId(null);
                       onClienteSelect?.(null);
+                      onContratoSearch?.('');
                       onSelectedContratoChange(null);
                     }
                     setShowClienteDropdown(true);
@@ -159,6 +160,7 @@ export function FacturaForm({
                       onClick={() => {
                         setSelectedClienteId(null);
                         onClienteSelect?.(null);
+                        onContratoSearch?.('');
                         onSelectedContratoChange(null);
                         setShowClienteDropdown(false);
                       }}
@@ -177,6 +179,7 @@ export function FacturaForm({
                         onClick={() => {
                           setSelectedClienteId(c.id_cliente);
                           onClienteSelect?.(c.id_cliente);
+                          onContratoSearch?.('');
                           onSelectedContratoChange(null);
                           setClienteSearch('');
                           setShowClienteDropdown(false);
