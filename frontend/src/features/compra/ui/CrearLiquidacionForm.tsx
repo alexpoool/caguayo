@@ -369,13 +369,7 @@ if (!filtroCliente) {
                       className="pl-10"
                     />
                     {showProveedorDropdown && (() => {
-                      const filtrados = proveedorSearch
-                        ? clientes.filter((c: Cliente) =>
-                            nombreMostrado(c).toLowerCase().includes(proveedorSearch.toLowerCase()) ||
-                            c.codigo?.toLowerCase().includes(proveedorSearch.toLowerCase()) ||
-                            c.nit?.toLowerCase().includes(proveedorSearch.toLowerCase())
-                          )
-                        : clientes;
+                      const filtrados = clientes;
                       return filtrados.length > 0 ? (
                         <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                           {filtrados.slice(0, 20).map((cliente: Cliente) => (
