@@ -61,17 +61,6 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
     });
   };
 
-  // El servidor ya aplica la búsqueda sobre los campos indexados del cliente.
-  const filteredClientes = clientes;
-
-  const nombresClientes = useMemo(
-    () => new Map(clientes.map((c) => [c.id_cliente, nombreMostrado(c)])),
-    [clientes],
-  );
-  const nombreClienteContrato = (contrato: ContratoWithDetails) =>
-    nombresClientes.get(contrato.id_cliente) ||
-    nombreMostrado(contrato.cliente) ||
-    'N/A';
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -158,6 +147,17 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
       ),
     ];
   }, [clientesBusqueda, clienteSeleccionado]);
+
+  // El servidor ya aplica la búsqueda sobre los campos indexados del cliente.
+  const filteredClientes = clientes;
+  const nombresClientes = useMemo(
+    () => new Map(clientes.map((c) => [c.id_cliente, nombreMostrado(c)])),
+    [clientes],
+  );
+  const nombreClienteContrato = (contrato: ContratoWithDetails) =>
+    nombresClientes.get(contrato.id_cliente) ||
+    nombreMostrado(contrato.cliente) ||
+    'N/A';
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadInitialData(); }, []);
