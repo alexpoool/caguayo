@@ -62,11 +62,8 @@ export function FacturasListView({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredContratos = useMemo(() => {
-    if (!contratoSearch) return contratos;
-    const term = contratoSearch.toLowerCase();
-    return contratos.filter((c) => c.nombre?.toLowerCase().includes(term));
-  }, [contratos, contratoSearch]);
+  // El listado ya contiene la página filtrada remotamente.
+  const filteredContratos = contratos;
 
   console.log('[FacturasListView] Render:', {
     facturasCount: facturas.length,
