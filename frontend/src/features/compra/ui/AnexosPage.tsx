@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useInfiniteList } from "@/shared/ui/hooks/useInfiniteList";
+import { useDebounce } from "@/shared/ui/hooks/useDebounce";
 import { useAuth } from "@/shared/ui/auth";
 import { FichaCostoModal } from "./components/FichaCostoModal";
 import { coincideBusqueda, normalizarBusqueda } from "@/shared/ui/utils/busqueda";
@@ -90,6 +91,7 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
   // ── Estado temporal para agregar producto ───────────────────────────────────
   const [productoSeleccionado, setProductoSeleccionado] = useState<any>(null);
   const [busquedaProducto, setBusquedaProducto] = useState("");
+  const busquedaProductoDebounced = useDebounce(busquedaProducto, 300);
   const [showDropdownProducto, setShowDropdownProducto] = useState(false);
   const [cantidad, setCantidad] = useState(1);
   const [precioCompra, setPrecioCompra] = useState(0);
@@ -114,6 +116,7 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [convenioSearch, setConvenioSearch] = useState("");
+  const convenioSearchDebounced = useDebounce(convenioSearch, 300);
   const [convenioDropdownOpen, setConvenioDropdownOpen] = useState(false);
   const convenioRef = useRef<HTMLDivElement>(null);
 
@@ -179,16 +182,29 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // El selector consulta el servidor por lotes; no descarga el catálogo completo.
   const { data: convenios = [] } = useQuery({
-    queryKey: ["convenios"],
-    queryFn: () => casosUso.listarConvenios(),
+    queryKey: ["convenios", "selector", convenioSearchDebounced],
+    queryFn: () =>
+      casosUso.listarConvenios(
+        undefined,
+        convenioSearchDebounced || undefined,
+        0,
+        50,
+      ),
   });
 
   const { user } = useAuth();
 
+  // Búsqueda remota con debounce y máximo de 50 opciones por consulta.
   const { data: productos = [] } = useQuery({
-    queryKey: ["productos"],
-    queryFn: () => casosUso.listarProductos(),
+    queryKey: ["productos", "selector-anexos", busquedaProductoDebounced],
+    queryFn: () =>
+      casosUso.listarProductos(
+        0,
+        50,
+        busquedaProductoDebounced || undefined,
+      ),
   });
 
   const conveniosFiltrados = useMemo(() => {
