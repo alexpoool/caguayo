@@ -47,10 +47,12 @@ function crearCasos(
   };
 }
 
-function wrapper(casos: CasosUsoSesion) {
-  const queryClient = new QueryClient({
+function wrapper(
+  casos: CasosUsoSesion,
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
-  });
+  }),
+) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
@@ -81,6 +83,21 @@ describe('AuthProvider', () => {
     );
     expect(result.current.user).toEqual(usuarioA);
     expect(casos.sincronizarSesion).toHaveBeenCalled();
+  });
+
+  it('limpia la caché privada al restaurar una sesión distinta', async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['datos-privados'], [{ id: 1 }]);
+    const casos = crearCasos({
+      restaurarSesion: vi.fn().mockResolvedValue(sesionA),
+    });
+
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: wrapper(casos, queryClient),
+    });
+
+    await waitFor(() => expect(result.current.user).toEqual(usuarioA));
+    expect(queryClient.getQueryData(['datos-privados'])).toBeUndefined();
   });
 
   it('un sincronizarSesion tardío no revive la sesión tras logout', async () => {
