@@ -32,8 +32,6 @@ import type {
 import type {
   Cliente,
   ClienteNatural,
-  ClienteTCP,
-  ClienteJuridica,
   TipoEntidad,
 } from "../domain/proyectos";
 import type { Moneda } from "../domain/proyectos";
