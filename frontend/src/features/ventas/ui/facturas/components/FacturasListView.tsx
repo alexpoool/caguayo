@@ -150,6 +150,7 @@ export function FacturasListView({
         <FacturasTable
           facturas={facturas}
           contratos={contratos}
+          monedas={monedas}
           tipo={tipo}
           onEdit={onEdit}
           onDelete={onDelete}
