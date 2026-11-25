@@ -207,19 +207,10 @@ export function AnexosPage({ casosUso }: { casosUso: CasosUsoCompra }) {
       ),
   });
 
-  const conveniosFiltrados = useMemo(() => {
-    const termino = normalizarBusqueda(convenioSearch).trim();
-    if (!termino) return convenios;
-    return convenios.filter((c: any) =>
-      coincideBusqueda(c.nombre_convenio, termino),
-    );
-  }, [convenios, convenioSearch]);
-
-  const productosFiltrados = useMemo(() => {
-    const termino = normalizarBusqueda(busquedaProducto).trim();
-    if (!termino) return productos;
-    return productos.filter((p: any) => coincideBusqueda(p.nombre, termino));
-  }, [productos, busquedaProducto]);
+  // La búsqueda ya está aplicada en el servidor; no volver a filtrar
+  // localmente y descartar coincidencias por código u otros campos.
+  const conveniosFiltrados = convenios;
+  const productosFiltrados = productos;
 
   const { data: monedas = [] } = useQuery({
     queryKey: ["monedas"],
