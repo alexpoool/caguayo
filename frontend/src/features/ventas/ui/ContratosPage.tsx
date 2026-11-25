@@ -4,6 +4,7 @@ import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, Ta
 } from '@/shared/ui/components';
 import { ClienteFormContainer as ClienteForm } from '@/app/container/terceros-cliente-form';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
+import { useDebounce } from '@/shared/ui/hooks/useDebounce';
 import type { CasosUsoVentas } from '../application/casos-uso';
 import type {
   Cliente,
@@ -39,6 +40,8 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
   const [isSaving, setIsSaving] = useState(false);
   const [filtroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
   const [clienteSearch, setClienteSearch] = useState('');
+  const clienteSearchDebounced = useDebounce(clienteSearch, 300);
+  const clienteSeleccionadoId = Number(formData.id_cliente || initialClienteId) || null;
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
   const clienteRef = useRef<HTMLDivElement | null>(null);
@@ -133,6 +136,41 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
     type: 'danger'
   });
 
+  // Los clientes del formulario se buscan en el servidor en páginas de 50.
+  // Se carga también el registro seleccionado para no perderlo al editar o
+  // entrar desde un enlace con ?cliente=id.
+  useEffect(() => {
+    let activo = true;
+    const cargarClientes = async () => {
+      try {
+        const [resultados, seleccionado] = await Promise.all([
+          casosUso.listarClientes(
+            0,
+            50,
+            'CLIENTE,AMBAS',
+            clienteSearchDebounced || undefined,
+          ),
+          clienteSeleccionadoId
+            ? casosUso.obtenerCliente(clienteSeleccionadoId).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+        if (!activo) return;
+        setClientes(
+          seleccionado &&
+            !resultados.some((cliente) => cliente.id_cliente === seleccionado.id_cliente)
+            ? [seleccionado, ...resultados]
+            : resultados,
+        );
+      } catch (error) {
+        if (activo) console.error('Error cargando clientes:', error);
+      }
+    };
+    void cargarClientes();
+    return () => {
+      activo = false;
+    };
+  }, [casosUso, clienteSearchDebounced, clienteSeleccionadoId]);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadInitialData(); }, []);
 
@@ -148,13 +186,11 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
 
   const loadInitialData = async () => {
     try {
-      const [clientesRes, monedasRes, estadosRes, tiposRes] = await Promise.all([
-        casosUso.listarClientes(0, 1000, "CLIENTE,AMBAS"),
+      const [monedasRes, estadosRes, tiposRes] = await Promise.all([
         casosUso.listarMonedas(),
         casosUso.obtenerEstadosContrato(),
         casosUso.obtenerTiposContrato()
       ]);
-      setClientes(clientesRes);
       setMonedas(monedasRes);
       setEstados(estadosRes);
       setTiposContrato(tiposRes);
