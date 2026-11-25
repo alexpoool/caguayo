@@ -204,12 +204,8 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
     return labels[tipo] || "Natural";
   };
 
-  const getClienteById = (
-    idPersona: number,
-  ): ClienteNatural | ClienteTCP | ClienteJuridica | undefined => {
-    const cliente = personasPorId.get(idPersona);
-    return cliente?.cliente_natural || cliente?.cliente_tcp || cliente?.cliente_juridica;
-  };
+  const getClienteById = (idPersona: number): Cliente | undefined =>
+    personasPorId.get(idPersona);
 
   const loadInitialData = async () => {
     try {
