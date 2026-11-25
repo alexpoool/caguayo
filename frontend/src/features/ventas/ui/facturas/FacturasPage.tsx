@@ -356,6 +356,12 @@ export function FacturasPage({
     queryFn: () => casosUso.obtenerContrato(facturasHook.selectedContratoId as number),
     enabled: !!facturasHook.selectedContratoId,
   });
+  const contratoDetalleId = detailModal.item?.id_contrato ?? null;
+  const { data: contratoDetalle } = useQuery({
+    queryKey: ["contrato", contratoDetalleId],
+    queryFn: () => casosUso.obtenerContrato(contratoDetalleId as number),
+    enabled: !!contratoDetalleId && detailModal.isOpen,
+  });
   const contratos = useMemo(() => {
     if (!contratoSeleccionado) return contratosBusqueda;
     return [
@@ -882,9 +888,9 @@ export function FacturasPage({
           isOpen={detailModal.isOpen}
           factura={detailModal.item}
           contrato={
-            contratos.find(
-              (c) => c.id_contrato === detailModal.item?.id_contrato,
-            ) || null
+            contratoDetalle ||
+            contratos.find((c) => c.id_contrato === detailModal.item?.id_contrato) ||
+            null
           }
           onViewDocument={handleViewDocument}
           onPrintDocument={handlePrintDocument}
