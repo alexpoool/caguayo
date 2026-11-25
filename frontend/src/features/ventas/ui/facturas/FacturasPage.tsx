@@ -855,6 +855,7 @@ export function FacturasPage({
           facturas={facturasHook.facturas}
           isLoading={facturasHook.isLoading}
           contratos={contratos}
+          monedas={monedas}
           selectedContratoId={facturasHook.selectedContratoId}
           onSelectedContratoChange={(id: number | null) => {
             setContratoClienteId(null);
