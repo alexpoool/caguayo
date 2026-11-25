@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 /* eslint-disable react-refresh/only-export-components */
 import { useSearchParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CasosUsoVentas } from '../../application/casos-uso';
 import type {
   Cliente,
@@ -302,31 +302,15 @@ export function FacturasPage({
   const [isSavingFactura, setIsSavingFactura] = useState(false);
 
   // Datos maestros
-  const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [itemsAnexo, setItemsAnexo] = useState<any[]>([]);
   const [monedas, setMonedas] = useState<any[]>([]);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clienteSearchRemoto, setClienteSearchRemoto] = useState("");
   const debouncedClienteSearch = useDebounce(clienteSearchRemoto, 300);
   const [contratoSearchRemoto, setContratoSearchRemoto] = useState("");
   const debouncedContratoSearch = useDebounce(contratoSearchRemoto, 300);
 
-  useEffect(() => {
-    let activo = true;
-    casosUso
-      .listarClientes(0, 50, "CLIENTE,AMBAS", debouncedClienteSearch)
-      .then((res) => {
-        if (activo) setClientes(res);
-      })
-      .catch(() => {
-        if (activo) setClientes([]);
-      });
-    return () => {
-      activo = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedClienteSearch]);
+
 
   // Modales
   const [detailModal, setDetailModal] = useState<{
@@ -357,31 +341,30 @@ export function FacturasPage({
   const pagosHook = usePagos(casosUso);
   const productSelectionHook = useProductSelection();
 
-  // Búsqueda remota de contratos en páginas de 50, manteniendo el contrato
-  // elegido aunque no pertenezca a la página de resultados actual.
-  useEffect(() => {
-    let activo = true;
-    const cargarContratos = async () => {
-      try {
-        const [resultados, seleccionado] = await Promise.all([
-          casosUso.listarContratos(0, 50, undefined, debouncedContratoSearch || undefined),
-          facturasHook.selectedContratoId
-            ? casosUso.obtenerContrato(facturasHook.selectedContratoId).catch(() => null)
-            : Promise.resolve(null),
-        ]);
-        if (!activo) return;
-        setContratos(
-          seleccionado && !resultados.some((item) => item.id_contrato === seleccionado.id_contrato)
-            ? [seleccionado, ...resultados]
-            : resultados,
-        );
-      } catch (error) {
-        if (activo) console.error("Error buscando contratos:", error);
-      }
-    };
-    void cargarContratos();
-    return () => { activo = false; };
-  }, [casosUso, debouncedContratoSearch, facturasHook.selectedContratoId]);
+  const { data: clientes = [] } = useQuery({
+    queryKey: ["facturas", "clientes", debouncedClienteSearch],
+    queryFn: () =>
+      casosUso.listarClientes(0, 50, "CLIENTE,AMBAS", debouncedClienteSearch || undefined),
+  });
+  const { data: contratosBusqueda = [] } = useQuery({
+    queryKey: ["facturas", "contratos", debouncedContratoSearch],
+    queryFn: () =>
+      casosUso.listarContratos(0, 50, undefined, debouncedContratoSearch || undefined),
+  });
+  const { data: contratoSeleccionado } = useQuery({
+    queryKey: ["contrato", facturasHook.selectedContratoId],
+    queryFn: () => casosUso.obtenerContrato(facturasHook.selectedContratoId as number),
+    enabled: !!facturasHook.selectedContratoId,
+  });
+  const contratos = useMemo(() => {
+    if (!contratoSeleccionado) return contratosBusqueda;
+    return [
+      contratoSeleccionado,
+      ...contratosBusqueda.filter(
+        (contrato) => contrato.id_contrato !== contratoSeleccionado.id_contrato,
+      ),
+    ];
+  }, [contratosBusqueda, contratoSeleccionado]);
 
   const currentDependenciaId = user?.dependencia?.id_dependencia ?? null;
   const { data: stockData = [] } = useStockVentas(casosUso, {
