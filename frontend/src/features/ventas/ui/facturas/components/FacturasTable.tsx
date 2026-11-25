@@ -6,6 +6,7 @@ import { formatFecha } from '@/utils/fecha';
 interface FacturasTableProps {
   facturas: FacturaWithDetails[];
   contratos: ContratoWithDetails[];
+  monedas?: { id_moneda: number; simbolo?: string }[];
   onEdit: (factura: FacturaWithDetails) => void;
   onDelete: (id: number, codigo: string) => void;
   onViewDetails: (factura: FacturaWithDetails) => void;
