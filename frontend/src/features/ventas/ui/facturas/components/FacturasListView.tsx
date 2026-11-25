@@ -12,6 +12,7 @@ interface FacturasListViewProps {
   contratos: ContratoWithDetails[];
   selectedContratoId: number | null;
   onSelectedContratoChange: (id: number | null) => void;
+  onContratoSearch?: (term: string) => void;
   onAddNew: () => void;
   onEdit: (factura: FacturaWithDetails) => void;
   onDelete: (id: number, codigo: string) => void;
@@ -31,6 +32,7 @@ export function FacturasListView({
   contratos,
   selectedContratoId,
   onSelectedContratoChange,
+  onContratoSearch,
   onAddNew,
   onEdit,
   onDelete,
@@ -105,6 +107,7 @@ export function FacturasListView({
             }
             onChange={(e) => {
               setContratoSearch(e.target.value);
+              onContratoSearch?.(e.target.value);
               onSelectedContratoChange(null);
               setShowContratoDropdown(true);
             }}
@@ -126,6 +129,7 @@ export function FacturasListView({
                   onClick={() => {
                     onSelectedContratoChange(c.id_contrato);
                     setContratoSearch('');
+                    onContratoSearch?.('');
                     setShowContratoDropdown(false);
                   }}
                 >
