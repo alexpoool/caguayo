@@ -24,7 +24,6 @@ import {
 } from '@/shared/ui/auth';
 import type { CasosUsoCompra } from '../application/casos-uso';
 import type {
-  Anexo,
   Cliente,
   Liquidacion,
 } from '../domain/compra';
@@ -119,11 +118,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     queryFn: () => casosUso.listarClientes(0, 100, 'PROVEEDOR,AMBAS'),
   });
 
-  const { data: anexos = [] } = useQuery({
-    queryKey: ['anexos'],
-    queryFn: () => casosUso.listarAnexos()
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (id: number) => casosUso.eliminarLiquidacion(id),
     onSuccess: () => {
@@ -151,7 +145,9 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
   );
 
   const getClienteNombre = (clienteId: number) =>
-    clientesPorId.get(clienteId) || '';
+    clientesPorId.get(clienteId) ||
+    nombreMostrado(liquidaciones.find((l: Liquidacion) => l.id_cliente === clienteId)?.cliente) ||
+    '';
 
   // Quita el filtro por proveedor que llega desde la lista de Proveedores
   // (?proveedor=id) y vuelve a mostrar todas las liquidaciones.
@@ -162,9 +158,14 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     setSearchParams(params, { replace: true });
   };
 
+  // Las liquidaciones incluyen su anexo y los productos conservan la
+  // referencia del anexo de origen. No hace falta descargar el catálogo entero.
   const getAnexoInfo = (anexoId: number) => {
-    const anexo = anexos.find((a: Anexo) => a.id_anexo === anexoId);
-    return anexo?.nombre_anexo || 'N/A';
+    const liquidacion = liquidaciones.find((l: Liquidacion) => l.id_anexo === anexoId);
+    const anexo = liquidacion?.anexo ||
+      liquidaciones.flatMap((l: Liquidacion) => l.productos_en_liquidacion || [])
+        .find((producto: any) => producto.id_anexo === anexoId)?.anexo;
+    return anexo?.nombre_anexo || `Anexo #${anexoId}`;
   };
 
   const generateLiquidacionHTML = (liquidacion: Liquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string, cuentas: any[] = []) => {
