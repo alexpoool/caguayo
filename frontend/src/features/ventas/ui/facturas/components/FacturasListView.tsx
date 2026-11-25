@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Receipt, Loader2, Search } from 'lucide-react';
 import { CreateButton,
 } from '@/shared/ui/components';
