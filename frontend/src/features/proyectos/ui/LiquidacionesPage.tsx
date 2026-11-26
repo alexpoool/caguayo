@@ -285,6 +285,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     mutationFn: (data: PersonaLiquidacionInput) => casosUso.createLiquidacion(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['realizadores', 'datos-iniciales'] });
       toast.success('Liquidación creada correctamente');
       setView('list');
       resetForm();
@@ -299,6 +300,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
       casosUso.updateLiquidacion(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['realizadores', 'datos-iniciales'] });
       toast.success('Liquidación actualizada correctamente');
       setView('list');
       resetForm();
@@ -312,6 +314,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     mutationFn: (id: number) => casosUso.deleteLiquidacion(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['realizadores', 'datos-iniciales'] });
       toast.success('Liquidación eliminada');
     },
     onError: (error: unknown) => {
@@ -324,6 +327,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
       casosUso.confirmarLiquidacion(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
+      queryClient.invalidateQueries({ queryKey: ['realizadores', 'datos-iniciales'] });
       toast.success('Liquidación confirmada');
       setConfirmModal({ isOpen: false, item: null });
       setConfirmData({ doc_pago_liquidacion: '', porcentaje_agencia: 10 });
