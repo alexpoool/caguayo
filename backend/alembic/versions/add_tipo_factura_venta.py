@@ -21,16 +21,24 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "factura",
-        sa.Column(
-            "tipo",
-            sa.String(length=20),
-            nullable=False,
-            server_default="FACTURA",
-        ),
-    )
+    bind = op.get_bind()
+    columns = {column["name"] for column in sa.inspect(bind).get_columns("factura")}
+
+    if "tipo" not in columns:
+        op.add_column(
+            "factura",
+            sa.Column(
+                "tipo",
+                sa.String(length=20),
+                nullable=False,
+                server_default="FACTURA",
+            ),
+        )
 
 
 def downgrade() -> None:
-    op.drop_column("factura", "tipo")
+    bind = op.get_bind()
+    columns = {column["name"] for column in sa.inspect(bind).get_columns("factura")}
+
+    if "tipo" in columns:
+        op.drop_column("factura", "tipo")
