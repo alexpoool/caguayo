@@ -225,7 +225,8 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
 
   const { data: personas = [] } = useQuery({
     queryKey: ['clientes'],
-    queryFn: () => casosUso.getClientes(0, 1000)
+    queryFn: () => casosUso.getClientes(0, 1000),
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: solicitudes = [] } = useQuery({
@@ -245,7 +246,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
   const { data: etapas = [] } = useQuery({
     queryKey: ['etapas', selectedSolicitud],
     queryFn: () => selectedSolicitud ? casosUso.getEtapasBySolicitud(selectedSolicitud) : casosUso.getAllEtapas(),
-    enabled: view === 'form' || printModal.isOpen,
+    enabled: (view === 'form' && Boolean(selectedSolicitud)) || printModal.isOpen,
     staleTime: 60 * 1000,
   });
 
