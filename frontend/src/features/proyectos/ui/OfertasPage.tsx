@@ -17,6 +17,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 
 import { formatCifra } from '@/utils/decimal';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
+import { fetchCatalogInBatches } from './utils/paginated-cache';
 import { useMonedaContratoDeEtapa } from './hooks/useMonedaContrato';
 import { formatFecha, toISODateLocal} from '@/utils/fecha';
 
@@ -313,9 +314,9 @@ export function OfertasPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
   const loadInitialData = async () => {
     try {
       const [monedasRes, solicitudesRes, etapasRes] = await Promise.all([
-        casosUso.getMonedas(0, 100),
-        casosUso.getSolicitudes(0, 1000),
-        casosUso.getAllEtapas()
+        fetchCatalogInBatches(queryClient, ['proyectos', 'monedas'], (skip, limit) => casosUso.getMonedas(skip, limit)),
+        fetchCatalogInBatches(queryClient, ['proyectos', 'solicitudes'], (skip, limit) => casosUso.getSolicitudes(skip, limit)),
+        fetchCatalogInBatches(queryClient, ['proyectos', 'etapas'], (skip, limit) => casosUso.getAllEtapas(skip, limit))
       ]);
       setMonedas(monedasRes);
       setSolicitudes(solicitudesRes);
