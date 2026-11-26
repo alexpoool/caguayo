@@ -136,6 +136,9 @@ export interface Liquidacion {
   fecha_emision: string;
   fecha_liquidacion?: string;
   observaciones?: string;
+  referencia_liquidacion?: string;
+  referencia_pago?: string;
+  factura?: string;
   devengado: number;
   tributario: number;
   comision_bancaria: number;
@@ -164,6 +167,9 @@ export interface LiquidacionCreate {
   gasto_empresa?: number;
   tipo_pago?: string;
   observaciones?: string;
+  referencia_liquidacion?: string;
+  referencia_pago?: string;
+  factura?: string;
   producto_ids: number[];
   porcentaje_agencia?: number;
 }
