@@ -25,7 +25,7 @@ class ProductosEnLiquidacion(SQLModel, table=True):
     id_producto_en_liquidacion: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
-    codigo: str = Field(max_length=50, unique=True)
+    codigo: str = Field(max_length=50)
 
     id_producto: int = Field(foreign_key="productos.id_producto")
     cantidad: int

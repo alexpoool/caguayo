@@ -416,7 +416,7 @@ class MovimientoService:
                 if es_compra_venta:
                     # COMPRA_VENTA: también crear productos_en_liquidacion
                     codigo_base = item_anexo.codigo or f"ANX-{db_movimiento.id_anexo}"
-                    codigo = f"{codigo_base}-LIQ-{db_movimiento.id_producto}"
+                    codigo = codigo_base
                     pel = ProductosEnLiquidacion(
                         codigo=codigo,
                         id_producto=db_movimiento.id_producto,

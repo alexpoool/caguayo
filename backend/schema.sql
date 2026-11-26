@@ -898,7 +898,6 @@ CREATE TABLE productos_en_liquidacion (
 	fecha TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
 	fecha_liquidacion TIMESTAMP WITHOUT TIME ZONE, 
 	PRIMARY KEY (id_producto_en_liquidacion), 
-	UNIQUE (codigo), 
 	FOREIGN KEY(id_producto) REFERENCES productos (id_producto), 
 	FOREIGN KEY(id_moneda) REFERENCES moneda (id_moneda), 
 	FOREIGN KEY(id_factura) REFERENCES factura (id_factura), 
