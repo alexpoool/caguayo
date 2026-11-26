@@ -1593,6 +1593,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-xl"><p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Referencia de liquidación</p><p className="font-bold text-gray-900">{detailModal.item.doc_pago_liquidacion || '-'}</p></div>
                 <div className="bg-gray-50 p-4 rounded-xl"><p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Referencia de pago</p><p className="font-bold text-gray-900">{detailModal.item.referencia_bancaria || '-'}</p></div>
                 <div className="bg-gray-50 p-4 rounded-xl"><p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Factura</p><p className="font-bold text-gray-900">{detailModal.item.factura || '-'}</p></div>
               </div>
