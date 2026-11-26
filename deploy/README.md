@@ -52,9 +52,13 @@ Genera la clave, por ejemplo:
 
     openssl rand -hex 32
 
-En backend/.env configura las credenciales reales de PostgreSQL. La base indicada al final de DATABASE_URL debe ser exactamente la misma que AUTH_DATABASE del .env raíz (por defecto, caguayo), porque esa URL es la conexión inicial del backend. POSTGRES_DB y CENTRAL_DATABASE deben coincidir (por defecto, caguayo_sa). POSTGRES_USER y POSTGRES_PASSWORD deben identificar un rol local con permiso CREATEDB y permisos de propietario sobre las bases.
+En backend/.env configura las credenciales reales de PostgreSQL. La base indicada al final de DATABASE_URL debe ser exactamente la misma que AUTH_DATABASE del .env raíz (por defecto, caguayo), porque esa URL es la conexión inicial del backend. POSTGRES_DB y CENTRAL_DATABASE deben coincidir (por defecto, caguayo_sa). La plantilla usa un rol dedicado llamado caguayo, no el superusuario postgres. Cambia change-me por una contraseña aleatoria y crea el rol antes del bootstrap:
 
-No conserves las contraseñas de ejemplo. Protege ambos .env; el instalador los deja como root:caguayo, modo 0640.
+No conserves las contraseñas de ejemplo. En PostgreSQL ejecuta como administrador local, usando exactamente la contraseña que guardaste en backend/.env:
+
+    sudo -u postgres psql -c "CREATE ROLE caguayo LOGIN CREATEDB PASSWORD 'CONTRASENA_ALEATORIA';"
+
+Protege ambos .env; el instalador los deja como root:caguayo, modo 0640.
 
 ## 4. Preparar las cachés offline
 
@@ -71,6 +75,10 @@ En la máquina de preparación, con el mismo checkout y versiones:
 Transfiere las cachés de uv y pnpm al usuario que ejecutará el despliegue en el servidor. La caché de pnpm debe ser accesible por ese usuario. Alternativamente, prepara un artefacto de despliegue que ya contenga las dependencias y frontend/dist, respetando las versiones de Python/Node y la arquitectura.
 
 ## 5. Construir, migrar e inicializar
+
+Antes de ejecutar el bootstrap, inicia PostgreSQL:
+
+    sudo systemctl enable --now postgresql
 
 Con las dependencias disponibles localmente:
 
