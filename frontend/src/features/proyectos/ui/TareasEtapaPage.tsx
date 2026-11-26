@@ -10,12 +10,15 @@ import { Plus, Trash2, Edit, ArrowLeft, Search, ListChecks, X, DollarSign, Hash,
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMonedaContrato } from './hooks/useMonedaContrato';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchCatalogInBatches } from './utils/paginated-cache';
 
 type View = 'list' | 'form';
 
 const TAREA_FORM_ID = 'tarea-form';
 
 export function TareasEtapaPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const etapaParam = searchParams.get('etapa');
@@ -69,8 +72,8 @@ export function TareasEtapaPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
   const loadInitialData = async () => {
     try {
       const [serviciosRes, monedasRes] = await Promise.all([
-        casosUso.getServicios(0, 1000),
-        casosUso.getMonedas(0, 100)
+        fetchCatalogInBatches(queryClient, ['proyectos', 'servicios'], (skip, limit) => casosUso.getServicios(skip, limit)),
+        fetchCatalogInBatches(queryClient, ['proyectos', 'monedas'], (skip, limit) => casosUso.getMonedas(skip, limit))
       ]);
       setServicios(serviciosRes);
       setMonedas(monedasRes);
