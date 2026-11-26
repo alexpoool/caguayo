@@ -943,7 +943,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
       }).catch(() => undefined);
     }
     if (etapaDocumento?.tipo_etapa === 'CERTIFICACIONES') {
-      const certs = await casosUso.getCertificacionesByEtapa(etapa.id_etapa);
+      const certs = await casosUso.getCertificacionesByEtapa(etapaDocumento.id_etapa);
       if (certs.length > 0) nombreCertificacion = certs[0].nombre;
     }
     const html = generatePersonaLiquidacionHTML(liquidacion, '', '', '', nombreCertificacion, etapaDocumento, solicitudDocumento);
