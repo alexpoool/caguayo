@@ -1,0 +1,27 @@
+[Unit]
+Description=Caguayo ERP - FastAPI backend
+Wants=network-online.target
+After=network-online.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=caguayo
+Group=caguayo
+WorkingDirectory=@APP_ROOT@/backend
+EnvironmentFile=@APP_ROOT@/.env
+EnvironmentFile=@APP_ROOT@/backend/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=@APP_ROOT@/backend/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 2
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=90
+TimeoutStopSec=30
+KillSignal=SIGINT
+UMask=0027
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
