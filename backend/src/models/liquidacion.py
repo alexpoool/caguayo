@@ -40,6 +40,9 @@ class Liquidacion(SQLModel, table=True):
     fecha_emision: date = Field(default_factory=date.today)
     fecha_liquidacion: Optional[date] = None
     observaciones: Optional[str] = None
+    referencia_liquidacion: Optional[str] = Field(default=None, max_length=150)
+    referencia_pago: Optional[str] = Field(default=None, max_length=150)
+    factura: Optional[str] = Field(default=None, max_length=100)
 
     devengado: Decimal = Field(default=Decimal("0.00"), decimal_places=2, max_digits=15)
     tributario: Decimal = Field(
