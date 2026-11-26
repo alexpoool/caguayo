@@ -814,15 +814,9 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     </div>
 
     <div class="fila-fechas">
-        <span class="bloque-fecha">
-            <strong>Fecha Emisión:</strong> ${fechaEmision}
-            ${referenciaBancaria ? `<br><strong>Referencia bancaria:</strong> ${referenciaBancaria}` : ''}
-        </span>
-        <span class="bloque-fecha">
-            <strong>Fecha Liquidación:</strong> ${fechaLiquidacion}
-            ${facturaLiquidacion ? `<br><strong>Factura:</strong> ${facturaLiquidacion}` : ''}
-        </span>
-        ${docPagoLiquidacion ? `<span class="bloque-fecha"><strong>Doc. Pago:</strong> ${docPagoLiquidacion}</span>` : ''}
+        <span class="bloque-fecha"><strong>Fecha Emisión:</strong> ${fechaEmision}</span>
+        <span class="bloque-fecha"><strong>Fecha Liquidación:</strong> ${fechaLiquidacion}</span>
+        ${docPagoLiquidacion ? `<span class="bloque-fecha"><strong>Referencia de liquidación:</strong> ${docPagoLiquidacion}</span>` : ''}
     </div>
 
     <div class="info-proyecto">
@@ -830,6 +824,8 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
         <div class="proyecto-item" style="width: 100%;"><strong>Proyecto:</strong> ${codigoProyecto}, ${nombreTituloEtapa}</div>
         ${descripcionLiquidacion ? `<div class="proyecto-item" style="width: 100%;"><strong>Descripción:</strong> ${descripcionLiquidacion}</div>` : ''}
         ${observacionLiquidacion ? `<div class="proyecto-item" style="width: 100%;"><strong>Observaciones:</strong> ${observacionLiquidacion}</div>` : ''}
+        ${referenciaBancaria ? `<div class="proyecto-item" style="width: 100%;"><strong>Referencia de pago:</strong> ${referenciaBancaria}</div>` : ''}
+        ${facturaLiquidacion ? `<div class="proyecto-item" style="width: 100%;"><strong>Factura:</strong> ${facturaLiquidacion}</div>` : ''}
     </div>
 
     
@@ -1354,7 +1350,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label>Referencia bancaria</Label>
+                  <Label>Referencia de pago</Label>
                   <Input value={formData.referencia_bancaria} onChange={(e) => setFormData(prev => ({ ...prev, referencia_bancaria: e.target.value }))} className="mt-1" placeholder="Referencia de la transferencia" />
                 </div>
                 <div>
@@ -1597,7 +1593,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-xl"><p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Referencia bancaria</p><p className="font-bold text-gray-900">{detailModal.item.referencia_bancaria || '-'}</p></div>
+                <div className="bg-gray-50 p-4 rounded-xl"><p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Referencia de pago</p><p className="font-bold text-gray-900">{detailModal.item.referencia_bancaria || '-'}</p></div>
                 <div className="bg-gray-50 p-4 rounded-xl"><p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Factura</p><p className="font-bold text-gray-900">{detailModal.item.factura || '-'}</p></div>
               </div>
               <div className="border-t pt-4">
@@ -1676,7 +1672,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
               </div>
 
               <div>
-                <Label>Documento de Pago</Label>
+                <Label>Referencia de liquidación</Label>
                 <input
                   type="text"
                   value={confirmData.doc_pago_liquidacion}
