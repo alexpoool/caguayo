@@ -22,6 +22,9 @@ class LiquidacionBase(SQLModel):
     fecha_emision: date
     fecha_liquidacion: Optional[date] = None
     observaciones: Optional[str] = Field(default=None, max_length=500)
+    referencia_liquidacion: Optional[str] = Field(default=None, max_length=150)
+    referencia_pago: Optional[str] = Field(default=None, max_length=150)
+    factura: Optional[str] = Field(default=None, max_length=100)
     devengado: Decimal = Field(default=Decimal("0.00"), ge=0)
     tributario: Decimal = Field(default=Decimal("0.00"), ge=0, le=100)
     comision_bancaria: Decimal = Field(default=Decimal("0.00"), ge=0)
@@ -41,6 +44,9 @@ class LiquidacionCreate(SQLModel):
     id_moneda: int = Field(gt=0)
     fecha_emision: Optional[date] = None
     observaciones: Optional[str] = Field(default=None, max_length=500)
+    referencia_liquidacion: Optional[str] = Field(default=None, max_length=150)
+    referencia_pago: Optional[str] = Field(default=None, max_length=150)
+    factura: Optional[str] = Field(default=None, max_length=100)
     devengado: Optional[Decimal] = Field(default=None, ge=0)
     tributario: Optional[Decimal] = Field(default=None, ge=0, le=100)
     comision_bancaria: Optional[Decimal] = Field(default=None, ge=0)
@@ -87,6 +93,9 @@ class LiquidacionUpdate(SQLModel):
     fecha_emision: Optional[date] = None
     fecha_liquidacion: Optional[date] = None
     observaciones: Optional[str] = Field(default=None, max_length=500)
+    referencia_liquidacion: Optional[str] = Field(default=None, max_length=150)
+    referencia_pago: Optional[str] = Field(default=None, max_length=150)
+    factura: Optional[str] = Field(default=None, max_length=100)
     devengado: Optional[Decimal] = Field(default=None, ge=0)
     tributario: Optional[Decimal] = Field(default=None, ge=0, le=100)
     comision_bancaria: Optional[Decimal] = Field(default=None, ge=0)
