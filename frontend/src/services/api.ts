@@ -766,8 +766,8 @@ export const solicitudesService = {
 };
 
 export const etapasProyectoService = {
-  async getAllEtapas(): Promise<Etapa[]> {
-    return apiClient.get<Etapa[]>('/etapas');
+  async getAllEtapas(skip = 0, limit = 100): Promise<Etapa[]> {
+    return apiClient.get<Etapa[]>(`/etapas?skip=${skip}&limit=${limit}`);
   },
   async getEtapasBySolicitud(solicitudId: number): Promise<Etapa[]> {
     return apiClient.get<Etapa[]>(`/etapas/solicitud/${solicitudId}`);
