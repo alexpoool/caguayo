@@ -108,6 +108,9 @@ export function CrearLiquidacionForm({ formId, casosUso, initialProveedorId, onE
     comision_gestion_porcentaje: DEFAULTS.PORCENTAJE_COMISION,
     tipo_pago: DEFAULTS.TIPO_PAGO,
     observaciones: '',
+    referencia_liquidacion: '',
+    referencia_pago: '',
+    factura: '',
     producto_ids: []
   });
 
@@ -426,6 +429,33 @@ if (!filtroCliente) {
                 <option value="OTRO">Otro</option>
               </select>
             </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3 mt-4">
+              <div>
+                <Label className="text-sm font-medium">Referencia de liquidación</Label>
+                <Input
+                  value={formData.referencia_liquidacion || ''}
+                  onChange={(e: any) => setFormData(prev => ({ ...prev, referencia_liquidacion: e.target.value }))}
+                  placeholder="Referencia de liquidación"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Referencia de pago</Label>
+                <Input
+                  value={formData.referencia_pago || ''}
+                  onChange={(e: any) => setFormData(prev => ({ ...prev, referencia_pago: e.target.value }))}
+                  placeholder="Referencia bancaria o transferencia"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Factura</Label>
+                <Input
+                  value={formData.factura || ''}
+                  onChange={(e: any) => setFormData(prev => ({ ...prev, factura: e.target.value }))}
+                  placeholder="Número de factura"
+                />
+              </div>
             </div>
 
             {filtroCliente && (
