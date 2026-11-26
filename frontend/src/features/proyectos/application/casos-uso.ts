@@ -51,7 +51,7 @@ export function crearCasosUsoProyectos(repositorio: ProyectosRepositorio) {
       repositorio.updateSolicitud(id, data),
     deleteSolicitud: (id: number) => repositorio.deleteSolicitud(id),
 
-    getAllEtapas: () => repositorio.getAllEtapas(),
+    getAllEtapas: (skip = 0, limit = 100) => repositorio.getAllEtapas(skip, limit),
     getEtapasBySolicitud: (solicitudId: number) =>
       repositorio.getEtapasBySolicitud(solicitudId),
     getEtapa: (id: number) => repositorio.getEtapa(id),
