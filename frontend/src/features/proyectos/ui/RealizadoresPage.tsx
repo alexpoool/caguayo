@@ -1018,7 +1018,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
 
   return (
     <div className="p-4 md:p-6">
-      {renderList()}
+      {view === 'list' && renderList()}
 
       <FormModal
         isOpen={view === "form"}
