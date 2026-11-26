@@ -680,11 +680,11 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     return moneda ? moneda.simbolo : '';
   };
 
-  const generatePersonaLiquidacionHTML = (liquidacion: PersonaLiquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string, nombreCertificacion?: string) => {
+  const generatePersonaLiquidacionHTML = (liquidacion: PersonaLiquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string, nombreCertificacion?: string, etapaDocumento?: Etapa, solicitudDocumento?: SolicitudServicio) => {
     const realizador = personas.find((p: Cliente) => p.id_cliente === liquidacion.id_persona);
     const etapasAll = queryClient.getQueryData<Etapa[]>(['etapas-all']) || etapas;
-    const etapa = etapasAll.find((e: Etapa) => e.id_etapa === liquidacion.id_etapa);
-    const solicitud = solicitudes.find((s: SolicitudServicio) => s.id_solicitud_servicio === etapa?.id_solicitud_servicio);
+    const etapa = etapaDocumento || etapasAll.find((e: Etapa) => e.id_etapa === liquidacion.id_etapa);
+    const solicitud = solicitudDocumento || solicitudes.find((s: SolicitudServicio) => s.id_solicitud_servicio === etapa?.id_solicitud_servicio);
     const moneda = monedas.find((m: Moneda) => m.id_moneda === liquidacion.id_moneda);
     
     const confectionadoPor = user ? `${user.nombre || ''} ${user.primer_apellido || ''}`.trim() : '';
@@ -881,10 +881,25 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     }
 
     let nombreCertificacion: string | undefined;
-    const etapasAll = queryClient.getQueryData<Etapa[]>(['etapas-all']) || etapas;
-    const etapa = etapasAll.find((e: Etapa) => e.id_etapa === printModal.liquidacion!.id_etapa);
-    if (etapa?.tipo_etapa === 'CERTIFICACIONES') {
-      const certs = await casosUso.getCertificacionesByEtapa(etapa.id_etapa);
+    let etapaDocumento: Etapa | undefined;
+    let solicitudDocumento: SolicitudServicio | undefined;
+    const liquidacion = printModal.liquidacion;
+    if (liquidacion.id_etapa) {
+      etapaDocumento = await queryClient.fetchQuery({
+        queryKey: ['etapa-documento', liquidacion.id_etapa],
+        queryFn: () => casosUso.getEtapa(liquidacion.id_etapa!),
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => undefined);
+    }
+    if (etapaDocumento?.id_solicitud_servicio) {
+      solicitudDocumento = await queryClient.fetchQuery({
+        queryKey: ['solicitud-documento', etapaDocumento.id_solicitud_servicio],
+        queryFn: () => casosUso.getSolicitud(etapaDocumento!.id_solicitud_servicio),
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => undefined);
+    }
+    if (etapaDocumento?.tipo_etapa === 'CERTIFICACIONES') {
+      const certs = await casosUso.getCertificacionesByEtapa(etapaDocumento.id_etapa);
       if (certs.length > 0) nombreCertificacion = certs[0].nombre;
     }
     const html = generatePersonaLiquidacionHTML(
@@ -892,7 +907,9 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
       printModal.autorizado_por, 
       printModal.cargo_autorizado || '', 
       printModal.revisado_por,
-      nombreCertificacion
+      nombreCertificacion,
+      etapaDocumento,
+      solicitudDocumento
     );
     printWindow.document.open();
     printWindow.document.write(html);
@@ -909,13 +926,27 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     }
 
     let nombreCertificacion: string | undefined;
-    const etapasAll = queryClient.getQueryData<Etapa[]>(['etapas-all']) || etapas;
-    const etapa = etapasAll.find((e: Etapa) => e.id_etapa === liquidacion.id_etapa);
-    if (etapa?.tipo_etapa === 'CERTIFICACIONES') {
+    let etapaDocumento: Etapa | undefined;
+    let solicitudDocumento: SolicitudServicio | undefined;
+    if (liquidacion.id_etapa) {
+      etapaDocumento = await queryClient.fetchQuery({
+        queryKey: ['etapa-documento', liquidacion.id_etapa],
+        queryFn: () => casosUso.getEtapa(liquidacion.id_etapa!),
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => undefined);
+    }
+    if (etapaDocumento?.id_solicitud_servicio) {
+      solicitudDocumento = await queryClient.fetchQuery({
+        queryKey: ['solicitud-documento', etapaDocumento.id_solicitud_servicio],
+        queryFn: () => casosUso.getSolicitud(etapaDocumento!.id_solicitud_servicio),
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => undefined);
+    }
+    if (etapaDocumento?.tipo_etapa === 'CERTIFICACIONES') {
       const certs = await casosUso.getCertificacionesByEtapa(etapa.id_etapa);
       if (certs.length > 0) nombreCertificacion = certs[0].nombre;
     }
-    const html = generatePersonaLiquidacionHTML(liquidacion, '', '', '', nombreCertificacion);
+    const html = generatePersonaLiquidacionHTML(liquidacion, '', '', '', nombreCertificacion, etapaDocumento, solicitudDocumento);
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
