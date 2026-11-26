@@ -4,7 +4,7 @@ if [[ $EUID -ne 0 ]]; then
   echo "Ejecuta este script con sudo." >&2
   exit 1
 fi
-SERVER_IP="\${1:-}"
+SERVER_IP="${1:-}"
 APP_DOMAIN="caguayo.home.arpa"
 CA_DIR="/etc/caguayo/ca"
 TLS_DIR="/etc/ssl/private"

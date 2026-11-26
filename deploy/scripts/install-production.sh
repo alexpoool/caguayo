@@ -5,7 +5,7 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 APP_ROOT="/opt/caguayo"
-REPO_ROOT="$(cd "$(dirname "\${BASH_SOURCE[0]}")/../.." && pwd -P)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 if [[ "$REPO_ROOT" != "$APP_ROOT" ]]; then
   echo "El repositorio debe estar instalado en $APP_ROOT (actual: $REPO_ROOT)." >&2
   echo "Copia el proyecto a $APP_ROOT y vuelve a ejecutar." >&2

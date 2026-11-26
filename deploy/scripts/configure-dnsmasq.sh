@@ -4,7 +4,7 @@ if [[ $EUID -ne 0 ]]; then
   echo "Ejecuta: sudo ./deploy/scripts/configure-dnsmasq.sh IP_DEL_SERVIDOR" >&2
   exit 1
 fi
-SERVER_IP="\${1:?Indica la IP fija del servidor, por ejemplo 192.168.1.100}"
+SERVER_IP="${1:?Indica la IP fija del servidor, por ejemplo 192.168.1.100}"
 python3 - "$SERVER_IP" <<'PY'
 import ipaddress, sys
 ipaddress.ip_address(sys.argv[1])

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-ROOT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")/../.." && pwd -P)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "$ROOT_DIR"
 for cmd in uv pnpm node; do
   command -v "$cmd" >/dev/null || { echo "Falta el comando requerido: $cmd" >&2; exit 1; }
