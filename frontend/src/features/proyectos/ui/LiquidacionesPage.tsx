@@ -58,15 +58,30 @@ const LIQUIDACION_FORM_ID = 'liquidacion-form';
 async function cargarClientesDePersonas(
   casosUso: CasosUsoProyectos,
   pes: PersonaEtapa[],
+  clientes: Cliente[],
 ): Promise<Cliente[]> {
-  const detalles = await mapConcurrent(pes, 8, async (pe) => {
+  // Reutiliza el catálogo que ya carga la pantalla y consulta individualmente
+  // solo las personas que no estén incluidas en él.
+  const porId = new Map(clientes.map((cliente) => [cliente.id_cliente, cliente]));
+  const faltantes = [...new Set(pes
+    .map((pe) => pe.id_persona)
+    .filter((id) => !porId.has(id)))];
+
+  const detalles = await mapConcurrent(faltantes, 8, async (id) => {
     try {
-      return await casosUso.getCliente(pe.id_persona);
+      return await casosUso.getCliente(id);
     } catch {
       return null;
     }
   });
-  return detalles.filter((p): p is Cliente => p !== null);
+
+  for (const cliente of detalles) {
+    if (cliente) porId.set(cliente.id_cliente, cliente);
+  }
+
+  return pes
+    .map((pe) => porId.get(pe.id_persona))
+    .filter((cliente): cliente is Cliente => Boolean(cliente));
 }
 
 export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
@@ -215,18 +230,23 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
 
   const { data: solicitudes = [] } = useQuery({
     queryKey: ['solicitudes'],
-    queryFn: () => casosUso.getSolicitudes(0, 1000)
+    queryFn: () => casosUso.getSolicitudes(0, 1000),
+    enabled: view === 'form' || printModal.isOpen,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios'],
-    queryFn: () => casosUso.getUsuarios()
+    queryFn: () => casosUso.getUsuarios(),
+    enabled: printModal.isOpen,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: etapas = [] } = useQuery({
     queryKey: ['etapas', selectedSolicitud],
     queryFn: () => selectedSolicitud ? casosUso.getEtapasBySolicitud(selectedSolicitud) : casosUso.getAllEtapas(),
-    enabled: true
+    enabled: view === 'form' || printModal.isOpen,
+    staleTime: 60 * 1000,
   });
 
   useEffect(() => {
@@ -240,13 +260,13 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idParam, solicitudParam, etapaParam, personaParam]);
 
-  // Cargar todas las etapas al inicio
+  // Comparte el resultado de React Query con la generación de documentos.
+  // Evita una segunda petición independiente de todas las etapas.
   useEffect(() => {
-    casosUso.getAllEtapas().then((ets) => {
-      queryClient.setQueryData(['etapas-all'], ets);
-    }).catch(console.error);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!selectedSolicitud && etapas.length > 0) {
+      queryClient.setQueryData(['etapas-all'], etapas);
+    }
+  }, [etapas, selectedSolicitud, queryClient]);
 
   useEffect(() => {
     if (solicitudParam && Number(solicitudParam) > 0) {
@@ -405,14 +425,21 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
     setPorCobrarPersona(0);
   };
 
+  const obtenerPersonasEtapa = (idEtapa: number) =>
+    queryClient.fetchQuery({
+      queryKey: ['personas-etapa', idEtapa],
+      queryFn: () => casosUso.getPersonasByEtapa(idEtapa),
+      staleTime: 60 * 1000,
+    });
+
   const cargarPersonasEtapa = async (idEtapa: number, personaId?: number) => {
     if (!idEtapa) {
       setPersonasEtapa([]);
       return;
     }
     try {
-      const pes = await casosUso.getPersonasByEtapa(idEtapa);
-      const filtered = await cargarClientesDePersonas(casosUso, pes);
+      const pes = await obtenerPersonasEtapa(idEtapa);
+      const filtered = await cargarClientesDePersonas(casosUso, pes, personas);
       setPersonasEtapa(filtered);
       if (personaId && Number(personaId) > 0) {
         setSelectedPersona(Number(personaId));
@@ -455,7 +482,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
 
   const loadPersonaEtapaCobro = async (idEtapa: number, idPersona: number) => {
     try {
-      const personasEtapa = await casosUso.getPersonasByEtapa(idEtapa);
+      const personasEtapa = await obtenerPersonasEtapa(idEtapa);
       const personaEtapa = personasEtapa.find((p: PersonaEtapa) => p.id_persona === idPersona);
       if (personaEtapa) {
         setPorCobrarPersona(Number(personaEtapa.por_cobrar) || 0);
@@ -494,12 +521,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
           descripcion: etapa.descripcion || ''
         }));
       }
-      try {
-        const personasDeEtapa = await casosUso.getPersonasByEtapa(etapaId);
-        setPersonasEtapa(await cargarClientesDePersonas(casosUso, personasDeEtapa));
-      } catch (error) {
-        console.error('Error loading personas de etapa:', error);
-      }
+
     }
   };
 
