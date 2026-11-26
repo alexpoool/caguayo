@@ -62,7 +62,7 @@ async function cargarClientesDePersonas(
 ): Promise<Cliente[]> {
   // Reutiliza el catálogo que ya carga la pantalla y consulta individualmente
   // solo las personas que no estén incluidas en él.
-  const porId = new Map(clientes.map((cliente) => [cliente.id_cliente, cliente]));
+  const porId = new Map<number, Cliente>(clientes.map((cliente) => [cliente.id_cliente, cliente] as const));
   const faltantes = [...new Set(pes
     .map((pe) => pe.id_persona)
     .filter((id) => !porId.has(id)))];
