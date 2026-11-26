@@ -329,6 +329,8 @@ export function CertificacionesPage({ casosUso }: { casosUso: CasosUsoProyectos 
         {certificacionForm}
       </FormModal>
 
+      {view === 'list' && (
+      <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           {etapaIdParam && (
@@ -476,6 +478,9 @@ export function CertificacionesPage({ casosUso }: { casosUso: CasosUsoProyectos 
           </div>
         )}
       </div>
+
+      </>
+      )}
 
       {confirmModal.isOpen && (
         <ConfirmModal
