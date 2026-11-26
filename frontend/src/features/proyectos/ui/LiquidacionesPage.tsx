@@ -1712,7 +1712,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
                   value={confirmData.doc_pago_liquidacion}
                   onChange={(e) => setConfirmData(prev => ({ ...prev, doc_pago_liquidacion: e.target.value }))}
                   className="w-full mt-1 p-2 border rounded"
-                  placeholder="Número de documento de pago"
+                  placeholder="Referencia de liquidación"
                 />
               </div>
             </div>
