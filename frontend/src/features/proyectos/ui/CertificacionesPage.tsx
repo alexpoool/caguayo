@@ -9,6 +9,8 @@ import { Trash2, Edit, ArrowLeft, Search, FileText, X, Loader2 } from 'lucide-re
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchCatalogInBatches } from './utils/paginated-cache';
 import { formatFecha, toISODateLocal} from '@/utils/fecha';
 
 type View = 'list' | 'form';
@@ -16,6 +18,7 @@ type View = 'list' | 'form';
 const CERTIFICACION_FORM_ID = 'certificacion-form';
 
 export function CertificacionesPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const etapaIdParam = searchParams.get('etapa');
@@ -97,8 +100,8 @@ export function CertificacionesPage({ casosUso }: { casosUso: CasosUsoProyectos 
   const loadSupportData = async () => {
     try {
       const [etapasRes, solicRes] = await Promise.all([
-        casosUso.getAllEtapas(),
-        casosUso.getSolicitudes(0, 1000)
+        fetchCatalogInBatches(queryClient, ['proyectos', 'etapas'], (skip, limit) => casosUso.getAllEtapas(skip, limit)),
+        fetchCatalogInBatches(queryClient, ['proyectos', 'solicitudes'], (skip, limit) => casosUso.getSolicitudes(skip, limit))
       ]);
       setEtapas(etapasRes);
       const map: Record<number, { codigo_proyecto?: string; id_solicitud_servicio: number }> = {};
