@@ -9,8 +9,9 @@ Type=simple
 User=caguayo
 Group=caguayo
 WorkingDirectory=@APP_ROOT@/backend
-EnvironmentFile=@APP_ROOT@/.env
+# Load backend defaults first; shared root settings override them.
 EnvironmentFile=@APP_ROOT@/backend/.env
+EnvironmentFile=@APP_ROOT@/.env
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONDONTWRITEBYTECODE=1
 ExecStart=@APP_ROOT@/backend/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 2

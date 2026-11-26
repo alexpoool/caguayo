@@ -52,7 +52,7 @@ Genera la clave, por ejemplo:
 
     openssl rand -hex 32
 
-En backend/.env configura las credenciales reales de PostgreSQL. Asegura que DATABASE_URL, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB y CENTRAL_DATABASE sean coherentes. El usuario de PostgreSQL necesita permiso CREATEDB para el bootstrap multi-base de datos.
+En backend/.env configura las credenciales reales de PostgreSQL. La base indicada al final de DATABASE_URL debe ser exactamente la misma que AUTH_DATABASE del .env raíz (por defecto, caguayo), porque esa URL es la conexión inicial del backend. POSTGRES_DB y CENTRAL_DATABASE deben coincidir (por defecto, caguayo_sa). POSTGRES_USER y POSTGRES_PASSWORD deben identificar un rol local con permiso CREATEDB y permisos de propietario sobre las bases.
 
 No conserves las contraseñas de ejemplo. Protege ambos .env; el instalador los deja como root:caguayo, modo 0640.
 

@@ -5,7 +5,7 @@ PYTHON="$ROOT_DIR/backend/.venv/bin/python"
 [[ -x "$PYTHON" ]] || { echo "Primero ejecuta deploy/scripts/deploy.sh para preparar el entorno Python." >&2; exit 1; }
 [[ -s "$ROOT_DIR/.env" && -s "$ROOT_DIR/backend/.env" ]] || { echo "Configura .env y backend/.env antes de continuar." >&2; exit 1; }
 # Parse .env files with python-dotenv (not 'source': values may contain spaces).
-eval "$("$PYTHON" - "$ROOT_DIR/.env" "$ROOT_DIR/backend/.env" <<'PY'
+eval "$("$PYTHON" - "$ROOT_DIR/backend/.env" "$ROOT_DIR/.env" <<'PY'
 import shlex, sys
 from dotenv import dotenv_values
 values = {}
