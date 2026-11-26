@@ -52,7 +52,7 @@ Genera la clave, por ejemplo:
 
     openssl rand -hex 32
 
-En backend/.env configura las credenciales reales de PostgreSQL. La base indicada al final de DATABASE_URL debe ser exactamente la misma que AUTH_DATABASE del .env raíz (por defecto, caguayo), porque esa URL es la conexión inicial del backend. POSTGRES_DB y CENTRAL_DATABASE deben coincidir (por defecto, caguayo_sa). La plantilla usa un rol dedicado llamado caguayo, no el superusuario postgres. Cambia change-me por una contraseña aleatoria y crea el rol antes del bootstrap:
+En backend/.env configura las credenciales reales de PostgreSQL. La base indicada al final de DATABASE_URL debe ser exactamente la misma que AUTH_DATABASE del .env raíz (por defecto, caguayo), porque esa URL es la conexión inicial del backend. POSTGRES_DB y CENTRAL_DATABASE deben coincidir (por defecto, caguayo_sa). La plantilla usa un rol dedicado llamado caguayo, no el superusuario postgres. Cambia change-me por una contraseña aleatoria en DATABASE_URL, POSTGRES_PASSWORD, ADMIN_DB_PASSWORD y LECTOR_PASSWORD (usa el mismo valor para las cuatro) y crea el rol antes del bootstrap:
 
 No conserves las contraseñas de ejemplo. En PostgreSQL ejecuta como administrador local, usando exactamente la contraseña que guardaste en backend/.env:
 
