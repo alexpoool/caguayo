@@ -964,6 +964,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
 
   return (
     <div className="space-y-6">
+      {view === 'list' && (
       <>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
@@ -1244,6 +1245,7 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoProyectos })
             )}
           </div>
         </>
+      )}
       <FormModal
         isOpen={view === 'form'}
         onClose={() => { setView('list'); resetForm(); }}
