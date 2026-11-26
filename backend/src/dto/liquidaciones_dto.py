@@ -140,6 +140,9 @@ class LiquidacionConProductos(SQLModel):
     gasto_empresa: Optional[Decimal] = Field(default=None, ge=0)
     tipo_pago: str = "TRANSFERENCIA"
     observaciones: Optional[str] = Field(default=None, max_length=500)
+    referencia_liquidacion: Optional[str] = Field(default=None, max_length=150)
+    referencia_pago: Optional[str] = Field(default=None, max_length=150)
+    factura: Optional[str] = Field(default=None, max_length=100)
     producto_ids: List[int] = []
 
     @field_validator("tipo_pago")
