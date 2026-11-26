@@ -14,6 +14,7 @@ import { Plus, Trash2, Edit, Search, ClipboardList, Tag, X, Layers, CheckCircle,
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '@/shared/ui/hooks/useInfiniteList';
+import { fetchCatalogInBatches } from './utils/paginated-cache';
 import { addYears, formatFecha, toISODateLocal} from '@/utils/fecha';
 import { nombreMostrado } from '@/utils/nombre';
 
@@ -165,8 +166,8 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
     const loadData = async () => {
       try {
         const [clientesRes, monedasRes] = await Promise.all([
-          casosUso.getClientes(0, 1000),
-          casosUso.getMonedas(0, 100)
+          fetchCatalogInBatches(queryClient, ['proyectos', 'clientes'], (skip, limit) => casosUso.getClientes(skip, limit)),
+          fetchCatalogInBatches(queryClient, ['proyectos', 'monedas'], (skip, limit) => casosUso.getMonedas(skip, limit))
         ]);
         setClientes(clientesRes);
         setMonedas(monedasRes);
@@ -301,7 +302,7 @@ export function ProyectosPage({ casosUso }: { casosUso: CasosUsoProyectos }) {
     });
     setSuplementosPorContrato({});
     try {
-      const data = await casosUso.getContratos(0, 1000);
+      const data = await fetchCatalogInBatches(queryClient, ['proyectos', 'contratos'], (skip, limit) => casosUso.getContratos(skip, limit));
       const contratosDelCliente = pendingClientData
         ? []  // Nuevo cliente: no puede tener contratos existentes
         : solicitud.id_cliente
