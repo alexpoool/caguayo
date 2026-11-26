@@ -189,6 +189,9 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     const codigoConvenio = escapeHtml(liquidacion.convenio?.codigo || '');
     const moneda = escapeHtml(liquidacion.moneda?.nombre || '');
     const observacionLiquidacion = escapeHtml(liquidacion.observaciones || '');
+    const referenciaLiquidacion = escapeHtml(liquidacion.referencia_liquidacion || '');
+    const referenciaPago = escapeHtml(liquidacion.referencia_pago || '');
+    const facturaLiquidacion = escapeHtml(liquidacion.factura || '');
 
     // Agrupar productos por id_anexo
     const productosPorAnexo: Record<number, any[]> = {};
@@ -345,6 +348,9 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
         <div class="proyecto-item" style="width:100%;"><strong>Dirección:</strong> ${direccionProveedor}</div>
         <div class="proyecto-item" style="width:100%;"><strong>Cuenta:</strong> ${cuentasHTML}</div>
         ${codigoConvenio ? `<div class="proyecto-item" style="width:100%;"><strong>Convenio:</strong> ${codigoConvenio}</div>` : ''}
+        ${referenciaLiquidacion ? `<div class="proyecto-item" style="width:100%;"><strong>Referencia de liquidación:</strong> ${referenciaLiquidacion}</div>` : ''}
+        ${referenciaPago ? `<div class="proyecto-item" style="width:100%;"><strong>Referencia de pago:</strong> ${referenciaPago}</div>` : ''}
+        ${facturaLiquidacion ? `<div class="proyecto-item" style="width:100%;"><strong>Factura:</strong> ${facturaLiquidacion}</div>` : ''}
     </div>
 
     <div style="margin: 10px 0 8px 0; font-weight: bold; font-size: 13px;">Pago por la compra de los siguientes productos:</div>
@@ -812,6 +818,12 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
                     <p className="font-medium">{formatFecha(selectedLiquidacion.fecha_liquidacion)}</p>
                   </div>
                 )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div><p className="text-sm text-gray-500">Referencia de liquidación</p><p className="font-medium">{selectedLiquidacion.referencia_liquidacion || '-'}</p></div>
+                <div><p className="text-sm text-gray-500">Referencia de pago</p><p className="font-medium">{selectedLiquidacion.referencia_pago || '-'}</p></div>
+                <div><p className="text-sm text-gray-500">Factura</p><p className="font-medium">{selectedLiquidacion.factura || '-'}</p></div>
               </div>
 
               <div className="border-t pt-4 mb-4">
