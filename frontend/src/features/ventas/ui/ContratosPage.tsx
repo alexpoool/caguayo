@@ -182,6 +182,14 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
       setMonedas(monedasRes);
       setEstados(estadosRes);
       setTiposContrato(tiposRes);
+      const estadoActivo = estadosRes.find(
+        (estado) => estado.nombre.trim().toUpperCase() === 'ACTIVO',
+      );
+      if (estadoActivo) {
+        setFormData((prev) =>
+          prev.id_estado ? prev : { ...prev, id_estado: estadoActivo.id_estado_contrato },
+        );
+      }
     } catch (error) { console.error('Error:', error); }
   };
 
@@ -194,10 +202,25 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
         toast.error('La fecha de vigencia no puede ser anterior a la fecha');
         return;
       }
+      const estadoActivo = estados.find(
+        (estado) => estado.nombre.trim().toUpperCase() === 'ACTIVO',
+      );
+      const idEstado = Number(formData.id_estado) || (!editingId ? estadoActivo?.id_estado_contrato : undefined);
+      const estadoSeleccionado = estados.find(
+        (estado) => estado.id_estado_contrato === idEstado,
+      );
+      if (!idEstado || !estadoSeleccionado) {
+        toast.error('Seleccione un estado válido para el contrato');
+        return;
+      }
+      if (!editingId && estadoSeleccionado.nombre.trim().toUpperCase() === 'ANULADO') {
+        toast.error('Un contrato nuevo no puede crearse con estado ANULADO');
+        return;
+      }
       const data: ContratoCreate = { 
         nombre: formData.nombre || '',
         id_cliente: Number(formData.id_cliente) || 0, 
-        id_estado: estados.length > 0 ? estados[0].id_estado_contrato : 1, 
+        id_estado: idEstado, 
         id_tipo_contrato: Number(formData.id_tipo_contrato) || (tiposContrato.length > 0 ? tiposContrato[0].id_tipo_contrato : 1), 
         id_moneda: Number(formData.id_moneda) || 1,
         fecha,
@@ -245,7 +268,18 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
     });
   };
 
-  const resetForm = () => { setFormData({ fecha: hoy, vigencia: addYears(hoy, 1), monto: '' }); setEditingId(null); };
+  const resetForm = () => {
+    const estadoActivo = estados.find(
+      (estado) => estado.nombre.trim().toUpperCase() === 'ACTIVO',
+    );
+    setFormData({
+      fecha: hoy,
+      vigencia: addYears(hoy, 1),
+      monto: '',
+      id_estado: estadoActivo?.id_estado_contrato ?? '',
+    });
+    setEditingId(null);
+  };
 
   const openForm = (item?: ContratoWithDetails) => {
     if (item) {
@@ -254,6 +288,7 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
         nombre: item.nombre, 
         proforma: item.proforma, 
         id_cliente: item.id_cliente, 
+        id_estado: item.id_estado,
         id_tipo_contrato: item.id_tipo_contrato, 
         fecha: item.fecha, 
         vigencia: item.vigencia, 
@@ -539,6 +574,26 @@ export function ContratosPage({ casosUso }: { casosUso: CasosUsoVentas }) {
                 <option value="">Seleccionar tipo</option>
                 {tiposContrato.map(t => <option key={t.id_tipo_contrato} value={t.id_tipo_contrato}>{t.nombre}</option>)}
               </select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Estado</Label>
+              <select
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white"
+                value={formData.id_estado || ''}
+                onChange={(e: any) => setFormData({ ...formData, id_estado: e.target.value })}
+              >
+                <option value="">Seleccionar estado</option>
+                {estados
+                  .filter((estado) => editingId || estado.nombre.trim().toUpperCase() !== 'ANULADO')
+                  .map((estado) => (
+                    <option key={estado.id_estado_contrato} value={estado.id_estado_contrato}>
+                      {estado.nombre}
+                    </option>
+                  ))}
+              </select>
+              {!editingId && (
+                <p className="mt-1 text-xs text-gray-500">Los contratos nuevos se crean por defecto como ACTIVO.</p>
+              )}
             </div>
 
             {/* Fila 2: Cliente (buscador) + Nuevo Cliente */}
