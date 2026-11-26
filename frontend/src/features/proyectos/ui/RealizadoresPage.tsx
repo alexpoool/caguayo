@@ -207,78 +207,81 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
 
   const loadInitialData = async () => {
     try {
-      const [monedasRes, tiposEntidadRes, etapaData] = await Promise.all([
-        casosUso.getMonedas(0, 100),
-        casosUso.getTiposEntidad(),
-        etapaParam ? casosUso.getEtapa(Number(etapaParam)) : Promise.resolve(null),
-      ]);
-      setMonedas(monedasRes);
-      setTiposEntidad(tiposEntidadRes);
-      if (etapaData) setCurrentEtapa(etapaData);
-
-      // Los importes pagados requieren todas las liquidaciones, pero cada
-      // petición se limita a 100 registros para evitar respuestas masivas.
-      const acumuladas: PersonaLiquidacion[] = [];
-      let total: number | null = null;
-      let skip = 0;
-      while (total === null || skip < total) {
-        const pagina = await casosUso.getLiquidaciones(skip, 100, (n) => { total = n; });
-        if (!pagina.length) break;
-        acumuladas.push(...pagina);
-        skip += pagina.length;
-        if (total === null && pagina.length < 100) break;
-      }
-      setLiquidaciones(acumuladas);
+      const data = await queryClient.fetchQuery({
+        queryKey: ["realizadores", "datos-iniciales", etapaParam || "todas"],
+        staleTime: 5 * 60 * 1000,
+        queryFn: async () => {
+          const [monedas, tiposEntidad, currentEtapa] = await Promise.all([
+            casosUso.getMonedas(0, 100),
+            casosUso.getTiposEntidad(),
+            etapaParam ? casosUso.getEtapa(Number(etapaParam)) : Promise.resolve(null),
+          ]);
+          const liquidaciones: PersonaLiquidacion[] = [];
+          let total: number | null = null;
+          let skip = 0;
+          while (total === null || skip < total) {
+            const pagina = await casosUso.getLiquidaciones(skip, 100, (n) => { total = n; });
+            if (!pagina.length) break;
+            liquidaciones.push(...pagina);
+            skip += pagina.length;
+            if (total === null && pagina.length < 100) break;
+          }
+          return { monedas, tiposEntidad, currentEtapa, liquidaciones };
+        },
+      });
+      setMonedas(data.monedas);
+      setTiposEntidad(data.tiposEntidad);
+      setCurrentEtapa(data.currentEtapa);
+      setLiquidaciones(data.liquidaciones);
     } catch (error) {
       console.error("Error:", error);
     }
   };
 
-  const loadPersonas = async () => {
+  const loadPersonas = async (force = false) => {
     try {
-      let allPersonas: PersonaEtapaWithDetails[] = [];
-      if (etapaParam) {
-        const data = await casosUso.getPersonasByEtapa(
-          Number(etapaParam),
-        );
-        allPersonas = data.map((p) => ({ ...p }));
-      } else {
-        // Mantener el listado completo, pero traer solicitudes en lotes de 100.
-        const todasSolicitudes: SolicitudServicio[] = [];
-        let totalSolicitudes: number | null = null;
-        let skipSolicitudes = 0;
-        while (totalSolicitudes === null || skipSolicitudes < totalSolicitudes) {
-          const pagina = await casosUso.getSolicitudes(
-            skipSolicitudes,
-            100,
-            (total) => { totalSolicitudes = total; },
-          );
-          if (!pagina.length) break;
-          todasSolicitudes.push(...pagina);
-          skipSolicitudes += pagina.length;
-          if (totalSolicitudes === null && pagina.length < 100) break;
-        }
-        const etapasPorSolicitud = await mapConcurrent(
-          todasSolicitudes,
-          8,
-          (solicitud) =>
-            casosUso.getEtapasBySolicitud(solicitud.id_solicitud_servicio).catch(() => []),
-        );
-        const allEtapas = etapasPorSolicitud.flat();
-        setEtapas(allEtapas);
-        const results = await mapConcurrent(allEtapas, 12, (etapa) =>
-          casosUso.getPersonasByEtapa(etapa.id_etapa).catch(() => []),
-        );
-        allPersonas = results.flat().map((persona) => ({ ...persona }));
-      }
-      setPersonasEtapa(allPersonas);
-
-      // Hidratar únicamente los clientes que ya están vinculados a realizadores.
-      const ids = [...new Set(allPersonas.map((persona) => persona.id_persona))];
-      const detalles = await mapConcurrent(ids, 8, (id) =>
-        casosUso.getCliente(id).catch(() => null),
-      );
-      setTodosClientes(detalles.filter((cliente): cliente is Cliente => !!cliente));
+      const data = await queryClient.fetchQuery({
+        queryKey: ["realizadores", "listado", etapaParam || "todas"],
+        staleTime: force ? 0 : 5 * 60 * 1000,
+        queryFn: async () => {
+          let allPersonas: PersonaEtapaWithDetails[] = [];
+          let etapasData: Etapa[] = [];
+          if (etapaParam) {
+            const personas = await casosUso.getPersonasByEtapa(Number(etapaParam));
+            allPersonas = personas.map((p) => ({ ...p }));
+          } else {
+            const todasSolicitudes: SolicitudServicio[] = [];
+            let totalSolicitudes: number | null = null;
+            let skipSolicitudes = 0;
+            while (totalSolicitudes === null || skipSolicitudes < totalSolicitudes) {
+              const pagina = await casosUso.getSolicitudes(skipSolicitudes, 100, (total) => { totalSolicitudes = total; });
+              if (!pagina.length) break;
+              todasSolicitudes.push(...pagina);
+              skipSolicitudes += pagina.length;
+              if (totalSolicitudes === null && pagina.length < 100) break;
+            }
+            const etapasPorSolicitud = await mapConcurrent(
+              todasSolicitudes, 8,
+              (solicitud) => casosUso.getEtapasBySolicitud(solicitud.id_solicitud_servicio).catch(() => []),
+            );
+            etapasData = etapasPorSolicitud.flat();
+            const results = await mapConcurrent(etapasData, 12,
+              (etapa) => casosUso.getPersonasByEtapa(etapa.id_etapa).catch(() => []),
+            );
+            allPersonas = results.flat().map((persona) => ({ ...persona }));
+          }
+          const ids = [...new Set(allPersonas.map((persona) => persona.id_persona))];
+          const detalles = await mapConcurrent(ids, 8, (id) => casosUso.getCliente(id).catch(() => null));
+          return {
+            personas: allPersonas,
+            etapas: etapasData,
+            clientes: detalles.filter((cliente): cliente is Cliente => !!cliente),
+          };
+        },
+      });
+      setPersonasEtapa(data.personas);
+      setEtapas(data.etapas);
+      setTodosClientes(data.clientes);
     } catch (error) {
       console.error("Error:", error);
     }
@@ -319,7 +322,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
       }
       setView("list");
       resetForm();
-      await loadPersonas();
+      await loadPersonas(true);
     } catch (error: any) {
       toast.error(error.message || "Error");
     } finally {
@@ -340,7 +343,7 @@ export function RealizadoresPage({ casosUso }: { casosUso: CasosUsoProyectos }) 
         try {
           await casosUso.deletePersonaEtapa(etapaId, personaId);
           toast.success("Eliminado");
-          loadPersonas();
+          loadPersonas(true);
         } catch (error: any) {
           toast.error(error.message || "Error");
         }

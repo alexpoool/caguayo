@@ -67,7 +67,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     searchTerm,
     setSearch,
     refresh,
-    reset,
     total: totalLiquidaciones,
   } = useInfiniteList<Liquidacion>({
     queryKeyBase: 'liquidaciones',
@@ -83,12 +82,6 @@ export function LiquidacionesPage({ casosUso }: { casosUso: CasosUsoCompra }) {
     extraQueryKeyParams: [activeTab, filtroCliente],
     limit: 100,
   });
-
-  // Resetear paginación al cambiar de tab
-  useEffect(() => {
-    reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
 
   // IntersectionObserver para scroll infinito
   const loadMoreRef = useRef<HTMLDivElement>(null);
