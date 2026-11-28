@@ -16,6 +16,16 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = "change-me-in-production"
 
+    # Messaging / thesis prototype.
+    KAFKA_ENABLED: bool = False
+    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
+    KAFKA_MESSAGE_TOPIC: str = "caguayo.messages"
+
+    # llama.cpp can expose an OpenAI-compatible HTTP API.
+    LLM_PROVIDER: str = "llama.cpp"
+    LLM_BASE_URL: str = "http://127.0.0.1:8080/v1"
+    LLM_MODEL: str = "local-model"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
